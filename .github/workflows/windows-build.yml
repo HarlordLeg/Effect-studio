@@ -86,6 +86,8 @@ jobs:
           $script = Join-Path $env:DEPLOY_DIRECTORY 'update-server.ps1'
           if (-not (Test-Path $script)) { throw 'Run deploy/install.ps1 on the server first.' }
           & $script -ArtifactZip (Join-Path $env:ARTIFACT_DIRECTORY 'DotaEffectStudio-Windows-x64.zip')
+          if (-not $?) { throw 'Server update failed.' }
+          exit 0
       - name: Remove downloaded artifact
         if: always()
         shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '{0}'"
