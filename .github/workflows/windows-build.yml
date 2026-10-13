@@ -1,0 +1,42 @@
+name: Build Windows app
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: JavaScript tests
+        run: npm test
+      - name: Model patch tests
+        run: dotnet run --project tests/ModelKeyText.Tests.csproj -c Release
+      - name: Build and validate patcher
+        run: node tools/build-native.mjs patcher
+      - name: Build and validate asset bridge
+        run: node tools/build-native.mjs assets
+      - name: Install desktop runtime
+        run: npm install --no-audit --no-fund
+      - name: Prepare portable app
+        run: node tools/package-windows.mjs
+      - name: Zip portable app
+        shell: pwsh
+        run: Compress-Archive -Path dist/DotaEffectStudio -DestinationPath dist/DotaEffectStudio-Windows-x64.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DotaEffectStudio-Windows-x64
+          path: dist/DotaEffectStudio-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
