@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {Builder} from './lib/build.mjs';
 import {PreviewService,publicPreview} from './lib/preview.mjs';
 import {WidgetAuth} from './lib/auth.mjs';
+import {requestAccess} from './lib/request-access.mjs';
 export const root=path.dirname(fileURLToPath(import.meta.url));
 const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
 async function body(req){let b='';for await(const chunk of req){b+=chunk;if(b.length>16384)throw new Error('Слишком большой запрос');}return JSON.parse(b||'{}');}
@@ -15,17 +16,15 @@ export function startServer({port:overridePort}={}) {
   const configPath=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'));
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
 
-  const localBind=['127.0.0.1','::1','localhost'].includes(config.host);
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     try {
       const host=req.headers.host??'',url=new URL(req.url,'http://localhost');
-      const ownOrigin=`http://${host}`,origin=req.headers.origin;
+      const origin=req.headers.origin;
       const expectedPort=server.address()?.port;
-      const localHost = host===`127.0.0.1:${expectedPort}` || host===`localhost:${expectedPort}` || host===`[::1]:${expectedPort}`;
-      const allowedHost=localBind?localHost:!!config.publicBaseUrl&&host===new URL(config.publicBaseUrl).host;
+      const {allowedHost,localAdmin}=requestAccess(req,config,expectedPort);
       if(!allowedHost)return json(res,403,{error:'Host не разрешён. Укажи publicBaseUrl для серверного режима.'});
-      const localAdmin=localBind && (!origin||origin===ownOrigin) && !['cross-site','same-site'].includes(req.headers['sec-fetch-site']);
+      if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       if(url.pathname==='/api/widget/session'&&req.method==='POST') {
         const data=await body(req);const token=auth.issue(data.key,origin);
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');return json(res,200,{token,expiresIn:1800});
@@ -39,7 +38,7 @@ export function startServer({port:overridePort}={}) {
       if(token)session=auth.verify(token);
       const allowed=localAdmin||session;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
-      const owner=session?session.id:'local';previews.touch(owner);
+      const owner=session?session.id+':'+session.nonce:'local';previews.touch(owner);
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
