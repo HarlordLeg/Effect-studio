@@ -22,7 +22,7 @@ jobs:
       - name: JavaScript tests
         run: npm test
       - name: Validate deployment scripts
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           Get-ChildItem deploy/*.ps1 | ForEach-Object {
             $parseErrors = $null
@@ -41,7 +41,7 @@ jobs:
       - name: Prepare portable app
         run: node tools/package-windows.mjs
       - name: Zip portable app
-        shell: pwsh
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '{0}'"
         run: Compress-Archive -Path dist/DotaEffectStudio -DestinationPath dist/DotaEffectStudio-Windows-x64.zip -CompressionLevel Optimal
       - uses: actions/upload-artifact@v7
         with:
@@ -69,7 +69,7 @@ jobs:
           name: DotaEffectStudio-Windows-x64
           path: deploy-artifact/${{ github.run_id }}-${{ github.run_attempt }}
       - name: Install and restart server
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '{0}'"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPOSITORY: ${{ github.repository }}
@@ -88,7 +88,7 @@ jobs:
           & $script -ArtifactZip (Join-Path $env:ARTIFACT_DIRECTORY 'DotaEffectStudio-Windows-x64.zip')
       - name: Remove downloaded artifact
         if: always()
-        shell: powershell
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '{0}'"
         env:
           ARTIFACT_DIRECTORY: deploy-artifact/${{ github.run_id }}-${{ github.run_attempt }}
         run: |
