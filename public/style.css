@@ -6,3 +6,5 @@
 #catalog-search{width:100%;padding:10px;background:#141b27;color:#eee;border:1px solid #384253;border-radius:8px}#frostbloom-list{max-height:230px;overflow:auto;font-size:12px}#frostbloom-list p{margin:8px 0}.controls details{margin:0 0 18px;color:#aab6c9;font-size:12px}
 
 #cart-list{font-size:12px;display:grid;gap:8px;margin:12px 0}#cart-list button{padding:4px 8px;font-size:11px}#extra-effects{min-height:140px}
+
+.error-log{margin-top:20px;padding:18px;border:1px solid #933d46;border-radius:10px;color:#ffc0c5;background:#28151b;white-space:pre-wrap;overflow-wrap:anywhere}.error-log[hidden]{display:none}
