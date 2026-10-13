@@ -6,7 +6,7 @@ using ValveResourceFormat.ResourceTypes;
 
 internal static class ResourceRelocator
 {
-    private sealed record FileEntry(string Input, string Output, int[]? Color = null, string? Name = null);
+    private sealed record FileEntry(string Input, string Output, int[]? Color = null, string? Name = null, Dictionary<string,string>? Paths = null);
     private sealed record Request(FileEntry[] Files, Dictionary<string,string> Paths);
     public static void Run(string manifest)
     {
@@ -15,13 +15,15 @@ internal static class ResourceRelocator
         {
             try
             {
+            var paths=new Dictionary<string,string>(request.Paths);
+            if(file.Paths is not null)foreach(var pair in file.Paths)paths[pair.Key]=pair.Value;
             var bytes=File.ReadAllBytes(file.Input);
             if(file.Input.EndsWith(".vtex_c",StringComparison.OrdinalIgnoreCase)||file.Input.EndsWith(".vsnd_c",StringComparison.OrdinalIgnoreCase)) { File.Copy(file.Input,file.Output,true); continue; }
             using var resource=new Resource { FileName=file.Input }; resource.Read(file.Input);
             var ids=new Dictionary<ulong,ulong>();
             if(resource.ExternalReferences is not null)
                 foreach(var reference in resource.ExternalReferences.ResourceRefInfoList)
-                    if(request.Paths.TryGetValue(reference.Name,out var target)) {var id=Program.ComputeResourceId(target);ids[reference.Id]=id;reference.Id=id;reference.Name=target;}
+                    if(paths.TryGetValue(reference.Name,out var target)) {var id=Program.ComputeResourceId(target);ids[reference.Id]=id;reference.Id=id;reference.Name=target;}
             var dataChanged=false;
             if(resource.DataBlock is KeyValuesOrNTRO kv)
             {
@@ -34,9 +36,9 @@ internal static class ResourceRelocator
                         if(ids.TryGetValue(BitConverter.ToUInt64(bytes,at),out var mapped))
                         { BitConverter.GetBytes(mapped).CopyTo(bytes,at);at+=7; }
                 }
-                else Rewrite(kv.Data,request.Paths,ids,ref dataChanged);
+                else Rewrite(kv.Data,paths,ids,ref dataChanged);
             }
-            else if(resource.DataBlock is BinaryKV3 binary) Rewrite(binary.Data.Root,request.Paths,ids,ref dataChanged);
+            else if(resource.DataBlock is BinaryKV3 binary) Rewrite(binary.Data.Root,paths,ids,ref dataChanged);
             if(file.Color is not null)
             {
                 if(file.Color.Length!=3||file.Color.Any(x=>x<0||x>255))throw new InvalidDataException("Invalid particle RGB");
