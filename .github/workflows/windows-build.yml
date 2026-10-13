@@ -21,6 +21,15 @@ jobs:
           dotnet-version: '10.0.x'
       - name: JavaScript tests
         run: npm test
+      - name: Validate deployment scripts
+        shell: powershell
+        run: |
+          Get-ChildItem deploy/*.ps1 | ForEach-Object {
+            $parseErrors = $null
+            $tokens = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          }
       - name: Model patch tests
         run: dotnet run --project tests/ModelKeyText.Tests.csproj -c Release
       - name: Build and validate patcher
@@ -40,3 +49,47 @@ jobs:
           path: dist/DotaEffectStudio-Windows-x64.zip
           if-no-files-found: error
           retention-days: 14
+  deploy:
+    needs: windows
+    if: >-
+      vars.DES_AUTO_DEPLOY == 'true' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: [self-hosted, Windows, X64, des-server]
+    timeout-minutes: 15
+    concurrency:
+      group: dota-server-deploy
+      cancel-in-progress: false
+    env:
+      DEPLOY_DIRECTORY: ${{ vars.DES_DEPLOY_DIR }}
+    steps:
+      - name: Download tested Windows app
+        uses: actions/download-artifact@v8
+        with:
+          name: DotaEffectStudio-Windows-x64
+          path: deploy-artifact/${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Install and restart server
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_BRANCH: ${{ github.ref_name }}
+          GH_COMMIT: ${{ github.sha }}
+          GH_API: ${{ github.api_url }}
+          ARTIFACT_DIRECTORY: deploy-artifact/${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $branch = [uri]::EscapeDataString($env:GH_BRANCH)
+          $head = Invoke-RestMethod -Uri "$env:GH_API/repos/$env:GH_REPOSITORY/commits/$branch" -Headers @{Authorization="Bearer $env:GH_TOKEN";Accept='application/vnd.github+json'}
+          if ($head.sha -ne $env:GH_COMMIT) { Write-Host 'A newer commit exists. Skipping obsolete build.'; exit 0 }
+          if (-not $env:DEPLOY_DIRECTORY) { throw 'Set DES_DEPLOY_DIR repository variable.' }
+          $script = Join-Path $env:DEPLOY_DIRECTORY 'update-server.ps1'
+          if (-not (Test-Path $script)) { throw 'Run deploy/install.ps1 on the server first.' }
+          & $script -ArtifactZip (Join-Path $env:ARTIFACT_DIRECTORY 'DotaEffectStudio-Windows-x64.zip')
+      - name: Remove downloaded artifact
+        if: always()
+        shell: powershell
+        env:
+          ARTIFACT_DIRECTORY: deploy-artifact/${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          if (Test-Path $env:ARTIFACT_DIRECTORY) { Remove-Item $env:ARTIFACT_DIRECTORY -Recurse -Force }
