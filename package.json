@@ -1,0 +1,20 @@
+{
+  "name": "dota-effect-studio",
+  "version": "1.3.1",
+  "private": true,
+  "type": "module",
+  "description": "Local Dota 2 model patcher, VPK builder and embeddable widget API",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "desktop": "electron desktop.cjs",
+    "test": "node --test tests/*.test.mjs",
+    "site-key": "node tools/site-key.mjs",
+    "doctor": "node tools/doctor.mjs"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}

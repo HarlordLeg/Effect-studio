@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {PreviewService,publicPreview} from '../lib/preview.mjs';
+import {Builder} from '../lib/build.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+test('preview job resolves real model dependencies, validates GLB output and hides disk paths',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-preview-'));try{
+  const config={archives:[path.join(root,'samples/pak14_dir.vpk')],assetDirectories:[],catalog:path.join(root,'data/catalog.json'),assetBridge:'bridge.exe'};
+  fs.writeFileSync(path.join(temp,'bridge.exe'),'stub');const builder=new Builder(temp,config);const choice=builder.choice('kunkka','kunkka-sword','frostbloom');choice.hero.model=choice.item.model;
+  let request;
+  const service=new PreviewService(temp,config,builder,async(_exe,args)=>{request=JSON.parse(fs.readFileSync(args[0],'utf8'));fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),request.output);fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),request.heroOutput);});
+  const job=service.create(choice,'site1');assert.throws(()=>service.create(choice,'site1'),/загружается/);
+  for(let i=0;i<20&&!['ready','error'].includes(job.status);i++)await new Promise(r=>setTimeout(r,10));
+  assert.equal(job.status,'ready');assert.equal(request.model,'models/heroes/kunkka/kunkka_sword.vmdl_c');assert.equal(request.materials,false);assert.equal(job.missing.length,1);assert.match(job.missing[0],/vmat_c$/);assert.equal(job.effectRendered,false);assert.ok(fs.existsSync(job.file));const publicJob=publicPreview(job);assert.equal(publicJob.file,undefined);assert.equal(publicJob.owner,undefined);assert.equal(publicJob.directory,undefined);
+  assert.throws(()=>service.create(choice,'site2',{owner:'site1',status:'ready'}),/сессии/);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+test('ready scenes skip exporter; another item reuses hero and particle exports',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-preview-cache-'));try{
+ const config={archives:[path.join(root,'samples/pak14_dir.vpk')],assetDirectories:[],catalog:path.join(root,'data/catalog.json'),assetBridge:'bridge.exe'};
+ fs.writeFileSync(path.join(temp,'bridge.exe'),'stub');const builder=new Builder(temp,config),choice=builder.choice('kunkka','kunkka-sword','frostbloom');choice.hero.model=choice.item.model;
+ const originalRead=builder.store.read.bind(builder.store),alias='models/items/kunkka/second.vmdl_c';builder.store.read=name=>originalRead(name===alias?choice.item.model:name);
+ const requests=[],service=new PreviewService(temp,config,builder,async(_exe,args)=>{const q=JSON.parse(fs.readFileSync(args[0],'utf8'));requests.push(q);fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.output);if(q.heroOutput)fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.heroOutput);if(q.particle)fs.writeFileSync(path.join(path.dirname(q.output),'effect.json'),JSON.stringify({systems:[]}));});
+ const wait=async job=>{for(let i=0;i<100&&!['ready','error'].includes(job.status);i++)await new Promise(r=>setTimeout(r,5));assert.equal(job.status,'ready',job.error);};
+ const first=service.create(choice,'local');await wait(first);const repeated=service.create(choice,'local');assert.equal(repeated.id,first.id);assert.equal(repeated.cacheHit,true);assert.equal(requests.length,1);
+ const second=service.create({...choice,item:{...choice.item,id:'second',model:alias}},'local');await wait(second);assert.equal(requests.length,2);assert.equal(requests[1].heroModel,null);assert.equal(requests[1].particle,null);assert.deepEqual(requests[1].defaultModels,[]);assert.equal(second.cachedParts,1);
+ // Owner and patched-build variants must not leak ready jobs into another session.
+ assert.notEqual(service.sceneKey(choice,'other',null),service.sceneKey(choice,'local',null));assert.notEqual(service.sceneKey(choice,'local',{id:'patched'}),service.sceneKey(choice,'local',null));
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+test('models survive service restart; effects are isolated and removed at end of session',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-persistent-'));let service;
+ try{
+ const config={archives:[path.join(root,'samples/pak14_dir.vpk')],assetDirectories:[],catalog:path.join(root,'data/catalog.json'),assetBridge:'bridge.exe'};fs.writeFileSync(path.join(temp,'bridge.exe'),'stub');const builder=new Builder(temp,config),choice=builder.choice('kunkka','kunkka-sword','frostbloom');choice.hero.model=choice.item.model;const requests=[];
+ const run=async(_exe,args)=>{const q=JSON.parse(fs.readFileSync(args[0]));requests.push(q);if(!q.skipModel)fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.output);if(q.heroOutput)fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.heroOutput);if(q.particle)fs.writeFileSync(path.join(path.dirname(q.output),'effect.json'),JSON.stringify({root:q.particle,definitions:{}}));};
+ const wait=async job=>{for(let i=0;i<100&&!['ready','error'].includes(job.status);i++)await new Promise(r=>setTimeout(r,5));assert.equal(job.status,'ready',job.error);};
+ service=new PreviewService(temp,config,builder,run);await wait(service.create(choice,'a'));const models=[...service.assets.values()],session=service.sessionDirectory;assert.ok(models.every(f=>f.includes(path.join('cache','models'))));service.dispose();assert.equal(fs.existsSync(session),false);assert.ok(models.every(f=>fs.existsSync(f)));
+ service=new PreviewService(temp,config,builder,run);await wait(service.create(choice,'b'));assert.equal(requests[1].skipModel,true);assert.equal(requests[1].heroModel,null);assert.ok(requests[1].particle);assert.equal(service.effects.size,1);const folder=path.dirname([...service.effects.values()][0]);service.endOwner('b');assert.equal(fs.existsSync(folder),false);assert.ok(models.every(f=>fs.existsSync(f)));
+ }finally{service?.dispose();fs.rmSync(temp,{recursive:true,force:true});}
+});
+test('batch preview includes both items, replaces both base slots and separates particle surfaces',async()=>{const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-preview-batch-'));let service;try{const config={archives:[path.join(root,'samples/pak14_dir.vpk')],assetDirectories:[],catalog:path.join(root,'data/catalog.json'),assetBridge:'bridge.exe'};fs.writeFileSync(path.join(temp,'bridge.exe'),'stub');const builder=new Builder(temp,config),first=builder.choice('kunkka','kunkka-sword','frostbloom'),original=first.item.model,other='models/heroes/kunkka/second.vmdl_c';first.hero.model=original;first.hero.defaultModels=[{model:original,slot:first.item.slot},{model:other,slot:'head'}];first.hero.defaultSlotModels={...first.hero.defaultSlotModels,head:other};const read=builder.store.read.bind(builder.store);builder.store.read=name=>read(name===other?original:name);const second={...first,item:{...first.item,id:'second',name:'Second item',model:other,slot:'head'}};const rows=[{...first,effects:[first.effect]},{...second,effects:[second.effect]}];service=new PreviewService(temp,config,builder,async(_exe,args)=>{const q=JSON.parse(fs.readFileSync(args[0]));if(!q.skipModel)fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.output);if(q.heroOutput)fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.heroOutput);for(const p of q.defaultModels??[])fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),p.output);if(q.particle)fs.writeFileSync(path.join(path.dirname(q.output),'effect.json'),JSON.stringify({root:q.particle,definitions:{}}));});const job=service.create({...first,selections:rows},'local');for(let i=0;i<200&&!['ready','error'].includes(job.status);i++)await new Promise(r=>setTimeout(r,5));assert.equal(job.status,'ready',job.error);assert.equal(job.selectedItems.length,2);assert.deepEqual(job.defaultParts,[]);const {parseGlb}=await import('../public/renderer/glb.mjs'),b=fs.readFileSync(job.file),asset=parseGlb(b.buffer.slice(b.byteOffset,b.byteOffset+b.length));assert.equal(asset.json.meshes.length,3);const groups=asset.json.extras.effectStudioItemGroups;assert.equal(Object.keys(groups).length,2);assert.ok(groups[first.item.id].every(id=>!groups.second.includes(id)));const effects=JSON.parse(fs.readFileSync(path.join(job.directory,'effect.json'))).effects;assert.equal(effects.length,2);assert.deepEqual(effects.map(e=>e.itemId),[first.item.id,'second']);assert.notEqual(service.sceneKey(first,'local',null),service.sceneKey({...first,selections:rows},'local',null));}finally{service?.dispose();fs.rmSync(temp,{recursive:true,force:true});}});

@@ -1,0 +1,14 @@
+{
+  "host": "127.0.0.1",
+  "port": 8787,
+  "archives": [
+    "samples/pak14_dir.vpk"
+  ],
+  "assetDirectories": [],
+  "patcher": "patcher/publish/Dota2UnusualPatcher.exe",
+  "viewer": null,
+  "strictDependencies": false,
+  "publicBaseUrl": null,
+  "catalog": "data/catalog.json",
+  "assetBridge": "asset-bridge/publish/DotaAssetBridge.exe"
+}

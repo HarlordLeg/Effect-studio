@@ -1,0 +1,5 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {ModelPreview} from '../public/preview.mjs';
+test('public preview exposes ghost method; only selected item changes and disabling restores materials',()=>{assert.equal(typeof ModelPreview.prototype.setGhostStyle,'function');const original={pbrMetallicRoughness:{baseColorFactor:[1,.8,.6,1]}},hero={material:{},node:0},item={material:original,node:1},preview={asset:{json:{extras:{effectStudioItemNodes:[1]}}},draws:[hero,item]};const heroMaterial=hero.material;ModelPreview.prototype.setGhostStyle.call(preview,true);assert.equal(hero.material,heroMaterial);assert.equal(item.material.alphaMode,'BLEND');assert.equal(original.alphaMode,undefined);const color=item.material.pbrMetallicRoughness.baseColorFactor;ModelPreview.prototype.setGhostStyle.call(preview,true);assert.deepEqual(item.material.pbrMetallicRoughness.baseColorFactor,color);ModelPreview.prototype.setGhostStyle.call(preview,false);assert.equal(item.material,original);});
+test('ghost toggle is safe before loading a model',()=>{ModelPreview.prototype.setGhostStyle.call({draws:[]},false);});

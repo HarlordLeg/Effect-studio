@@ -1,0 +1,147 @@
+{
+  "heroes": [
+    {
+      "id": "kunkka",
+      "name": "Kunkka",
+      "items": [
+        {
+          "id": "kunkka-sword",
+          "name": "Icebreaking Weapon · замена меча",
+          "slot": "weapon",
+          "model": "models/heroes/kunkka/kunkka_sword.vmdl_c",
+          "preview": null,
+          "effects": [
+            "frostbloom",
+            "snowdrift",
+            "gold-drop",
+            "gold-glow",
+            "candy-caster",
+            "smoke",
+            "ravenblight",
+            "featherfall",
+            "lava",
+            "bleak-hallucination",
+            "desert-sands",
+            "winter-2012",
+            "diretide-ghost"
+          ]
+        }
+      ],
+      "model": "models/heroes/kunkka/kunkka.vmdl_c",
+      "partsFolder": "models/heroes/kunkka",
+      "defaultSlotModels": {
+        "weapon": "models/heroes/kunkka/kunkka_sword.vmdl_c"
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "frostbloom",
+      "name": "Frostbloom",
+      "particle": "harlord/particles/econ/seasonal/seasonal_ambient_silver.vpcf",
+      "description": "Исходный эффект из твоего VPK, включая 6 дочерних систем."
+    },
+    {
+      "id": "snowdrift",
+      "name": "Snowdrift",
+      "gameParticleId": 828,
+      "particle": "particles/econ/seasonal/seasonal_ambient_snow.vpcf",
+      "description": "Оригинальный эффект Valve. Дочерние системы входят в VPK; путь уточняется по игровому items_game."
+    },
+    {
+      "id": "gold-drop",
+      "name": "Gold Drop",
+      "gameParticleId": 833,
+      "particle": "particles/econ/seasonal/new_bloom/seasonal_ambient_gold_drop.vpcf",
+      "description": "Оригинальный эффект Valve. Дочерние системы входят в VPK; путь уточняется по игровому items_game."
+    },
+    {
+      "id": "gold-glow",
+      "name": "Gold Glow",
+      "gameParticleId": 834,
+      "particle": "particles/econ/seasonal/new_bloom/seasonal_ambient_gold_glow.vpcf",
+      "description": "Оригинальный эффект Valve. Дочерние системы входят в VPK; путь уточняется по игровому items_game."
+    },
+    {
+      "id": "candy-caster",
+      "name": "Candy Caster",
+      "gameParticleId": 827,
+      "particle": "particles/econ/seasonal/seasonal_ambient_candy_mint.vpcf",
+      "description": "Оригинальный эффект Valve. Дочерние системы входят в VPK; путь уточняется по игровому items_game."
+    },
+    {
+      "id": "smoke",
+      "name": "Smoke",
+      "gameParticleId": 835,
+      "particle": "particles/econ/seasonal/new_bloom/seasonal_ambient_smoke.vpcf",
+      "description": "Оригинальный эффект Valve. Дочерние системы входят в VPK; путь уточняется по игровому items_game."
+    },
+    {
+      "id": "ravenblight",
+      "name": "Ravenblight",
+      "gameParticleId": 837,
+      "particle": null,
+      "description": "Оригинальный эффект Valve. Дочерние системы входят в VPK; путь уточняется по игровому items_game."
+    },
+    {
+      "id": "featherfall",
+      "name": "Featherfall",
+      "gameParticleId": 836,
+      "particle": null,
+      "description": "Оригинальный эффект Valve. Дочерние системы входят в VPK; путь уточняется по игровому items_game."
+    },
+    {
+      "id": "lava",
+      "name": "Огненный · Lava",
+      "particle": "particles/econ/courier/courier_trail_lava/courier_trail_lava.vpcf",
+      "custom": true,
+      "ghost": false,
+      "description": "Пользовательское сочетание с экипировкой. Исходный эффект Valve; поддержка операторов в 3D может быть неполной.",
+      "courier": true,
+      "scope": "hero",
+      "previewColor": [
+        255,
+        92,
+        8
+      ]
+    },
+    {
+      "id": "bleak-hallucination",
+      "name": "Bleak Hallucination",
+      "particle": "particles/econ/courier/courier_trail_spirit/courier_trail_spirit.vpcf",
+      "custom": true,
+      "ghost": false,
+      "description": "Пользовательское сочетание с экипировкой. Исходный эффект Valve; поддержка операторов в 3D может быть неполной.",
+      "courier": true,
+      "scope": "hero"
+    },
+    {
+      "id": "desert-sands",
+      "name": "Desert Sands",
+      "particle": "particles/econ/courier/courier_roshan_desert_sands/baby_roshan_desert_sands_ambient.vpcf",
+      "custom": true,
+      "ghost": false,
+      "description": "Пользовательское сочетание с экипировкой. Исходный эффект Valve; поддержка операторов в 3D может быть неполной.",
+      "courier": true,
+      "scope": "hero"
+    },
+    {
+      "id": "winter-2012",
+      "name": "Зимний · Frostivus Frost",
+      "particle": "particles/econ/courier/courier_trail_winter_2012/courier_trail_winter_2012.vpcf",
+      "custom": true,
+      "ghost": false,
+      "description": "Пользовательское сочетание с экипировкой. Исходный эффект Valve; поддержка операторов в 3D может быть неполной.",
+      "courier": true,
+      "scope": "hero"
+    },
+    {
+      "id": "diretide-ghost",
+      "name": "Diretide · призрачный стиль",
+      "particle": "particles/econ/events/diretide_2020/hero_spooky_ambient/hero_spooky_ambient.vpcf",
+      "custom": true,
+      "ghost": true,
+      "description": "Пользовательское сочетание с экипировкой. Исходный эффект Valve; поддержка операторов в 3D может быть неполной."
+    }
+  ]
+}

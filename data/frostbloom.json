@@ -1,0 +1,373 @@
+{
+  "collection": "Frostivus 2023",
+  "effect": "frostbloom",
+  "checked": "2026-10-12",
+  "sources": [
+    "https://www.dota2.com/newsentry/3884981125532748791",
+    "https://steamcommunity.com/sharedfiles/filedetails/?id=3286987546",
+    "https://steamcommunity.com/sharedfiles/filedetails/?id=3136157497"
+  ],
+  "notes": [
+    "Список составлен по показам Frostbloom и названиям Steam Market. Соответствие моделям проверяется по локальному items_game и английской локализации.",
+    "Floe (ward) и Winter Lineage Bite не включены: название комплекта не подтверждает необычную версию каждой части.",
+    "Fireborn Odachi с Frostbloom известен как ошибочный дроп; не включён в официальную коллекцию."
+  ],
+  "items": [
+    {
+      "hero": "death_prophet",
+      "name": "Hood of the Long Night",
+      "set": "Mistress of the Long Night",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Hood%20of%20the%20Long%20Night",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Hood_of_the_Long_Night"
+      ]
+    },
+    {
+      "hero": "enchantress",
+      "name": "Spear of the First Night",
+      "set": "First Night of the Summer Child",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Spear%20of%20the%20First%20Night",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Spear_of_the_First_Night"
+      ]
+    },
+    {
+      "hero": "techies",
+      "name": "Powdersled Rookery Cannon",
+      "set": "Powdersled Rookery",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Powdersled%20Rookery%20Cannon",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Powdersled_Rookery_Cannon"
+      ]
+    },
+    {
+      "hero": "lycan",
+      "name": "Claws of the Grey Ghost",
+      "set": "Trail of the Grey Ghost",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Claws%20of%20the%20Grey%20Ghost",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Claws_of_the_Grey_Ghost"
+      ]
+    },
+    {
+      "hero": "alchemist",
+      "name": "Frostreach Brigands Axes",
+      "set": "Frostreach Brigands",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Frostreach%20Brigands%20Axes",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Frostreach_Brigands_Axes"
+      ]
+    },
+    {
+      "hero": "shredder",
+      "name": "Claw of the Trailblazer",
+      "set": "Trek of the Trailblazer",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Claw%20of%20the%20Trailblazer",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Claw_of_the_Trailblazer"
+      ]
+    },
+    {
+      "hero": "shredder",
+      "name": "Saw of the Trailblazer",
+      "set": "Trek of the Trailblazer",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Saw%20of%20the%20Trailblazer",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Saw_of_the_Trailblazer"
+      ]
+    },
+    {
+      "hero": "invoker",
+      "name": "Northern Blight Style",
+      "set": "Northern Blight",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Northern%20Blight%20Style",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Northern_Blight_Style"
+      ]
+    },
+    {
+      "hero": "troll_warlord",
+      "name": "Axes of the Icewrack Marauder",
+      "set": "Icewrack Marauder",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Axes%20of%20the%20Icewrack%20Marauder",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Axes_of_the_Icewrack_Marauder"
+      ]
+    },
+    {
+      "hero": "kunkka",
+      "name": "Blade of the Pack-Ice Privateer",
+      "set": "Pack-Ice Privateer",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Blade%20of%20the%20Pack-Ice%20Privateer",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Blade_of_the_PackIce_Privateer"
+      ]
+    },
+    {
+      "hero": "keeper_of_the_light",
+      "name": "Light of the Forgotten Renegade",
+      "set": "Forgotten Renegade",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Light%20of%20the%20Forgotten%20Renegade",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Light_of_the_Forgotten_Renegade"
+      ]
+    },
+    {
+      "hero": "sand_king",
+      "name": "Claws of the Frostbite Dunes",
+      "set": "Ruler of the Frostbite Dunes",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Claws%20of%20the%20Frostbite%20Dunes",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Claws_of_the_Frostbite_Dunes"
+      ]
+    },
+    {
+      "hero": "pudge",
+      "name": "Hook of the Odobenus One",
+      "set": "Hunt of the Odobenus One",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Hook%20of%20the%20Odobenus%20One",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Hook_of_the_Odobenus_One"
+      ]
+    },
+    {
+      "hero": "pudge",
+      "name": "Sawtooth of the Odobenus One",
+      "set": "Hunt of the Odobenus One",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Sawtooth%20of%20the%20Odobenus%20One",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Sawtooth_of_the_Odobenus_One"
+      ]
+    },
+    {
+      "hero": "batrider",
+      "name": "Verna",
+      "set": "Apex Explorer",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Verna",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Verna"
+      ]
+    },
+    {
+      "hero": "spirit_breaker",
+      "name": "Winter Lineage Gust of the Surging Wind",
+      "set": "Winter Lineage",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Winter%20Lineage%20Gust%20of%20the%20Surging%20Wind",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Winter_Lineage_Gust_of_the_Surging_Wind"
+      ]
+    },
+    {
+      "hero": "drow_ranger",
+      "name": "Bow of Zebulon",
+      "set": "The Gaze of Zebulon",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Bow%20of%20Zebulon",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Bow_of_Zebulon"
+      ]
+    },
+    {
+      "hero": "silencer",
+      "name": "Glaive of Eternal Night",
+      "set": "Hush of Eternal Night",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Glaive%20of%20Eternal%20Night",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Glaive_of_Eternal_Night"
+      ]
+    },
+    {
+      "hero": "ursa",
+      "name": "Claws of Crystal Drift",
+      "set": "Hunter of Crystal Drift",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Claws%20of%20Crystal%20Drift",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Claws_of_the_Crystal_Drift"
+      ]
+    },
+    {
+      "hero": "lich",
+      "name": "Bracer of Vile Convocation",
+      "set": "Rites of Vile Convocation",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Bracer%20of%20Vile%20Convocation",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Bracer_of_Vile_Convocation"
+      ]
+    },
+    {
+      "hero": "puck",
+      "name": "Crown of Curious Coldspell",
+      "set": "Curious Coldspell",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Crown%20of%20Curious%20Coldspell",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Crown_of_Curious_Coldspell"
+      ]
+    },
+    {
+      "hero": "tiny",
+      "name": "Frostmoot Tree",
+      "set": "Frostmoot",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Frostmoot%20Tree",
+      "kind": "wearable",
+      "aliases": [
+        "Tree of the Frostmoot"
+      ],
+      "localizationTokens": [
+        "DOTA_Item_Frostmoot_Tree"
+      ]
+    },
+    {
+      "hero": "alchemist",
+      "name": "Lumpo and Rupertus - Weapon",
+      "set": "Lumpo and Rupertus",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Lumpo%20and%20Rupertus%20-%20Weapon",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Lumpo_and_Rupertus__Weapon"
+      ]
+    },
+    {
+      "hero": "primal_beast",
+      "name": "The Abominable Snowbeast - Legs",
+      "set": "The Abominable Snowbeast",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20The%20Abominable%20Snowbeast%20-%20Legs",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_The_Abominable_Snowbeast__Legs"
+      ]
+    },
+    {
+      "hero": "ancient_apparition",
+      "name": "Silent Wight - Arms",
+      "set": "Silent Wight",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Silent%20Wight%20-%20Arms",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Silent_Wight__Arms"
+      ]
+    },
+    {
+      "hero": "snapfire",
+      "name": "Silver Squall - Weapon",
+      "set": "Silver Squall",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Silver%20Squall%20-%20Weapon",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Silver_Squall__Weapon"
+      ]
+    },
+    {
+      "hero": "arc_warden",
+      "name": "Orbuculum Equinox",
+      "set": "Orbuculum Equinox",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Orbuculum%20Equinox",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Orbuculum_Equinox"
+      ]
+    },
+    {
+      "hero": "tusk",
+      "name": "Jingle Fist",
+      "set": "Jingle Fist",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Jingle%20Fist",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Jingle_Fist"
+      ]
+    },
+    {
+      "hero": "pudge",
+      "name": "Frosty the Sew-Man's Sugary Shiv",
+      "set": "Frosty the Sew-Man",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Frosty%20the%20Sew-Man%27s%20Sugary%20Shiv",
+      "kind": "persona",
+      "aliases": [
+        "Sugary Shiv"
+      ],
+      "localizationTokens": [
+        "DOTA_Item_Frosty_the_SewMans_Sugary_Shiv"
+      ]
+    },
+    {
+      "hero": "crystal_maiden",
+      "name": "Guardian Snow Angel - Armor",
+      "set": "Guardian Snow Angel",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Guardian%20Snow%20Angel%20-%20Armor",
+      "kind": "persona",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Guardian_Snow_Angel__Armor"
+      ]
+    },
+    {
+      "hero": "skeleton_king",
+      "name": "King Kringle's Tannenkromm",
+      "set": "King Kringle",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20King%20Kringle%27s%20Tannenkromm",
+      "kind": "wearable",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_King_Kringles_Tannenkromm"
+      ]
+    },
+    {
+      "hero": "courier",
+      "name": "Serac the Seal",
+      "set": "Serac and Floe",
+      "marketUrl": "https://steamcommunity.com/market/listings/570/Unusual%20Serac%20the%20Seal",
+      "kind": "courier",
+      "aliases": [],
+      "localizationTokens": [
+        "DOTA_Item_Serac_the_Seal"
+      ]
+    }
+  ]
+}
