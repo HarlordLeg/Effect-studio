@@ -15,7 +15,7 @@ test('preview job resolves real model dependencies, validates GLB output and hid
   const service=new PreviewService(temp,config,builder,async(_exe,args)=>{request=JSON.parse(fs.readFileSync(args[0],'utf8'));fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),request.output);fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),request.heroOutput);});
   const job=service.create(choice,'site1');assert.throws(()=>service.create(choice,'site1'),/загружается/);
   for(let i=0;i<20&&!['ready','error'].includes(job.status);i++)await new Promise(r=>setTimeout(r,10));
-  assert.equal(job.status,'ready');assert.equal(request.model,'models/heroes/kunkka/kunkka_sword.vmdl_c');assert.equal(request.materials,false);assert.equal(job.missing.length,1);assert.match(job.missing[0],/vmat_c$/);assert.equal(job.effectRendered,false);assert.ok(fs.existsSync(job.file));const publicJob=publicPreview(job);assert.equal(publicJob.file,undefined);assert.equal(publicJob.owner,undefined);assert.equal(publicJob.directory,undefined);
+  assert.equal(job.status,'ready');assert.equal(request.model,'models/heroes/kunkka/kunkka_sword.vmdl_c');assert.equal(request.materials,false);assert.equal(job.missing.length,1);assert.match(job.missing[0],/vmat_c$/);assert.equal(job.effectRendered,false);assert.ok(fs.existsSync(job.file));const publicJob=publicPreview(job);assert.equal(publicJob.file,undefined);assert.equal(publicJob.owner,undefined);assert.equal(publicJob.directory,undefined);assert.equal(publicJob.partFiles,undefined);assert.ok(publicJob.parts.every(p=>!p.file&&p.key.length===64));
   assert.throws(()=>service.create(choice,'site2',{owner:'site1',status:'ready'}),/сессии/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });

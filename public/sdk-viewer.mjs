@@ -16,8 +16,8 @@ window.addEventListener('message',async event=>{
     if(!/^[a-f0-9]{32}$/.test(d.previewId))throw new Error('Invalid preview ID');
     preview??=new ModelPreview(canvas,document.getElementById('stage'));
     const query='?token='+encodeURIComponent(d.token),base='/api/previews/'+d.previewId;
-    const animations=await preview.load(base+'/model'+query);
-    let idle=animations.findIndex(a=>d.selection.heroId==='hoodwink'?(a.name??'').toLowerCase()==='mouse_idle':/(^|[\/_])idle($|[_\/])/i.test(a.name??''));if(idle>=0)preview.setAnimation(idle);
+    const metadata=await fetch(base+query);const manifest=await metadata.json();if(!metadata.ok)throw new Error(manifest.error??'Preview unavailable');const animations=manifest.parts?await preview.loadScene(manifest,base,query):await preview.load(base+'/model'+query);
+    let idle=animations.findIndex(a=>d.selection.heroId==='hoodwink'?(a.name??'').toLowerCase()==='mouse_idle':/(^|[\/_])idle($|[_\/])/i.test(a.name??''));if(preview.preservedScene)idle=preview.animation;else if(idle>=0)preview.setAnimation(idle);
     preview.setGhostStyle(d.batch?false:!!d.effect?.ghost);
     const response=await fetch(base+'/effect'+query);const packet=await response.json();if(!response.ok)throw new Error(packet.error??'Effect failed');
     const info=packet.effects?await preview.setEffects(packet.effects):await preview.setEffect(packet,{scope:d.effect?.scope,color:previewColor(d.effect,d.selection.courierColor),defaultColor:previewColor(d.effect)});
