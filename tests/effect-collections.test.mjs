@@ -9,7 +9,7 @@ test('all eight effects have collection-specific items without granting another 
  assert.deepEqual(catalog.heroes[1].items[0].officialEffects,['gold-drop','gold-glow','smoke']);
  assert.deepEqual(catalog.heroes[2].items[0].officialEffects,['ravenblight','featherfall']);
  assert.deepEqual(collectionData.collections.map(c=>c.items.length),[32,17,39]);
- assert.equal(new Set(collectionData.collections.flatMap(c=>c.effects)).size,8);assert.equal(effects.filter(e=>!e.custom).length,8);assert.equal(effects.filter(e=>e.custom).length,5);
+ assert.equal(new Set(collectionData.collections.flatMap(c=>c.effects)).size,8);assert.equal(effects.filter(e=>!e.custom).length,8);assert.equal(effects.filter(e=>e.custom).length,6);
  for(const c of collectionData.collections)for(const item of c.items)assert.ok(item.localizationTokens.length,item.name);
 });
 test('particle paths come from Valve numeric effect definitions and preserve custom Frostbloom path',()=>{

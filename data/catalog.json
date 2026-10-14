@@ -23,7 +23,8 @@
             "bleak-hallucination",
             "desert-sands",
             "winter-2012",
-            "diretide-ghost"
+            "diretide-ghost",
+            "ionic-vapor"
           ]
         }
       ],
@@ -142,6 +143,23 @@
       "custom": true,
       "ghost": true,
       "description": "Пользовательское сочетание с экипировкой. Исходный эффект Valve; поддержка операторов в 3D может быть неполной."
+    },
+    {
+      "id": "ionic-vapor",
+      "name": "Молнии",
+      "nameEn": "Lightning",
+      "gameParticleId": 163,
+      "particle": "particles/econ/courier/courier_platinum_roshan/platinum_roshan_ambient.vpcf",
+      "custom": true,
+      "ghost": false,
+      "description": "Ionic Vapor — эффект Platinum Baby Roshan. Молнии на всём персонаже; цвет можно изменить.",
+      "courier": true,
+      "scope": "hero",
+      "previewColor": [
+        213,
+        227,
+        245
+      ]
     }
   ]
 }

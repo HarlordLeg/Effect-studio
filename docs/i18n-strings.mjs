@@ -1,4 +1,6 @@
 export const translations = {
+  "Молнии": "Lightning",
+  "Ionic Vapor — эффект Platinum Baby Roshan. Молнии на всём персонаже; цвет можно изменить.": "Ionic Vapor from Platinum Baby Roshan. Lightning covers the whole character; its color can be changed.",
   "Герой. Предмет.": "Hero. Item.",
   "Твой эффект.": "Your effect.",
   "Выбери предмет, проверь зависимости": "Choose an item, check dependencies",
