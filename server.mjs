@@ -107,12 +107,12 @@ export function startServer({port:overridePort}={}) {
       }
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:'Маршрут не найден'});
       if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET'});
-      const isWidget=url.pathname==='/widget',isAdmin=url.pathname==='/admin';
+      const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin';
       if(isWidget&&!session)return json(res,401,{error:'Нужна сессия виджета'});
       const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin)&&session?session.origin:"'none'");
       res.setHeader('Content-Security-Policy',csp);
       let file;
-      {const rel=isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}
+      {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}
       if(!fs.existsSync(file)||!fs.statSync(file).isFile())return json(res,404,{error:'Файл не найден'});
       const ext=path.extname(file),mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.glb':'model/gltf-binary','.png':'image/png','.svg':'image/svg+xml'}[ext]??'application/octet-stream';
       res.writeHead(200,{'Content-Type':mime});if(req.method==='HEAD')return res.end();

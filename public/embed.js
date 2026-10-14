@@ -34,6 +34,24 @@
   const listener=event=>{if(event.source!==frame.contentWindow||event.origin!==client.base||event.data?.channel!=='dota-effect-studio'||!['preview-ready','build-ready','error'].includes(event.data.type))return;onEvent?.(event.data);element.dispatchEvent(new CustomEvent('des:'+event.data.type,{detail:event.data}));};window.addEventListener('message',listener);element.replaceChildren(frame);
   return {client,frame,async reload(){frame.src=await client.url('/widget');},destroy(){window.removeEventListener('message',listener);frame.remove();}};
  }
- window.DotaEffectStudio={connect,mount};
+ async function mountViewer({target,client:provided,height=600,onEvent,...options}){
+  const element=typeof target==='string'?document.querySelector(target):target;if(!element)throw new Error('Viewer container not found');
+  const client=provided??await connect(options),frame=document.createElement('iframe');frame.title='Dota 2 3D';frame.style.cssText='width:100%;border:0;display:block';frame.height=String(height);frame.referrerPolicy='no-referrer';
+  let serial=0,destroyed=false,showing=false;const pending=new Map();let readyResolve,readyReject;
+  const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
+  const readyTimer=setTimeout(()=>readyReject(new Error('Viewer connection timeout')),30000);
+  const listener=event=>{if(event.source!==frame.contentWindow||event.origin!==client.base||event.data?.channel!=='des-viewer')return;const data=event.data;
+   if(data.type==='ready'){clearTimeout(readyTimer);readyResolve();}
+   if(data.id&&pending.has(data.id)){const task=pending.get(data.id);pending.delete(data.id);clearTimeout(task.timer);data.error?task.reject(new Error(data.error)):task.resolve(data.result);}
+   onEvent?.(data);element.dispatchEvent(new CustomEvent('des:'+data.type,{detail:data}));
+  };window.addEventListener('message',listener);frame.src=await client.url('/viewer');element.replaceChildren(frame);
+  async function command(type,data={}){if(destroyed)throw new Error('Viewer destroyed');await ready;await client.session();const id=++serial;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Viewer command timeout'));},240000);pending.set(id,{resolve,reject,timer});frame.contentWindow.postMessage({channel:'des-viewer',id,type,token:client.token,...data},client.base);});}
+  return {client,frame,ready,
+   async show(selection,{signal,onProgress,...waitOptions}={}){if(showing)throw new Error('Viewer is loading');showing=true;try{await ready;const catalog=await client.catalog(),job=await client.preview(selection);const state=await client.wait(job.id,{...waitOptions,preview:true,signal,onProgress});signal?.throwIfAborted();const result=await command('load',{previewId:state.id,selection,effect:catalog.effects.find(e=>e.id===selection.effectId),batch:!!state.selectedItems});return {...state,...result};}finally{showing=false;}},
+   setAnimation(index){return command('animation',{index});},setEffectsEnabled(enabled){return command('effects',{enabled});},replay(){return command('replay');},clear(){return command('clear');},
+   destroy(){destroyed=true;clearTimeout(readyTimer);readyReject(new Error('Viewer destroyed'));window.removeEventListener('message',listener);for(const task of pending.values()){clearTimeout(task.timer);task.reject(new Error('Viewer destroyed'));}pending.clear();frame.remove();}
+  };
+ }
+ window.DotaEffectStudio={version:'1.0.0',connect,mount,mountViewer};
  if(script?.dataset.key&&script.dataset.target){mount({siteKey:script.dataset.key,target:document.getElementById(script.dataset.target),height:script.dataset.height??1050}).catch(error=>{const target=document.getElementById(script.dataset.target);if(target)target.textContent='Не удалось загрузить виджет: '+error.message;});}
 })();
