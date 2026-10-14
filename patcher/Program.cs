@@ -12,7 +12,7 @@ internal static class Program
         string Output,
         IReadOnlyList<string> ParticlePaths,
         ulong? ResourceId,
-        bool Backup);
+        bool Backup, int Skin);
 
     private sealed record ParticleEntry(string Path, ulong ResourceId, string? Config);
 
@@ -26,7 +26,7 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true}");return 0; }
+            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true}");return 0; }
             if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
             var options = ParseArguments(args);
             Patch(options);
@@ -78,6 +78,7 @@ internal static class Program
                 throw new InvalidDataException("The DATA block is not a compiled model.");
             }
 
+            ModelVariant.Apply(model, options.Skin);
             var particleEntries = ResolveParticleEntries(particlePaths, options.ResourceId);
             SetParticleConfig(model, particleEntries);
             SetRed2ParticleReference(resource);
@@ -377,6 +378,7 @@ internal static class Program
         var particles = new List<string>();
         ulong? resourceId = null;
         var backup = true;
+        var skin = 0;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -398,6 +400,7 @@ internal static class Program
                 case "--particle":
                 case "-p": particles.Add(NextValue()); break;
                 case "--resource-id": resourceId = ParseUInt64(NextValue()); break;
+                case "--skin": skin = int.Parse(NextValue(), CultureInfo.InvariantCulture); if(skin<0)throw new ArgumentException("Invalid skin"); break;
                 case "--no-backup": backup = false; break;
                 default: throw new ArgumentException($"Unknown argument: {args[i]}");
             }
@@ -411,7 +414,7 @@ internal static class Program
             throw new ArgumentException("--input, --output and --particle are required. Run with --help.");
         }
 
-        return new Options(input, output, particles, resourceId, backup);
+        return new Options(input, output, particles, resourceId, backup, skin);
     }
 
     private static ulong ParseUInt64(string text)

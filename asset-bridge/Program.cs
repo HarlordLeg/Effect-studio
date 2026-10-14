@@ -5,7 +5,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class Program
 {
     private sealed record DefaultModel(string Model, string Output);
-    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false);
+    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null);
 
     public static int Main(string[] args)
     {
@@ -30,27 +30,11 @@ internal static class Program
             }
 
 
-            var exporter = new GltfModelExporter(loader)
-            {
-                ProgressReporter = new Progress<string>(message => Console.WriteLine(message)),
-                ExportMaterials = request.Materials,
-                ExportAnimations = true,
-                AdaptTextures = true,
-                SatelliteImages = false,
-            };
-            if(!request.SkipModel){using var model=loader.LoadFile(request.Model)??throw new FileNotFoundException("Model not found",request.Model);if(model.DataBlock is not Model)throw new InvalidDataException("Resource is not a model");exporter.Export(model,target);}
+            if (!request.SkipModel) ExportModel(loader, request.Model, target, request.Materials, request.Skin);
             if (request.HeroModel is not null && request.HeroOutput is not null)
-            {
-                using var hero = loader.LoadFile(request.HeroModel) ?? throw new FileNotFoundException("Hero model not found", request.HeroModel);
-                if (hero.DataBlock is not Model) throw new InvalidDataException("Hero resource is not a model");
-                exporter.Export(hero, Path.GetFullPath(request.HeroOutput));
-            }
+                ExportModel(loader, request.HeroModel, Path.GetFullPath(request.HeroOutput), request.Materials);
             foreach (var part in request.DefaultModels ?? [])
-            {
-                using var resource = loader.LoadFile(part.Model) ?? throw new FileNotFoundException("Default item model not found", part.Model);
-                if (resource.DataBlock is not Model) throw new InvalidDataException("Default item resource is not a model");
-                exporter.Export(resource, Path.GetFullPath(part.Output));
-            }
+                ExportModel(loader, part.Model, Path.GetFullPath(part.Output), request.Materials);
             if (request.Particle is not null)
             {
                 var effectOutput = Path.Combine(Path.GetDirectoryName(target)!, "effect.json");
@@ -60,6 +44,12 @@ internal static class Program
                     File.WriteAllText(effectOutput, JsonSerializer.Serialize(new { error = exception.Message }));
                     Console.WriteLine("Particle data export failed: " + exception.Message);
                 }
+            }
+            foreach(var entry in (request.NativeParticles ?? []).Select((particle,index)=>(particle,index)))
+            {
+                var output=Path.Combine(Path.GetDirectoryName(target)!, "native-"+entry.index+".json");
+                try { ParticleExport.Write(loader, entry.particle, output); }
+                catch(Exception exception){File.WriteAllText(output,JsonSerializer.Serialize(new {error=exception.Message}));}
             }
             if (!File.Exists(target) || new FileInfo(target).Length < 20) throw new InvalidDataException("GLB export is empty");
             Console.WriteLine(JsonSerializer.Serialize(new { status = "ready", bytes = new FileInfo(target).Length, materials = request.Materials }));
@@ -71,4 +61,50 @@ internal static class Program
             return 1;
         }
     }
+    private static void ExportModel(GameFileLoader loader, string modelPath, string target, bool materials, int skin = 0)
+    {
+        using var resource = loader.LoadFile(modelPath) ?? throw new FileNotFoundException("Model not found", modelPath);
+        if (resource.DataBlock is not Model) throw new InvalidDataException("Resource is not a model: " + modelPath);
+        ModelVariant.Apply((Model)resource.DataBlock, skin);
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        var modes = materials ? new[] { "adapted", "original", "geometry" } : new[] { "geometry" };
+        string? warning = null;
+        for (var i = 0; i < modes.Length; i++)
+        {
+            var mode = modes[i];
+            // A failed export leaves failed texture tasks in the exporter. Never reuse it.
+            var exporter = new GltfModelExporter(loader)
+            {
+                ProgressReporter = new Progress<string>(message => Console.WriteLine(message)),
+                ExportMaterials = mode != "geometry",
+                ExportAnimations = true,
+                AdaptTextures = mode == "adapted",
+                SatelliteImages = false,
+            };
+            try
+            {
+                exporter.Export(resource, target);
+                if (!File.Exists(target) || new FileInfo(target).Length < 20)
+                    throw new InvalidDataException("GLB export is empty: " + modelPath);
+                File.WriteAllText(target + ".export.json", JsonSerializer.Serialize(new { model = modelPath, mode, warning }));
+                return;
+            }
+            catch (Exception exception) when (i + 1 < modes.Length && IsTextureFailure(exception))
+            {
+                warning = "Texture export fallback for " + modelPath + ": " + modes[i + 1];
+                Console.WriteLine("[WARN] " + warning);
+                Console.WriteLine(exception.ToString());
+                if (File.Exists(target)) File.Delete(target);
+            }
+        }
+    }
+
+    private static bool IsTextureFailure(Exception exception)
+    {
+        var details = exception.ToString();
+        return details.Contains("TextureExtract", StringComparison.Ordinal)
+            || details.Contains("GltfModelExporter.Material", StringComparison.Ordinal)
+            || details.Contains("TexturePacker", StringComparison.Ordinal);
+    }
+
 }

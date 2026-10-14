@@ -5,5 +5,6 @@
     <AssemblyName>DotaAssetBridge</AssemblyName>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
+  <ItemGroup><Compile Include="../patcher/ModelVariant.cs" Link="ModelVariant.cs" /></ItemGroup>
   <ItemGroup><PackageReference Include="ValveResourceFormat" Version="20.0.6980" /></ItemGroup>
 </Project>
