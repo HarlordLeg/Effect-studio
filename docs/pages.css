@@ -1,3 +1,5 @@
 *{box-sizing:border-box}body{margin:0;background:#0b1018;color:#e3e8ef;font:15px system-ui}header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #283140}button{background:#172334;color:inherit;border:1px solid #3a4b61;border-radius:6px;padding:8px 12px;cursor:pointer}#status{padding:0 20px}iframe{display:block;width:100%;height:calc(100vh - 60px);border:0}iframe[hidden]{display:none}
 
 #admin-entry{padding:12px 20px}#admin-entry[hidden]{display:none}#admin-login{padding:9px;background:#172334;color:#fff;border:1px solid #3a4b61;border-radius:6px;margin-right:8px}
+
+#language{padding:8px 12px;border-radius:8px;background:#18202c;color:#fff;border:1px solid #354050}

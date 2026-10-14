@@ -1,3 +1,5 @@
+import {initLanguage} from './i18n.mjs';
+initLanguage();
 const status=document.getElementById('status'),frame=document.getElementById('studio'),button=document.getElementById('connect');
 let adminMode=false,visited=false;
 async function connect(){
@@ -10,7 +12,7 @@ async function connect(){
   if(!config.siteKey)throw new Error('Администратор ещё не настроил подключение сайта');
   const session=await fetch(new URL('/api/widget/session',base),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:config.siteKey}),signal:AbortSignal.timeout(20000)});
   const data=await session.json();if(!session.ok)throw new Error(data.error??'Сервер отклонил подключение');
-  const url=new URL(adminMode?'/admin':'/widget',base);url.searchParams.set('token',data.token);
+  const url=new URL(adminMode?'/admin':'/widget',base);url.searchParams.set('token',data.token);url.searchParams.set('lang',document.documentElement.lang);
   if(adminMode)url.searchParams.set('login',document.getElementById('admin-login').value);
   else if(!visited){url.searchParams.set('visit','1');visited=true;}
   frame.src=url.href;frame.hidden=false;status.hidden=true;

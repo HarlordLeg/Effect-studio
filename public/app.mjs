@@ -1,3 +1,5 @@
+import {initLanguage} from './i18n.mjs';
+initLanguage();
 import {previewColor} from './particles/style.mjs';
 const $=id=>document.getElementById(id), params=new URLSearchParams(location.search),token=params.get('token');
 const headers=()=>({'Content-Type':'application/json',...(token?{'Authorization':'Bearer '+token}:{})});
@@ -67,6 +69,6 @@ function viewSelections(){const hero=catalog.heroes.find(h=>h.id===$('hero').val
 
 $('vpk-number').replaceChildren(...Array.from({length:99},(_,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent='pak'+String(i+1).padStart(2,'0')+'_dir.vpk';return o;}));
 if(!token||params.get('visit')==='1')api('/api/visit',{}).catch(()=>{});
-document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.code==='KeyA'){e.preventDefault();location.href='/admin'+(token?'?token='+encodeURIComponent(token):'');}});
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.code==='KeyA'){e.preventDefault();location.href='/admin?lang='+document.documentElement.lang+(token?'&token='+encodeURIComponent(token):'');}});
 
-document.querySelector('.brand').addEventListener('dblclick',e=>{e.preventDefault();location.href='/admin'+(token?'?token='+encodeURIComponent(token):'');});
+document.querySelector('.brand').addEventListener('dblclick',e=>{e.preventDefault();location.href='/admin?lang='+document.documentElement.lang+(token?'&token='+encodeURIComponent(token):'');});

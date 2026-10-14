@@ -8,3 +8,5 @@
 #cart-list{font-size:12px;display:grid;gap:8px;margin:12px 0}#cart-list button{padding:4px 8px;font-size:11px}#extra-effects{min-height:140px}
 
 .error-log{margin-top:20px;padding:18px;border:1px solid #933d46;border-radius:10px;color:#ffc0c5;background:#28151b;white-space:pre-wrap;overflow-wrap:anywhere}.error-log[hidden]{display:none}
+
+.harlord-credit{color:#9baabf;font-size:12px;text-decoration:none;white-space:nowrap}.harlord-credit[href]:hover{color:#ffab68;text-decoration:underline}#language{width:auto;max-width:140px;margin:0 12px;padding:8px 12px}.preview-bottom{flex-wrap:wrap;gap:12px}
