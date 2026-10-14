@@ -12,7 +12,7 @@ internal static class Program
         string Output,
         IReadOnlyList<string> ParticlePaths,
         ulong? ResourceId,
-        bool Backup, int Skin);
+        bool Backup, int Skin, string? ParticleReplacements);
 
     private sealed record ParticleEntry(string Path, ulong ResourceId, string? Config);
 
@@ -26,7 +26,7 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true}");return 0; }
+            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true}");return 0; }
             if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
             var options = ParseArguments(args);
             Patch(options);
@@ -78,7 +78,17 @@ internal static class Program
                 throw new InvalidDataException("The DATA block is not a compiled model.");
             }
 
-            ModelVariant.Apply(model, options.Skin);
+            var changedBlocks=ModelVariant.Apply(resource, options.Skin);
+            if(options.ParticleReplacements is not null)
+            {
+                var paths=System.Text.Json.JsonSerializer.Deserialize<Dictionary<string,string>>(File.ReadAllText(options.ParticleReplacements)) ?? throw new InvalidDataException("Invalid particle replacement map");
+                if(model.Data.TryGetValue("m_modelInfo",out var info) && info.TryGetValue("m_keyValueText",out var text))
+                {
+                    var original=text.ToString(CultureInfo.InvariantCulture);
+                    foreach(var pair in paths)original=original.Replace("\""+NormalizeParticlePath(pair.Key)+"\"","\""+NormalizeParticlePath(pair.Value)+"\"",StringComparison.Ordinal);
+                    info["m_keyValueText"]=new KVObject(original);
+                }
+            }
             var particleEntries = ResolveParticleEntries(particlePaths, options.ResourceId);
             SetParticleConfig(model, particleEntries);
             SetRed2ParticleReference(resource);
@@ -92,7 +102,7 @@ internal static class Program
             {
                 using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    SerializePatchedResource(resource, originalBytes, stream);
+                    SerializePatchedResource(resource, originalBytes, stream, true, changedBlocks);
                 }
 
                 Validate(temporary, particleEntries);
@@ -116,7 +126,7 @@ internal static class Program
         }
     }
 
-    internal static void SerializePatchedResource(Resource resource, byte[] original, Stream output, bool rewriteData = true)
+    internal static void SerializePatchedResource(Resource resource, byte[] original, Stream output, bool rewriteData = true, HashSet<object>? changedBlocks = null)
     {
         if (!output.CanSeek)
         {
@@ -143,7 +153,7 @@ internal static class Program
         var payloads = new List<byte[]>(resource.Blocks.Count);
         foreach (var block in resource.Blocks)
         {
-            if ((rewriteData && ReferenceEquals(block, resource.DataBlock))
+            if ((changedBlocks?.Contains(block) == true) || (rewriteData && ReferenceEquals(block, resource.DataBlock))
                 || ReferenceEquals(block, resource.ExternalReferences)
                 || (block is ResourceEditInfo2 && ReferenceEquals(block, resource.EditInfo)))
             {
@@ -379,6 +389,7 @@ internal static class Program
         ulong? resourceId = null;
         var backup = true;
         var skin = 0;
+        string? particleReplacements = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -400,6 +411,7 @@ internal static class Program
                 case "--particle":
                 case "-p": particles.Add(NextValue()); break;
                 case "--resource-id": resourceId = ParseUInt64(NextValue()); break;
+                case "--particle-replacements": particleReplacements = NextValue(); break;
                 case "--skin": skin = int.Parse(NextValue(), CultureInfo.InvariantCulture); if(skin<0)throw new ArgumentException("Invalid skin"); break;
                 case "--no-backup": backup = false; break;
                 default: throw new ArgumentException($"Unknown argument: {args[i]}");
@@ -414,7 +426,7 @@ internal static class Program
             throw new ArgumentException("--input, --output and --particle are required. Run with --help.");
         }
 
-        return new Options(input, output, particles, resourceId, backup, skin);
+        return new Options(input, output, particles, resourceId, backup, skin, particleReplacements);
     }
 
     private static ulong ParseUInt64(string text)

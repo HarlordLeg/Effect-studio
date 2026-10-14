@@ -65,7 +65,7 @@ internal static class Program
     {
         using var resource = loader.LoadFile(modelPath) ?? throw new FileNotFoundException("Model not found", modelPath);
         if (resource.DataBlock is not Model) throw new InvalidDataException("Resource is not a model: " + modelPath);
-        ModelVariant.Apply((Model)resource.DataBlock, skin);
+        ModelVariant.Apply(resource, skin);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         var modes = materials ? new[] { "adapted", "original", "geometry" } : new[] { "geometry" };
         string? warning = null;

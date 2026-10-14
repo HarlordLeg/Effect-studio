@@ -24,28 +24,29 @@ internal static class ResourceRelocator
             if(resource.ExternalReferences is not null)
                 foreach(var reference in resource.ExternalReferences.ResourceRefInfoList)
                     if(paths.TryGetValue(reference.Name,out var target)) {var id=Program.ComputeResourceId(target);ids[reference.Id]=id;reference.Id=id;reference.Name=target;}
-            var dataChanged=false;
-            if(resource.DataBlock is KeyValuesOrNTRO kv)
+            var dataChanged=false;var changedBlocks=new HashSet<object>();
+            foreach(var block in resource.Blocks)
             {
-                if(resource.ContainsBlockType(ValveResourceFormat.BlockType.NTRO))
+                var changed=false;
+                if(block is KeyValuesOrNTRO kv)
                 {
-                    // NTRO has no writer. Keep its layout and replace resource hashes in-place.
-                    // Strings cannot be resized without rebuilding NTRO offsets.
-                    var start=checked((int)kv.Offset);var end=checked(start+(int)kv.Size);
-                    for(var at=start;at<=end-8;at++)
-                        if(ids.TryGetValue(BitConverter.ToUInt64(bytes,at),out var mapped))
-                        { BitConverter.GetBytes(mapped).CopyTo(bytes,at);at+=7; }
+                    if(resource.ContainsBlockType(ValveResourceFormat.BlockType.NTRO))
+                    {
+                        var start=checked((int)kv.Offset);var end=checked(start+(int)kv.Size);
+                        for(var at=start;at<=end-8;at++)if(ids.TryGetValue(BitConverter.ToUInt64(bytes,at),out var mapped)) {BitConverter.GetBytes(mapped).CopyTo(bytes,at);at+=7;}
+                    }
+                    else Rewrite(kv.Data,paths,ids,ref changed);
                 }
-                else Rewrite(kv.Data,paths,ids,ref dataChanged);
+                else if(block is BinaryKV3 binary)Rewrite(binary.Data.Root,paths,ids,ref changed);
+                if(changed){changedBlocks.Add(block);if(ReferenceEquals(block,resource.DataBlock))dataChanged=true;}
             }
-            else if(resource.DataBlock is BinaryKV3 binary) Rewrite(binary.Data.Root,paths,ids,ref dataChanged);
             if(file.Color is not null)
             {
                 if(file.Color.Length!=3||file.Color.Any(x=>x<0||x>255))throw new InvalidDataException("Invalid particle RGB");
                 if(resource.DataBlock is not ParticleSystem particle||resource.ContainsBlockType(ValveResourceFormat.BlockType.NTRO))throw new InvalidDataException("Cannot recolor this particle format: "+file.Input);
                 ForceColor(particle.Data,file.Color);dataChanged=true;
             }
-            using(var stream=File.Create(file.Output)) Program.SerializePatchedResource(resource,bytes,stream,dataChanged);
+            using(var stream=File.Create(file.Output)) Program.SerializePatchedResource(resource,bytes,stream,dataChanged,changedBlocks);
             using var check=new Resource { FileName=file.Output }; check.Read(file.Output);
             if(file.Color is not null&&check.DataBlock is ParticleSystem written)
             {if(!written.Data.TryGetValue("m_ConstantColor",out var color)||!color.IsArray||!color.Values.Take(3).Select(v=>v.ToInt32(CultureInfo.InvariantCulture)).SequenceEqual(file.Color))throw new InvalidDataException("Particle color validation failed: "+file.Output);}

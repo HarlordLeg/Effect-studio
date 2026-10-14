@@ -13,3 +13,27 @@ test('ambient replacements use chosen variant, while ability replacements are no
  assert.deepEqual(native.particles,['particles/gold.vpcf_c']);assert.ok(native.entries.some(e=>e.type==='material'&&e.source==='materials/crimson.vmat_c'));
  assert.equal(native.skin,0);
 });
+test('shared model variants remap ordinary ambient without mixing unrelated models',async()=>{
+ const {resolveImmortalFamilies}=await import('../lib/immortal-family.mjs');
+ const normal={model:'models/shared.vmdl_c',nativeOverrides:nativeOverrides({asset_modifier0:{type:'particle_create',modifier:'particles/ordinary.vpcf'}})};
+ const crimson={model:'models/shared.vmdl_c',nativeOverrides:nativeOverrides({skin:'1',asset_modifier1:{type:'particle_create',modifier:'particles/crimson.vpcf'}})};
+ const other={model:'models/unrelated.vmdl_c',nativeOverrides:nativeOverrides({asset_modifier0:{type:'particle_create',modifier:'particles/other.vpcf'}})};
+ resolveImmortalFamilies([{items:[normal,crimson,other]}]);
+ assert.deepEqual(crimson.nativeOverrides.particleReplacements,{'particles/ordinary.vpcf_c':'particles/crimson.vpcf_c'});
+ assert.deepEqual(other.nativeOverrides.particleReplacements,{});
+});
+test('real Meepo Crimson repeated asset_modifier blocks retain ambient, both spells and icon',async()=>{
+ const {parseKv1}=await import('../lib/default-loadout.mjs');
+ const text=`"visuals" {
+ "asset_modifier" { "type" "particle" "asset" "particles/units/heroes/hero_meepo/meepo_earthbind.vpcf" "modifier" "particles/econ/items/meepo/meepo_2022_immortal/meepo_2022_earthbind_crimson.vpcf" }
+ "asset_modifier" { "type" "particle" "asset" "particles/units/heroes/hero_meepo/meepo_earthbind_projectile_fx.vpcf" "modifier" "particles/econ/items/meepo/meepo_2022_immortal/meepo_2022_crimson_earthbind_projectile.vpcf" }
+ "asset_modifier" { "type" "particle_create" "modifier" "particles/econ/items/meepo/meepo_2022_immortal/meepo_2022_ambient_crimson.vpcf" }
+ "asset_modifier" { "type" "ability_icon" "asset" "meepo_earthbind" "modifier" "meepo/meepo_2022_immortal_ability_icon/meepo_2022_immortal_earthbind_crimson" }
+ "skin" "1" }`;
+ const native=nativeOverrides(parseKv1(text).visuals);
+ assert.equal(native.entries.filter(e=>e.type==='particle').length,2);
+ assert.equal(native.entries.filter(e=>e.type==='ability_icon').length,1);
+ assert.deepEqual(native.particles,['particles/econ/items/meepo/meepo_2022_immortal/meepo_2022_ambient_crimson.vpcf_c']);
+ assert.equal(native.skin,1);
+ assert.equal(native.entries.find(e=>e.type==='ability_icon').target,'panorama/images/spellicons/meepo_earthbind_png.vtex_c');
+});
