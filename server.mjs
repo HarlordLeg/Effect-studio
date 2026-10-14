@@ -11,6 +11,7 @@ import {requestAccess} from './lib/request-access.mjs';
 import {AdminAuth,Statistics,vpkFilename} from './lib/admin.mjs';
 export const root=path.dirname(fileURLToPath(import.meta.url));
 const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
+const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
 async function body(req){let b='';for await(const chunk of req){b+=chunk;if(b.length>16384)throw new Error('Слишком большой запрос');}return JSON.parse(b||'{}');}
 function publicJob(job){const {file,owner,...result}=job;return result;}
 export function startServer({port:overridePort}={}) {
@@ -29,6 +30,11 @@ export function startServer({port:overridePort}={}) {
       const {allowedHost,localAdmin}=requestAccess(req,config,expectedPort);
       if(!allowedHost)return json(res,403,{error:'Host не разрешён. Укажи publicBaseUrl для серверного режима.'});
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
+      const integrationRoute=/^\/api\/(catalog|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
+        res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');
+        if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
+      }
       if(url.pathname.startsWith('/api/admin/')){
         if(origin&&origin!==`http://${host}`&&origin!==config.publicBaseUrl)return json(res,403,{error:'Origin не разрешён'});
         if(url.pathname==='/api/admin/login'&&req.method==='POST'){const data=await body(req);try{return json(res,200,{token:await admin.login(data.username,data.password)});}catch(e){return json(res,401,{error:e.message});}}
@@ -39,7 +45,7 @@ export function startServer({port:overridePort}={}) {
         return json(res,404,{error:'Маршрут не найден'});
       }
       if(url.pathname==='/api/widget/session'&&req.method==='POST') {
-        const data=await body(req);const token=auth.issue(data.key,origin);
+        const data=await body(req);const token=auth.issue(data.key,origin,data.previousToken);
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');return json(res,200,{token,expiresIn:1800});
       }
       if(url.pathname==='/api/widget/session'&&req.method==='OPTIONS') {
@@ -49,6 +55,7 @@ export function startServer({port:overridePort}={}) {
       let session=null;
       const token=req.headers.authorization?.replace(/^Bearer /,'')??url.searchParams.get('token');
       if(token)session=auth.verify(token);
+      if(session&&origin&&origin!==session.origin&&origin!==ownServerOrigin(host,config))return json(res,403,{error:'Origin токена не совпадает с сайтом'});
       const allowed=localAdmin||session;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=session?session.id+':'+session.nonce:'local';previews.touch(owner);
