@@ -69,7 +69,7 @@ export function startServer({port:overridePort}={}) {
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
-        const data=await body(req),choice=builder.choice(data.heroId,data.itemId,data.effectId,{preview:true});if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
+        const data=await body(req),choice=builder.choice(data.heroId,data.itemId,data.effectId,{preview:true});choice.partsOnly=data.partsOnly===true;if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
         if(choice.item.previewUnsupported)return json(res,400,{error:choice.item.previewUnsupported});
         let buildJob=null;
         if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}
@@ -84,7 +84,7 @@ export function startServer({port:overridePort}={}) {
         if(previewMatch[3]?.startsWith('parts/')){const index=Number(previewMatch[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part not found'});res.once('finish',()=>{if(!job.modelServed){job.modelServed=true;count('models');}});res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
         if(previewMatch[3]==='diagnostics'){res.setHeader('Content-Disposition','attachment; filename=preview-diagnostics.json');return json(res,200,previewDiagnostics(job));}
         if(previewMatch[3]==='effect'){const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Данные эффекта не экспортированы'});res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
-        res.once('finish',()=>count('models'));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(job.file).pipe(res);
+        const modelFile=previews.ensureModel(job);res.once('finish',()=>count('models'));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(modelFile).pipe(res);
       }
       const match=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})(\/download)?$/);
       if(match) {

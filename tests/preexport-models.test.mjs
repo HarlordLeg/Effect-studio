@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {Builder} from '../lib/build.mjs';
+import {PreviewService} from '../lib/preview.mjs';
+import {preexportChoices,preexportModels} from '../tools/preexport-models.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+test('preexport retains separate shared-model skin variants and excludes unsupported wearables',()=>{const hero={id:'meepo',items:[{id:'normal',slot:'head',model:'model.vmdl_c'},{id:'crimson',slot:'head',model:'model.vmdl_c',nativeOverrides:{skin:1}},{id:'persona',slot:'head',model:'persona/model.vmdl_c'},{id:'arcana',slot:'head',model:'a.vmdl_c',specialKind:'arcana'}]};const rows=preexportChoices({heroes:[hero]});assert.deepEqual(rows.map(r=>r.item.id),['normal','crimson']);assert.ok(rows.every(r=>r.modelsOnly&&r.partsOnly&&!r.effect.particle));assert.throws(()=>preexportChoices({heroes:[hero]},'missing'),/Unknown hero/);});
+test('preexport prepares persistent viewer cache without effects; resumes and invalidates exporter changes',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-preexport-'));let service;
+ try{const config={archives:[path.join(root,'samples/pak14_dir.vpk')],assetDirectories:[],catalog:path.join(root,'data/catalog.json'),assetBridge:'bridge.exe'};fs.writeFileSync(path.join(temp,'bridge.exe'),'stub');const builder=new Builder(temp,config);const choice=builder.choice('kunkka','kunkka-sword','frostbloom');choice.hero.model=choice.item.model;const rows=preexportChoices({heroes:[{...choice.hero,items:[choice.item,{...choice.item,id:'crimson',nativeOverrides:{skin:1,particles:[],entries:[]}}]}]});const requests=[];
+ const run=async(_exe,args)=>{const q=JSON.parse(fs.readFileSync(args[0]));requests.push(q);if(!q.skipModel)fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.output);if(q.heroOutput)fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),q.heroOutput);for(const p of q.defaultModels??[])fs.copyFileSync(path.join(root,'public/models/renderer-demo.glb'),p.output);};
+ service=new PreviewService(temp,config,builder,run);const progressFile=path.join(temp,'cache/preexport-progress.json');let calls=0;const partial=await preexportModels(service,rows,{progressFile,shouldStop:()=>calls===1,onProgress:()=>calls++});assert.equal(partial.stopped,true);assert.equal(partial.completed,1);assert.equal(requests.length,1);assert.equal(requests[0].particle,null);assert.deepEqual(requests[0].nativeParticles,[]);assert.equal(service.effects.size,0);const session=service.sessionDirectory;service.dispose();assert.ok(fs.existsSync(path.join(temp,'cache/models')));assert.equal(fs.existsSync(session),false);
+ service=new PreviewService(temp,config,builder,run);const resumed=await preexportModels(service,rows,{progressFile});assert.equal(resumed.cached,1);assert.equal(resumed.failed,0);assert.equal(requests.length,2);assert.equal(requests[1].skin,1);assert.equal(requests[1].heroModel,null);assert.equal(fs.existsSync(path.join(service.sessionDirectory,'model.glb')),false);
+ // A normal live preview must reuse the very same files.
+ const live={id:'live',owner:'local'};await service.export({...choice,partsOnly:true,modelsOnly:true},live,null);assert.equal(live.exportMs,0);assert.equal(requests.length,2);assert.ok(live.partFiles.every(f=>fs.existsSync(f)));fs.utimesSync(path.join(temp,'bridge.exe'),new Date(),new Date(Date.now()+60000));const sameBinary=await preexportModels(service,rows,{progressFile});assert.equal(sameBinary.cached,2);assert.equal(requests.length,2);fs.appendFileSync(path.join(temp,'bridge.exe'),'new-version');const refreshed=await preexportModels(service,rows,{progressFile});assert.equal(refreshed.cached,0);assert.equal(requests.length,4);const progress=JSON.parse(fs.readFileSync(progressFile));assert.equal(progress.completed,2);assert.equal(progress.records['kunkka/crimson'].skin,1);
+ }finally{service?.dispose();fs.rmSync(temp,{recursive:true,force:true});}
+});
+test('preexport records per-item errors and continues',async()=>{let count=0;const service={export:async(_choice,job)=>{job.parts=[];job.cachedParts=0;if(count++===0)throw new Error('broken model');}};const rows=[{hero:{id:'a'},item:{id:'one'}},{hero:{id:'a'},item:{id:'two'}}];const result=await preexportModels(service,rows);assert.equal(result.completed,2);assert.equal(result.failed,1);});
