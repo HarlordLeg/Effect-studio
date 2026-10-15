@@ -1,4 +1,6 @@
-export function heroImage(hero){return /^[a-z0-9_]+$/.test(hero?.id??'')?'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/'+hero.id+'.png':null;}
+const portraitAliases={magnus:'magnataur',outworld_destroyer:'obsidian_destroyer',windranger:'windrunner'};
+const localPortraits=new Set('disruptor enchantress faceless_void jakiro keeper_of_the_light lina lone_druid lycan magnataur muerta nyx_assassin obsidian_destroyer phoenix pugna shadow_demon skywrath_mage tidehunter windrunner'.split(' '));
+export function heroImage(hero){const id=portraitAliases[hero?.id]??hero?.id;if(localPortraits.has(id))return '/images/heroes/'+id+'.png';hero={id};return /^[a-z0-9_]+$/.test(hero?.id??'')?'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/'+hero.id+'.png':null;}
 export function initHeroPicker(select,heroes,{inline=false}={}){
  if(select.dataset.heroCards)return;select.dataset.heroCards='true';select.hidden=true;
  const button=document.createElement('button');button.type='button';button.className='hero-selected secondary';button.setAttribute('aria-label','Выбрать героя');select.after(button);

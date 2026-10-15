@@ -1,0 +1,3 @@
+Dota 2 hero portraits in public/images/heroes are game artwork owned by Valve Corporation.
+Source: https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/
+These images are not covered by this project's source code license.

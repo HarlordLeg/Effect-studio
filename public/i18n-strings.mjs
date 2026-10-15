@@ -1,4 +1,7 @@
 export const translations = {
+  "← Все герои": "← All heroes",
+  "Выбрать предмет": "Choose item",
+  "Поиск предмета": "Search items",
   "Герои в VPK": "Heroes in VPK",
   "Выбрать героя": "Choose hero",
   "Поиск героя": "Search heroes",
