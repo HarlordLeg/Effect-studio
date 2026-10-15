@@ -26,8 +26,9 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true}");return 0; }
+            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true}");return 0; }
             if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
+            if (args.Length == 2 && args[0] == "--hero-activities") { HeroActivities.Run(args[1]); return 0; }
             var options = ParseArguments(args);
             Patch(options);
             return 0;
@@ -125,7 +126,7 @@ internal static class Program
         }
     }
 
-    internal static void SerializePatchedResource(Resource resource, byte[] original, Stream output, bool rewriteData = true, HashSet<object>? changedBlocks = null)
+    internal static void SerializePatchedResource(Resource resource, byte[] original, Stream output, bool rewriteData = true, HashSet<object>? changedBlocks = null, bool preserveMetadata = false)
     {
         if (!output.CanSeek)
         {
@@ -153,8 +154,8 @@ internal static class Program
         foreach (var block in resource.Blocks)
         {
             if ((changedBlocks?.Contains(block) == true) || (rewriteData && ReferenceEquals(block, resource.DataBlock))
-                || ReferenceEquals(block, resource.ExternalReferences)
-                || (block is ResourceEditInfo2 && ReferenceEquals(block, resource.EditInfo)))
+                || (!preserveMetadata && ReferenceEquals(block, resource.ExternalReferences))
+                || (!preserveMetadata && block is ResourceEditInfo2 && ReferenceEquals(block, resource.EditInfo)))
             {
                 using var memory = new MemoryStream();
                 try { block.Serialize(memory); }

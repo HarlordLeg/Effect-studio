@@ -3,6 +3,8 @@ setlocal
 cd /d "%~dp0"
 dotnet run --project tests\ModelKeyText.Tests.csproj -c Release
 if errorlevel 1 goto fail
+dotnet run --project tests\hero-activities\HeroActivities.Tests.csproj -c Release
+if errorlevel 1 goto fail
 node tools\build-native.mjs patcher
 if errorlevel 1 goto fail
 echo [OK] Native build complete.

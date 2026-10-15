@@ -9,7 +9,7 @@ import {Builder} from './lib/build.mjs';
 import {PreviewService,publicPreview} from './lib/preview.mjs';
 import {WidgetAuth} from './lib/auth.mjs';
 import {requestAccess} from './lib/request-access.mjs';
-import {AdminAuth,Statistics,vpkFilename} from './lib/admin.mjs';
+import {AdminAuth,Statistics,selectionStatistics,vpkFilename} from './lib/admin.mjs';
 export const root=path.dirname(fileURLToPath(import.meta.url));
 const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
 const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
@@ -20,8 +20,10 @@ export function startServer({port:overridePort}={}) {
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
   const itemIcons=new ItemIcons(root,config,builder.store);
   const admin=new AdminAuth(root),statistics=new Statistics(root);
-  const count=key=>{try{statistics.increment(key);}catch(e){console.error('Statistics: '+e.message);}};
-  builder.onReady=()=>count('vpks');
+  const tracking=new WeakMap();
+  const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
+  builder.onReady=job=>count('vpks',tracking.get(job));
+  const countModel=job=>{if(!job.modelServed){job.modelServed=true;count('models',tracking.get(job));}};
 
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
@@ -42,7 +44,7 @@ export function startServer({port:overridePort}={}) {
         if(url.pathname==='/api/admin/login'&&req.method==='POST'){const data=await body(req);try{return json(res,200,{token:await admin.login(data.username,data.password)});}catch(e){return json(res,401,{error:e.message});}}
         const adminToken=req.headers.authorization?.replace(/^Bearer /,'');
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
-        if(url.pathname==='/api/admin/statistics'&&req.method==='GET')return json(res,200,statistics.snapshot());
+        if(url.pathname==='/api/admin/statistics'&&req.method==='GET')return json(res,200,statistics.snapshot(Number(url.searchParams.get('days')??0)));
         if(url.pathname==='/api/admin/logout'&&req.method==='POST'){admin.logout(adminToken);return json(res,200,{ok:true});}
         return json(res,404,{error:'Маршрут не найден'});
       }
@@ -61,7 +63,7 @@ export function startServer({port:overridePort}={}) {
       const allowed=localAdmin||session;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=session?session.id+':'+session.nonce:'local';previews.touch(owner);
-      if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits');return json(res,200,{ok:true});}
+      if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits',{source:session?.origin??'local'});return json(res,200,{ok:true});}
       if(url.pathname==='/api/item-icon'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
         try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}
@@ -72,7 +74,7 @@ export function startServer({port:overridePort}={}) {
         const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
-        if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});return json(res,202,publicJob(job));
+        if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
         const data=await body(req),setRows=data.mode==='set'?normalizeSelections(builder,data):null,choice=setRows?{...setRows[0]}:builder.choice(data.heroId,data.itemId,data.effectId,{preview:true});choice.partsOnly=data.partsOnly===true;if(setRows){if(new Set(setRows.map(c=>c.hero.id)).size!==1)throw new Error('Preview supports one hero at a time');choice.selections=setRows;}else if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
@@ -80,17 +82,17 @@ export function startServer({port:overridePort}={}) {
         let buildJob=null;
         if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}
         if(session)auth.consume(session);
-        return json(res,202,publicPreview(previews.create(choice,owner,buildJob)));
+        const job=previews.create(choice,owner,buildJob);tracking.set(job,{selections:selectionStatistics(choice.selections??[choice]),source:session?.origin??'local'});return json(res,202,publicPreview(job));
       }
       const previewMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/);
       if(previewMatch){
         const job=previews.jobs.get(previewMatch[1]);if(!job||job.owner!==owner)return json(res,404,{error:'Предпросмотр не найден'});
         if(!previewMatch[2])return json(res,200,publicPreview(job));
         if(job.status!=='ready')return json(res,409,{error:'Модель ещё не готова'});
-        if(previewMatch[3]?.startsWith('parts/')){const index=Number(previewMatch[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part not found'});res.once('finish',()=>{if(!job.modelServed){job.modelServed=true;count('models');}});res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
+        if(previewMatch[3]?.startsWith('parts/')){const index=Number(previewMatch[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part not found'});res.once('finish',()=>countModel(job));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
         if(previewMatch[3]==='diagnostics'){res.setHeader('Content-Disposition','attachment; filename=preview-diagnostics.json');return json(res,200,previewDiagnostics(job));}
         if(previewMatch[3]==='effect'){const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Данные эффекта не экспортированы'});res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
-        const modelFile=previews.ensureModel(job);res.once('finish',()=>count('models'));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(modelFile).pipe(res);
+        const modelFile=previews.ensureModel(job);res.once('finish',()=>countModel(job));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(modelFile).pipe(res);
       }
       const match=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})(\/download)?$/);
       if(match) {
