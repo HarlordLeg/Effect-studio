@@ -1,4 +1,7 @@
 export const translations = {
+  "Иконки способностей и предметов": "Ability and item icons",
+  "Иконки арканы": "Arcana icons",
+  "Иконки Rictus Ripper · Manta / Skadi": "Rictus Ripper icons · Manta / Skadi",
   "Комплект": "Set",
   "Собрать вручную": "Build manually",
   "Комплект изменён": "Set customized",

@@ -26,8 +26,9 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"heroActivitiesV4\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true,\"terrorbladeArcanaV3\":true,\"terrorbladeArcanaV4\":true}");return 0; }
+            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"heroActivitiesV4\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true,\"terrorbladeArcanaV3\":true,\"terrorbladeArcanaV4\":true,\"terrorbladeBindingsV1\":true}");return 0; }
             if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
+            if (args.Length == 2 && args[0] == "--terrorblade-bindings") { TerrorbladeBindings.Run(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--terrorblade-arcana") { TerrorbladeArcana.Run(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--hero-activities") { HeroActivities.Run(args[1]); return 0; }
             var options = ParseArguments(args);
@@ -120,7 +121,7 @@ internal static class Program
 
         Console.WriteLine($"[OK] Attached particles: {particlePaths.Length}");
         Console.WriteLine($"Model:    {output}");
-        foreach (var entry in ResolveParticleEntries(particlePaths, options.ResourceId))
+        foreach (var entry in particlePaths.Length==0 ? Array.Empty<ParticleEntry>() : ResolveParticleEntries(particlePaths, options.ResourceId))
         {
             Console.WriteLine($"Particle: {entry.Path}");
             Console.WriteLine($"RERL id:  0x{entry.ResourceId:X16}");
@@ -308,7 +309,7 @@ internal static class Program
             original, entries.Select(entry => entry.Path).ToArray()));
     }
 
-    private static void SetRed2ParticleReference(Resource resource)
+    internal static void SetRed2ParticleReference(Resource resource)
     {
         if (resource.EditInfo is not ResourceEditInfo2 red2 || red2.Data is null)
         {
