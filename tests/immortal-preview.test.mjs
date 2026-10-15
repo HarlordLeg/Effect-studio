@@ -38,3 +38,25 @@ test('snapshot rope layers reach the GPU as connected segments instead of square
  let uploads,draws=0;const gl=new Proxy({createShader:()=>({}),getShaderParameter:()=>true,getProgramParameter:()=>true,bufferSubData(_a,_b,data){uploads=data;},drawArraysInstanced(){draws++;}},{get(t,k){if(k in t)return t[k];return k===k.toUpperCase()?k:()=>({});}}),r=new ParticleRenderer(gl);r.textures.set('rope.vtex_c',{});
  const particle=(i)=>({snapshotIndex:i,position:[i,2,0],alpha:1,radius:1,angle:0,color:[1,0,1]});r.draw({systems:[{definition:{m_Renderers:[{_class:'C_OP_RenderRopes',m_hTexture:'rope.vtex'}]},particles:[particle(0),particle(1),particle(2)]}]},new Float32Array(16),[1,0,0],[0,1,0]);assert.equal(draws,1);assert.equal(uploads.length,34);assert.deepEqual([...uploads.subarray(13,17)],[1,2,0,1]);r.dispose();
 });
+
+test('Bane shared child definitions create independent instances for all six tentacles',()=>{
+ const packet=bane(),sim=new ParticleSimulation(packet,{sample:()=>({}),position:()=>[0,0,0],snapshotPosition:(s,i)=>s.position[i]});
+ const roots=sim.systems.filter(s=>s.path.endsWith('ambient_tentacle.vpcf_c'));assert.equal(roots.length,2);assert.notEqual(roots[0].snapshot,roots[1].snapshot);
+ const small=sim.systems.filter(s=>s.path.endsWith('ambient_tentacle_pulse_sml.vpcf_c'));assert.equal(small.length,4);assert.equal(new Set(small.map(s=>s.snapshot)).size,4);
+ sim.step(.05);
+ for(const system of sim.systems.filter(s=>s.definition.m_Emitters?.some(e=>e._class==='C_OP_InstantaneousEmitter'))){assert.equal(system.particles.length,Math.min(system.snapshot.position.length,system.definition.m_nMaxParticles));}
+});
+test('initializer scale method preserves the authored constant radius',()=>{
+ const packet={root:'test.vpcf',definitions:{'test.vpcf_c':{m_flConstantRadius:8,m_nMaxParticles:1,m_Renderers:[{_class:'C_OP_RenderSprites'}],m_Initializers:[{_class:'C_INIT_InitFloat',m_nSetMethod:'PARTICLE_SET_SCALE_INITIAL_VALUE',m_InputValue:2}]}}};const sim=new ParticleSimulation(packet,{sample:()=>({}),position:()=>[0,0,0]});assert.equal(sim.spawn(sim.systems[0]).radius,16);
+});
+
+test('actual Chaos Knight rider gear merges its authored bone poses in server and browser composition',()=>{
+ const hero=fixture('chaos-knight.glb');
+ for(const file of ['chaos-knight-helmet.glb','chaos-knight-mace.glb','chaos-knight-shield.glb'])for(const asset of scenes(hero,fixture(file))){
+  const links=asset.json.extras.effectStudioRetarget;
+  for(const time of [0,.3,1]){
+   const worlds=worldMatrices(asset,0,time);
+   for(const link of links){assert.equal(link.mode,'rigid');assert.deepEqual([...worlds[link.target]],[...worlds[link.source]],`${file}: ${asset.json.nodes[link.target].name}`);}
+  }
+ }
+});
