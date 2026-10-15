@@ -13,7 +13,16 @@ function composeHero(hero,item){
  for(const n of src.nodes??[]){if(n.mesh!==undefined)n.mesh+=offset.meshes;if(n.skin!==undefined)n.skin+=offset.skins;if(n.camera!==undefined)n.camera+=offset.cameras;if(n.children)n.children=n.children.map(i=>i+offset.nodes);}
  const heroIndices=out.extras?.effectStudioHeroJoints??[...new Set([...(out.skins??[]).flatMap(s=>s.joints??[]),...(out.nodes??[]).flatMap((n,i)=>n.mesh===undefined?[i]:[])])];out.extras={...out.extras,effectStudioHeroJoints:heroIndices,effectStudioItemNodes:(src.nodes??[]).flatMap((n,i)=>n.mesh!==undefined?[i+offset.nodes]:[])};const heroJoints=new Map();for(const i of heroIndices){const name=out.nodes[i]?.name;if(name&&!heroJoints.has(name.toLowerCase()))heroJoints.set(name.toLowerCase(),i);}
  let matched=0,total=0;const retarget=[...(out.extras.effectStudioRetarget??[])];
- for(const skin of src.skins??[]){if(skin.inverseBindMatrices!==undefined)skin.inverseBindMatrices+=offset.accessors;if(skin.skeleton!==undefined)skin.skeleton+=offset.nodes;skin.joints=skin.joints.map(i=>{total++;const name=item.json.nodes[i]?.name,target=name?heroJoints.get(name.toLowerCase()):undefined;if(target!==undefined){matched++;retarget.push({source:target,target:i+offset.nodes,...(skin.joints.length===1||/^(rt_blade|lf_blade)$/i.test(name??'')?{mode:'rigid'}:{})});return i+offset.nodes;}return i+offset.nodes;});}
+ for(const skin of src.skins??[]){if(skin.inverseBindMatrices!==undefined)skin.inverseBindMatrices+=offset.accessors;if(skin.skeleton!==undefined)skin.skeleton+=offset.nodes;skin.joints=skin.joints.map(i=>{total++;const name=item.json.nodes[i]?.name,target=name?heroJoints.get(name.toLowerCase()):undefined;if(target!==undefined){matched++;retarget.push({source:target,target:i+offset.nodes,...(skin.joints.length===1||/^(rt_blade|lf_blade|right_hook4_0|left_hook3_0|head(?:_\d+)?|topknot_0)$/i.test(name??'')?{mode:'rigid'}:{})});return i+offset.nodes;}return i+offset.nodes;});}
+ const itemParents=new Map((item.json.nodes??[]).flatMap((n,i)=>(n.children??[]).map(child=>[child,i]))),allItemJoints=new Set((item.json.skins??[]).flatMap(s=>s.joints));
+ const mappedTargets=new Set(retarget.map(p=>p.target));
+ const anchors=retarget.filter(p=>p.target>=offset.nodes&&p.mode==='rigid');
+ const headAnchor=anchors.find(p=>/^head(?:_\d+)?$/i.test(item.json.nodes[p.target-offset.nodes]?.name??''));
+ if(headAnchor)for(const skin of item.json.skins??[])for(const i of skin.joints){
+  if(!allItemJoints.has(itemParents.get(i))&&!mappedTargets.has(i+offset.nodes)){
+   retarget.push({source:headAnchor.source,target:i+offset.nodes,bindSource:headAnchor.target});mappedTargets.add(i+offset.nodes);
+  }
+ }
  out.extras.effectStudioRetarget=retarget;
  for(const key of keys){if(key==='animations')continue;out[key].push(...(src[key]??[]));}
  const roots=src.scenes?.[src.scene??0]?.nodes??[];out.scenes[out.scene??0].nodes.push(...roots.map(i=>i+offset.nodes));out.buffers=[{byteLength:bin.length}];out.asset={...out.asset,generator:'Dota Effect Studio scene compositor'};

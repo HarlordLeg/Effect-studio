@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Numerics;
+using ValveResourceFormat.Blocks;
 using System.Text.Json;
 using ValveKeyValue;
 using ValveResourceFormat.IO;
@@ -25,6 +27,7 @@ internal static class ParticleExport
     {
         var definitions = new Dictionary<string, object?>();
         var textures = new Dictionary<string, object?>();
+        var snapshots = new Dictionary<string, object?>();
         var missing = new List<string>();
         var models = new Dictionary<string, object?>();
         var materials = new Dictionary<string, object?>();
@@ -39,6 +42,13 @@ internal static class ParticleExport
             {
             using var resource = loader.LoadFile(path);
             if (resource is null) { missing.Add(path); continue; }
+            var snapshot = resource.Blocks.OfType<ParticleSnapshot>().FirstOrDefault();
+            if(snapshot is not null) snapshots[path] = snapshot.AttributeData.ToDictionary(
+                pair => pair.Key.Name, pair => pair.Value.Cast<object>().Select(value => value switch {
+                    Vector3 v => (object)new[] { v.X, v.Y, v.Z },
+                    ParticleSnapshot.SkinningData skin => new { joints=skin.JointNames, weights=skin.Weights },
+                    _ => value
+                }).ToArray());
             if (resource.DataBlock is ParticleSystem system) definitions[path] = JsonValue(system.Data);
             if(resource.DataBlock is Material material)materials[path]=new {shader=material.ShaderName,vectors=material.VectorParams.ToDictionary(pair=>pair.Key,pair=>new[]{pair.Value.X,pair.Value.Y,pair.Value.Z,pair.Value.W}),floats=material.FloatParams,textures=material.TextureParams};
             if (resource.DataBlock is Texture texture)
@@ -79,12 +89,13 @@ internal static class ParticleExport
                     if (reference.Name.EndsWith(".vpcf", StringComparison.OrdinalIgnoreCase)
                         || reference.Name.EndsWith(".vtex", StringComparison.OrdinalIgnoreCase)
                         || reference.Name.EndsWith(".vmat", StringComparison.OrdinalIgnoreCase)
-                        || reference.Name.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase)) queue.Enqueue(reference.Name + "_c");
+                        || reference.Name.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase)
+                        || reference.Name.EndsWith(".vsnap", StringComparison.OrdinalIgnoreCase)) queue.Enqueue(reference.Name + "_c");
                 }
             }
             }
             catch (Exception exception) { missing.Add(path + ": " + exception.Message); }
         }
-        File.WriteAllText(output, JsonSerializer.Serialize(new { root, definitions, textures, models, materials, missing, modelFormatVersion=2 }));
+        File.WriteAllText(output, JsonSerializer.Serialize(new { root, definitions, textures, models, materials, snapshots, missing, modelFormatVersion=2 }));
     }
 }

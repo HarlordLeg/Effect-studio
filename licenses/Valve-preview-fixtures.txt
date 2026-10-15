@@ -1,0 +1,1 @@
+Dota 2 preview regression fixtures in samples/attachment-regression/ and samples/bane-immortal-definitions.json are derived from game assets supplied for debugging. Artwork and game asset data are owned by Valve Corporation and are not covered by the project source code license.
