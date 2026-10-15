@@ -1,3 +1,4 @@
+import {ItemIcons} from './lib/item-icons.mjs';
 import {previewDiagnostics} from './lib/diagnostics.mjs';
 import {normalizeSelections} from './lib/namespace.mjs';
 import fs from 'node:fs';
@@ -17,6 +18,7 @@ function publicJob(job){const {file,owner,...result}=job;return result;}
 export function startServer({port:overridePort}={}) {
   const configPath=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'));
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
+  const itemIcons=new ItemIcons(root,config,builder.store);
   const admin=new AdminAuth(root),statistics=new Statistics(root);
   const count=key=>{try{statistics.increment(key);}catch(e){console.error('Statistics: '+e.message);}};
   builder.onReady=()=>count('vpks');
@@ -60,10 +62,14 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=session?session.id+':'+session.nonce:'local';previews.touch(owner);
       if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits');return json(res,200,{ok:true});}
+      if(url.pathname==='/api/item-icon'){
+        const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
+        try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}
+      }
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>c.item.isDefault))throw new Error('Choose at least one cosmetic');
+        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});return json(res,202,publicJob(job));

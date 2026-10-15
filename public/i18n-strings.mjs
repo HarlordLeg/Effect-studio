@@ -1,4 +1,5 @@
 export const translations = {
+  "Добавить эффект": "Add effect",
   "Эффекты": "Effects",
   "Сет": "Set",
   "СЕТ": "SET",

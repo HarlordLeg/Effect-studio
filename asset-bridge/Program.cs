@@ -1,11 +1,12 @@
 using System.Text.Json;
+using SkiaSharp;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.ResourceTypes;
 
 internal static class Program
 {
     private sealed record DefaultModel(string Model, string Output);
-    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null);
+    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null);
 
     public static int Main(string[] args)
     {
@@ -29,6 +30,17 @@ internal static class Program
                 if (File.Exists(core)) loader.AddPackageToSearch(core);
             }
 
+
+            if (request.ThumbnailTexture is not null)
+            {
+                if (!request.ThumbnailTexture.StartsWith("panorama/images/econ/", StringComparison.Ordinal) || !request.ThumbnailTexture.EndsWith(".vtex_c", StringComparison.Ordinal) || request.ThumbnailTexture.Split('/').Contains("..")) throw new InvalidDataException("Invalid inventory texture");
+                using var image = loader.LoadFile(request.ThumbnailTexture) ?? throw new FileNotFoundException("Inventory texture missing");
+                if (image.DataBlock is not Texture texture) throw new InvalidDataException("Inventory image is not a texture");
+                using var bitmap = texture.GenerateBitmap();
+                using var png = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+                File.WriteAllBytes(target, png.ToArray());
+                return 0;
+            }
 
             if (!request.SkipModel) ExportModel(loader, request.Model, target, request.Materials, request.Skin);
             if (request.HeroModel is not null && request.HeroOutput is not null)
