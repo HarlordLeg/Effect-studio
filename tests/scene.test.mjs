@@ -26,3 +26,14 @@ test('unweighted hero attachment bones are available to composed multi-bone weap
  const array=b=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),browser=composeParts([{role:'hero',key:'hero',bytes:array(hero)},{role:'item',key:'item',itemId:'test',bytes:array(item)}]);
  for(const asset of [server,browser]){const link=asset.json.extras.effectStudioRetarget.find(p=>p.source===2);assert.ok(link,'unweighted attachment matched');assert.equal(link.mode,'rigid');assert.deepEqual([...worldMatrices(asset,0,.5)[link.target]],[...worldMatrices(asset,0,.5)[2]]);}
 });
+
+test('Earthshaker equipment follows hero bone poses instead of floating at its exported rest position',async()=>{
+ const {composeParts}=await import('../public/renderer/parts.mjs');
+ const source=renameJoints(fs.readFileSync(path.join(root,'public/models/renderer-demo.glb')));
+ const alter=fn=>{const len=source.readUInt32LE(12),j=JSON.parse(source.subarray(20,20+len).toString().trim());fn(j);const raw=Buffer.from(JSON.stringify(j)),json=Buffer.concat([raw,Buffer.alloc((4-raw.length%4)%4,32)]),tail=source.subarray(20+len),head=Buffer.from(source.subarray(0,20));head.writeUInt32LE(20+json.length+tail.length,8);head.writeUInt32LE(json.length,12);return Buffer.concat([head,json,tail]);};
+ const hero=alter(j=>{j.nodes[0].name='models/heroes/earthshaker/earthshaker.vmdl_c';}),item=alter(j=>{j.nodes[1].translation=[40,50,60];});
+ const array=b=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),bytes=composeHero(hero,item).bytes;
+ for(const asset of [parseGlb(array(bytes)),composeParts([{role:'hero',key:'hero',bytes:array(hero)},{role:'default',key:'totem',bytes:array(item)}])]){
+  const links=asset.json.extras.effectStudioRetarget;assert.equal(links.length,2);assert.ok(links.every(p=>p.mode==='rigid'));const worlds=worldMatrices(asset,0,.5);for(const link of links)assert.deepEqual([...worlds[link.target]],[...worlds[link.source]]);
+ }
+});

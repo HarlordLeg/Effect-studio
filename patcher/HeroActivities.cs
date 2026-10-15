@@ -62,21 +62,16 @@ internal static class HeroActivities
         var block=resource.Blocks.Single(b=>b.Type.ToString()=="ASEQ");
         var root=block is KeyValuesOrNTRO kv?kv.Data:block is BinaryKV3 binary?binary.Data.Root:throw new InvalidDataException("Unsupported sequence format");
         var count=Bake(root,modifiers);
-        var animation=resource.Blocks.Single(b=>b.Type.ToString()=="ANIM");
-        var animRoot=animation is KeyValuesOrNTRO akv?akv.Data:animation is BinaryKV3 ab?ab.Data.Root:throw new InvalidDataException("Unsupported animation format");
-        // Runtime clip descriptors duplicate the sequence activities. Update both
-        // tables; keep all compressed segments, channels and frame data intact.
-        var tracks=animRoot["m_segmentArray"].ToString();
-        Bake(animRoot,modifiers,"m_animArray");
-        if(animRoot["m_segmentArray"].ToString()!=tracks)throw new InvalidDataException("Animation segments changed");
-        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,new HashSet<object>{block,animation},preserveMetadata:true);
+        // ANIM contains compiled clip/segment data. A KV3 round trip can read
+        // back successfully but fail in Dota. Select sequences through ASEQ only.
+        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,new HashSet<object>{block},preserveMetadata:true);
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);
         var written=File.ReadAllBytes(request.Output);
         for(var i=0;i<resource.Blocks.Count;i++)
         {
             var before=resource.Blocks[i];var after=check.Blocks[i];
             if(before.Type!=after.Type)throw new InvalidDataException("Hero block order changed");
-            if(ReferenceEquals(before,block)||ReferenceEquals(before,animation))continue;
+            if(ReferenceEquals(before,block))continue;
             if(before.Size!=after.Size||!bytes.AsSpan((int)before.Offset,(int)before.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Hero payload changed: "+before.Type);
         }
         foreach(var trail in request.Trails??[]){

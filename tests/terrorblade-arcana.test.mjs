@@ -1,13 +1,13 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {terrorbladeArcanaChoice,hasTerrorbladeArcana,arcanaStyles,prepareTerrorbladeArcana,mergeArcanaFiles} from '../lib/terrorblade-arcana.mjs';import {AssetStore,packVpk,Vpk} from '../lib/vpk.mjs';import {normalizeSelections} from '../lib/namespace.mjs';import {setPayload,combinedSetPayload} from '../public/set-studio.mjs';
+import {terrorbladeArcanaChoice,hasTerrorbladeArcana,arcanaStyles,prepareTerrorbladeArcana,mergeArcanaFiles,terrorbladeHeadFiles,suppressTerrorbladeBaseBlades} from '../lib/terrorblade-arcana.mjs';import {AssetStore,packVpk,Vpk} from '../lib/vpk.mjs';import {normalizeSelections} from '../lib/namespace.mjs';import {setPayload,combinedSetPayload} from '../public/set-studio.mjs';
 const hero={id:'terrorblade',name:'Terrorblade',model:'models/heroes/terrorblade/terrorblade.vmdl_c',defaultSlotModels:{head:'models/heroes/terrorblade/horns.vmdl_c',armor:'models/heroes/terrorblade/armor.vmdl_c'},items:[]};
 const row={heroId:'terrorblade',arcana:{mode:'base',color:[163,92,255]}};
 test('arcana validates the dedicated hero, RGB, mode and separate selection without relaxing generic arcana restrictions',()=>{
  const b={catalog:{heroes:[hero]}};const c=terrorbladeArcanaChoice(b,row);assert.equal(c.item.slot,'arcana');assert.deepEqual(normalizeSelections(b,{mode:'set',selections:[row]})[0].arcana,row.arcana);
  for(const bad of [{...row,heroId:'axe'},{...row,arcana:{mode:'other',color:[1,2,3]}},{...row,arcana:{mode:'base',color:[256,2,3]}},{...row,arcana:{mode:'base',color:[1,2]}},{...row,effectIds:['lava']}])assert.throws(()=>terrorbladeArcanaChoice(b,bad));
 });
-test('Rictus Ripper uses the authored arcana head and armor and keeps item identities and head particle',()=>{
- const c=terrorbladeArcanaChoice({catalog:{heroes:[hero]}},row),items=['head','armor'].map(slot=>({hero,item:{id:slot,slot,model:`models/items/terrorblade/dreadhunt_${slot}/dreadhunt_${slot}.vmdl_c`},effects:[]}));const result=arcanaStyles(items,c);assert.match(result[0].item.model,/dreadhunt_arcana_head/);assert.match(result[1].item.model,/armor_arcana_style/);assert.equal(result[0].item.id,'head');assert.deepEqual(result[0].item.nativeOverrides.particles,['particles/econ/items/terrorblade/dreadhunt/dreadhunt_arcana_head_ambient.vpcf_c']);assert.match(items[0].item.model,/dreadhunt_head.vmdl_c$/);
+test('Rictus Ripper retains the attached ordinary head and selects arcana armor',()=>{
+ const c=terrorbladeArcanaChoice({catalog:{heroes:[hero]}},row),items=['head','armor'].map(slot=>({hero,item:{id:slot,slot,model:`models/items/terrorblade/dreadhunt_${slot}/dreadhunt_${slot}.vmdl_c`},effects:[]}));const result=arcanaStyles(items,c);assert.match(result[0].item.model,/dreadhunt_head\.vmdl_c$/);assert.match(result[1].item.model,/armor_arcana_style/);assert.equal(result[0].item.id,'head');assert.deepEqual(result[0].item.nativeOverrides.particles,[]);assert.match(items[0].item.model,/dreadhunt_head.vmdl_c$/);
  const owned=arcanaStyles(items,{arcana:{...row.arcana,mode:'owned'}});assert.equal(owned[0].item.replacesModel,'models/heroes/terrorblade/horns_arcana.vmdl_c');
 });
 test('set payload retains arcana-only configurations and several heroes independently',()=>{
@@ -47,4 +47,19 @@ test('native Sunder and demon attack targets use recolored native source trees r
  const target='particles/units/heroes/hero_terrorblade/terrorblade_sunder.vpcf_c',source='particles/econ/items/terrorblade/terrorblade_back_ti8/terrorblade_sunder_ti8.vpcf_c',colored=Buffer.from('colored-immortal'),packed=new Map([[target,Buffer.from('native-original')],['panorama/images/spellicons/terrorblade_sunder_png.vtex_c',Buffer.from('native-icon')]]);
  mergeArcanaFiles(packed,{files:new Map([[target,Buffer.from('generic-arcana')],[source,colored]])},[{hero,item:{slot:'back',nativeOverrides:{entries:[{type:'particle',source,target}]}}}]);
  assert.deepEqual(packed.get(target),colored);assert.equal(packed.get('panorama/images/spellicons/terrorblade_sunder_png.vtex_c').toString(),'native-icon');
+});
+
+test('fixed Rictus head source and morph texture are used before model patching in both arcana modes',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-fixed-head-'));try{
+ const selected={hero,item:{slot:'head',model:'models/items/terrorblade/dreadhunt_head/dreadhunt_head.vmdl_c'}},builder={root};
+ assert.equal(terrorbladeHeadFiles(builder,[]).size,0);assert.throws(()=>terrorbladeHeadFiles(builder,[selected]),/Install terrorblade-rictus-head/);
+ const directory=path.join(root,'data','arcana-templates');fs.mkdirSync(directory,{recursive:true});const head=Buffer.from('verified-attached-head'),texture=Buffer.from('morph');fs.writeFileSync(path.join(directory,'terrorblade-rictus-head.vpk'),packVpk(new Map([['models/heroes/terrorblade/horns.vmdl_c',head],['models/heroes/terrorblade/horns/dreadhunt_head_lod0_vmorf.vtex_c',texture]])));
+ for(const mode of ['base','owned']){const choices=arcanaStyles([selected],{arcana:{mode}}),files=terrorbladeHeadFiles(builder,choices);assert.deepEqual(files.get(selected.item.model),head);assert.deepEqual(files.get('models/heroes/terrorblade/horns/dreadhunt_head_lod0_vmorf.vtex_c'),texture);}
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+test('arcana custom weapons disable all four base blade trails without touching selected immortal particles',()=>{
+ const empty=Buffer.from('null'),native='particles/econ/items/terrorblade/immortal/ambient.vpcf_c',files=new Map([[native,Buffer.from('immortal')]]),store={read:()=>empty};
+ suppressTerrorbladeBaseBlades(files,[{hero,item:{slot:'head'}}],store);assert.equal(files.size,1);
+ suppressTerrorbladeBaseBlades(files,[{hero,item:{slot:'weapon',isDefault:true}}],store);assert.equal(files.size,1);
+ suppressTerrorbladeBaseBlades(files,[{hero,item:{slot:'weapon',model:'models/items/terrorblade/immortal.vmdl_c'}}],store);assert.equal(files.size,5);for(const [name,bytes]of files)assert.equal(bytes.toString(),name===native?'immortal':'null');
 });

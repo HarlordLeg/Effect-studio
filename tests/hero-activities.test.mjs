@@ -33,7 +33,7 @@ test('a cosmetic-only golden pair exports one patched hero at the original path,
   fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[{...hero,items:choices.map(c=>c.item)}],effects:[]}));
   let heroCalls=0;
   const run=async(_,args)=>{
-   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivities:true,heroActivitiesV2:true});
+   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivities:true,heroActivitiesV2:true,heroActivitiesV3:true});
    if(args[0]==='--relocate'){const manifest=JSON.parse(fs.readFileSync(args[1]));assert.ok(!manifest.files.some(r=>r.name===hero.model));for(const row of manifest.files)fs.copyFileSync(row.input,row.output);return '';}
    assert.equal(args[0],'--hero-activities');heroCalls++;
    const request=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(request.modifiers,['basher','offhand_basher']);assert.deepEqual(fs.readFileSync(request.input),original);fs.writeFileSync(request.output,changed);assert.deepEqual(request.trails.map(t=>t.name),trails);for(const t of request.trails)fs.writeFileSync(t.output,changed);return '';
