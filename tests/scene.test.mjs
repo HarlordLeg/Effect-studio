@@ -16,3 +16,13 @@ test('retarget applies animation delta without replacing cosmetic bind pose; ext
  const asset={json:{nodes:[{translation:[10,0,0]},{translation:[20,0,0],children:[2]},{translation:[3,0,0]}],extras:{effectStudioRetarget:[{source:0,target:1}]},animations:[{samplers:[{input:0,output:1}],channels:[{sampler:0,target:{node:0,path:'translation'}}]}]},accessor:i=>({values:new Float32Array(i===0?[0,1]:[12,0,0,12,0,0])})};
  const bind=worldMatrices(asset,undefined,0),animated=worldMatrices(asset,0,0);assert.equal(bind[1][12],20);assert.equal(bind[2][12],23);assert.equal(animated[1][12],22);assert.equal(animated[2][12],25);
 });
+
+test('unweighted hero attachment bones are available to composed multi-bone weapons in server and browser',async()=>{
+ const {composeParts}=await import('../public/renderer/parts.mjs');
+ const source=renameJoints(fs.readFileSync(path.join(root,'public/models/renderer-demo.glb')));
+ const alter=fn=>{const len=source.readUInt32LE(12),j=JSON.parse(source.subarray(20,20+len).toString().trim());fn(j);const raw=Buffer.from(JSON.stringify(j)),json=Buffer.concat([raw,Buffer.alloc((4-raw.length%4)%4,32)]),tail=source.subarray(20+len),head=Buffer.from(source.subarray(0,20));head.writeUInt32LE(20+json.length+tail.length,8);head.writeUInt32LE(json.length,12);return Buffer.concat([head,json,tail]);};
+ const hero=alter(j=>{j.nodes[2].name='rt_blade';j.skins[0].joints=[1];}),item=alter(j=>{j.nodes[2].name='rt_blade';});
+ const bytes=composeHero(hero,item).bytes,server=parseGlb(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
+ const array=b=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),browser=composeParts([{role:'hero',key:'hero',bytes:array(hero)},{role:'item',key:'item',itemId:'test',bytes:array(item)}]);
+ for(const asset of [server,browser]){const link=asset.json.extras.effectStudioRetarget.find(p=>p.source===2);assert.ok(link,'unweighted attachment matched');assert.equal(link.mode,'rigid');assert.deepEqual([...worldMatrices(asset,0,.5)[link.target]],[...worldMatrices(asset,0,.5)[2]]);}
+});
