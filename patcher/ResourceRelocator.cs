@@ -71,10 +71,10 @@ internal static class ResourceRelocator
                 foreach(var block in resource.Blocks.Where(x=>IsRuntimeBlock(x.Type.ToString())))
                 {
                     var index=resource.Blocks.IndexOf(block);
-                    var written=check.Blocks[index];
-                    if(written.Type!=block.Type||written.Size!=block.Size||
+                    var writtenBlock=check.Blocks[index];
+                    if(writtenBlock.Type!=block.Type||writtenBlock.Size!=block.Size||
                         !bytes.AsSpan(checked((int)block.Offset),checked((int)block.Size)).SequenceEqual(
-                            writtenBytes.AsSpan(checked((int)written.Offset),checked((int)written.Size))))
+                            writtenBytes.AsSpan(checked((int)writtenBlock.Offset),checked((int)writtenBlock.Size))))
                         throw new InvalidDataException("Model runtime block changed: "+block.Type);
                 }
             }
