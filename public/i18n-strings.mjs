@@ -1,4 +1,9 @@
 export const translations = {
+  "← Все герои · Корзина": "← All heroes · Cart",
+  "Корзина": "Cart",
+  "Выбери предметы или добавь эффекты — они появятся здесь.": "Choose items or add effects — they will appear here.",
+  "Убрать предмет из VPK": "Remove item from VPK",
+  "Свой цвет": "Custom color",
   "← Все герои": "← All heroes",
   "Выбрать предмет": "Choose item",
   "Поиск предмета": "Search items",
