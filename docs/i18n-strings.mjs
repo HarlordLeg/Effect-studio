@@ -1,4 +1,10 @@
 export const translations = {
+  "Комплект": "Set",
+  "Собрать вручную": "Build manually",
+  "Комплект изменён": "Set customized",
+  "Восстановить комплект": "Restore set",
+  "Стиль": "Style",
+  "Этот стиль пока недоступен": "This style is not available yet",
   "Медведь": "Spirit Bear",
   "Истинная форма": "True Form",
   "Волки": "Wolves",

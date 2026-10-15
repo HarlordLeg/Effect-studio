@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {isImmortal} from '../public/item-rarity.mjs';import {catalogFromGame} from '../lib/game-catalog.mjs';
+test('Immortal badge uses the actual item rarity, including style variants, rather than particles or item names',()=>{
+ const heroText='"DOTAHeroes" { "npc_dota_hero_test" { "Model" "models/heroes/test/test.vmdl" } }',itemText='"items_game" { "items" { "1" { "name" "Weapon" "item_rarity" "immortal" "item_slot" "weapon" "model_player" "models/items/test/weapon.vmdl" "used_by_heroes" { "npc_dota_hero_test" "1" } "visuals" { "styles" { "0" { "skin" "0" } "1" { "skin" "1" } } } } "2" { "name" "Immortal looking hat" "item_rarity" "mythical" "item_slot" "head" "model_player" "models/items/test/hat.vmdl" "used_by_heroes" { "npc_dota_hero_test" "1" } } } }';
+ const [hero]=catalogFromGame({heroText,itemText,exists:()=>true,effects:[]});assert.equal(hero.items.filter(isImmortal).length,2);assert.equal(isImmortal(hero.items.find(i=>i.id==='game-2')),false);assert.equal(isImmortal({name:'Immortal',nativeOverrides:{particles:['particles/fx.vpcf_c']}}),false);
+});

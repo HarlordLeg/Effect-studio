@@ -95,3 +95,9 @@ input[type="checkbox"]:disabled{opacity:.45;cursor:default}
 .set-basket>.primary{justify-content:center}
 @media(max-width:850px){.set-workspace.choosing-hero{grid-template-columns:minmax(0,1fr)}.set-workspace.choosing-hero>.set-basket{position:static;max-height:none;grid-row:1}}
 #set-arcana{border:1px solid var(--border,#384253);border-radius:12px;padding:14px;margin:12px 0;display:flex;gap:12px;flex-wrap:wrap;align-items:center}#set-arcana[hidden]{display:none}#set-arcana label{display:flex;gap:10px;align-items:center;width:100%;margin:0}#set-arcana select{width:100%;max-width:100%}#set-arcana input[type=color]{width:52px;height:36px;padding:3px;background:transparent;border:1px solid var(--border,#384253);border-radius:6px}
+
+.set-style-card{display:flex;flex-direction:column;min-width:0;gap:8px}.set-style-card>.set-card{width:100%;height:100%;flex:1}.item-style-select{display:flex;align-items:center;gap:10px;margin:8px 0;color:var(--muted,#a9b3c8);font-size:13px}.item-style-select select{min-width:0;flex:1;width:auto}.item-style-select[hidden]{display:none}
+
+#set-preset{display:grid;gap:8px;margin:0 0 16px}#set-preset[hidden]{display:none}#set-preset small{color:var(--muted,#a9b3c8)}
+
+.rarity-immortal{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;flex-shrink:0;padding:3px 7px;border:1px solid #bd873650;border-radius:5px;background:#c5913014;color:#e8bd69;font-size:10px;font-weight:750;line-height:1.3;letter-spacing:.09em;white-space:nowrap}.immortal-item{border-color:#b8863d66}.set-slot.immortal-item,.basket-open.immortal-item{flex-wrap:wrap}.item-selected.immortal-item>.rarity-immortal{margin-left:auto}.set-card.immortal-item>.rarity-immortal,.hero-card.immortal-item>.rarity-immortal{margin-top:5px}

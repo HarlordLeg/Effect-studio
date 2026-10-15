@@ -26,8 +26,8 @@ test('set VPK packs each summon base model and leaves the hero model out',async(
 test('entity preview shows the unit alone and never retargets it onto the hero',async()=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-entity-preview-'));try{
  const hero=fixture(),item=hero.items.find(i=>!i.isDefault),choice={hero,item,effect:{id:'native-only',particle:null},effects:[],cosmeticsOnly:true};const service=Object.create(PreviewService.prototype);let requested;
- service.export=async(row,job)=>{requested=row;job.directory=temp;const b=Buffer.alloc(20);b.writeUInt32LE(0x46546c67);b.writeUInt32LE(2,4);b.writeUInt32LE(20,8);fs.writeFileSync(path.join(temp,'hero.glb'),b);fs.writeFileSync(path.join(temp,'effect.json'),'{}');job.status='ready';};
- const job={id:'preview',owner:'local'};await service.exportBatch({...choice,selections:[choice],partsOnly:true,previewForm:'entity:summon'},job);assert.equal(requested.hero.model,cosmetic);assert.equal(job.parts.length,1);assert.equal(job.parts[0].role,'hero');assert.deepEqual(job.selectedItems,[{id:item.id,name:item.name,slot:'summon'}]);
+ service.export=async(row,job)=>{requested=row;job.directory=temp;const b=Buffer.alloc(20);b.writeUInt32LE(0x46546c67);b.writeUInt32LE(2,4);b.writeUInt32LE(20,8);fs.writeFileSync(path.join(temp,'hero.glb'),b);const styled=Buffer.from(b);styled.writeUInt32LE(0x4e4f534a,16);fs.writeFileSync(path.join(temp,'item.glb'),styled);fs.writeFileSync(path.join(temp,'effect.json'),'{}');job.status='ready';};
+ const job={id:'preview',owner:'local'};await service.exportBatch({...choice,selections:[choice],partsOnly:true,previewForm:'entity:summon'},job);assert.equal(requested.hero.model,cosmetic);assert.deepEqual(fs.readFileSync(path.join(temp,'hero.glb')),fs.readFileSync(path.join(temp,'item.glb')));assert.equal(job.parts.length,1);assert.equal(job.parts[0].role,'hero');assert.deepEqual(job.selectedItems,[{id:item.id,name:item.name,slot:'summon'}]);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('hero forms use their exact model replacement and selected material skin, and absent assets stay hidden',()=>{

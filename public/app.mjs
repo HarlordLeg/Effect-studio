@@ -50,7 +50,7 @@ try{catalog=await api('/api/catalog');if(!catalog.heroes.length)throw new Error(
 
 function renderCatalog(){
  const q=$('catalog-search').value.toLowerCase(),scope=$('catalog-scope').value,previous=$('hero').value;
- visibleHeroes=catalog.heroes.map(h=>({...h,items:h.items.filter(i=>(scope==='all'||(scope==='official'?(i.officialEffects??[]).length:((i.officialEffects??[]).includes(scope)||catalog.effects.some(e=>e.id===scope&&e.custom))))&&(!q||(h.name+' '+i.name).toLowerCase().includes(q)))})).filter(h=>h.items.length);
+ visibleHeroes=catalog.heroes.map(h=>({...h,items:h.items.filter(i=>!i.styleUnsupported&&!i.setEntity&&(scope==='all'||(scope==='official'?(i.officialEffects??[]).length:((i.officialEffects??[]).includes(scope)||catalog.effects.some(e=>e.id===scope&&e.custom))))&&(!q||(h.name+' '+i.name).toLowerCase().includes(q)))})).filter(h=>h.items.length);
  options($('hero'),visibleHeroes);if(visibleHeroes.some(h=>h.id===previous))$('hero').value=previous;
  const collections=catalog.effectCollections??[],records=collections.filter(c=>['all','official'].includes(scope)||c.effects.includes(scope)).flatMap(c=>c.items.map(e=>({...e,collection:c.name})));
  $('catalog-count').textContent=`Сопоставлено ${records.filter(e=>e.resolved).length}/${records.length} предметов. В выборе: ${visibleHeroes.length} героев.`;
