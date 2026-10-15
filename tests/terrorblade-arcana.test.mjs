@@ -19,7 +19,7 @@ test('arcana overlay preserves the selected head and recolors duplicated namespa
 test('arcana RGB cache persists across requests, isolates owned mode and coalesces simultaneous generation',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-tb-'));try{
   fs.mkdirSync(path.join(root,'data','arcana-templates'),{recursive:true});assert.equal(hasTerrorbladeArcana(root),false);const data=Buffer.alloc(16);data.writeUInt32LE(16);data.writeUInt32LE(8,8);const resources=new Map([['materials/test.vmat_c',data],['models/heroes/terrorblade/terrorblade.vmdl_c',data]]);for(const mode of ['base','owned'])fs.writeFileSync(path.join(root,'data','arcana-templates','terrorblade-arcana-'+mode+'.vpk'),packVpk(resources));assert.equal(hasTerrorbladeArcana(root),true);fs.writeFileSync(path.join(root,'patcher'),'native');let calls=0;
-  const builder={root,config:{patcher:'patcher'},store:new AssetStore(),run:async(_exe,args)=>{if(args[0]==='--capabilities')return '{"terrorbladeArcana":true}';calls++;await new Promise(r=>setTimeout(r,5));const request=JSON.parse(fs.readFileSync(args[1]));for(const f of request.files)fs.copyFileSync(f.input,f.output);}};
+  const builder={root,config:{patcher:'patcher'},store:new AssetStore(),run:async(_exe,args)=>{if(args[0]==='--capabilities')return '{"terrorbladeArcana":true,"terrorbladeArcanaV2":true}';calls++;await new Promise(r=>setTimeout(r,5));const request=JSON.parse(fs.readFileSync(args[1]));for(const f of request.files)fs.copyFileSync(f.input,f.output);}};
   const c=terrorbladeArcanaChoice({catalog:{heroes:[hero]}},row),[a,b]=await Promise.all([prepareTerrorbladeArcana(builder,c),prepareTerrorbladeArcana(builder,c)]);assert.equal(a.file,b.file);assert.equal(calls,1);await prepareTerrorbladeArcana(builder,c);assert.equal(calls,1);assert.ok(new Vpk(a.file).read('materials/test.vmat_c'));
   const changed={...c,arcana:{...c.arcana,color:[1,2,3]}};assert.notEqual((await prepareTerrorbladeArcana(builder,changed)).file,a.file);assert.equal(calls,2);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
@@ -36,4 +36,15 @@ test('demon preview has one hero mesh group and retains several selected effects
  const item={id:'demon',name:'Rictus Demon',slot:'demon',model:'models/items/terrorblade/dreadhunt_demon/dreadhunt_demon.vmdl_c'},effects=[{id:'frost',particle:'frost.vpcf'},{id:'lava',particle:'lava.vpcf'}],selection={hero,item,effect:effects[0],effects,cosmeticsOnly:false},job={id:'demon-preview',owner:'test'};
  await service.exportDemon({hero,selections:[selection],partsOnly:true},job,null);assert.equal(job.parts.length,1);assert.equal(job.parts[0].role,'hero');assert.equal(calls.length,2);const packet=JSON.parse(fs.readFileSync(path.join(job.directory,'effect.json')));assert.deepEqual(packet.effects.map(e=>e.effectId),['frost','lava']);assert.ok(packet.effects.every(e=>e.scope==='hero'));assert.equal(calls[0].hero.model,item.model);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('selected head replaces both ordinary and owned arcana paths',()=>{
+ const selected=Buffer.from('chosen-rictus-head'),packed=new Map([['models/heroes/terrorblade/horns.vmdl_c',selected]]);
+ mergeArcanaFiles(packed,{files:new Map([['models/heroes/terrorblade/horns.vmdl_c',Buffer.from('template-head')]])},[{hero,item:{slot:'head',replacesModel:'models/heroes/terrorblade/horns.vmdl_c'}}]);
+ assert.deepEqual(packed.get('models/heroes/terrorblade/horns.vmdl_c'),selected);assert.deepEqual(packed.get('models/heroes/terrorblade/horns_arcana.vmdl_c'),selected);
+});
+test('native Sunder and demon attack targets use recolored native source trees rather than generic arcana particles',()=>{
+ const target='particles/units/heroes/hero_terrorblade/terrorblade_sunder.vpcf_c',source='particles/econ/items/terrorblade/terrorblade_back_ti8/terrorblade_sunder_ti8.vpcf_c',colored=Buffer.from('colored-immortal'),packed=new Map([[target,Buffer.from('native-original')],['panorama/images/spellicons/terrorblade_sunder_png.vtex_c',Buffer.from('native-icon')]]);
+ mergeArcanaFiles(packed,{files:new Map([[target,Buffer.from('generic-arcana')],[source,colored]])},[{hero,item:{slot:'back',nativeOverrides:{entries:[{type:'particle',source,target}]}}}]);
+ assert.deepEqual(packed.get(target),colored);assert.equal(packed.get('panorama/images/spellicons/terrorblade_sunder_png.vtex_c').toString(),'native-icon');
 });

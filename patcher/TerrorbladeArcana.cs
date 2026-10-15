@@ -8,24 +8,31 @@ using ValveResourceFormat.ResourceTypes;
 
 internal static class TerrorbladeArcana
 {
-    private sealed record Entry(string Input,string Output,bool Texture=false,string? ReferenceInput=null);
+    private sealed record Entry(string Input,string Output,bool Texture=false,string? ReferenceInput=null,bool OptionalMaterial=false,int[]? SourceColor=null);
     private sealed record Request(Entry[] Files,int[] Color);
     private static readonly double[] Source=Hsv(255,60,40);
     private static double[] Hsv(double r,double g,double b){r/=255;g/=255;b/=255;var max=Math.Max(r,Math.Max(g,b));var min=Math.Min(r,Math.Min(g,b));var d=max-min;var h=d==0?0:max==r?((g-b)/d)%6:max==g?(b-r)/d+2:(r-g)/d+4;return [(h*60+360)%360,max==0?0:d/max,max];}
-    internal static int[] Color(int[] rgb,int[] target){var hsv=Hsv(rgb[0],rgb[1],rgb[2]);var desired=Hsv(target[0],target[1],target[2]);var h=(hsv[0]+desired[0]-Source[0]+360)%360;var s=Math.Clamp(hsv[1]*desired[1]/Source[1],0,1);var v=Math.Clamp(hsv[2]*desired[2],0,1);var c=v*s;var x=c*(1-Math.Abs(h/60%2-1));var m=v-c;double[] raw=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];return raw.Select(q=>(int)Math.Round((q+m)*255,MidpointRounding.AwayFromZero)).ToArray();}
-    private static void Recolor(KVObject root,int[] rgb){
+    internal static int[] Color(int[] rgb,int[] target,int[]? sourceColor=null){var source=sourceColor is null?Source:Hsv(sourceColor[0],sourceColor[1],sourceColor[2]);var hsv=Hsv(rgb[0],rgb[1],rgb[2]);var desired=Hsv(target[0],target[1],target[2]);var h=(hsv[0]+desired[0]-source[0]+360)%360;var s=Math.Clamp(hsv[1]*desired[1]/source[1],0,1);var v=Math.Clamp(hsv[2]*desired[2]/source[2],0,1);var c=v*s;var x=c*(1-Math.Abs(h/60%2-1));var m=v-c;double[] raw=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];return raw.Select(q=>(int)Math.Round((q+m)*255,MidpointRounding.AwayFromZero)).ToArray();}
+    private static void Recolor(KVObject root,int[] rgb,int[]? sourceColor=null){
         if(root.IsCollection){
             var outputField=root.TryGetValue("m_nFieldOutput",out var field)?field:root.TryGetValue("m_nOutputField",out field)?field:null;
             if(outputField is not null&&outputField.ToInt32(CultureInfo.InvariantCulture)==6){
-                foreach(var key in new[]{"m_vOutputMin","m_vOutputMax"})if(root.TryGetValue(key,out var values)&&values.IsArray&&values.Count==3){var mapped=KVObject.Array();var i=0;foreach(var value in values.Values){mapped.Add(new KVObject(value.ToDouble(CultureInfo.InvariantCulture)*rgb[i]/new[]{255d,60d,40d}[i]));i++;}root[key]=mapped;}
+                var gemControlPoint=root.TryGetValue("m_nCPInput",out var cp)&&cp.ToInt32(CultureInfo.InvariantCulture)==15;
+                if(gemControlPoint){
+                    foreach(var key in new[]{"m_vOutputMin","m_vOutputMax"}){var mapped=KVObject.Array();for(var i=0;i<3;i++)mapped.Add(new KVObject(rgb[i]/255d));root[key]=mapped;}
+                    root["m_nSetMethod"]=new KVObject("PARTICLE_SET_REPLACE_VALUE");
+                    var strength=KVObject.Collection();strength["m_nType"]=new KVObject("PF_TYPE_LITERAL");strength["m_flLiteralValue"]=new KVObject(1d);root["m_flOpStrength"]=strength;
+                }else foreach(var key in new[]{"m_vOutputMin","m_vOutputMax"})if(root.TryGetValue(key,out var values)&&values.IsArray&&values.Count==3){
+                    var mapped=KVObject.Array();var i=0;foreach(var value in values.Values){mapped.Add(new KVObject(value.ToDouble(CultureInfo.InvariantCulture)*rgb[i]/(sourceColor??new[]{255,60,40})[i]));i++;}root[key]=mapped;
+                }
             }
             foreach(var pair in root.Children.ToArray()){
             var value=pair.Value;
             if(pair.Key.Contains("color",StringComparison.OrdinalIgnoreCase)&&value.IsArray&&value.Count is 3 or 4&&value.Values.All(v=>!v.IsArray&&!v.IsCollection)){
                 var raw=value.Values.Select(v=>v.ToDouble(CultureInfo.InvariantCulture)).ToArray();var normalized=raw.Take(3).All(v=>v>=0&&v<=1)&&raw.Take(3).Any(v=>v!=Math.Truncate(v));var old=raw.Take(3).Select(v=>(int)Math.Round(v*(normalized?255:1))).ToArray();if(old.Any(v=>v<0||v>255))continue;
-                var mapped=Color(old,rgb);var array=KVObject.Array();foreach(var v in mapped)array.Add(normalized?new KVObject(v/255d):new KVObject(v));if(raw.Length==4)array.Add(value[3]);root[pair.Key]=array;
-            }else Recolor(value,rgb);
-        }}else if(root.IsArray)foreach(var child in root.Values)Recolor(child,rgb);
+                var mapped=Color(old,rgb,sourceColor);var array=KVObject.Array();foreach(var v in mapped)array.Add(normalized?new KVObject(v/255d):new KVObject(v));if(raw.Length==4)array.Add(value[3]);root[pair.Key]=array;
+            }else Recolor(value,rgb,sourceColor);
+        }}else if(root.IsArray)foreach(var child in root.Values)Recolor(child,rgb,sourceColor);
     }
     private static void ReferenceColors(KVObject value,KVObject reference){
         if(value.IsCollection&&reference.IsCollection){foreach(var pair in value.Children.ToArray())if(reference.TryGetValue(pair.Key,out var source)){
@@ -68,8 +75,8 @@ internal static class TerrorbladeArcana
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty arcana manifest");if(request.Color.Length!=3||request.Color.Any(c=>c<0||c>255))throw new InvalidDataException("Invalid RGB");
         foreach(var file in request.Files){var bytes=File.ReadAllBytes(file.Input);using var resource=new Resource{FileName=file.Input};resource.Read(file.Input);Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file.Output))!);
             if(file.Texture){if(resource.DataBlock is not Texture texture)throw new InvalidDataException("Expected texture");TextureFile(texture,file.Output,request.Color);}
-            else if(resource.DataBlock is Material material){if(Material(bytes,material,request.Color)==0)throw new InvalidDataException("Arcana tint expression missing: "+file.Input);File.WriteAllBytes(file.Output,bytes);}
-            else if(resource.DataBlock is ParticleSystem particle){if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}Recolor(particle.Data,request.Color);using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
+            else if(resource.DataBlock is Material material){if(Material(bytes,material,request.Color)==0&&!file.OptionalMaterial)throw new InvalidDataException("Arcana tint expression missing: "+file.Input);File.WriteAllBytes(file.Output,bytes);}
+            else if(resource.DataBlock is ParticleSystem particle){if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}Recolor(particle.Data,request.Color,file.SourceColor);using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
             else throw new InvalidDataException("Unsupported arcana resource: "+file.Input);
             using var check=new Resource{FileName=file.Output};check.Read(file.Output);
         }
