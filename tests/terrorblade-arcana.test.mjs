@@ -19,7 +19,7 @@ test('arcana overlay preserves the selected head and recolors duplicated namespa
 test('arcana RGB cache persists across requests, isolates owned mode and coalesces simultaneous generation',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-tb-'));try{
   fs.mkdirSync(path.join(root,'data','arcana-templates'),{recursive:true});assert.equal(hasTerrorbladeArcana(root),false);const data=Buffer.alloc(16);data.writeUInt32LE(16);data.writeUInt32LE(8,8);const resources=new Map([['materials/test.vmat_c',data],['models/heroes/terrorblade/terrorblade.vmdl_c',data]]);for(const mode of ['base','owned'])fs.writeFileSync(path.join(root,'data','arcana-templates','terrorblade-arcana-'+mode+'.vpk'),packVpk(resources));assert.equal(hasTerrorbladeArcana(root),true);fs.writeFileSync(path.join(root,'patcher'),'native');let calls=0;
-  const builder={root,config:{patcher:'patcher'},store:new AssetStore(),run:async(_exe,args)=>{if(args[0]==='--capabilities')return '{"terrorbladeArcana":true,"terrorbladeArcanaV2":true}';calls++;await new Promise(r=>setTimeout(r,5));const request=JSON.parse(fs.readFileSync(args[1]));for(const f of request.files)fs.copyFileSync(f.input,f.output);}};
+  const builder={root,config:{patcher:'patcher'},store:new AssetStore(),run:async(_exe,args)=>{if(args[0]==='--capabilities')return '{"terrorbladeArcana":true,"terrorbladeArcanaV2":true,"terrorbladeArcanaV3":true}';calls++;await new Promise(r=>setTimeout(r,5));const request=JSON.parse(fs.readFileSync(args[1]));for(const f of request.files)fs.copyFileSync(f.input,f.output);}};
   const c=terrorbladeArcanaChoice({catalog:{heroes:[hero]}},row),[a,b]=await Promise.all([prepareTerrorbladeArcana(builder,c),prepareTerrorbladeArcana(builder,c)]);assert.equal(a.file,b.file);assert.equal(calls,1);await prepareTerrorbladeArcana(builder,c);assert.equal(calls,1);assert.ok(new Vpk(a.file).read('materials/test.vmat_c'));
   const changed={...c,arcana:{...c.arcana,color:[1,2,3]}};assert.notEqual((await prepareTerrorbladeArcana(builder,changed)).file,a.file);assert.equal(calls,2);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
@@ -57,9 +57,9 @@ test('fixed Rictus head source and morph texture are used before model patching 
  for(const mode of ['base','owned']){const choices=arcanaStyles([selected],{arcana:{mode}}),files=terrorbladeHeadFiles(builder,choices);assert.deepEqual(files.get(selected.item.model),head);assert.deepEqual(files.get('models/heroes/terrorblade/horns/dreadhunt_head_lod0_vmorf.vtex_c'),texture);}
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
-test('arcana custom weapons disable all four base blade trails without touching selected immortal particles',()=>{
+test('arcana custom weapons disable the entire base sword family without touching selected immortal particles',()=>{
  const empty=Buffer.from('null'),native='particles/econ/items/terrorblade/immortal/ambient.vpcf_c',files=new Map([[native,Buffer.from('immortal')]]),store={read:()=>empty};
  suppressTerrorbladeBaseBlades(files,[{hero,item:{slot:'head'}}],store);assert.equal(files.size,1);
  suppressTerrorbladeBaseBlades(files,[{hero,item:{slot:'weapon',isDefault:true}}],store);assert.equal(files.size,1);
- suppressTerrorbladeBaseBlades(files,[{hero,item:{slot:'weapon',model:'models/items/terrorblade/immortal.vmdl_c'}}],store);assert.equal(files.size,5);for(const [name,bytes]of files)assert.equal(bytes.toString(),name===native?'immortal':'null');
+ files.set('particles/units/heroes/hero_terrorblade/terrorblade_ambient_sword_workshop_left_a.vpcf_c',Buffer.from('old-default'));suppressTerrorbladeBaseBlades(files,[{hero,item:{slot:'weapon',model:'models/items/terrorblade/immortal.vmdl_c'}}],store);assert.equal(files.size,7);for(const [name,bytes]of files)assert.equal(bytes.toString(),name===native?'immortal':'null');
 });

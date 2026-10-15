@@ -21,9 +21,11 @@ internal static class HeroActivitiesTests
    Check(Names(basher).Contains("basher")!=modifiers.Contains("basher"));
    foreach(var s in root[arrayKey].Values)Check(s["m_fetch"].ToInt32(null)==123);
   }
+  var skeleton=KVObject.Collection();skeleton["m_boneName"]=Array(new KVObject("root"));skeleton["m_nParent"]=Array(new KVObject(-1));foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})skeleton[key]=Array(new KVObject(1d));HeroActivities.ValidateSkeleton(skeleton,skeleton);
+  var mismatched=KVObject.Collection();mismatched["m_boneName"]=Array(new KVObject("wrong"));mismatched["m_nParent"]=Array(new KVObject(-1));var rejected=false;try{HeroActivities.ValidateSkeleton(skeleton,mismatched);}catch(InvalidDataException){rejected=true;}Check(rejected);
   // Optional integration against the user's original compiled Anti-Mage model.
-  if(args.Length==1)foreach(var modifiers in new[]{new[]{"basher"},new[]{"offhand_basher"},new[]{"basher","offhand_basher"}}){var temp=Path.GetTempFileName();var output=temp+".vmdl_c";try{
-   File.WriteAllText(temp,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[0]),output,modifiers}));HeroActivities.Run(temp);
+  if(args.Length==2)foreach(var modifiers in new[]{new[]{"basher"},new[]{"offhand_basher"},new[]{"basher","offhand_basher"}}){var temp=Path.GetTempFileName();var output=temp+".vmdl_c";try{
+   File.WriteAllText(temp,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[0]),output,modifiers,animationTemplate=Path.GetFullPath(args[1])}));HeroActivities.Run(temp);
   }finally{File.Delete(temp);File.Delete(output);}}
   Console.WriteLine("[OK] Hero activity selection and compiled payload preservation");return 0;
  }

@@ -8,7 +8,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class HeroActivities
 {
     private sealed record Trail(string Input, string Output);
-    private sealed record Request(string Input, string Output, string[] Modifiers, Trail[]? Trails = null);
+    private sealed record Request(string Input, string Output, string[] Modifiers, Trail[]? Trails = null, string? AnimationTemplate = null);
     private static string Text(KVObject value, string key) => value[key].ToString(CultureInfo.InvariantCulture);
     private static KVObject Array(IEnumerable<KVObject> values)
     {
@@ -51,6 +51,14 @@ internal static class HeroActivities
         }
         return selected.Count;
     }
+    internal static void ValidateSkeleton(KVObject target,KVObject donor){
+        foreach(var key in new[]{"m_boneName","m_nParent"})if(!target[key].Values.Select(v=>v.ToString(CultureInfo.InvariantCulture)).SequenceEqual(donor[key].Values.Select(v=>v.ToString(CultureInfo.InvariantCulture))))throw new InvalidDataException("Skullbasher animation skeleton mismatch: "+key);
+        foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
+            var a=Numbers(target[key]).ToArray();var b=Numbers(donor[key]).ToArray();
+            if(a.Length!=b.Length||a.Where((v,i)=>Math.Abs(v-b[i])>.001).Any())throw new InvalidDataException("Skullbasher animation bind pose mismatch: "+key);
+        }
+    }
+    private static IEnumerable<double> Numbers(KVObject value){if(value.IsArray){foreach(var child in value.Values)foreach(var number in Numbers(child))yield return number;}else yield return value.ToDouble(CultureInfo.InvariantCulture);}
     public static void Run(string manifest)
     {
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty hero activity request");
@@ -59,20 +67,30 @@ internal static class HeroActivities
         var bytes=File.ReadAllBytes(request.Input);
         using var resource=new Resource{FileName=request.Input};resource.Read(request.Input);
         if(resource.DataBlock is not Model model||Text(model.Data,"m_name")!="models/heroes/antimage/antimage.vmdl")throw new InvalidDataException("Expected base Anti-Mage model");
-        var block=resource.Blocks.Single(b=>b.Type.ToString()=="ASEQ");
-        var root=block is KeyValuesOrNTRO kv?kv.Data:block is BinaryKV3 binary?binary.Data.Root:throw new InvalidDataException("Unsupported sequence format");
-        var count=Bake(root,modifiers);
-        // ANIM contains compiled clip/segment data. A KV3 round trip can read
-        // back successfully but fail in Dota. Select sequences through ASEQ only.
-        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,new HashSet<object>{block},preserveMetadata:true);
+        if(request.AnimationTemplate is null)throw new InvalidDataException("Skullbasher animation template required");
+        var donorBytes=File.ReadAllBytes(request.AnimationTemplate);
+        using var donor=new Resource{FileName=request.AnimationTemplate};donor.Read(request.AnimationTemplate);
+        if(donor.DataBlock is not Model donorModel)throw new InvalidDataException("Expected animation donor model");
+        ValidateSkeleton(model.Data["m_modelSkeleton"],donorModel.Data["m_modelSkeleton"]);
+        var rawBlocks=new Dictionary<object,byte[]>();
+        foreach(var type in new[]{"ANIM","ASEQ","AGRP"}){
+            var target=resource.Blocks.Single(b=>b.Type.ToString()==type);var source=donor.Blocks.Single(b=>b.Type.ToString()==type);
+            rawBlocks[target]=donorBytes.AsSpan((int)source.Offset,(int)source.Size).ToArray();
+        }
+        // Compiled animation events can refer to donor particles by their IDs.
+        // Keep base references and add only the event resources, never donor materials.
+        if(resource.ExternalReferences is null||donor.ExternalReferences is null)throw new InvalidDataException("Animation model references missing");
+        foreach(var reference in donor.ExternalReferences.ResourceRefInfoList.Where(r=>r.Name.EndsWith(".vpcf",StringComparison.Ordinal)||r.Name.EndsWith(".vsnd",StringComparison.Ordinal)))
+            if(!resource.ExternalReferences.ResourceRefInfoList.Any(r=>r.Id==reference.Id))resource.ExternalReferences.ResourceRefInfoList.Add(new ResourceExtRefList.ResourceReferenceInfo{Id=reference.Id,Name=reference.Name});
+        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,new HashSet<object>{resource.ExternalReferences},preserveMetadata:true,rawBlocks:rawBlocks);
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);
         var written=File.ReadAllBytes(request.Output);
-        for(var i=0;i<resource.Blocks.Count;i++)
-        {
+        for(var i=0;i<resource.Blocks.Count;i++){
             var before=resource.Blocks[i];var after=check.Blocks[i];
             if(before.Type!=after.Type)throw new InvalidDataException("Hero block order changed");
-            if(ReferenceEquals(before,block))continue;
-            if(before.Size!=after.Size||!bytes.AsSpan((int)before.Offset,(int)before.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Hero payload changed: "+before.Type);
+            var expected=rawBlocks.TryGetValue(before,out var raw)?raw:bytes.AsSpan((int)before.Offset,(int)before.Size).ToArray();
+            if(before.Type.ToString()=="RERL")continue;
+            if(after.Size!=expected.Length||!expected.AsSpan().SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Hero payload changed: "+before.Type);
         }
         foreach(var trail in request.Trails??[]){
             using var particle=new Resource{FileName=trail.Input};particle.Read(trail.Input);
@@ -83,6 +101,6 @@ internal static class HeroActivities
             using var stream=File.Create(trail.Output);
             Program.SerializePatchedResource(particle,File.ReadAllBytes(trail.Input),stream,true,preserveMetadata:true);
         }
-        Console.WriteLine("[OK] Hero activity sequences enabled: "+count);
+        Console.WriteLine("[OK] Skullbasher compiled animations copied; base geometry and materials preserved");
     }
 }

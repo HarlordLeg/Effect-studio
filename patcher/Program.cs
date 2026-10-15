@@ -26,7 +26,7 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true}");return 0; }
+            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"heroActivitiesV4\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true,\"terrorbladeArcanaV3\":true}");return 0; }
             if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--terrorblade-arcana") { TerrorbladeArcana.Run(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--hero-activities") { HeroActivities.Run(args[1]); return 0; }
@@ -127,7 +127,7 @@ internal static class Program
         }
     }
 
-    internal static void SerializePatchedResource(Resource resource, byte[] original, Stream output, bool rewriteData = true, HashSet<object>? changedBlocks = null, bool preserveMetadata = false)
+    internal static void SerializePatchedResource(Resource resource, byte[] original, Stream output, bool rewriteData = true, HashSet<object>? changedBlocks = null, bool preserveMetadata = false, Dictionary<object,byte[]>? rawBlocks = null)
     {
         if (!output.CanSeek)
         {
@@ -154,6 +154,7 @@ internal static class Program
         var payloads = new List<byte[]>(resource.Blocks.Count);
         foreach (var block in resource.Blocks)
         {
+            if(rawBlocks is not null&&rawBlocks.TryGetValue(block,out var raw)){payloads.Add(raw);continue;}
             if ((changedBlocks?.Contains(block) == true) || (rewriteData && ReferenceEquals(block, resource.DataBlock))
                 || (!preserveMetadata && ReferenceEquals(block, resource.ExternalReferences))
                 || (!preserveMetadata && block is ResourceEditInfo2 && ReferenceEquals(block, resource.EditInfo)))

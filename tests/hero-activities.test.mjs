@@ -29,14 +29,14 @@ test('a cosmetic-only golden pair exports one patched hero at the original path,
   const original=resource(),changed=Buffer.concat([original,Buffer.from('baked')]);
   const trails=["primary","offhand"].map(hand=>"particles/units/heroes/hero_antimage/antimage_blade_"+hand+".vpcf_c");
   const assets=new Map([...trails.map(name=>[name,original]),[hero.model,original],...choices.map(c=>[c.item.model,original])]);
-  fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(temp,'patcher'),'stub');
+  fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(temp,'patcher'),'stub');fs.mkdirSync(path.join(temp,'data','animation-templates'),{recursive:true});fs.writeFileSync(path.join(temp,'data','animation-templates','antimage-skullbasher.vpk'),packVpk(new Map([[hero.model,original]])));
   fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[{...hero,items:choices.map(c=>c.item)}],effects:[]}));
   let heroCalls=0;
   const run=async(_,args)=>{
-   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivities:true,heroActivitiesV2:true,heroActivitiesV3:true});
+   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivities:true,heroActivitiesV2:true,heroActivitiesV3:true,heroActivitiesV4:true});
    if(args[0]==='--relocate'){const manifest=JSON.parse(fs.readFileSync(args[1]));assert.ok(!manifest.files.some(r=>r.name===hero.model));for(const row of manifest.files)fs.copyFileSync(row.input,row.output);return '';}
    assert.equal(args[0],'--hero-activities');heroCalls++;
-   const request=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(request.modifiers,['basher','offhand_basher']);assert.deepEqual(fs.readFileSync(request.input),original);fs.writeFileSync(request.output,changed);assert.deepEqual(request.trails.map(t=>t.name),trails);for(const t of request.trails)fs.writeFileSync(t.output,changed);return '';
+   const request=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(request.modifiers,['basher','offhand_basher']);assert.deepEqual(fs.readFileSync(request.input),original);assert.deepEqual(fs.readFileSync(request.animationTemplate),original);fs.writeFileSync(request.output,changed);assert.deepEqual(request.trails.map(t=>t.name),trails);for(const t of request.trails)fs.writeFileSync(t.output,changed);return '';
   };
   const builder=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run);
   const job={id:'pair'};await builder.build(choices,job);assert.equal(heroCalls,1);assert.equal(job.status,'ready');

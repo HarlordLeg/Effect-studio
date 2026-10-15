@@ -1,0 +1,1 @@
+The server-side Anti-Mage Skullbasher animation template is a Valve game resource supplied by the project owner as an in-game working compatibility reference. It is not covered by the project source code license. Copyright belongs to Valve Corporation. Only its compiled animation blocks are used; donor geometry and materials are not installed as hero replacements.
