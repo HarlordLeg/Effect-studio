@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using ValveKeyValue;
 using ValveResourceFormat;
+using ValveResourceFormat.Blocks;
 using ValveResourceFormat.ResourceTypes;
 
 internal static class ResourceRelocator
@@ -20,13 +21,29 @@ internal static class ResourceRelocator
             var bytes=File.ReadAllBytes(file.Input);
             if(file.Input.EndsWith(".vtex_c",StringComparison.OrdinalIgnoreCase)||file.Input.EndsWith(".vsnd_c",StringComparison.OrdinalIgnoreCase)) { File.Copy(file.Input,file.Output,true); continue; }
             using var resource=new Resource { FileName=file.Input }; resource.Read(file.Input);
+            var isModel=resource.DataBlock is Model;
             var ids=new Dictionary<ulong,ulong>();
             if(resource.ExternalReferences is not null)
-                foreach(var reference in resource.ExternalReferences.ResourceRefInfoList)
-                    if(paths.TryGetValue(reference.Name,out var target)) {var id=Program.ComputeResourceId(target);ids[reference.Id]=id;reference.Id=id;reference.Name=target;}
+                foreach(var reference in resource.ExternalReferences.ResourceRefInfoList.ToArray())
+                    if(paths.TryGetValue(reference.Name,out var target))
+                    {
+                        var id=Program.ComputeResourceId(target);ids[reference.Id]=id;
+                        // Embedded animations still refer to the original resource IDs.
+                        // Keep those references and add aliases for rewritten model data.
+                        if(isModel)
+                        {
+                            if(!resource.ExternalReferences.ResourceRefInfoList.Any(x=>x.Name==target))
+                                resource.ExternalReferences.ResourceRefInfoList.Add(new ResourceExtRefList.ResourceReferenceInfo { Id=id,Name=target });
+                        }
+                        else {reference.Id=id;reference.Name=target;}
+                    }
             var dataChanged=false;var changedBlocks=new HashSet<object>();
             foreach(var block in resource.Blocks)
             {
+                // Preserve compiled animation, geometry and physics payloads byte-for-byte.
+                // Re-serializing embedded animation KV3 can produce a model that reads
+                // successfully here but crashes when the game evaluates its animations.
+                if(isModel&&IsRuntimeBlock(block.Type.ToString()))continue;
                 var changed=false;
                 if(block is KeyValuesOrNTRO kv)
                 {
@@ -48,6 +65,19 @@ internal static class ResourceRelocator
             }
             using(var stream=File.Create(file.Output)) Program.SerializePatchedResource(resource,bytes,stream,dataChanged,changedBlocks);
             using var check=new Resource { FileName=file.Output }; check.Read(file.Output);
+            if(isModel)
+            {
+                var writtenBytes=File.ReadAllBytes(file.Output);
+                foreach(var block in resource.Blocks.Where(x=>IsRuntimeBlock(x.Type.ToString())))
+                {
+                    var index=resource.Blocks.IndexOf(block);
+                    var written=check.Blocks[index];
+                    if(written.Type!=block.Type||written.Size!=block.Size||
+                        !bytes.AsSpan(checked((int)block.Offset),checked((int)block.Size)).SequenceEqual(
+                            writtenBytes.AsSpan(checked((int)written.Offset),checked((int)written.Size))))
+                        throw new InvalidDataException("Model runtime block changed: "+block.Type);
+                }
+            }
             if(file.Color is not null&&check.DataBlock is ParticleSystem written)
             {if(!written.Data.TryGetValue("m_ConstantColor",out var color)||!color.IsArray||!color.Values.Take(3).Select(v=>v.ToInt32(CultureInfo.InvariantCulture)).SequenceEqual(file.Color))throw new InvalidDataException("Particle color validation failed: "+file.Output);}
             }
@@ -55,6 +85,7 @@ internal static class ResourceRelocator
         }
         Console.WriteLine("[OK] Relocated resources: "+request.Files.Length);
     }
+    private static bool IsRuntimeBlock(string type)=>type is "ANIM" or "ASEQ" or "AGRP" or "PHYS" or "MBUF" or "VBIB";
     private static KVObject ColorValue(int[] rgb) { var a=KVObject.Array(4);foreach(var channel in rgb)a.Add(new KVObject(channel));a.Add(new KVObject(255));return a; }
     private static void ForceColor(KVObject root,int[] rgb)
     {
