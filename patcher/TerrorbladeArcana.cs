@@ -8,7 +8,7 @@ using ValveResourceFormat.ResourceTypes;
 
 internal static class TerrorbladeArcana
 {
-    private sealed record Entry(string Input,string Output,bool Texture=false,string? ReferenceInput=null,bool OptionalMaterial=false,int[]? SourceColor=null,string? Name=null);
+    private sealed record Entry(string Input,string Output,bool Texture=false,string? ReferenceInput=null,bool OptionalMaterial=false,int[]? SourceColor=null,string? Name=null,string[]? ExcludedChildren=null,bool InferSourceColor=false);
     private sealed record Request(Entry[] Files,int[] Color);
     private static readonly double[] Source=Hsv(255,60,40);
     private static double[] Hsv(double r,double g,double b){r/=255;g/=255;b/=255;var max=Math.Max(r,Math.Max(g,b));var min=Math.Min(r,Math.Min(g,b));var d=max-min;var h=d==0?0:max==r?((g-b)/d)%6:max==g?(b-r)/d+2:(r-g)/d+4;return [(h*60+360)%360,max==0?0:d/max,max];}
@@ -26,7 +26,7 @@ internal static class TerrorbladeArcana
                     root["m_nSetMethod"]=new KVObject("PARTICLE_SET_REPLACE_VALUE");
                     var strength=KVObject.Collection();strength["m_nType"]=new KVObject("PF_TYPE_LITERAL");strength["m_flLiteralValue"]=new KVObject(1d);root["m_flOpStrength"]=strength;
                 }else foreach(var key in new[]{"m_vOutputMin","m_vOutputMax"})if(root.TryGetValue(key,out var values)&&values.IsArray&&values.Count==3){
-                    var mapped=KVObject.Array();var i=0;foreach(var value in values.Values){mapped.Add(new KVObject(value.ToDouble(CultureInfo.InvariantCulture)*rgb[i]/(sourceColor??new[]{255,60,40})[i]));i++;}root[key]=mapped;
+                    var mapped=KVObject.Array();var i=0;foreach(var value in values.Values){mapped.Add(new KVObject(value.ToDouble(CultureInfo.InvariantCulture)*rgb[i]/Math.Max(1,(sourceColor??new[]{255,60,40})[i])));i++;}root[key]=mapped;
                 }
             }
             foreach(var pair in root.Children.ToArray()){
@@ -36,6 +36,17 @@ internal static class TerrorbladeArcana
                 var mapped=Color(old,rgb,sourceColor);var array=KVObject.Array();foreach(var v in mapped)array.Add(normalized?new KVObject(v/255d):new KVObject(v));if(raw.Length==4)array.Add(value[3]);root[pair.Key]=array;
             }else Recolor(value,rgb,sourceColor);
         }}else if(root.IsArray)foreach(var child in root.Values)Recolor(child,rgb,sourceColor);
+    }
+    internal static int[]? ParticleSourceColor(KVObject root){
+        if(root.IsCollection){
+            var pairs=root.Children.OrderBy(p=>p.Key=="m_ConstantColor"?0:1);
+            foreach(var pair in pairs){var value=pair.Value;if(pair.Key.Contains("color",StringComparison.OrdinalIgnoreCase)&&value.IsArray&&value.Count is 3 or 4&&value.Values.All(v=>!v.IsArray&&!v.IsCollection)){
+                var raw=value.Values.Take(3).Select(v=>v.ToDouble(CultureInfo.InvariantCulture)).ToArray();var scale=raw.All(v=>v>=0&&v<=1)?255d:1d;var rgb=raw.Select(v=>(int)Math.Round(v*scale)).ToArray();
+                if(rgb.All(v=>v>=0&&v<=255)){var hsv=Hsv(rgb[0],rgb[1],rgb[2]);if(hsv[1]>.2&&hsv[2]>.05)return rgb;}
+            }}
+            foreach(var pair in pairs){var color=ParticleSourceColor(pair.Value);if(color is not null)return color;}
+        }else if(root.IsArray)foreach(var child in root.Values){var color=ParticleSourceColor(child);if(color is not null)return color;}
+        return null;
     }
     private static void ReferenceColors(KVObject value,KVObject reference){
         if(value.IsCollection&&reference.IsCollection){foreach(var pair in value.Children.ToArray())if(reference.TryGetValue(pair.Key,out var source)){
@@ -89,7 +100,7 @@ internal static class TerrorbladeArcana
         var textures=request.Files.Where(f=>f.Texture&&f.Name is not null).ToDictionary(f=>f.Name!,StringComparer.Ordinal);
         var accents=new Dictionary<string,bool>(StringComparer.Ordinal);var neutralTints=new Dictionary<string,HashSet<string>>(StringComparer.Ordinal);
         bool HasAccent(string name){if(accents.TryGetValue(name,out var cached))return cached;if(!textures.TryGetValue(name,out var textureFile))return false;using var r=new Resource{FileName=textureFile.Input};r.Read(textureFile.Input);if(r.DataBlock is not Texture texture||texture.ExtraData.ContainsKey(VTexExtraData.SHEET))return false;using var bitmap=texture.GenerateBitmap();return accents[name]=bitmap.Pixels.Any(p=>IsAccent(p,textureFile.SourceColor));}
-        foreach(var file in request.Files.Where(f=>f.OptionalMaterial&&f.Input.EndsWith(".vmat_c",StringComparison.OrdinalIgnoreCase))){
+        foreach(var file in request.Files.Where(f=>f.Input.EndsWith(".vmat_c",StringComparison.OrdinalIgnoreCase))){
             using var materialResource=new Resource{FileName=file.Input};materialResource.Read(file.Input);
             if(materialResource.DataBlock is Material material)foreach(var pair in material.TextureParams)
                 if(pair.Key is "g_tColor" or "g_tDetail" or "g_tDetail2" or "g_tSelfIllum" or "g_tEmissive" or "g_tBaseColor"){
@@ -100,7 +111,11 @@ internal static class TerrorbladeArcana
         foreach(var file in request.Files){var bytes=File.ReadAllBytes(file.Input);using var resource=new Resource{FileName=file.Input};resource.Read(file.Input);Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file.Output))!);
             if(file.Texture){if(file.Name is not null&&!file.Name.StartsWith("panorama/",StringComparison.Ordinal)&&!colorTextures.Contains(file.Name)){File.WriteAllBytes(file.Output,bytes);continue;}if(resource.DataBlock is not Texture texture)throw new InvalidDataException("Expected texture");if(texture.ExtraData.ContainsKey(VTexExtraData.SHEET)){File.WriteAllBytes(file.Output,bytes);continue;}TextureFile(texture,file.Output,request.Color,file.SourceColor);}
             else if(resource.DataBlock is Material material){var legacy=resource.ContainsBlockType(ValveResourceFormat.BlockType.NTRO);if(Material(bytes,material,request.Color,neutralTints.GetValueOrDefault(file.Input),legacy)==0&&!file.OptionalMaterial)throw new InvalidDataException("Arcana tint expression missing: "+file.Input);if(legacy)File.WriteAllBytes(file.Output,bytes);else{using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}}
-            else if(resource.DataBlock is ParticleSystem particle){if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}Recolor(particle.Data,request.Color,file.SourceColor);using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
+            else if(resource.DataBlock is ParticleSystem particle){
+                if(file.ExcludedChildren is not null&&particle.Data.TryGetValue("m_Children",out var children)){
+                    var retained=KVObject.Array();foreach(var child in children.Values)if(!child.TryGetValue("m_ChildRef",out var reference)||!file.ExcludedChildren.Contains(reference.ToString(CultureInfo.InvariantCulture),StringComparer.Ordinal))retained.Add(child);particle.Data["m_Children"]=retained;
+                }
+                if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}Recolor(particle.Data,request.Color,file.SourceColor??(file.InferSourceColor?ParticleSourceColor(particle.Data):null));using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
             else throw new InvalidDataException("Unsupported arcana resource: "+file.Input);
             using var check=new Resource{FileName=file.Output};check.Read(file.Output);
         }
