@@ -1,4 +1,8 @@
 export const translations = {
+  "Герои в VPK": "Heroes in VPK",
+  "Выбрать героя": "Choose hero",
+  "Поиск героя": "Search heroes",
+  "Убрать героя из VPK": "Remove hero from VPK",
   "Твой сет.": "Your set.",
   "Добавить эффект": "Add effect",
   "Эффекты": "Effects",
