@@ -63,13 +63,13 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];
+        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>c.item.isDefault))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
-        const data=await body(req),choice=builder.choice(data.heroId,data.itemId,data.effectId,{preview:true});choice.partsOnly=data.partsOnly===true;if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
+        const data=await body(req),setRows=data.mode==='set'?normalizeSelections(builder,data):null,choice=setRows?{...setRows[0]}:builder.choice(data.heroId,data.itemId,data.effectId,{preview:true});choice.partsOnly=data.partsOnly===true;if(setRows)choice.selections=setRows;else if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
         if(choice.item.previewUnsupported)return json(res,400,{error:choice.item.previewUnsupported});
         let buildJob=null;
         if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}
@@ -110,7 +110,7 @@ export function startServer({port:overridePort}={}) {
       if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET'});
       const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin';
       if(isWidget&&!session)return json(res,401,{error:'Нужна сессия виджета'});
-      const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin)&&session?session.origin:"'none'");
+      const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin)&&session?session.origin:"'none'");
       res.setHeader('Content-Security-Policy',csp);
       let file;
       {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}

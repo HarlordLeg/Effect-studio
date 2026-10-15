@@ -69,6 +69,7 @@ internal static class Program
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         var modes = materials ? new[] { "adapted", "original", "geometry" } : new[] { "geometry" };
         string? warning = null;
+        var animations = true;
         for (var i = 0; i < modes.Length; i++)
         {
             var mode = modes[i];
@@ -77,7 +78,7 @@ internal static class Program
             {
                 ProgressReporter = new Progress<string>(message => Console.WriteLine(message)),
                 ExportMaterials = mode != "geometry",
-                ExportAnimations = true,
+                ExportAnimations = animations,
                 AdaptTextures = mode == "adapted",
                 SatelliteImages = false,
             };
@@ -86,8 +87,16 @@ internal static class Program
                 exporter.Export(resource, target);
                 if (!File.Exists(target) || new FileInfo(target).Length < 20)
                     throw new InvalidDataException("GLB export is empty: " + modelPath);
-                File.WriteAllText(target + ".export.json", JsonSerializer.Serialize(new { model = modelPath, mode, warning }));
+                File.WriteAllText(target + ".export.json", JsonSerializer.Serialize(new { model = modelPath, mode, warning, animations }));
                 return;
+            }
+            catch (Exception exception) when (animations && IsAnimationFailure(exception))
+            {
+                animations = false;
+                warning = "Animation decoder fallback for " + modelPath + ": exporting without item animations";
+                Console.WriteLine("[WARN] " + warning);
+                if (File.Exists(target)) File.Delete(target);
+                i--; // Retry this material mode with a fresh exporter, retaining skinning.
             }
             catch (Exception exception) when (i + 1 < modes.Length && IsTextureFailure(exception))
             {
@@ -97,6 +106,14 @@ internal static class Program
                 if (File.Exists(target)) File.Delete(target);
             }
         }
+    }
+
+    private static bool IsAnimationFailure(Exception exception)
+    {
+        var details = exception.ToString();
+        return details.Contains("ModelAnimation", StringComparison.Ordinal)
+            || details.Contains("GltfModelExporter.AnimationWriter", StringComparison.Ordinal)
+            || details.Contains("GltfModelExporter.Anim.cs", StringComparison.Ordinal);
     }
 
     private static bool IsTextureFailure(Exception exception)

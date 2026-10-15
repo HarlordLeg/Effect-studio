@@ -12,7 +12,7 @@ internal static class Program
         string Output,
         IReadOnlyList<string> ParticlePaths,
         ulong? ResourceId,
-        bool Backup, int Skin, string? ParticleReplacements);
+        bool Backup, int Skin, string? ParticleReplacements, bool ModelOnly);
 
     private sealed record ParticleEntry(string Path, ulong ResourceId, string? Config);
 
@@ -26,7 +26,7 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true}");return 0; }
+            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true}");return 0; }
             if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
             var options = ParseArguments(args);
             Patch(options);
@@ -89,9 +89,8 @@ internal static class Program
                     info["m_keyValueText"]=new KVObject(original);
                 }
             }
-            var particleEntries = ResolveParticleEntries(particlePaths, options.ResourceId);
-            SetParticleConfig(model, particleEntries);
-            SetRed2ParticleReference(resource);
+            IReadOnlyList<ParticleEntry> particleEntries = particlePaths.Length == 0 && options.ModelOnly ? Array.Empty<ParticleEntry>() : ResolveParticleEntries(particlePaths, options.ResourceId);
+            if (particleEntries.Count > 0) { SetParticleConfig(model, particleEntries); SetRed2ParticleReference(resource); }
             foreach (var entry in particleEntries)
             {
                 AddExternalReference(resource, entry.Path, entry.ResourceId);
@@ -355,6 +354,7 @@ internal static class Program
     {
         using var check = new Resource { FileName = file };
         check.Read(file);
+        if (entries.Count == 0 && check.DataBlock is Model) return;
 
         if (check.DataBlock is not Model model
             || !model.Data.TryGetValue("m_modelInfo", out var modelInfo)
@@ -389,6 +389,7 @@ internal static class Program
         ulong? resourceId = null;
         var backup = true;
         var skin = 0;
+        var modelOnly = false;
         string? particleReplacements = null;
 
         for (var i = 0; i < args.Length; i++)
@@ -413,6 +414,7 @@ internal static class Program
                 case "--resource-id": resourceId = ParseUInt64(NextValue()); break;
                 case "--particle-replacements": particleReplacements = NextValue(); break;
                 case "--skin": skin = int.Parse(NextValue(), CultureInfo.InvariantCulture); if(skin<0)throw new ArgumentException("Invalid skin"); break;
+                case "--model-only": modelOnly = true; break;
                 case "--no-backup": backup = false; break;
                 default: throw new ArgumentException($"Unknown argument: {args[i]}");
             }
@@ -420,13 +422,13 @@ internal static class Program
 
         if (string.IsNullOrWhiteSpace(input)
             || string.IsNullOrWhiteSpace(output)
-            || particles.Count == 0
+            || (particles.Count == 0 && !modelOnly)
             || particles.Any(string.IsNullOrWhiteSpace))
         {
             throw new ArgumentException("--input, --output and --particle are required. Run with --help.");
         }
 
-        return new Options(input, output, particles, resourceId, backup, skin, particleReplacements);
+        return new Options(input, output, particles, resourceId, backup, skin, particleReplacements, modelOnly);
     }
 
     private static ulong ParseUInt64(string text)
