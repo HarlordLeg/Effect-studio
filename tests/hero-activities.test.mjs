@@ -27,19 +27,20 @@ test('a cosmetic-only golden pair exports one patched hero at the original path,
   const choices=[choice('skullbasher_gold','weapon'),choice('skullbasher_gold_offhand','offhand_weapon')];
   for(const row of choices)row.item.nativeOverrides={entries:[],particles:[],unsupported:[],skin:0};
   const original=resource(),changed=Buffer.concat([original,Buffer.from('baked')]);
-  const assets=new Map([[hero.model,original],...choices.map(c=>[c.item.model,original])]);
+  const trails=["primary","offhand"].map(hand=>"particles/units/heroes/hero_antimage/antimage_blade_"+hand+".vpcf_c");
+  const assets=new Map([...trails.map(name=>[name,original]),[hero.model,original],...choices.map(c=>[c.item.model,original])]);
   fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(temp,'patcher'),'stub');
   fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[{...hero,items:choices.map(c=>c.item)}],effects:[]}));
   let heroCalls=0;
   const run=async(_,args)=>{
-   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivities:true});
+   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivities:true,heroActivitiesV2:true});
    if(args[0]==='--relocate'){const manifest=JSON.parse(fs.readFileSync(args[1]));assert.ok(!manifest.files.some(r=>r.name===hero.model));for(const row of manifest.files)fs.copyFileSync(row.input,row.output);return '';}
    assert.equal(args[0],'--hero-activities');heroCalls++;
-   const request=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(request.modifiers,['basher','offhand_basher']);assert.deepEqual(fs.readFileSync(request.input),original);fs.writeFileSync(request.output,changed);return '';
+   const request=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(request.modifiers,['basher','offhand_basher']);assert.deepEqual(fs.readFileSync(request.input),original);fs.writeFileSync(request.output,changed);assert.deepEqual(request.trails.map(t=>t.name),trails);for(const t of request.trails)fs.writeFileSync(t.output,changed);return '';
   };
   const builder=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run);
   const job={id:'pair'};await builder.build(choices,job);assert.equal(heroCalls,1);assert.equal(job.status,'ready');
-  const vpk=new Vpk(job.file);assert.deepEqual(vpk.read(hero.model),changed);
+  const vpk=new Vpk(job.file);assert.deepEqual(vpk.read(hero.model),changed);for(const trail of trails)assert.deepEqual(vpk.read(trail),changed);
   for(const c of choices)assert.deepEqual(vpk.read(hero.defaultSlotModels[c.item.slot]),original);
   assert.ok(![...vpk.entries.keys()].some(p=>p.startsWith('scripts/')||p==='harlord/'+hero.model));
   const outdated=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},async()=>JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true}));

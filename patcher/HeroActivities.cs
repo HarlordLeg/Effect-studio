@@ -7,7 +7,8 @@ using ValveResourceFormat.ResourceTypes;
 
 internal static class HeroActivities
 {
-    private sealed record Request(string Input, string Output, string[] Modifiers);
+    private sealed record Trail(string Input, string Output);
+    private sealed record Request(string Input, string Output, string[] Modifiers, Trail[]? Trails = null);
     private static string Text(KVObject value, string key) => value[key].ToString(CultureInfo.InvariantCulture);
     private static KVObject Array(IEnumerable<KVObject> values)
     {
@@ -15,9 +16,9 @@ internal static class HeroActivities
     }
     // Compile the equipped-item modifiers into sequence selection, leaving all
     // animation tracks, bone transforms, fetch indices, layers and weights intact.
-    internal static int Bake(KVObject root, IReadOnlySet<string> modifiers)
+    internal static int Bake(KVObject root, IReadOnlySet<string> modifiers, string arrayKey = "m_localS1SeqDescArray")
     {
-        if(!root.TryGetValue("m_localS1SeqDescArray",out var sequences)||!sequences.IsArray)
+        if(!root.TryGetValue(arrayKey,out var sequences)||!sequences.IsArray)
             throw new InvalidDataException("Hero has no embedded sequence descriptors");
         var rows=sequences.Values.ToArray();
         var promoted=new Dictionary<string,List<HashSet<string>>>();
@@ -61,15 +62,31 @@ internal static class HeroActivities
         var block=resource.Blocks.Single(b=>b.Type.ToString()=="ASEQ");
         var root=block is KeyValuesOrNTRO kv?kv.Data:block is BinaryKV3 binary?binary.Data.Root:throw new InvalidDataException("Unsupported sequence format");
         var count=Bake(root,modifiers);
-        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,new HashSet<object>{block},preserveMetadata:true);
+        var animation=resource.Blocks.Single(b=>b.Type.ToString()=="ANIM");
+        var animRoot=animation is KeyValuesOrNTRO akv?akv.Data:animation is BinaryKV3 ab?ab.Data.Root:throw new InvalidDataException("Unsupported animation format");
+        // Runtime clip descriptors duplicate the sequence activities. Update both
+        // tables; keep all compressed segments, channels and frame data intact.
+        var tracks=animRoot["m_segmentArray"].ToString();
+        Bake(animRoot,modifiers,"m_animArray");
+        if(animRoot["m_segmentArray"].ToString()!=tracks)throw new InvalidDataException("Animation segments changed");
+        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,new HashSet<object>{block,animation},preserveMetadata:true);
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);
         var written=File.ReadAllBytes(request.Output);
         for(var i=0;i<resource.Blocks.Count;i++)
         {
             var before=resource.Blocks[i];var after=check.Blocks[i];
             if(before.Type!=after.Type)throw new InvalidDataException("Hero block order changed");
-            if(ReferenceEquals(before,block))continue;
+            if(ReferenceEquals(before,block)||ReferenceEquals(before,animation))continue;
             if(before.Size!=after.Size||!bytes.AsSpan((int)before.Offset,(int)before.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Hero payload changed: "+before.Type);
+        }
+        foreach(var trail in request.Trails??[]){
+            using var particle=new Resource{FileName=trail.Input};particle.Read(trail.Input);
+            if(particle.DataBlock is not ParticleSystem system)throw new InvalidDataException("Expected default blade particle");
+            system.Data["m_nMaxParticles"]=new KVObject(0);
+            system.Data["m_Children"]=KVObject.Array();
+            system.Data["m_Emitters"]=KVObject.Array();
+            using var stream=File.Create(trail.Output);
+            Program.SerializePatchedResource(particle,File.ReadAllBytes(trail.Input),stream,true,preserveMetadata:true);
         }
         Console.WriteLine("[OK] Hero activity sequences enabled: "+count);
     }

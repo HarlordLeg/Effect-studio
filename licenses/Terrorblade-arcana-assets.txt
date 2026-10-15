@@ -1,0 +1,1 @@
+The Terrorblade VPK templates and samples/terrorblade-arcana-regression files are Valve game assets supplied by the project owner for compatibility and recoloring. They are not covered by the project source code license. Copyright belongs to Valve Corporation.

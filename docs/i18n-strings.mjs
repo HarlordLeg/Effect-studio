@@ -1,4 +1,12 @@
 export const translations = {
+  "Вид персонажа": "Character form",
+  "Обычный вид": "Normal form",
+  "Форма демона": "Demon form",
+  "Аркана": "Arcana",
+  "Режим арканы": "Arcana mode",
+  "Цвет арканы": "Arcana color",
+  "Аркана вместо базового героя": "Replace base hero with arcana",
+  "Перекрасить свою аркану": "Recolor my equipped arcana",
   "← Все герои · Корзина": "← All heroes · Cart",
   "Корзина": "Cart",
   "Выбери предметы или добавь эффекты — они появятся здесь.": "Choose items or add effects — they will appear here.",

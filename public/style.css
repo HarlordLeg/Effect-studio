@@ -94,3 +94,4 @@ input[type="checkbox"]:disabled{opacity:.45;cursor:default}
 .basket-open small{color:var(--muted);font-size:10px;line-height:1.4}
 .set-basket>.primary{justify-content:center}
 @media(max-width:850px){.set-workspace.choosing-hero{grid-template-columns:minmax(0,1fr)}.set-workspace.choosing-hero>.set-basket{position:static;max-height:none;grid-row:1}}
+#set-arcana{border:1px solid var(--border,#384253);border-radius:12px;padding:14px;margin:12px 0;display:flex;gap:12px;flex-wrap:wrap;align-items:center}#set-arcana[hidden]{display:none}#set-arcana label{display:flex;gap:10px;align-items:center;width:100%;margin:0}#set-arcana select{width:100%;max-width:100%}#set-arcana input[type=color]{width:52px;height:36px;padding:3px;background:transparent;border:1px solid var(--border,#384253);border-radius:6px}
