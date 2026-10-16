@@ -70,14 +70,19 @@ internal static class HeroActivityRules
             }
             File.WriteAllText(request.Output,JsonSerializer.Serialize(new{options,audit,sequenceLabels=rows.Select(row=>new{name=Text(row,"m_sName"),activities=row["m_activityArray"].Values.Select(label=>Text(label,"m_name")).ToArray()}).ToArray(),externalAnimations=resource.ExternalReferences?.ResourceRefInfoList.Where(r=>r.Name.EndsWith(".vanim",StringComparison.Ordinal)||r.Name.EndsWith(".vagrp",StringComparison.Ordinal)||r.Name.EndsWith(".vseq",StringComparison.Ordinal)).Select(r=>r.Name).ToArray()}));return;
         }
-        var changed=new HashSet<object>();var snapshots=new Dictionary<string,string>();var expected=new Dictionary<string,string>();var reports=new List<object>();
+        var changed=new HashSet<object>();var rawBlocks=new Dictionary<object,byte[]>();var snapshots=new Dictionary<string,string>();var expected=new Dictionary<string,string>();var reports=new List<object>();
         foreach(var (type,key) in new[]{("ASEQ","m_localS1SeqDescArray"),("ANIM","m_animArray")}){
             var block=resource.Blocks.SingleOrDefault(b=>b.Type.ToString()==type);if(block is null)continue;
-            snapshots[type]=Payload(block,key);var report=Bake(Data(block),key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
+            var binary=new BinaryKV3(block.Type){Offset=block.Offset,Size=block.Size,Resource=resource};
+            using(var reader=new BinaryReader(new MemoryStream(bytes))){reader.BaseStream.Position=block.Offset;binary.Read(reader);}
+            binary.SerializationVersion=bytes[(int)block.Offset];
+            binary.SerializationCompressionMethod=(KV3BinaryCompressionMethod)(BitConverter.ToUInt32(bytes,(int)block.Offset+20)&0xff);
+            snapshots[type]=Payload(binary,key);var report=Bake(binary.Data.Root,key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
             if(type=="ASEQ"&&request.RequireStance&&report.StanceCount==0)throw new InvalidDataException("This stance has no compatible animations in the installed hero model");
-            changed.Add(block);expected[type]=block.ToString()!;
+            using(var buffer=new MemoryStream()){binary.Serialize(buffer);rawBlocks[block]=buffer.ToArray();}
+            changed.Add(block);expected[type]=binary.ToString()!;
         }
-        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,changed,preserveMetadata:true);
+        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,changed,preserveMetadata:true,rawBlocks:rawBlocks);
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);var written=File.ReadAllBytes(request.Output);
         for(var i=0;i<resource.Blocks.Count;i++){
             var before=resource.Blocks[i];var after=check.Blocks[i];var type=before.Type.ToString();if(before.Type!=after.Type)throw new InvalidDataException("Activity block order changed");

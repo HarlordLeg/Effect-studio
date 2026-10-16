@@ -1,4 +1,11 @@
 export const translations = {
+  "Кинетический самоцвет": "Kinetic gem",
+  "Кинетические самоцветы": "Kinetic gems",
+  "Приоритет": "Priority",
+  "Выберите самоцвет": "Choose a gem",
+  "Применить": "Apply",
+  "Загрузка анимации…": "Loading animation…",
+  "Превью недоступно": "Preview unavailable",
   "Чумные стражи": "Plague Wards",
   "Своя стойка": "Custom stance",
   "Стойка героя": "Hero stance",

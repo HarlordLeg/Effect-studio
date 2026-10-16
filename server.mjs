@@ -85,7 +85,7 @@ export function startServer({port:overridePort}={}) {
         const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
         const choice=setRows?{...setRows[0]}:builder.choice(data.heroId,data.itemId,data.effectId,{preview:true,styleId:data.styleId});
         if(stance&&stance.hero.id!==choice.hero.id)throw new Error('Preview supports one hero at a time');
-        if(stance){choice.stanceId=stance.stance.id;const options=await heroStances(builder,choice.hero.id);choice.preferredAnimations=options.options.find(o=>o.id===stance.stance.id)?.animations??[];}
+        if(stance){choice.stanceId=stance.stance.selection??stance.stance.id;const options=await heroStances(builder,choice.hero.id);choice.preferredAnimations=options.options.find(o=>o.id===(stance.stance.selection?.priorities?.ACT_DOTA_LOADOUT??stance.stance.selection?.ids?.find(id=>options.options.find(o=>o.id===id)?.rules?.some(r=>['ALL','ACT_DOTA_LOADOUT'].includes(r.asset??r.Asset)))??stance.stance.id))?.animations??[];}
         else if((setRows??[choice]).some(c=>itemActivityRules(c.item).length)){
           try{const options=await heroStances(builder,choice.hero.id,{audit:true});choice.preferredAnimations=options.options.find(o=>(setRows??[choice]).some(c=>c.item.id===o.id))?.animations??[];}catch{/* An unavailable animation table must not break an otherwise valid geometry preview. */}
         }

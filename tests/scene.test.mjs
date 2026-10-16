@@ -37,3 +37,14 @@ test('Earthshaker equipment follows hero bone poses instead of floating at its e
   const links=asset.json.extras.effectStudioRetarget;assert.equal(links.length,2);assert.ok(links.every(p=>p.mode==='rigid'));const worlds=worldMatrices(asset,0,.5);for(const link of links)assert.deepEqual([...worlds[link.target]],[...worlds[link.source]]);
  }
 });
+
+test('geometryless slot models accept JSON-only GLB, but missing binary geometry is rejected',()=>{
+ const empty=json=>{let body=Buffer.from(JSON.stringify(json));body=Buffer.concat([body,Buffer.alloc((4-body.length%4)%4,32)]);const bytes=Buffer.alloc(20+body.length);bytes.writeUInt32LE(0x46546c67);bytes.writeUInt32LE(2,4);bytes.writeUInt32LE(bytes.length,8);bytes.writeUInt32LE(body.length,12);bytes.writeUInt32LE(0x4e4f534a,16);body.copy(bytes,20);return bytes;};
+ const placeholder=empty({asset:{version:'2.0'},scenes:[{nodes:[]}],scene:0,nodes:[]});
+ assert.equal(parseGlb(placeholder.buffer).json.nodes.length,0);
+ const hero=fs.readFileSync(path.join(root,'public/models/renderer-demo.glb'));
+ assert.ok(composeHero(hero,placeholder).bytes.length>0);
+ const broken=empty({asset:{version:'2.0'},buffers:[{byteLength:64}],scenes:[{nodes:[]}],nodes:[]});
+ assert.throws(()=>parseGlb(broken.buffer),/BIN/);
+ assert.throws(()=>composeHero(hero,broken),/Embedded GLB/);
+});
