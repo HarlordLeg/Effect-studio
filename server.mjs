@@ -71,7 +71,7 @@ export function startServer({port:overridePort}={}) {
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
         try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}
       }
-      if(url.pathname==='/api/stances'&&req.method==='GET')return json(res,200,await heroStances(builder,url.searchParams.get('heroId')));
+      if(url.pathname==='/api/stances'&&req.method==='GET'){const result=await heroStances(builder,url.searchParams.get('heroId'));return json(res,200,{options:result.options});}
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),terrorbladeArcana:hasTerrorbladeArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});

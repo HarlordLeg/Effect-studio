@@ -68,7 +68,7 @@ internal static class HeroActivityRules
                 var eligible=rows.Where(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Where(n=>n.StartsWith("ACT_",StringComparison.Ordinal)).Any(a=>rules.Any(r=>Matches(r,a)&&labels.Contains(r.Modifier)))&&!labels.Where(known.Contains).Any(t=>!selected.Contains(t));}).ToArray();
                 if(eligible.Length>0)options.Add(new{id=option.Id,name=option.Name,rules,animations=eligible.OrderBy(r=>r["m_activityArray"].Values.Count(a=>!Text(a,"m_name").StartsWith("ACT_",StringComparison.Ordinal))).ThenBy(r=>r["m_activityArray"].Values.Any(a=>Text(a,"m_name")=="ACT_DOTA_IDLE")?0:1).Select(r=>Text(r,"m_sName")).ToArray()});
             }
-            File.WriteAllText(request.Output,JsonSerializer.Serialize(new{options,audit}));return;
+            File.WriteAllText(request.Output,JsonSerializer.Serialize(new{options,audit,sequenceLabels=rows.Select(row=>new{name=Text(row,"m_sName"),activities=row["m_activityArray"].Values.Select(label=>Text(label,"m_name")).ToArray()}).ToArray(),externalAnimations=resource.ExternalReferences?.ResourceRefInfoList.Where(r=>r.Name.EndsWith(".vanim",StringComparison.Ordinal)||r.Name.EndsWith(".vagrp",StringComparison.Ordinal)||r.Name.EndsWith(".vseq",StringComparison.Ordinal)).Select(r=>r.Name).ToArray()}));return;
         }
         var changed=new HashSet<object>();var snapshots=new Dictionary<string,string>();var expected=new Dictionary<string,string>();var reports=new List<object>();
         foreach(var (type,key) in new[]{("ASEQ","m_localS1SeqDescArray"),("ANIM","m_animArray")}){

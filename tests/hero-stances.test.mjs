@@ -52,3 +52,8 @@ test('standalone stance VPK patches only the hero and never packs the source cos
  const config={archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false};const builder=new Builder(root,config,run),choices=normalizeSelections(builder,{mode:'set',selections:[{heroId:hero.id,stanceId:item.id}]}),job={id:'stance'};await builder.build(choices,job);assert.equal(calls,1);assert.equal(job.status,'ready');const packed=new Vpk(job.file);assert.deepEqual([...packed.entries.keys()],[hero.model]);assert.deepEqual(packed.read(hero.model),changed);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+test('an entity cosmetic can also enable hero activities without changing its entity model mapping',()=>{
+ const {hero,item}=fixture();item.setEntity=true;item.entityReplacements=[{target:'models/units/cog.vmdl_c',source:item.model}];item.nativeOverrides=nativeOverrides({a:activity('ALL','telebolt')});
+ const original=structuredClone(item.entityReplacements);const [plan]=heroActivityPlans([{hero,item,effects:[]}]);assert.equal(plan.model,hero.model);assert.deepEqual(plan.rules,[{asset:'ALL',modifier:'telebolt'}]);assert.deepEqual(item.entityReplacements,original);
+ assert.deepEqual(stanceCandidates(hero),[]);
+});
