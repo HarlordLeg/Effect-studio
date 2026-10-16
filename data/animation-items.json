@@ -1,0 +1,657 @@
+[
+  {
+    "id": "5168",
+    "name": "Mace of the Chosen",
+    "wiki": "https://dota2.fandom.com/wiki/Mace_of_the_Chosen"
+  },
+  {
+    "id": "18510",
+    "name": "Shatterblast Rule",
+    "wiki": "https://dota2.fandom.com/wiki/Shatterblast_Rule"
+  },
+  {
+    "id": "8271",
+    "name": "Basher of Mage Skulls",
+    "wiki": "https://dota2.fandom.com/wiki/Basher_of_Mage_Skulls"
+  },
+  {
+    "id": "4654",
+    "name": "Glaive of the Mage Slayer",
+    "wiki": "https://dota2.fandom.com/wiki/Glaive_of_the_Mage_Slayer"
+  },
+  {
+    "id": "4322",
+    "name": "Glaive of the Mage Slayer - Off-Hand",
+    "wiki": "https://dota2.fandom.com/wiki/Glaive_of_the_Mage_Slayer_-_Off-Hand"
+  },
+  {
+    "id": "7276",
+    "name": "Golden Offhand Basher of Mage Skulls",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Offhand_Basher_of_Mage_Skulls"
+  },
+  {
+    "id": "8324",
+    "name": "Offhand Basher of Mage Skulls",
+    "wiki": "https://dota2.fandom.com/wiki/Offhand_Basher_of_Mage_Skulls"
+  },
+  {
+    "id": "7277",
+    "name": "Golden Basher of Mage Skulls",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Basher_of_Mage_Skulls"
+  },
+  {
+    "id": "4004",
+    "name": "Blood Chaser",
+    "wiki": "https://dota2.fandom.com/wiki/Blood_Chaser"
+  },
+  {
+    "id": "12964",
+    "name": "Fists of Axe Unleashed",
+    "wiki": "https://dota2.fandom.com/wiki/Fists_of_Axe_Unleashed"
+  },
+  {
+    "id": "12290",
+    "name": "Ghastly Nocturne",
+    "wiki": "https://dota2.fandom.com/wiki/Ghastly_Nocturne"
+  },
+  {
+    "id": "6529",
+    "name": "Boomerang of the Twin Blades",
+    "wiki": "https://dota2.fandom.com/wiki/Boomerang_of_the_Twin_Blades"
+  },
+  {
+    "id": "6543",
+    "name": "Greater Twin Blade",
+    "wiki": "https://dota2.fandom.com/wiki/Greater_Twin_Blade"
+  },
+  {
+    "id": "13081",
+    "name": "Tines of Tybara",
+    "wiki": "https://dota2.fandom.com/wiki/Tines_of_Tybara"
+  },
+  {
+    "id": "9090",
+    "name": "Lycosidae's Brood",
+    "wiki": "https://dota2.fandom.com/wiki/Lycosidae%27s_Brood"
+  },
+  {
+    "id": "23344",
+    "name": "Limbs of Lycosidae",
+    "wiki": "https://dota2.fandom.com/wiki/Limbs_of_Lucosidae"
+  },
+  {
+    "id": "14992",
+    "name": "Rabid Watchcog",
+    "wiki": "https://dota2.fandom.com/wiki/Rabid_Watchcog"
+  },
+  {
+    "id": "6239",
+    "name": "Telebolt Projektor",
+    "wiki": "https://dota2.fandom.com/wiki/Telebolt_Projektor"
+  },
+  {
+    "id": "6686",
+    "name": "Yulsaria's Glacier",
+    "wiki": "https://dota2.fandom.com/wiki/Yulsaria%27s_Glacier"
+  },
+  {
+    "id": "6784",
+    "name": "White Sentry",
+    "wiki": "https://dota2.fandom.com/wiki/White_Sentry"
+  },
+  {
+    "id": "7385",
+    "name": "Frost Avalanche",
+    "wiki": "https://dota2.fandom.com/wiki/Frost_Avalanche"
+  },
+  {
+    "id": "9209",
+    "name": "The Sunbreeze Birthright",
+    "wiki": "https://dota2.fandom.com/wiki/The_Sunbreeze_Birthright"
+  },
+  {
+    "id": "7361",
+    "name": "Darkclaw Emissary Staff",
+    "wiki": "https://dota2.fandom.com/wiki/Darkclaw_Emissary_Staff"
+  },
+  {
+    "id": "6694",
+    "name": "Fluttering Mortis",
+    "wiki": "https://dota2.fandom.com/wiki/Fluttering_Mortis"
+  },
+  {
+    "id": "4049",
+    "name": "Dress of the Corpse Maiden",
+    "wiki": "https://dota2.fandom.com/wiki/Dress_of_the_Corpse_Maiden"
+  },
+  {
+    "id": "4191",
+    "name": "Ghastly Scarf of the Corpse Maiden",
+    "wiki": "https://dota2.fandom.com/wiki/Ghastly_Scarf_of_the_Corpse_Maiden"
+  },
+  {
+    "id": "4190",
+    "name": "Wicked Collar of the Corpse Maiden",
+    "wiki": "https://dota2.fandom.com/wiki/Wicked_Collar_of_the_Corpse_Maiden"
+  },
+  {
+    "id": "8131",
+    "name": "Resistive Pinfold",
+    "wiki": "https://dota2.fandom.com/wiki/Resistive_Pinfold"
+  },
+  {
+    "id": "23655",
+    "name": "Tremors of the Tandem Storm",
+    "wiki": "https://dota2.fandom.com/wiki/Tremors_of_the_Tandem_Storm"
+  },
+  {
+    "id": "6873",
+    "name": "Burning Fiend",
+    "wiki": "https://dota2.fandom.com/wiki/Burning_Fiend"
+  },
+  {
+    "id": "23628",
+    "name": "Draconic Divide",
+    "wiki": "https://dota2.fandom.com/wiki/Draconic_Divide"
+  },
+  {
+    "id": "6785",
+    "name": "Mania's Mask",
+    "wiki": "https://dota2.fandom.com/wiki/Mania%27s_Mask"
+  },
+  {
+    "id": "8006",
+    "name": "Silent Wake",
+    "wiki": "https://dota2.fandom.com/wiki/Silent_Wake"
+  },
+  {
+    "id": "8037",
+    "name": "Golden Silent Wake",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Silent_Wake"
+  },
+  {
+    "id": "8035",
+    "name": "Silent Wake of the Crimson Witness",
+    "wiki": "https://dota2.fandom.com/wiki/Silent_Wake_of_the_Crimson_Witness"
+  },
+  {
+    "id": "12969",
+    "name": "Judgement of the Fallen",
+    "wiki": "https://dota2.fandom.com/wiki/Judgement_of_the_Fallen"
+  },
+  {
+    "id": "14242",
+    "name": "Vise of Creation",
+    "wiki": "https://dota2.fandom.com/wiki/Vise_of_Creation"
+  },
+  {
+    "id": "6857",
+    "name": "Flourishing Lodestar",
+    "wiki": "https://dota2.fandom.com/wiki/Flourishing_Lodestar"
+  },
+  {
+    "id": "23682",
+    "name": "Flutterstep",
+    "wiki": "https://dota2.fandom.com/wiki/Flutterstep"
+  },
+  {
+    "id": "6480",
+    "name": "Geodesic Eidolon",
+    "wiki": "https://dota2.fandom.com/wiki/Geodesic_Eidolon"
+  },
+  {
+    "id": "7816",
+    "name": "Bracers of Aeons",
+    "wiki": "https://dota2.fandom.com/wiki/Bracers_of_Aeons"
+  },
+  {
+    "id": "7996",
+    "name": "Bracers of Aeons of the Crimson Witness",
+    "wiki": "https://dota2.fandom.com/wiki/Bracers_of_Aeons_of_the_Crimson_Witness"
+  },
+  {
+    "id": "8268",
+    "name": "Jewel of Aeons",
+    "wiki": "https://dota2.fandom.com/wiki/Jewel_of_Aeons"
+  },
+  {
+    "id": "5382",
+    "name": "Viridus Claw",
+    "wiki": "https://dota2.fandom.com/wiki/Viridus_Claw"
+  },
+  {
+    "id": "7571",
+    "name": "Mace of Aeons",
+    "wiki": "https://dota2.fandom.com/wiki/Mace_of_Aeons"
+  },
+  {
+    "id": "14967",
+    "name": "B.U.S.T.E.R",
+    "wiki": "https://dota2.fandom.com/wiki/B.U.S.T.E.R"
+  },
+  {
+    "id": "24670",
+    "name": "B.U.S.T.E.R of the Crimson Witness",
+    "wiki": "https://dota2.fandom.com/wiki/B.U.S.T.E.R_of_the_Crimson_Witness"
+  },
+  {
+    "id": "4300",
+    "name": "Obsidian Blade Warhelm",
+    "wiki": "https://dota2.fandom.com/wiki/Obsidian_Blade_Warhelm"
+  },
+  {
+    "id": "22716",
+    "name": "Draca Mane",
+    "wiki": "https://dota2.fandom.com/wiki/Draca_Mane"
+  },
+  {
+    "id": "24877",
+    "name": "Golden Draca Mane",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Draca_Mane"
+  },
+  {
+    "id": "18616",
+    "name": "Draca Maw",
+    "wiki": "https://dota2.fandom.com/wiki/Draca_Maw"
+  },
+  {
+    "id": "18564",
+    "name": "Golden Draca Maw",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Draca_Maw"
+  },
+  {
+    "id": "8188",
+    "name": "Searing Dominator",
+    "wiki": "https://dota2.fandom.com/wiki/Searing_Dominator"
+  },
+  {
+    "id": "7979",
+    "name": "Dark Artistry Cape",
+    "wiki": "https://dota2.fandom.com/wiki/Dark_Artistry_Cape"
+  },
+  {
+    "id": "7849",
+    "name": "Mask of the Divine Sorrow",
+    "wiki": "https://dota2.fandom.com/wiki/Mask_of_the_Divine_Sorrow"
+  },
+  {
+    "id": "23768",
+    "name": "Altar Ball",
+    "wiki": "https://dota2.fandom.com/wiki/Altar_Ball"
+  },
+  {
+    "id": "12417",
+    "name": "Crimson Edge of the Lost Order",
+    "wiki": "https://dota2.fandom.com/wiki/Crimson_Edge_of_the_Lost_Order"
+  },
+  {
+    "id": "12296",
+    "name": "Golden Edge of the Lost Order",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Edge_of_the_Lost_Order"
+  },
+  {
+    "id": "9984",
+    "name": "Edge of the Lost Order",
+    "wiki": "https://dota2.fandom.com/wiki/Edge_of_the_Lost_Order"
+  },
+  {
+    "id": "4076",
+    "name": "Fireborn Odachi",
+    "wiki": "https://dota2.fandom.com/wiki/Fireborn_Odachi"
+  },
+  {
+    "id": "4904",
+    "name": "Akakiryu of a Thousand Faces",
+    "wiki": "https://dota2.fandom.com/wiki/Akakiryu_of_a_Thousand_Faces"
+  },
+  {
+    "id": "9198",
+    "name": "Wings of Daybreak",
+    "wiki": "https://dota2.fandom.com/wiki/Wings_of_Daybreak"
+  },
+  {
+    "id": "6487",
+    "name": "Aged Spirit of Tide",
+    "wiki": "https://dota2.fandom.com/wiki/Aged_Spirit_of_Tide"
+  },
+  {
+    "id": "6757",
+    "name": "Inverse Bayonet",
+    "wiki": "https://dota2.fandom.com/wiki/Inverse_Bayonet"
+  },
+  {
+    "id": "5335",
+    "name": "BladeBiter",
+    "wiki": "https://dota2.fandom.com/wiki/BladeBiter"
+  },
+  {
+    "id": "5466",
+    "name": "Claddish Guard",
+    "wiki": "https://dota2.fandom.com/wiki/Claddish_Guard"
+  },
+  {
+    "id": "12291",
+    "name": "Leviathan Whale Blade of Eminent Revival",
+    "wiki": "https://dota2.fandom.com/wiki/Leviathan_Whale_Blade_of_Eminent_Revival"
+  },
+  {
+    "id": "4011",
+    "name": "Pegleg of the Cursed Pirate",
+    "wiki": "https://dota2.fandom.com/wiki/Pegleg_of_the_Cursed_Pirate"
+  },
+  {
+    "id": "9115",
+    "name": "Prize of the Saltworn Mariner",
+    "wiki": "https://dota2.fandom.com/wiki/Prize_of_the_Saltworn_Mariner"
+  },
+  {
+    "id": "7930",
+    "name": "Legacy of the Fallen Legion",
+    "wiki": "https://dota2.fandom.com/wiki/Legacy_of_the_Fallen_Legion"
+  },
+  {
+    "id": "7734",
+    "name": "Spirethorn",
+    "wiki": "https://dota2.fandom.com/wiki/Spirethorn"
+  },
+  {
+    "id": "12308",
+    "name": "Tormented Staff of Eminent Revival",
+    "wiki": "https://dota2.fandom.com/wiki/Tormented_Staff_of_Eminent_Revival"
+  },
+  {
+    "id": "8612",
+    "name": "Tormented Staff",
+    "wiki": "https://dota2.fandom.com/wiki/Tormented_Staff"
+  },
+  {
+    "id": "4852",
+    "name": "Dead Winter Soul",
+    "wiki": "https://dota2.fandom.com/wiki/Dead_Winter_Soul"
+  },
+  {
+    "id": "9215",
+    "name": "Golden Profane Union",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Profane_Union"
+  },
+  {
+    "id": "9199",
+    "name": "Profane Union",
+    "wiki": "https://dota2.fandom.com/wiki/Profane_Union"
+  },
+  {
+    "id": "8003",
+    "name": "Disciple of the Wyrmwrought Flame",
+    "wiki": "https://dota2.fandom.com/wiki/Disciple_of_the_Wyrmwrought_Flame"
+  },
+  {
+    "id": "12309",
+    "name": "Cauldron of Xahryx of Eminent Revival",
+    "wiki": "https://dota2.fandom.com/wiki/Cauldron_of_Xahryx_of_Eminent_Revival"
+  },
+  {
+    "id": "5105",
+    "name": "Cauldron of Xahryx",
+    "wiki": "https://dota2.fandom.com/wiki/Cauldron_of_Xahryx"
+  },
+  {
+    "id": "5947",
+    "name": "Lucentyr",
+    "wiki": "https://dota2.fandom.com/wiki/Lucentyr"
+  },
+  {
+    "id": "7398",
+    "name": "Moon Griffon",
+    "wiki": "https://dota2.fandom.com/wiki/Moon_Griffon"
+  },
+  {
+    "id": "5445",
+    "name": "Ancient Armor Helmet",
+    "wiki": "https://dota2.fandom.com/wiki/Ancient_Armor_Helmet"
+  },
+  {
+    "id": "4686",
+    "name": "Scythe of Twin Deaths",
+    "wiki": "https://dota2.fandom.com/wiki/Scythe_of_Twin_Deaths"
+  },
+  {
+    "id": "5241",
+    "name": "Flaming Scepter of Ancestral Luck",
+    "wiki": "https://dota2.fandom.com/wiki/Flaming_Scepter_of_Ancestral_Luck"
+  },
+  {
+    "id": "5658",
+    "name": "Gleaming Seal",
+    "wiki": "https://dota2.fandom.com/wiki/Gleaming_Seal"
+  },
+  {
+    "id": "23785",
+    "name": "Age of Attrition - Head",
+    "wiki": "https://dota2.fandom.com/wiki/Age_of_Attrition_-_Head"
+  },
+  {
+    "id": "23766",
+    "name": "Age of Attrition - Arms",
+    "wiki": "https://dota2.fandom.com/wiki/Age_of_Attrition_-_Arms"
+  },
+  {
+    "id": "7838",
+    "name": "Compendium Bone Crusher of the Trapper",
+    "wiki": "https://dota2.fandom.com/wiki/Compendium_Bone_Crusher_of_the_Trapper"
+  },
+  {
+    "id": "6115",
+    "name": "Pauldron Perch",
+    "wiki": "https://dota2.fandom.com/wiki/Pauldron_Perch"
+  },
+  {
+    "id": "5347",
+    "name": "Whalehook",
+    "wiki": "https://dota2.fandom.com/wiki/Whalehook"
+  },
+  {
+    "id": "12337",
+    "name": "Golden Bloodfeather Feast",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Bloodfeather_Feast"
+  },
+  {
+    "id": "12322",
+    "name": "Bloodfeather Feast",
+    "wiki": "https://dota2.fandom.com/wiki/Bloodfeather_Feast"
+  },
+  {
+    "id": "8000",
+    "name": "Severing Lash",
+    "wiki": "https://dota2.fandom.com/wiki/Severing_Lash"
+  },
+  {
+    "id": "4702",
+    "name": "Slim Blade of the Tahlin Watch",
+    "wiki": "https://dota2.fandom.com/wiki/Slim_Blade_of_the_Tahlin_Watch"
+  },
+  {
+    "id": "7029",
+    "name": "Conceit of the Wandering Harlequin",
+    "wiki": "https://dota2.fandom.com/wiki/Conceit_of_the_Wandering_Harlequin"
+  },
+  {
+    "id": "8259",
+    "name": "Arms of Desolation",
+    "wiki": "https://dota2.fandom.com/wiki/Arms_of_Desolation"
+  },
+  {
+    "id": "6892",
+    "name": "Empyrean",
+    "wiki": "https://dota2.fandom.com/wiki/Empyrean"
+  },
+  {
+    "id": "6919",
+    "name": "Golden Empyrean",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Empyrean"
+  },
+  {
+    "id": "12926",
+    "name": "Flight of Epiphany",
+    "wiki": "https://dota2.fandom.com/wiki/Flight_of_Epiphany"
+  },
+  {
+    "id": "12993",
+    "name": "Golden Flight of Epiphany",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Flight_of_Epiphany"
+  },
+  {
+    "id": "13568",
+    "name": "Crimson Flight of Epiphany",
+    "wiki": "https://dota2.fandom.com/wiki/Crimson_Flight_of_Epiphany"
+  },
+  {
+    "id": "7974",
+    "name": "Hydrakan Latch",
+    "wiki": "https://dota2.fandom.com/wiki/Hydrakan_Latch"
+  },
+  {
+    "id": "8002",
+    "name": "Golden Hydrakan Latch",
+    "wiki": "https://dota2.fandom.com/wiki/Golden_Hydrakan_Latch"
+  },
+  {
+    "id": "4804",
+    "name": "Silent Ripper",
+    "wiki": "https://dota2.fandom.com/wiki/Silent_Ripper"
+  },
+  {
+    "id": "4594",
+    "name": "Instagib OSP",
+    "wiki": "https://dota2.fandom.com/wiki/Instagib_OSP"
+  },
+  {
+    "id": "6453",
+    "name": "Muh Keen Gun",
+    "wiki": "https://dota2.fandom.com/wiki/Muh_Keen_Gun"
+  },
+  {
+    "id": "5240",
+    "name": "Wolfhound Rifle",
+    "wiki": "https://dota2.fandom.com/wiki/Wolfhound_Rifle"
+  },
+  {
+    "id": "5956",
+    "name": "The Fearmaker",
+    "wiki": "https://dota2.fandom.com/wiki/The_Fearmaker"
+  },
+  {
+    "id": "6019",
+    "name": "Festive Robes of Good Fortune",
+    "wiki": "https://dota2.fandom.com/wiki/Festive_Robes_of_Good_Fortune"
+  },
+  {
+    "id": "8189",
+    "name": "Vigil Signet",
+    "wiki": "https://dota2.fandom.com/wiki/Vigil_Signet"
+  },
+  {
+    "id": "13527",
+    "name": "Pachyderm Powderwagon Elephant",
+    "wiki": "https://dota2.fandom.com/wiki/Pachyderm_Powderwagon_Elephant"
+  },
+  {
+    "id": "7469",
+    "name": "Claddish Cudgel",
+    "wiki": "https://dota2.fandom.com/wiki/Claddish_Cudgel"
+  },
+  {
+    "id": "6224",
+    "name": "Mecha Boots of Travel Mk III",
+    "wiki": "https://dota2.fandom.com/wiki/Mecha_Boots_of_Travel_Mk_III"
+  },
+  {
+    "id": "9196",
+    "name": "Stuntwood Sanctuary",
+    "wiki": "https://dota2.fandom.com/wiki/Stuntwood_Sanctuary"
+  },
+  {
+    "id": "9452",
+    "name": "Stuntwood Sanctuary of the Crimson Witness",
+    "wiki": "https://dota2.fandom.com/wiki/Stuntwood_Sanctuary_of_the_Crimson_Witness"
+  },
+  {
+    "id": "5344",
+    "name": "Scree'auk's Talon",
+    "wiki": "https://dota2.fandom.com/wiki/Scree%27auk%27s_Talon"
+  },
+  {
+    "id": "6474",
+    "name": "Splattering Forcipule",
+    "wiki": "https://dota2.fandom.com/wiki/Splattering_Forcipule"
+  },
+  {
+    "id": "6473",
+    "name": "Hellborn Grasp",
+    "wiki": "https://dota2.fandom.com/wiki/Hellborn_Grasp"
+  },
+  {
+    "id": "4636",
+    "name": "Armored Exoskeleton Wings",
+    "wiki": "https://dota2.fandom.com/wiki/Armored_Exoskeleton_Wings"
+  },
+  {
+    "id": "4454",
+    "name": "Lyralei's Breeze",
+    "wiki": "https://dota2.fandom.com/wiki/Lyralei%27s_Breeze"
+  },
+  {
+    "id": "4598",
+    "name": "Sparrowhawk Bow",
+    "wiki": "https://dota2.fandom.com/wiki/Sparrowhawk_Bow"
+  },
+  {
+    "id": "4601",
+    "name": "Sparrowhawk Cape",
+    "wiki": "https://dota2.fandom.com/wiki/Sparrowhawk_Cape"
+  },
+  {
+    "id": "4603",
+    "name": "Sparrowhawk Hood",
+    "wiki": "https://dota2.fandom.com/wiki/Sparrowhawk_Hood"
+  },
+  {
+    "id": "4619",
+    "name": "Sparrowhawk Quiver",
+    "wiki": "https://dota2.fandom.com/wiki/Sparrowhawk_Quiver"
+  },
+  {
+    "id": "4607",
+    "name": "Sparrowhawk Wings",
+    "wiki": "https://dota2.fandom.com/wiki/Sparrowhawk_Wings"
+  },
+  {
+    "id": "6687",
+    "name": "Sylvan Cascade",
+    "wiki": "https://dota2.fandom.com/wiki/Sylvan_Cascade"
+  },
+  {
+    "id": "4483",
+    "name": "Stinger",
+    "wiki": "https://dota2.fandom.com/wiki/Stinger"
+  },
+  {
+    "id": "8267",
+    "name": "Bonkers the Mad",
+    "wiki": "https://dota2.fandom.com/wiki/Bonkers_the_Mad"
+  },
+  {
+    "id": "9679",
+    "name": "Bonkers of Awaleb",
+    "wiki": "https://dota2.fandom.com/wiki/Bonkers_of_Awaleb"
+  },
+  {
+    "id": "9934",
+    "name": "Head of Morbific Provision",
+    "wiki": "https://dota2.fandom.com/wiki/Head_of_Morbific_Provision"
+  },
+  {
+    "id": "5412",
+    "name": "Righteous Thunderbolt",
+    "wiki": "https://dota2.fandom.com/wiki/Righteous_Thunderbolt"
+  }
+]

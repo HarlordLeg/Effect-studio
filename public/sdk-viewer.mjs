@@ -2,7 +2,7 @@ import {ModelPreview} from './preview.mjs';
 import {previewColor} from './particles/style.mjs';
 const token=new URLSearchParams(location.search).get('token');
 const payload=JSON.parse(atob(token.split('.')[0].replaceAll('-','+').replaceAll('_','/'))),origin=payload.origin;
-let preview,busy=false;
+let preview,busy=false,lastStance=null;
 const send=data=>parent.postMessage({channel:'des-viewer',...data},origin);
 const canvas=document.getElementById('canvas');canvas.addEventListener('pointerdown',()=>canvas.focus());canvas.addEventListener('preview-error',e=>send({type:'error',error:e.detail}));
 window.addEventListener('message',async event=>{
@@ -17,7 +17,9 @@ window.addEventListener('message',async event=>{
     preview??=new ModelPreview(canvas,document.getElementById('stage'));
     const query='?token='+encodeURIComponent(d.token),base='/api/previews/'+d.previewId;
     const metadata=await fetch(base+query);const manifest=await metadata.json();if(!metadata.ok)throw new Error(manifest.error??'Preview unavailable');const animations=manifest.parts?await preview.loadScene(manifest,base,query):await preview.load(base+'/model'+query);
-    let idle=animations.findIndex(a=>d.selection.heroId==='hoodwink'?(a.name??'').toLowerCase()==='mouse_idle':/(^|[\/_])idle($|[_\/])/i.test(a.name??''));if(preview.preservedScene)idle=preview.animation;else if(idle>=0)preview.setAnimation(idle);
+    const stanceStamp=JSON.stringify([d.selection.selections?.filter(r=>r.stanceId).map(r=>[r.heroId,r.stanceId])??[],manifest.preferredAnimations??[]]);
+    let idle=(manifest.preferredAnimations??[]).map(name=>animations.findIndex(a=>a.name===name)).find(i=>i>=0)??animations.findIndex(a=>d.selection.heroId==='hoodwink'?(a.name??'').toLowerCase()==='mouse_idle':/(^|[\/_])idle($|[_\/])/i.test(a.name??''));
+    if(preview.preservedScene&&lastStance===stanceStamp)idle=preview.animation;else if(idle>=0)preview.setAnimation(idle);lastStance=stanceStamp;
     preview.setGhostStyle(d.batch?false:!!d.effect?.ghost);
     const response=await fetch(base+'/effect'+query);const packet=await response.json();if(!response.ok)throw new Error(packet.error??'Effect failed');
     const info=packet.effects?await preview.setEffects(packet.effects):await preview.setEffect(packet,{scope:d.effect?.scope,color:previewColor(d.effect,d.selection.courierColor),defaultColor:previewColor(d.effect)});

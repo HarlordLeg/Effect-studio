@@ -1,3 +1,5 @@
+import {itemActivityRules} from './lib/hero-activities.mjs';
+import {heroStances} from './lib/hero-stances.mjs';
 import {hasTerrorbladeArcana} from './lib/terrorblade-arcana.mjs';
 import {ItemIcons} from './lib/item-icons.mjs';
 import {previewDiagnostics} from './lib/diagnostics.mjs';
@@ -69,16 +71,25 @@ export function startServer({port:overridePort}={}) {
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
         try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}
       }
+      if(url.pathname==='/api/stances'&&req.method==='GET')return json(res,200,await heroStances(builder,url.searchParams.get('heroId')));
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),terrorbladeArcana:hasTerrorbladeArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
+        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
-        const data=await body(req),setRows=data.mode==='set'?normalizeSelections(builder,data):null,choice=setRows?{...setRows[0]}:builder.choice(data.heroId,data.itemId,data.effectId,{preview:true,styleId:data.styleId});choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='demon'||(typeof data.previewForm==='string'&&data.previewForm.startsWith('entity:')&&choice.hero.entitySlots?.[data.previewForm.slice(7)])?data.previewForm:'normal';if(setRows){if(new Set(setRows.map(c=>c.hero.id)).size!==1)throw new Error('Preview supports one hero at a time');choice.selections=setRows;}else if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
+        const data=await body(req);let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
+        const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
+        const choice=setRows?{...setRows[0]}:builder.choice(data.heroId,data.itemId,data.effectId,{preview:true,styleId:data.styleId});
+        if(stance&&stance.hero.id!==choice.hero.id)throw new Error('Preview supports one hero at a time');
+        if(stance){choice.stanceId=stance.stance.id;const options=await heroStances(builder,choice.hero.id);choice.preferredAnimations=options.options.find(o=>o.id===stance.stance.id)?.animations??[];}
+        else if((setRows??[choice]).some(c=>itemActivityRules(c.item).length)){
+          try{const options=await heroStances(builder,choice.hero.id,{audit:true});choice.preferredAnimations=options.options.find(o=>(setRows??[choice]).some(c=>c.item.id===o.id))?.animations??[];}catch{/* An unavailable animation table must not break an otherwise valid geometry preview. */}
+        }
+choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='demon'||(typeof data.previewForm==='string'&&data.previewForm.startsWith('entity:')&&choice.hero.entitySlots?.[data.previewForm.slice(7)])?data.previewForm:'normal';if(setRows){if(new Set(setRows.map(c=>c.hero.id)).size!==1)throw new Error('Preview supports one hero at a time');choice.selections=setRows;}else if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
         if(choice.item.previewUnsupported)return json(res,400,{error:choice.item.previewUnsupported});
         let buildJob=null;
         if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}

@@ -1,4 +1,8 @@
 export const translations = {
+  "Своя стойка": "Custom stance",
+  "Стойка героя": "Hero stance",
+  "Базовая стойка": "Default stance",
+  "Стойка": "Stance",
   "Исчерпан часовой лимит сборок": "The site has reached its hourly VPK build limit",
   "Исчерпан часовой лимит 3D-предпросмотров": "The site has reached its hourly 3D preview limit",
   "Иконки способностей и предметов": "Ability and item icons",
