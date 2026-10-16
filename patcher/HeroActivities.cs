@@ -59,10 +59,43 @@ internal static class HeroActivities
         }
     }
     private static IEnumerable<double> Numbers(KVObject value){if(value.IsArray){foreach(var child in value.Values)foreach(var number in Numbers(child))yield return number;}else yield return value.ToDouble(CultureInfo.InvariantCulture);}
+    private static KVObject ActivityData(Block block) => block is KeyValuesOrNTRO kv ? kv.Data : block is BinaryKV3 binary ? binary.Data.Root : throw new InvalidDataException("Unsupported activity block: "+block.Type);
+    // Snapshot everything except the activity labels that this operation edits.
+    private static string Payload(Block block,string arrayKey)
+    {
+        var rows=ActivityData(block)[arrayKey].Values.ToArray();
+        var labels=rows.Select(r=>r["m_activityArray"]).ToArray();
+        try{foreach(var row in rows)row["m_activityArray"]=KVObject.Array();return block.ToString()!;}
+        finally{for(var i=0;i<rows.Length;i++)rows[i]["m_activityArray"]=labels[i];}
+    }
+    private static void RunDarkclaw(Request request)
+    {
+        var bytes=File.ReadAllBytes(request.Input);
+        using var resource=new Resource{FileName=request.Input};resource.Read(request.Input);
+        if(resource.DataBlock is not Model model||Text(model.Data,"m_name")!="models/heroes/dazzle/dazzle.vmdl")throw new InvalidDataException("Expected base Dazzle model");
+        var changed=new HashSet<object>();var snapshots=new Dictionary<string,string>();var expected=new Dictionary<string,string>();
+        foreach(var (type,key) in new[]{("ASEQ","m_localS1SeqDescArray"),("ANIM","m_animArray")}){
+            var block=resource.Blocks.Single(b=>b.Type.ToString()==type);var data=ActivityData(block);
+            snapshots[type]=Payload(block,key);Bake(data,new HashSet<string>{"darkclaw"},key);changed.Add(block);expected[type]=block.ToString()!;
+        }
+        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,changed,preserveMetadata:true);
+        using var check=new Resource{FileName=request.Output};check.Read(request.Output);var written=File.ReadAllBytes(request.Output);
+        for(var i=0;i<resource.Blocks.Count;i++){
+            var before=resource.Blocks[i];var after=check.Blocks[i];var type=before.Type.ToString();
+            if(before.Type!=after.Type)throw new InvalidDataException("Dazzle block order changed");
+            if(snapshots.TryGetValue(type,out var snapshot)){
+                var key=type=="ASEQ"?"m_localS1SeqDescArray":"m_animArray";
+                if(expected[type]!=after.ToString())throw new InvalidDataException("Dazzle activity serialization mismatch: "+type);
+                if(snapshot!=Payload(after,key))throw new InvalidDataException("Dazzle animation payload changed: "+type);
+            }else if(before.Size!=after.Size||!bytes.AsSpan((int)before.Offset,(int)before.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Dazzle payload changed: "+type);
+        }
+        Console.WriteLine("[OK] Darkclaw activities selected; animation tracks, geometry and skeleton preserved");
+    }
     public static void Run(string manifest)
     {
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty hero activity request");
         var modifiers=request.Modifiers.ToHashSet(StringComparer.Ordinal);
+        if(modifiers.SetEquals(new[]{"darkclaw"})){RunDarkclaw(request);return;}
         if(modifiers.Count==0||modifiers.Any(m=>m is not ("basher" or "offhand_basher")))throw new InvalidDataException("Unsupported hero activity modifier");
         var bytes=File.ReadAllBytes(request.Input);
         using var resource=new Resource{FileName=request.Input};resource.Read(request.Input);

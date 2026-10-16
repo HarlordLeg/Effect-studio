@@ -47,3 +47,32 @@ test('a cosmetic-only golden pair exports one patched hero at the original path,
   await assert.rejects(outdated.build(choices,{id:'old'}),/heroActivities/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
+
+test('Darkclaw plans use original Dazzle and reject persona models',()=>{
+ const hero={id:'dazzle',model:'models/heroes/dazzle/dazzle.vmdl_c'};
+ const item={model:'models/items/dazzle/darkclaw_acolyte_weapon/darkclaw_acolyte_weapon.vmdl_c'};
+ assert.deepEqual(heroActivityPlans([{hero,item}]),[{model:hero.model,modifiers:['darkclaw']}]);
+ assert.deepEqual(heroActivityPlans([{hero,item:{...item,isDefault:true}}]),[]);
+ assert.throws(()=>heroActivityPlans([{hero:{...hero,model:'persona.vmdl_c'},item}]),/base Dazzle/);
+});
+test('Darkclaw build needs no animation template and leaves ordinary blade particles alone',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-darkclaw-'));
+ try{
+  const hero={id:'dazzle',model:'models/heroes/dazzle/dazzle.vmdl_c',defaultSlotModels:{weapon:'models/heroes/dazzle/dazzle_staff.vmdl_c'}};
+  const item={id:'game-7361',slot:'weapon',model:'models/items/dazzle/darkclaw_acolyte_weapon/darkclaw_acolyte_weapon.vmdl_c',nativeOverrides:{entries:[],particles:[],unsupported:[],skin:0}};
+  const original=resource(),changed=Buffer.concat([original,Buffer.from('darkclaw')]);
+  fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(new Map([[hero.model,original],[item.model,original]])));
+  fs.writeFileSync(path.join(temp,'patcher'),'stub');fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[{...hero,items:[item]}],effects:[]}));
+  let calls=0;
+  const run=async(_,args)=>{
+   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivitiesV4:true,darkclawActivities:true});
+   if(args[0]==='--relocate'){for(const row of JSON.parse(fs.readFileSync(args[1])).files)fs.copyFileSync(row.input,row.output);return '';}
+   assert.equal(args[0],'--hero-activities');calls++;const request=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(request.modifiers,['darkclaw']);assert.equal(request.animationTemplate,undefined);assert.deepEqual(request.trails,[]);fs.writeFileSync(request.output,changed);return '';
+  };
+  const config={archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false};
+  const choices=[{hero,item,effects:[],cosmeticsOnly:true}],job={id:'darkclaw'};
+  await new Builder(temp,config,run).build(choices,job);assert.equal(calls,1);assert.equal(job.status,'ready');
+  const vpk=new Vpk(job.file);assert.deepEqual(vpk.read(hero.model),changed);assert.deepEqual(vpk.read(hero.defaultSlotModels.weapon),original);
+  await assert.rejects(new Builder(temp,config,async()=>JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivitiesV4:true})).build(choices,{id:'old'}),/darkclawActivities/);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});

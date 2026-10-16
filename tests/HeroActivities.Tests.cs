@@ -27,6 +27,10 @@ internal static class HeroActivitiesTests
   if(args.Length==2)foreach(var modifiers in new[]{new[]{"basher"},new[]{"offhand_basher"},new[]{"basher","offhand_basher"}}){var temp=Path.GetTempFileName();var output=temp+".vmdl_c";try{
    File.WriteAllText(temp,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[0]),output,modifiers,animationTemplate=Path.GetFullPath(args[1])}));HeroActivities.Run(temp);
   }finally{File.Delete(temp);File.Delete(output);}}
+  // Optional original Dazzle fixture; no Valve assets are committed.
+  if(args.Length==1){var manifest=Path.GetTempFileName();var output=manifest+".vmdl_c";try{
+   File.WriteAllText(manifest,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[0]),output,modifiers=new[]{"darkclaw"}}));HeroActivities.Run(manifest);
+  }finally{File.Delete(manifest);File.Delete(output);}}
   Console.WriteLine("[OK] Hero activity selection and compiled payload preservation");return 0;
  }
 }
