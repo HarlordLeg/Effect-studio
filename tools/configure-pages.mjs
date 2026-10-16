@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {createInterface} from 'node:readline/promises';
+import {DEFAULT_BUILDS_PER_HOUR,DEFAULT_PREVIEWS_PER_HOUR} from '../lib/auth.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const input=createInterface({input:process.stdin,output:process.stdout});
 try {
@@ -14,7 +15,8 @@ try {
  const configFile=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configFile)?configFile:path.join(root,'config.example.json'),'utf8'));
  const keysFile=path.join(root,'data/site-keys.json'),sites=fs.existsSync(keysFile)?JSON.parse(fs.readFileSync(keysFile,'utf8')):[];
  let site=sites.find(s=>!s.disabled&&s.origins.includes(siteUrl.origin));
- if(!site){site={id:crypto.randomUUID(),key:'des_pk_'+crypto.randomBytes(24).toString('hex'),origins:[siteUrl.origin],buildsPerHour:300,disabled:false};sites.push(site);}
+ if(!site){site={id:crypto.randomUUID(),key:'des_pk_'+crypto.randomBytes(24).toString('hex'),origins:[siteUrl.origin],role:'primary',buildsPerHour:DEFAULT_BUILDS_PER_HOUR,previewsPerHour:DEFAULT_PREVIEWS_PER_HOUR,disabled:false};sites.push(site);}
+ site.role='primary';if(site.buildsPerHour==null||[30,300,500,3000].includes(site.buildsPerHour))site.buildsPerHour=DEFAULT_BUILDS_PER_HOUR;if(site.previewsPerHour==null||site.previewsPerHour===3000)site.previewsPerHour=DEFAULT_PREVIEWS_PER_HOUR;
  fs.mkdirSync(path.dirname(keysFile),{recursive:true});fs.writeFileSync(keysFile,JSON.stringify(sites,null,2),{mode:0o600});
  fs.copyFileSync(fs.existsSync(configFile)?configFile:path.join(root,'config.example.json'),configFile+'.before-pages.bak');
  config.host='127.0.0.1';config.publicBaseUrl=server.origin;fs.writeFileSync(configFile,JSON.stringify(config,null,2));

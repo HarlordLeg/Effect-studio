@@ -82,7 +82,7 @@ export function startServer({port:overridePort}={}) {
         if(choice.item.previewUnsupported)return json(res,400,{error:choice.item.previewUnsupported});
         let buildJob=null;
         if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}
-        if(session)auth.consume(session);
+        if(session)auth.consume(session,'preview');
         const job=previews.create(choice,owner,buildJob);tracking.set(job,{selections:selectionStatistics(choice.selections??[choice]),source:session?.origin??'local'});return json(res,202,publicPreview(job));
       }
       const previewMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/);
