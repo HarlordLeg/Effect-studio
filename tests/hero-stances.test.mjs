@@ -8,7 +8,7 @@ import {normalizeSelections} from '../lib/namespace.mjs';
 import {setPayload,combinedSetPayload} from '../public/set-studio.mjs';
 import {Builder} from '../lib/build.mjs';import {packVpk,Vpk} from '../lib/vpk.mjs';
 const activity=(asset,modifier)=>({type:'activity',asset,modifier});
-function fixture(){const item={id:'game-1',name:'Custom weapon',slot:'weapon',model:'models/items/test/weapon.vmdl_c',nativeOverrides:nativeOverrides({a:activity('ALL','custom')})};const hero={id:'test',name:'Test',model:'models/heroes/test/test.vmdl_c',defaultSlotModels:{weapon:'models/heroes/test/weapon.vmdl_c'},items:[item]};return {item,hero};}
+function fixture(){const item={id:'game-4004',name:'Custom weapon',slot:'weapon',model:'models/items/test/weapon.vmdl_c',nativeOverrides:nativeOverrides({a:activity('ALL','custom')})};const hero={id:'test',name:'Test',model:'models/heroes/test/test.vmdl_c',defaultSlotModels:{weapon:'models/heroes/test/weapon.vmdl_c'},items:[item]};return {item,hero};}
 test('activity extraction keeps action scope, repeated entries, selected style and original kinetic rules',()=>{
  const native=nativeOverrides({a:activity('ACT_DOTA_IDLE','idle'),b:{...activity('ACT_DOTA_ATTACK','gold'),style:'1'},c:activity('ACT_DOTA_RUN','idle')},{style:'0'});
  assert.deepEqual(native.activities,[{asset:'ACT_DOTA_IDLE',modifier:'idle'},{asset:'ACT_DOTA_RUN',modifier:'idle'}]);

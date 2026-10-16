@@ -1,4 +1,5 @@
 export const translations = {
+  "Превью пока не загружено на сервер": "Preview has not been downloaded to the server yet",
   "Наведи на самоцвет, чтобы посмотреть изменения": "Hover over a gem to see its changes",
   "На вики пока нет превью этой анимации": "The wiki has no preview of this animation yet",
   "Превью недоступно. Открой страницу на вики.": "Preview unavailable. Open the wiki page.",

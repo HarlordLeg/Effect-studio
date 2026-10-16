@@ -6,10 +6,10 @@ for(const relative of ['patcher/publish/Dota2UnusualPatcher.exe','asset-bridge/p
 fs.rmSync(destination,{recursive:true,force:true});fs.mkdirSync(destination,{recursive:true});
 function copy(relative,target=relative){const out=path.join(destination,target);fs.mkdirSync(path.dirname(out),{recursive:true});fs.cpSync(path.join(root,relative),out,{recursive:true});}
 for(const relative of ['public','lib','licenses','samples','server.mjs','desktop.cjs','package.json','config.example.json'])copy(relative);
-for(const file of ['catalog.json','effect-collections.json','frostbloom.json','animation-items.json'])copy('data/'+file);
+for(const file of ['catalog.json','effect-collections.json','frostbloom.json'])copy('data/'+file);
 copy('patcher/publish');copy('asset-bridge/publish');copy('node_modules/electron/dist','runtime/electron');
 fs.mkdirSync(path.join(destination,'runtime'),{recursive:true});const nodeLicense=path.join(path.dirname(process.execPath),'LICENSE');if(fs.existsSync(nodeLicense))fs.copyFileSync(nodeLicense,path.join(destination,'licenses','Node-LICENSE.txt'));else{const response=await fetch('https://raw.githubusercontent.com/nodejs/node/v'+process.versions.node+'/LICENSE');if(!response.ok)throw new Error('Cannot include Node license: '+response.status);fs.writeFileSync(path.join(destination,'licenses','Node-LICENSE.txt'),await response.text());}fs.copyFileSync(process.execPath,path.join(destination,'runtime','node.exe'));
-for(const script of ['configure-dota.mjs','audit-animations.mjs','site-key.mjs','configure-pages.mjs','configure-admin.mjs','preexport-models.mjs','preexport-models.bat'])copy('tools/'+script);
+for(const script of ['cache-kinetic-media.mjs','configure-dota.mjs','audit-animations.mjs','animation-items.json','site-key.mjs','configure-pages.mjs','configure-admin.mjs','preexport-models.mjs','preexport-models.bat'])copy('tools/'+script);
 copy('docs');
 const bat=(name,command)=>fs.writeFileSync(path.join(destination,name),'@echo off\r\ncd /d "%~dp0"\r\n'+command+'\r\npause\r\n');
 bat('preexport-models.bat','runtime\\node.exe tools\\preexport-models.mjs %*');

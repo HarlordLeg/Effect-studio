@@ -136,6 +136,7 @@ export const kineticWikiPages={
  "5581": "https://dota2.fandom.com/wiki/Kinetic:_Impatient_Maiden"
 };
 export const kineticWikiClips={
+ "4004":[{"file":"The_Blood_Chaser_ambient.gif","action":"ACT_DOTA_RUN","url":"https://static.wikia.nocookie.net/dota2_gamepedia/images/3/30/The_Blood_Chaser_ambient.gif","type":"image","page":"https://dota2.fandom.com/wiki/File:The_Blood_Chaser_ambient.gif"},{"file":"The_Blood_Chaser_Counter_Helix.gif","action":"ACT_DOTA_IDLE","url":"https://static.wikia.nocookie.net/dota2_gamepedia/images/a/a7/The_Blood_Chaser_Counter_Helix.gif","type":"image","page":"https://dota2.fandom.com/wiki/File:The_Blood_Chaser_Counter_Helix.gif"}],
  "4076": [
   {
    "file": "Fireborn_Odachi_Idle.gif",
@@ -225,8 +226,9 @@ export const kineticWikiClips={
   }
  ]
 };
-export function kineticWikiPreview(option){
+export function kineticWikiPreview(option,downloaded={items:{}}){
  const match=/^game-(\d+)(?:-style-\d+)?$/.exec(option.id??'');
  const id=match?.[1]??null,actions=kineticGroups([option]);
- return {page:kineticWikiPages[id]??null,clips:(kineticWikiClips[id]??[]).filter(clip=>actions.has(clip.action))};
+ const local=downloaded.items?.[id];const clips=[...(local?.clips??[]),...(kineticWikiClips[id]??[])].filter((clip,index,all)=>all.findIndex(c=>c.file===clip.file&&c.action===clip.action)===index);
+ return {page:local?.page??kineticWikiPages[id]??null,clips:clips.filter(clip=>actions.has(clip.action))};
 }

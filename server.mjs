@@ -1,3 +1,4 @@
+import {readMediaManifest,serveKineticMedia} from './lib/kinetic-media-cache.mjs';
 import {itemActivityRules} from './lib/hero-activities.mjs';
 import {heroStances} from './lib/hero-stances.mjs';
 import {hasTerrorbladeArcana} from './lib/terrorblade-arcana.mjs';
@@ -36,6 +37,8 @@ export function startServer({port:overridePort}={}) {
       const expectedPort=server.address()?.port;
       const {allowedHost,localAdmin}=requestAccess(req,config,expectedPort);
       if(!allowedHost)return json(res,403,{error:'Host не разрешён. Укажи publicBaseUrl для серверного режима.'});
+      if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
+      if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       const integrationRoute=/^\/api\/(catalog|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
