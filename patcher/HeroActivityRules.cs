@@ -21,10 +21,37 @@ internal static class HeroActivityRules
     internal static byte[] SerializeActivity(BinaryKV3 binary,byte sourceVersion)
     {
         binary.SerializationVersion=WritableVersion(sourceVersion);
-        if(sourceVersion<4)binary.SerializationCompressionMethod=KV3BinaryCompressionMethod.Uncompressed;
+        // Keep activity metadata and binary animation blobs in the documented raw layout.
+        // v4 Zstd readers expect one stream covering both metadata and blob lanes.
+        binary.SerializationCompressionMethod=KV3BinaryCompressionMethod.Uncompressed;
         using var stream=new MemoryStream();binary.Serialize(stream);var bytes=stream.ToArray();
+        RepairAllocationCounts(bytes,binary.Data.Root);
         if(sourceVersion>=4)return bytes;
         return LegacyActivityBuffer(bytes,sourceVersion);
+    }
+    // VRF releases which emit zero allocation hints still round-trip through
+    // their reader, but omit the counts used by the game KV3 loader.
+    internal static void RepairAllocationCounts(byte[] bytes,KVObject root)
+    {
+        var objects=0;var arrays=0;var nodes=0;var elements=0;
+        void Visit(KVObject value){
+            nodes++;
+            if(value.ValueType==KVValueType.Collection)objects++;
+            else if(value.ValueType==KVValueType.Array){arrays++;elements+=Math.Max(value.Count,1);}
+            else return;
+            foreach(var child in value.Values)Visit(child);
+        }
+        Visit(root);
+        if(bytes.Length<72||bytes[0] is not (4 or 5))throw new InvalidDataException("Invalid activity allocation header");
+        BitConverter.GetBytes((ushort)Math.Min(objects,ushort.MaxValue)).CopyTo(bytes,44);
+        BitConverter.GetBytes((ushort)Math.Min(arrays,ushort.MaxValue)).CopyTo(bytes,46);
+        if(bytes[0]==5){
+            if(bytes.Length<120)throw new InvalidDataException("Truncated v5 activity allocation header");
+            BitConverter.GetBytes(nodes).CopyTo(bytes,104);
+            BitConverter.GetBytes(objects).CopyTo(bytes,108);
+            BitConverter.GetBytes(arrays).CopyTo(bytes,112);
+            BitConverter.GetBytes(elements).CopyTo(bytes,116);
+        }
     }
     internal static byte[] LegacyActivityBuffer(byte[] bytes,byte sourceVersion)
     {
@@ -92,6 +119,19 @@ internal static class HeroActivityRules
         }
         return (winners.Select(w=>w.Row).Distinct().Count(),names.Distinct().ToArray(),rules.Select(r=>r.Modifier).Distinct().Except(found).ToArray(),winners.Count(w=>w.Priority>=100&&StanceActivities.Contains(w.Act)),rules.Where(r=>r.Priority>=100&&!winners.Any(w=>Matches(r,w.Act)&&w.Strip.Contains(r.Modifier)&&(r.Sequence is null||r.Sequence==Text(w.Row,key=="m_animArray"?"m_name":"m_sName")))).Select(r=>r.Asset+" / "+r.Modifier).Distinct().ToArray());
     }
+    // Keep the original file layout and append the changed activity blocks.
+    // No original payload, including padding/trailing data, is moved or removed.
+    internal static void WriteActivityBlocks(Resource resource,byte[] original,Stream output,Dictionary<object,byte[]> rawBlocks)
+    {
+        output.Write(original);using var writer=new BinaryWriter(output,System.Text.Encoding.UTF8,true);
+        for(var index=0;index<resource.Blocks.Count;index++){
+            var block=resource.Blocks[index];if(!rawBlocks.TryGetValue(block,out var payload))continue;
+            if(block.Type.ToString() is not ("ASEQ" or "ANIM"))throw new InvalidDataException("Activity patch attempted another block");
+            var padding=(int)((16-output.Position%16)%16);writer.Write(new byte[padding]);var start=output.Position;writer.Write(payload);var end=output.Position;
+            var field=16L+index*12L+4;output.Position=field;writer.Write(checked((uint)(start-field)));writer.Write(checked((uint)payload.Length));output.Position=end;
+        }
+        output.Position=0;writer.Write(checked((uint)output.Length));writer.Flush();
+    }
     public static void Run(string manifest,bool inspect=false)
     {
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty activities request");
@@ -114,6 +154,9 @@ internal static class HeroActivityRules
             }
             File.WriteAllText(request.Output,JsonSerializer.Serialize(new{options,audit,sequenceLabels=rows.Select(row=>new{name=Text(row,"m_sName"),activities=row["m_activityArray"].Values.Select(label=>Text(label,"m_name")).ToArray()}).ToArray(),externalAnimations=resource.ExternalReferences?.ResourceRefInfoList.Where(r=>r.Name.EndsWith(".vanim",StringComparison.Ordinal)||r.Name.EndsWith(".vagrp",StringComparison.Ordinal)||r.Name.EndsWith(".vseq",StringComparison.Ordinal)).Select(r=>r.Name).ToArray()}));return;
         }
+        var animBlock=resource.Blocks.SingleOrDefault(b=>b.Type.ToString()=="ANIM");
+        var modernAnim=animBlock is not null&&animBlock.Size>=4&&(BitConverter.ToUInt32(bytes,(int)animBlock.Offset)&0xffffff00)==0x4b563300&&bytes[(int)animBlock.Offset]>=4;
+        var appendActivities=modernAnim;
         var changed=new HashSet<object>();var rawBlocks=new Dictionary<object,byte[]>();var snapshots=new Dictionary<string,string>();var expected=new Dictionary<string,string>();var reports=new List<object>();
         foreach(var (type,key) in new[]{("ASEQ","m_localS1SeqDescArray"),("ANIM","m_animArray")}){
             var block=resource.Blocks.SingleOrDefault(b=>b.Type.ToString()==type);if(block is null)continue;
@@ -127,14 +170,14 @@ internal static class HeroActivityRules
             rawBlocks[block]=SerializeActivity(binary,bytes[(int)block.Offset]);
             changed.Add(block);expected[type]=binary.ToString()!;
         }
-        using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,changed,preserveMetadata:true,rawBlocks:rawBlocks);
+        using(var output=File.Create(request.Output)){if(appendActivities)WriteActivityBlocks(resource,bytes,output,rawBlocks);else Program.SerializePatchedResource(resource,bytes,output,false,changed,preserveMetadata:true,rawBlocks:rawBlocks);}
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);var written=File.ReadAllBytes(request.Output);
         for(var i=0;i<resource.Blocks.Count;i++){
             var before=resource.Blocks[i];var after=check.Blocks[i];var type=before.Type.ToString();if(before.Type!=after.Type)throw new InvalidDataException("Activity block order changed");
             if(snapshots.TryGetValue(type,out var snapshot)){
                 var key=type=="ASEQ"?"m_localS1SeqDescArray":"m_animArray";
                 if(expected[type]!=after.ToString()||snapshot!=Payload(after,key))throw new InvalidDataException("Activity animation payload mismatch: "+type);
-            }else if(before.Size!=after.Size||!bytes.AsSpan((int)before.Offset,(int)before.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Activity patch changed model block: "+type);
+            }else if((appendActivities&&before.Offset!=after.Offset)||before.Size!=after.Size||!bytes.AsSpan((int)before.Offset,(int)before.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Activity patch changed model block: "+type);
         }
         File.WriteAllText(request.Output+".activities.json",JsonSerializer.Serialize(new{reports}));Console.WriteLine("[OK] Activity rules applied; geometry, skeleton and animation tracks preserved");
     }

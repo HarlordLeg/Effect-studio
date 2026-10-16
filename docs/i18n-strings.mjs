@@ -1,4 +1,8 @@
 export const translations = {
+"Приоритет анимаций":"Animation priority",
+"Самоцвет и Skullbasher меняют одни и те же анимации. Выбери, какой вариант использовать.":"The gem and Skullbasher change the same animations. Choose which version to use.",
+
+"Меняет начало и завершение телепортации. Эффекты и модель Mechanical Boots of Travel принадлежат предмету и не добавляются самоцветом.":"Changes teleport start and end animations. Mechanical Boots of Travel effects and model belong to the item and are not added by the gem.",
 "Анимации предмета: ":"Item animations: ",
 "Эффекты предмета: ":"Item effects: ",
 "Применяются только подтверждённые анимации предмета. Его модель и собственные частицы оружия не добавляются.":"Only confirmed item animations are applied. The donor model and weapon particles are not added.",

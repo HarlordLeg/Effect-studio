@@ -45,7 +45,7 @@ test('standalone stance VPK patches only the hero and never packs the source cos
  const {hero,item}=fixture();const original=Buffer.alloc(16);original.writeUInt32LE(16);original.writeUInt32LE(8,8);const changed=Buffer.concat([original,Buffer.from('stance')]);
  fs.writeFileSync(path.join(root,'game.vpk'),packVpk(new Map([[hero.model,original]])));fs.writeFileSync(path.join(root,'patcher'),'binary');fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify({heroes:[hero],effects:[]}));
  let calls=0;const run=async(_,args)=>{
- if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,heroActivitiesV4:true,activityRulesV1:true,activityRulesV4:true});
+ if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,heroActivitiesV4:true,activityRulesV1:true,activityRulesV4:true,activityRulesV8:true,activityRulesV9:true});
  const request=JSON.parse(fs.readFileSync(args[1]));if(args[0]==='--relocate'){assert.deepEqual(request.files,[]);return '';}
  assert.equal(args[0],'--activity-rules');calls++;assert.equal(request.requireActivity,true);assert.ok(request.rules.every(r=>r.asset==='ALL'));assert.deepEqual(fs.readFileSync(request.input),original);fs.writeFileSync(request.output,changed);fs.writeFileSync(request.output+'.activities.json',JSON.stringify({reports:[{block:'ASEQ',selected:1}]}));return '';
  };

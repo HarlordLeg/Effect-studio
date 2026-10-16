@@ -10,6 +10,16 @@ internal static class HeroActivitiesTests
   foreach(byte source in new byte[]{2,3,4,5})Check(HeroActivityRules.WritableVersion(source)==(source<4?4:source));
   try{HeroActivityRules.WritableVersion(6);throw new Exception("Future KV3 must be rejected");}catch(System.IO.InvalidDataException){}
 
+  {
+   var root=KVObject.Collection();root["rows"]=Array(Sequence("idle","ACT_DOTA_IDLE"));root["empty"]=Array();
+   foreach(byte version in new byte[]{4,5}){
+    var bytes=Enumerable.Repeat((byte)0xAA,128).ToArray();bytes[0]=version;
+    HeroActivityRules.RepairAllocationCounts(bytes,root);
+    Check(BitConverter.ToUInt16(bytes,44)==3&&BitConverter.ToUInt16(bytes,46)==3);
+    Check(bytes[120]==0xAA);
+    if(version==5)Check(BitConverter.ToInt32(bytes,108)==3&&BitConverter.ToInt32(bytes,112)==3&&BitConverter.ToInt32(bytes,116)==3);
+   }
+  }
   foreach(var arrayKey in new[]{"m_localS1SeqDescArray","m_animArray"})
   foreach(var modifiers in new[]{new[]{"basher"},new[]{"offhand_basher"},new[]{"basher","offhand_basher"}}){
    var basic=Sequence("loadout","ACT_DOTA_LOADOUT");var offhand=Sequence("basher_loadout_anim","ACT_DOTA_LOADOUT","offhand_basher");
@@ -71,6 +81,25 @@ internal static class HeroActivitiesTests
   }
   var skeleton=KVObject.Collection();skeleton["m_boneName"]=Array(new KVObject("root"));skeleton["m_nParent"]=Array(new KVObject(-1));foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})skeleton[key]=Array(new KVObject(1d));HeroActivities.ValidateSkeleton(skeleton,skeleton);
   var mismatched=KVObject.Collection();mismatched["m_boneName"]=Array(new KVObject("wrong"));mismatched["m_nParent"]=Array(new KVObject(-1));var rejected=false;try{HeroActivities.ValidateSkeleton(skeleton,mismatched);}catch(InvalidDataException){rejected=true;}Check(rejected);
+  // Original modern fixtures: both activity tables change, other blocks stay exact.
+  if(args.Length==2&&(args[0]=="--tinker"||args[0]=="--mage-slayer")){
+   var mageSlayer=args[0]=="--mage-slayer";var modelName=mageSlayer?"models/heroes/antimage/antimage.vmdl_c":"models/heroes/tinker/tinker.vmdl_c";
+   var gemRules=mageSlayer?new[]{"slasher_weapon","slasher_offhand","slasher_mask","slasher_chest","slasher_belt","slasher_arms","slasher_shoulder"}.Select(m=>new HeroActivityRules.Rule("ALL",m,Priority:100,RetainBase:true)).ToArray():new[]{new HeroActivityRules.Rule("ACT_DOTA_TELEPORT","bot",Priority:100),new HeroActivityRules.Rule("ACT_DOTA_TELEPORT_END","bot",Priority:100)};
+   var source=File.ReadAllBytes(args[1]);var manifest=Path.GetTempFileName();var output=manifest+".vmdl_c";
+   try{
+    File.WriteAllText(manifest,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[1]),output,model=modelName,rules=gemRules,knownModifiers=gemRules.Select(r=>r.Modifier).Distinct().ToArray(),requireActivity=true}));HeroActivityRules.Run(manifest);
+    using var before=new ValveResourceFormat.Resource{FileName=args[1]};before.Read(args[1]);using var after=new ValveResourceFormat.Resource{FileName=output};after.Read(output);var bytes=File.ReadAllBytes(output);
+    Check(before.Blocks.Count==after.Blocks.Count);
+    for(var index=0;index<before.Blocks.Count;index++){var a=before.Blocks[index];var b=after.Blocks[index];Check(a.Type==b.Type);if(a.Type.ToString() is "ASEQ" or "ANIM"){
+     Check(b.Offset>=source.Length);
+     Check(BitConverter.ToUInt32(bytes,(int)b.Offset+20)==0);
+     Check(BitConverter.ToUInt16(bytes,(int)b.Offset+44)>0&&BitConverter.ToUInt16(bytes,(int)b.Offset+46)>0);
+     var labels=b.ToString()!;Check(labels.Contains("m_activityArray"));continue;
+    }Check(a.Offset==b.Offset&&a.Size==b.Size&&source.AsSpan((int)a.Offset,(int)a.Size).SequenceEqual(bytes.AsSpan((int)b.Offset,(int)b.Size)));}
+    Console.WriteLine("[OK] Original model integration: ANIM/ASEQ replaced with allocation counts; every other block and offset unchanged");
+   }finally{File.Delete(manifest);File.Delete(output);File.Delete(output+".activities.json");}
+   args=System.Array.Empty<string>();
+  }
   // Optional integration against the user's original compiled Anti-Mage model.
   if(args.Length==2)foreach(var modifiers in new[]{new[]{"basher"},new[]{"offhand_basher"},new[]{"basher","offhand_basher"}}){var temp=Path.GetTempFileName();var output=temp+".vmdl_c";try{
    File.WriteAllText(temp,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[0]),output,modifiers,animationTemplate=Path.GetFullPath(args[1])}));HeroActivities.Run(temp);
