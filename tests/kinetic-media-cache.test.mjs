@@ -6,9 +6,9 @@ import path from 'node:path';
 import {extractWikiAnimations,cacheWikiClip,trustedFetch,mediaKind,serveKineticMedia} from '../lib/kinetic-media-cache.mjs';
 import {kineticWikiPreview} from '../public/kinetic-media.mjs';
 import http from 'node:http';
-test('wiki animation parser preserves shared preview cells and excludes effects',()=>{
+test('wiki media parser preserves shared cells and includes effect previews',()=>{
  const html='<table><tr><td>Ambient</td><td>Effect</td><td rowspan="2"><a href="/wiki/File:Blood_Chaser_Run.gif">GIF</a></td></tr><tr><td>Movement</td><td>Animation</td></tr><tr><td>Idle</td><td>Animation</td><td><img data-src="https://static.wikia.nocookie.net/dota2_gamepedia/images/a/ab/Blood_Chaser_Idle.gif/revision/latest"></td></tr><tr><td>Ambient</td><td>Effect</td><td><a href="/wiki/File:Other.webm"></a></td></tr></table>';
- const rows=extractWikiAnimations(html);assert.deepEqual(rows.map(c=>[c.file,c.action]),[['Blood_Chaser_Run.gif','ACT_DOTA_RUN'],['Blood_Chaser_Idle.gif','ACT_DOTA_IDLE']]);
+ const rows=extractWikiAnimations(html);assert.deepEqual(rows.map(c=>[c.file,c.action]),[['Blood_Chaser_Run.gif','ACT_DOTA_RUN'],['Blood_Chaser_Idle.gif','ACT_DOTA_IDLE'],['Other.webm',null]]);
 });
 test('media downloads are verified and reused, HTML errors never become GIF files',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-media-'));try{
@@ -57,3 +57,15 @@ test('sparse wiki rows do not crash table parsing or prevent later valid animati
  const html='<tr><td>A</td><td>B</td><td rowspan="2">C</td></tr><tr></tr><tr><td>Idle</td><td>Animation</td><td>[[File:Example_Idle.gif]]</td></tr>';
  assert.equal(extractWikiAnimations(html)[0].file,'Example_Idle.gif');
 });
+
+test('all article videos survive unrelated filenames, unknown actions and template embeds',()=>{
+ const source=`<table><tr><td>Attack 2</td><td>Animation</td><td>[[File:Unrelated name.webm]]</td></tr><tr><td>Omnislash</td><td>Animation</td><td>[[File:Completely different.mp4]]</td></tr></table>
+{{Video|Random clip.webm}}
+<video><source src="https://static.wikia.nocookie.net/dota2_gamepedia/images/f/fa/Another.webm"></video>`;
+ const clips=extractWikiAnimations(source);assert.deepEqual(new Set(clips.map(c=>c.file)),new Set(['Unrelated_name.webm','Completely_different.mp4','Random_clip.webm','Another.webm']));
+ assert.equal(clips.find(c=>c.file==='Unrelated_name.webm').label,'Attack 2');
+ assert.equal(clips.find(c=>c.file==='Another.webm').url,'https://static.wikia.nocookie.net/dota2_gamepedia/images/f/fa/Another.webm');
+ const result=kineticWikiPreview({id:'kinetic-3',rules:[]},{items:{'kinetic-3':{clips}}});for(const clip of clips)assert.ok(result.clips.some(c=>c.file===clip.file));
+});
+
+test('apostrophes in wiki filenames are preserved rather than downloading suffixes',()=>{const clips=extractWikiAnimations("[[File:Bladebiter's Strike.gif]]\n{{Video|Trapper's Treachery.webm}}");assert.deepEqual(clips.map(c=>c.file),["Bladebiter's_Strike.gif","Trapper's_Treachery.webm"]);});

@@ -138,3 +138,6 @@ input[type="checkbox"]:disabled{opacity:.45;cursor:default}
 .kinetic-media-tabs button{padding:8px 12px}
 .kinetic-wiki-source{display:inline-block;color:var(--accent);margin-top:10px;font-size:11px}
 @media(max-width:700px){.kinetic-picker>.kinetic-body{grid-template-columns:1fr}.kinetic-wiki-preview{position:static;grid-row:1}.kinetic-animation img,.kinetic-animation video{max-height:200px}}
+
+.kinetic-option{display:flex;align-items:center;gap:8px}.kinetic-option>label{flex:1;min-width:0}.kinetic-info{flex-shrink:0;font-size:12px;padding:9px}.kinetic-media-tabs{max-height:180px;overflow:auto}
+@media(max-width:420px){.kinetic-option{align-items:stretch;flex-direction:column;gap:0}.kinetic-info{align-self:flex-end}}

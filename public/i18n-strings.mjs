@@ -1,4 +1,9 @@
 export const translations = {
+"На вики нет доступного файла превью":"The wiki has no available preview file",
+"По примечанию вики, этот эффект сейчас не работает в игре. Файл его превью на вики также недоступен.":"The wiki notes that this effect currently does not work in-game. Its preview file is also unavailable on the wiki.",
+"Что меняет":"What it changes",
+"Нажми «Что меняет» рядом с самоцветом":"Click What it changes next to a gem",
+"Превью ":"Preview ",
 "Самоцвет меняет только анимации. Частицы Muh Keen Gun принадлежат самому оружию и не добавляются самоцветом.":"This gem changes animations only. Muh Keen Gun particles belong to the weapon and are not added by the gem.",
 "Анимации рассчитаны на крупное оружие Muh Keen Gun. С другим оружием хват может выглядеть неправильно: руки могут держать оружие в воздухе.":"These animations were made for the large Muh Keen Gun weapon. Other weapons may appear to float because the hand placement does not match.",
 "Самоцвет меняет анимации. Собственные частицы Fireborn Odachi не добавляются самоцветом.":"This gem changes animations. It does not add the particles belonging to Fireborn Odachi.",

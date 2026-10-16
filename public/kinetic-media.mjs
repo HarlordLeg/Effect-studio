@@ -1,3 +1,4 @@
+import {kineticActionLabel} from './kinetic-gems.mjs';
 import {kineticGroups} from './kinetic-gems.mjs';
 export const kineticWikiPages={
  "kinetic-0": "https://dota2.fandom.com/wiki/Kinetic:_Pounce_of_the_Silent_Ripper",
@@ -117,7 +118,9 @@ export const kineticWikiClips={
 };
 export function kineticWikiPreview(option,downloaded={items:{}}){
  const id=option.id;if(!/^kinetic-\d+$/.test(id??''))return {page:null,clips:[]};
- const local=downloaded.items?.[id],actions=kineticGroups([option]);
- const clips=[...(local?.clips??[]),...(kineticWikiClips[id]??[])].filter((clip,index,all)=>all.findIndex(c=>c.file===clip.file&&c.action===clip.action)===index);
- return {page:kineticWikiPages[id]??null,clips:clips.filter(clip=>actions.has(clip.action))};
+ const local=downloaded.items?.[id];
+ const clips=[...(local?.clips??[]),...(kineticWikiClips[id]??[])].filter((clip,index,all)=>all.findIndex(c=>c.file===clip.file)===index);
+ return {page:kineticWikiPages[id]??null,clips};
 }
+
+export function kineticPreviewLabel(clip,index=0){const clean=s=>s.replace(/\{\{[^{}]*\}\}/g,t=>t.slice(2,-2).split('|').at(-1)).replace(/'{2,}/g,'').trim();const names=(clip.labels?.length?clip.labels:[clip.label]).filter(Boolean).map(clean);return names.length?[...new Set(names)].join(' / '):clip.action?kineticActionLabel(clip.action):'Превью '+(index+1);}
