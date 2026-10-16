@@ -1,4 +1,20 @@
 export const translations = {
+  "Наведи на самоцвет, чтобы посмотреть изменения": "Hover over a gem to see its changes",
+  "На вики пока нет превью этой анимации": "The wiki has no preview of this animation yet",
+  "Превью недоступно. Открой страницу на вики.": "Preview unavailable. Open the wiki page.",
+  "Источник: Dota 2 Wiki": "Source: Dota 2 Wiki",
+
+  "Редкая анимация стоя": "Rare idle animation",
+  "Просмотр героя": "Hero showcase",
+  "Бег": "Run",
+  "Появление героя": "Spawn",
+  "Атака": "Attack",
+  "Применение первой способности": "Cast first ability",
+  "Применение второй способности": "Cast second ability",
+  "Применение третьей способности": "Cast third ability",
+  "Применение четвёртой способности": "Cast fourth ability",
+  "Другая анимация": "Other animation",
+
   "Кинетический самоцвет": "Kinetic gem",
   "Кинетические самоцветы": "Kinetic gems",
   "Приоритет": "Priority",

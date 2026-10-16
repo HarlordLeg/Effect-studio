@@ -1,3 +1,5 @@
+export const kineticActionLabels={ACT_DOTA_IDLE:'Стойка',ACT_DOTA_IDLE_RARE:'Редкая анимация стоя',ACT_DOTA_RUN:'Бег',ACT_DOTA_LOADOUT:'Просмотр героя',ACT_DOTA_SPAWN:'Появление героя',ACT_DOTA_ATTACK:'Атака',ACT_DOTA_CAST_ABILITY_1:'Применение первой способности',ACT_DOTA_CAST_ABILITY_2:'Применение второй способности',ACT_DOTA_CAST_ABILITY_3:'Применение третьей способности',ACT_DOTA_CAST_ABILITY_4:'Применение четвёртой способности'};
+export const kineticActionLabel=action=>kineticActionLabels[action]??'Другая анимация';
 export const kineticActions=['ACT_DOTA_IDLE','ACT_DOTA_IDLE_RARE','ACT_DOTA_RUN','ACT_DOTA_LOADOUT'];
 export function kineticGroups(options){
  const groups=new Map();
