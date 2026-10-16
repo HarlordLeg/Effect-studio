@@ -17,7 +17,7 @@ test('native inspector PascalCase rules have the same conflicts',()=>{
  assert.deepEqual(resolveKinetics(variants,{ACT_DOTA_RUN:'a'}).map(r=>[r.asset,r.modifier]),resolveKinetics(options,{ACT_DOTA_RUN:'a'}).map(r=>[r.asset,r.modifier]));
 });
 test('API rejects missing priorities and foreign gems, and compiles one resolved hero plan',()=>{
- const hero={id:'test',model:'models/heroes/test.vmdl_c',items:options.map(o=>({id:o.id,name:o.name,nativeOverrides:{activities:o.rules}}))},builder={catalog:{heroes:[hero]}};
+ const hero={id:'test',model:'models/heroes/test.vmdl_c',items:options.map(o=>({id:o.id,name:o.name,nativeOverrides:{activities:o.rules}}))},builder={catalog:{heroes:[hero]},kineticChoices:new Map([[hero.id,options]])};
  assert.throws(()=>stanceChoice(builder,{heroId:'test',stanceId:{ids:['a','b']}}),/priority/);
  assert.throws(()=>stanceChoice(builder,{heroId:'test',stanceId:{ids:['foreign']}}),/Unavailable/);
  assert.throws(()=>stanceChoice(builder,{heroId:'test',stanceId:{ids:['a','a']}}),/1–16/);

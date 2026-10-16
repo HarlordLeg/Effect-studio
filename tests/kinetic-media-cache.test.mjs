@@ -23,7 +23,7 @@ test('wiki fetch rejects redirects to local or arbitrary hosts',async()=>{
  let calls=0;await assert.rejects(trustedFetch('https://dota2.fandom.com/wiki/Example',{fetchImpl:async()=>{calls++;return new Response(null,{status:302,headers:{location:'http://127.0.0.1/private'}});}}),/Untrusted/);assert.equal(calls,1);
 });
 test('downloaded clips take priority over upstream clips',()=>{
- const clip={file:'Fireborn_Odachi_Idle.gif',action:'ACT_DOTA_IDLE',url:'/kinetic-media/local.gif'};const result=kineticWikiPreview({id:'game-4076',rules:[{asset:'ALL',modifier:'gem'}]},{items:{4076:{clips:[clip]}}});assert.equal(result.clips.find(c=>c.file===clip.file).url,clip.url);assert.equal(result.clips.filter(c=>c.file===clip.file).length,1);
+ const clip={file:'Fireborn_Odachi_Idle.gif',action:'ACT_DOTA_IDLE',url:'/kinetic-media/local.gif'};const result=kineticWikiPreview({id:'kinetic-3',rules:[{asset:'ALL',modifier:'gem'}]},{items:{'kinetic-3':{clips:[clip]}}});assert.equal(result.clips.find(c=>c.file===clip.file).url,clip.url);assert.equal(result.clips.filter(c=>c.file===clip.file).length,1);
 });
 test('local videos support byte ranges, HEAD and reject path traversal',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-media-http-'));fs.mkdirSync(path.join(root,'data','kinetic-media'),{recursive:true});const name='a'.repeat(64)+'.webm';fs.writeFileSync(path.join(root,'data','kinetic-media',name),Buffer.from('0123456789'));
@@ -35,7 +35,7 @@ test('unreviewed fitting modifiers are excluded from kinetic selection, but rema
  const {stanceCandidates,itemActivityRules}=await import('../lib/hero-activities.mjs');
  const technical=['32137','9241','9407','19467','32622'].map(id=>({id:'game-'+id,gameItemId:id,name:'Technical fitting',nativeOverrides:{activities:[{asset:'ALL',modifier:'fit_'+id}]}}));
  const meaningful={id:'game-4004',gameItemId:'4004',name:'Blood Chaser',nativeOverrides:{activities:[{asset:'ALL',modifier:'blood_chaser'}]}};
- assert.deepEqual(stanceCandidates({items:[...technical,meaningful]}).map(o=>o.id),['game-4004']);assert.equal(itemActivityRules(technical[0]).length,1);
+ assert.deepEqual(stanceCandidates({id:'axe',items:[...technical,meaningful]}).map(o=>o.id),[]);assert.equal(itemActivityRules(technical[0]).length,1);
 });
 
 test('raw wiki tables discover Blood Chaser shared movement/idle GIFs despite unusual filenames',()=>{

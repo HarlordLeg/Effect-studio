@@ -54,7 +54,7 @@ internal static class HeroActivityRules
     }
     internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null);
     private sealed record Option(string Id,string Name,Rule[] Rules);
-    private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false);
+    private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false,bool RequireActivity=false);
     private static readonly HashSet<string> StanceActivities=["ACT_DOTA_IDLE","ACT_DOTA_IDLE_RARE","ACT_DOTA_RUN","ACT_DOTA_LOADOUT"];
     private static string Text(KVObject obj,string key)=>obj[key].ToString(CultureInfo.InvariantCulture);
     private static KVObject Data(Block block)=>block is KeyValuesOrNTRO kv?kv.Data:block is BinaryKV3 binary?binary.Data.Root:throw new InvalidDataException("Unsupported activity block "+block.Type);
@@ -105,7 +105,9 @@ internal static class HeroActivityRules
             foreach(var option in request.Options??[]){
                 var matches=option.Rules.Where(rule=>rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return (rule.Sequence is null||rule.Sequence==Text(row,"m_sName"))&&labels.Contains(rule.Modifier)&&labels.Any(a=>a.StartsWith("ACT_",StringComparison.Ordinal)&&Matches(rule,a));})).ToArray();
                 audit.Add(new{id=option.Id,name=option.Name,matchedRules=matches,missingRules=option.Rules.Except(matches).ToArray()});
-                var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?StanceActivities.Select(a=>r with{Asset=a}):StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).ToArray();
+                var genuine=option.Id.StartsWith("kinetic-",StringComparison.Ordinal);
+                var actions=rows.SelectMany(row=>row["m_activityArray"].Values.Select(a=>Text(a,"m_name"))).Where(a=>a.StartsWith("ACT_",StringComparison.Ordinal)).Distinct().ToArray();
+                var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?(genuine?actions:StanceActivities.ToArray()).Select(a=>r with{Asset=a}):genuine||StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).Where(r=>!genuine||rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Contains(r.Modifier)&&labels.Contains(r.Asset);})).Distinct().ToArray();
                 var selected=rules.Select(r=>r.Modifier).ToHashSet();
                 var eligible=rows.Where(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Where(n=>n.StartsWith("ACT_",StringComparison.Ordinal)).Any(a=>rules.Any(r=>Matches(r,a)&&labels.Contains(r.Modifier)))&&!labels.Where(known.Contains).Any(t=>!selected.Contains(t));}).ToArray();
                 if(eligible.Length>0)options.Add(new{id=option.Id,name=option.Name,rules,animations=eligible.OrderBy(r=>r["m_activityArray"].Values.Count(a=>!Text(a,"m_name").StartsWith("ACT_",StringComparison.Ordinal))).ThenBy(r=>r["m_activityArray"].Values.Any(a=>Text(a,"m_name")=="ACT_DOTA_IDLE")?0:1).Select(r=>Text(r,"m_sName")).ToArray()});
@@ -119,6 +121,7 @@ internal static class HeroActivityRules
             using(var reader=new BinaryReader(new MemoryStream(bytes))){reader.BaseStream.Position=block.Offset;binary.Read(reader);}
             binary.SerializationCompressionMethod=(KV3BinaryCompressionMethod)(BitConverter.ToUInt32(bytes,(int)block.Offset+20)&0xff);
             snapshots[type]=Payload(binary,key);var report=Bake(binary.Data.Root,key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
+            if(type=="ASEQ"&&request.RequireActivity&&report.Count==0)throw new InvalidDataException("This kinetic gem has no compatible animations in the installed hero model");
             if(type=="ASEQ"&&request.RequireStance&&report.StanceCount==0)throw new InvalidDataException("This stance has no compatible animations in the installed hero model");
             rawBlocks[block]=SerializeActivity(binary,bytes[(int)block.Offset]);
             changed.Add(block);expected[type]=binary.ToString()!;
