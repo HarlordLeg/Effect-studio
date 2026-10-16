@@ -10,6 +10,14 @@ using ValveResourceFormat.ResourceTypes;
 // that its animation exists in this version of the game.
 internal static class HeroActivityRules
 {
+    // VRF can read older KV3 generations, but only writes v4/v5. Keep the
+    // original generation when writable; upgrade legacy activity blocks to v4.
+    internal static byte WritableVersion(byte source)=>source switch
+    {
+        >=1 and <=3=>4,
+        4 or 5=>source,
+        _=>throw new InvalidDataException("Unsupported activity KV3 version: "+source)
+    };
     internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null);
     private sealed record Option(string Id,string Name,Rule[] Rules);
     private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false);
@@ -75,7 +83,7 @@ internal static class HeroActivityRules
             var block=resource.Blocks.SingleOrDefault(b=>b.Type.ToString()==type);if(block is null)continue;
             var binary=new BinaryKV3(block.Type){Offset=block.Offset,Size=block.Size,Resource=resource};
             using(var reader=new BinaryReader(new MemoryStream(bytes))){reader.BaseStream.Position=block.Offset;binary.Read(reader);}
-            binary.SerializationVersion=bytes[(int)block.Offset];
+            binary.SerializationVersion=WritableVersion(bytes[(int)block.Offset]);
             binary.SerializationCompressionMethod=(KV3BinaryCompressionMethod)(BitConverter.ToUInt32(bytes,(int)block.Offset+20)&0xff);
             snapshots[type]=Payload(binary,key);var report=Bake(binary.Data.Root,key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
             if(type=="ASEQ"&&request.RequireStance&&report.StanceCount==0)throw new InvalidDataException("This stance has no compatible animations in the installed hero model");

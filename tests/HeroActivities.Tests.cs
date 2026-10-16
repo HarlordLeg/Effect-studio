@@ -7,6 +7,9 @@ internal static class HeroActivitiesTests
  static void Check(bool condition){if(!condition)throw new Exception("Hero activity regression");}
  public static int Main(string[] args)
  {
+  foreach(byte source in new byte[]{1,2,3,4,5})Check(HeroActivityRules.WritableVersion(source)==(source<4?4:source));
+  try{HeroActivityRules.WritableVersion(6);throw new Exception("Future KV3 must be rejected");}catch(System.IO.InvalidDataException){}
+
   foreach(var arrayKey in new[]{"m_localS1SeqDescArray","m_animArray"})
   foreach(var modifiers in new[]{new[]{"basher"},new[]{"offhand_basher"},new[]{"basher","offhand_basher"}}){
    var basic=Sequence("loadout","ACT_DOTA_LOADOUT");var offhand=Sequence("basher_loadout_anim","ACT_DOTA_LOADOUT","offhand_basher");
