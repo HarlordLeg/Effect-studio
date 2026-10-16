@@ -7,7 +7,7 @@ internal static class HeroActivitiesTests
  static void Check(bool condition){if(!condition)throw new Exception("Hero activity regression");}
  public static int Main(string[] args)
  {
-  foreach(byte source in new byte[]{1,2,3,4,5})Check(HeroActivityRules.WritableVersion(source)==(source<4?4:source));
+  foreach(byte source in new byte[]{2,3,4,5})Check(HeroActivityRules.WritableVersion(source)==(source<4?4:source));
   try{HeroActivityRules.WritableVersion(6);throw new Exception("Future KV3 must be rejected");}catch(System.IO.InvalidDataException){}
 
   foreach(var arrayKey in new[]{"m_localS1SeqDescArray","m_animArray"})
@@ -23,6 +23,19 @@ internal static class HeroActivitiesTests
    Check(Names(offhand).Contains("offhand_basher")!=modifiers.Contains("offhand_basher"));
    Check(Names(basher).Contains("basher")!=modifiers.Contains("basher"));
    foreach(var s in root[arrayKey].Values)Check(s["m_fetch"].ToInt32(null)==123);
+  }
+  // v2 flags use a bit mask while v3/v4 use an enum. Legacy output keeps
+  // the numeric lanes and blob payload, and removes only the v4 header fields.
+  {
+   var b=new byte[87];void Put(int offset,int value)=>BitConverter.GetBytes(value).CopyTo(b,offset);
+   Put(0,unchecked((int)0x4b563304));Put(32,1);Put(40,3);Put(48,15);Put(52,15);Put(72,1);
+   b[81]=0x85;b[82]=(byte)KVFlag.Panorama;Put(83,unchecked((int)0xffeedd00));
+   var legacy=HeroActivityRules.LegacyActivityBuffer((byte[])b.Clone(),2);
+   Check(legacy.Length==b.Length-8&&legacy[0]==2&&legacy[74]==8);
+   Check(legacy.AsSpan(64,9).SequenceEqual(b.AsSpan(72,9)));
+   Check(legacy.AsSpan(75,4).SequenceEqual(b.AsSpan(83,4)));
+   var v3=HeroActivityRules.LegacyActivityBuffer((byte[])b.Clone(),3);Check(v3[74]==(byte)KVFlag.Panorama);
+   Put(64,1);try{HeroActivityRules.LegacyActivityBuffer(b,2);throw new Exception("16-bit legacy lanes must fail");}catch(System.IO.InvalidDataException){}
   }
   // A stance is scoped to locomotion and cannot enable the item's spell cast.
   {

@@ -10,14 +10,48 @@ using ValveResourceFormat.ResourceTypes;
 // that its animation exists in this version of the game.
 internal static class HeroActivityRules
 {
-    // VRF can read older KV3 generations, but only writes v4/v5. Keep the
-    // original generation when writable; upgrade legacy activity blocks to v4.
+    // Legacy animation blocks must keep their KV3 generation. VRF writes only
+    // v4/v5, so use its lossless v4 lanes as an intermediate for v2/v3.
     internal static byte WritableVersion(byte source)=>source switch
     {
-        >=1 and <=3=>4,
+        2 or 3=>4,
         4 or 5=>source,
         _=>throw new InvalidDataException("Unsupported activity KV3 version: "+source)
     };
+    internal static byte[] SerializeActivity(BinaryKV3 binary,byte sourceVersion)
+    {
+        binary.SerializationVersion=WritableVersion(sourceVersion);
+        if(sourceVersion<4)binary.SerializationCompressionMethod=KV3BinaryCompressionMethod.Uncompressed;
+        using var stream=new MemoryStream();binary.Serialize(stream);var bytes=stream.ToArray();
+        if(sourceVersion>=4)return bytes;
+        return LegacyActivityBuffer(bytes,sourceVersion);
+    }
+    internal static byte[] LegacyActivityBuffer(byte[] bytes,byte sourceVersion)
+    {
+        if(sourceVersion is not (2 or 3)||bytes.Length<72||BitConverter.ToUInt32(bytes,0)!=0x4b563304||BitConverter.ToUInt32(bytes,20)!=0)
+            throw new InvalidDataException("Invalid legacy activity intermediate");
+        int I(int offset)=>BitConverter.ToInt32(bytes,offset);
+        int Align(int n,int a)=>checked((n+a-1)/a*a);
+        if(I(64)!=0||I(68)!=0)throw new InvalidDataException("Legacy activity contains unsupported 16-bit lanes");
+        var ones=I(28);var fours=I(32);var eights=I(36);var typeBytes=I(40);var bufferSize=I(48);
+        if(ones<0||fours<1||eights<0||typeBytes<0||bufferSize<0||bufferSize>bytes.Length-72)throw new InvalidDataException("Invalid legacy activity lanes");
+        var fourStart=Align(ones,4);var stringsStart=checked(Align(fourStart+fours*4,8)+eights*8);
+        var typeEnd=checked(stringsStart+typeBytes);var cursor=stringsStart;var stringCount=I(72+fourStart);
+        if(stringCount<0||typeEnd>bufferSize)throw new InvalidDataException("Invalid legacy activity string table");
+        for(var i=0;i<stringCount;i++){while(cursor<typeEnd&&bytes[72+cursor]!=0)cursor++;if(cursor>=typeEnd)throw new InvalidDataException("Truncated activity string");cursor++;}
+        // The writer emits explicit arrays, so the type stream consists solely
+        // of node types and optional flag bytes. No encoded values are changed.
+        while(cursor<typeEnd){var type=bytes[72+cursor++];
+            if((type&0x40)!=0)throw new InvalidDataException("Unexpected activity type extension");
+            if((type&0x80)==0)continue;
+            if(cursor>=typeEnd)throw new InvalidDataException("Truncated activity type flag");
+            if(sourceVersion==2)bytes[72+cursor]=((KVFlag)bytes[72+cursor]) switch{
+                KVFlag.Resource=>1,KVFlag.ResourceName=>2,KVFlag.Panorama=>8,KVFlag.SoundEvent=>16,KVFlag.SubClass=>32,
+                _=>throw new InvalidDataException("Unsupported legacy activity flag")};
+            cursor++;
+        }
+        var result=new byte[bytes.Length-8];Buffer.BlockCopy(bytes,0,result,0,64);result[0]=sourceVersion;Buffer.BlockCopy(bytes,72,result,64,bytes.Length-72);return result;
+    }
     internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null);
     private sealed record Option(string Id,string Name,Rule[] Rules);
     private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false);
@@ -83,11 +117,10 @@ internal static class HeroActivityRules
             var block=resource.Blocks.SingleOrDefault(b=>b.Type.ToString()==type);if(block is null)continue;
             var binary=new BinaryKV3(block.Type){Offset=block.Offset,Size=block.Size,Resource=resource};
             using(var reader=new BinaryReader(new MemoryStream(bytes))){reader.BaseStream.Position=block.Offset;binary.Read(reader);}
-            binary.SerializationVersion=WritableVersion(bytes[(int)block.Offset]);
             binary.SerializationCompressionMethod=(KV3BinaryCompressionMethod)(BitConverter.ToUInt32(bytes,(int)block.Offset+20)&0xff);
             snapshots[type]=Payload(binary,key);var report=Bake(binary.Data.Root,key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
             if(type=="ASEQ"&&request.RequireStance&&report.StanceCount==0)throw new InvalidDataException("This stance has no compatible animations in the installed hero model");
-            using(var buffer=new MemoryStream()){binary.Serialize(buffer);rawBlocks[block]=buffer.ToArray();}
+            rawBlocks[block]=SerializeActivity(binary,bytes[(int)block.Offset]);
             changed.Add(block);expected[type]=binary.ToString()!;
         }
         using(var output=File.Create(request.Output))Program.SerializePatchedResource(resource,bytes,output,false,changed,preserveMetadata:true,rawBlocks:rawBlocks);
