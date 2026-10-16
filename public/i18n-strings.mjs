@@ -1,4 +1,5 @@
 export const translations = {
+  "Чумные стражи": "Plague Wards",
   "Своя стойка": "Custom stance",
   "Стойка героя": "Hero stance",
   "Базовая стойка": "Default stance",

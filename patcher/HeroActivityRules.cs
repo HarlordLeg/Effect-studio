@@ -10,7 +10,7 @@ using ValveResourceFormat.ResourceTypes;
 // that its animation exists in this version of the game.
 internal static class HeroActivityRules
 {
-    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false);
+    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null);
     private sealed record Option(string Id,string Name,Rule[] Rules);
     private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false);
     private static readonly HashSet<string> StanceActivities=["ACT_DOTA_IDLE","ACT_DOTA_IDLE_RARE","ACT_DOTA_RUN","ACT_DOTA_LOADOUT"];
@@ -25,7 +25,7 @@ internal static class HeroActivityRules
         foreach(var row in rows){
             var labels=row["m_activityArray"].Values.ToArray();var tags=labels.Select(a=>Text(a,"m_name")).Where(n=>!n.StartsWith("ACT_",StringComparison.Ordinal)).ToArray();
             foreach(var act in labels.Select(a=>Text(a,"m_name")).Where(n=>n.StartsWith("ACT_",StringComparison.Ordinal))){
-                var applicable=rules.Where(r=>Matches(r,act)).ToArray();var selected=applicable.Select(r=>r.Modifier).ToHashSet();
+                var applicable=rules.Where(r=>Matches(r,act)&&(r.Sequence is null||r.Sequence==Text(row,key=="m_animArray"?"m_name":"m_sName"))).ToArray();var selected=applicable.Select(r=>r.Modifier).ToHashSet();
                 var equipment=tags.Where(known.Contains).ToArray();
                 if(equipment.Any(t=>!selected.Contains(t)))continue;
                 var strip=tags.Where(selected.Contains).ToArray();if(strip.Length==0)continue;
@@ -61,7 +61,7 @@ internal static class HeroActivityRules
         if(inspect){
             var rows=Data(sequence)["m_localS1SeqDescArray"].Values.ToArray();var options=new List<object>();var audit=new List<object>();
             foreach(var option in request.Options??[]){
-                var matches=option.Rules.Where(rule=>rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Contains(rule.Modifier)&&labels.Any(a=>a.StartsWith("ACT_",StringComparison.Ordinal)&&Matches(rule,a));})).ToArray();
+                var matches=option.Rules.Where(rule=>rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return (rule.Sequence is null||rule.Sequence==Text(row,"m_sName"))&&labels.Contains(rule.Modifier)&&labels.Any(a=>a.StartsWith("ACT_",StringComparison.Ordinal)&&Matches(rule,a));})).ToArray();
                 audit.Add(new{id=option.Id,name=option.Name,matchedRules=matches,missingRules=option.Rules.Except(matches).ToArray()});
                 var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?StanceActivities.Select(a=>r with{Asset=a}):StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).ToArray();
                 var selected=rules.Select(r=>r.Modifier).ToHashSet();

@@ -34,6 +34,12 @@ internal static class HeroActivitiesTests
    HeroActivityRules.Bake(root,"m_animArray",new[]{new HeroActivityRules.Rule("ALL","one"),new HeroActivityRules.Rule("ALL","two")},new HashSet<string>{"one","two"});
    Check(!Names(basic).Contains("ACT_DOTA_IDLE"));Check(Names(one).Contains("one"));Check(Names(pair).SequenceEqual(new[]{"ACT_DOTA_IDLE"}));
   }
+  // Source sequence restriction activates only the injured variant.
+  {
+   KVObject normal=Sequence("normal","ACT_DOTA_CAST_ABILITY_1","actual"),injured=Sequence("injured","ACT_DOTA_CAST_ABILITY_1","actual","injured");var root=KVObject.Collection();root["m_localS1SeqDescArray"]=Array(normal,injured);
+   var report=HeroActivityRules.Bake(root,"m_localS1SeqDescArray",new[]{new HeroActivityRules.Rule("ACT_DOTA_CAST_ABILITY_1","actual",Sequence:"injured")},new HashSet<string>{"actual"});
+   Check(report.Count==1);Check(Names(normal).Contains("actual"));Check(!Names(injured).Contains("actual"));Check(Names(injured).Contains("injured"));
+  }
   var skeleton=KVObject.Collection();skeleton["m_boneName"]=Array(new KVObject("root"));skeleton["m_nParent"]=Array(new KVObject(-1));foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})skeleton[key]=Array(new KVObject(1d));HeroActivities.ValidateSkeleton(skeleton,skeleton);
   var mismatched=KVObject.Collection();mismatched["m_boneName"]=Array(new KVObject("wrong"));mismatched["m_nParent"]=Array(new KVObject(-1));var rejected=false;try{HeroActivities.ValidateSkeleton(skeleton,mismatched);}catch(InvalidDataException){rejected=true;}Check(rejected);
   // Optional integration against the user's original compiled Anti-Mage model.

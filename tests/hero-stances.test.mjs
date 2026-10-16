@@ -57,3 +57,24 @@ test('an entity cosmetic can also enable hero activities without changing its en
  const original=structuredClone(item.entityReplacements);const [plan]=heroActivityPlans([{hero,item,effects:[]}]);assert.equal(plan.model,hero.model);assert.deepEqual(plan.rules,[{asset:'ALL',modifier:'telebolt'}]);assert.deepEqual(item.entityReplacements,original);
  assert.deepEqual(stanceCandidates(hero),[]);
 });
+test('verified model corrections distinguish weapon-local Mace animations, injured cast and alternate Axe body',async()=>{
+ const {correctHeroRules,wearableActivityRules,heroBodyReplacement}=await import('../lib/activity-corrections.mjs');
+ const mace={id:'game-7571',model:'models/items/faceless_void/mace_of_aeons/mace_of_aeons.vmdl_c'};
+ assert.deepEqual(wearableActivityRules(mace),[{asset:'ALL',modifier:'mace'}]);assert.deepEqual(correctHeroRules(mace,[{asset:'ALL',modifier:'mace'}]),[]);
+ assert.deepEqual(correctHeroRules({gameItemId:'6529'},[{asset:'ACT_DOTA_CAST_ABILITY_1',modifier:'twinblade_shuriken_toss_injured'}]),[{asset:'ACT_DOTA_CAST_ABILITY_1',modifier:'twinblade_shuriken_toss',sequence:'twinblade_shuriken_toss_injured'}]);
+ assert.deepEqual(correctHeroRules({gameItemId:'7469'},[{asset:'ALL',modifier:'fishstick'}]),[{asset:'ACT_DOTA_ATTACK',modifier:'fish_slap'}]);
+ const hero={id:'axe',model:'models/heroes/axe/axe.vmdl_c'},item={gameItemId:'12964'};assert.equal(heroBodyReplacement(hero,item).source,'models/items/axe/ti9_jungle_axe/axe_bare.vmdl_c');assert.deepEqual(correctHeroRules(item,[{asset:'ALL',modifier:'ti9'}]),[]);assert.equal(heroBodyReplacement({...hero,id:'other'},item),null);
+});
+test('Mace activity patch runs on the replaced weapon, while Unleashed packs its authored full body',async()=>{
+ for(const kind of ['mace','axe']){
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-activity-source-'));try{
+ const bytes=Buffer.alloc(16);bytes.writeUInt32LE(16);bytes.writeUInt32LE(8,8);const body=Buffer.concat([bytes,Buffer.from('authored-body')]),patched=Buffer.concat([bytes,Buffer.from('weapon-activities')]);
+ const hero={id:kind==='mace'?'faceless_void':'axe',model:kind==='mace'?'models/heroes/faceless_void/faceless_void.vmdl_c':'models/heroes/axe/axe.vmdl_c',defaultSlotModels:{weapon:kind==='mace'?'models/heroes/faceless_void/faceless_void_weapon.vmdl_c':'models/heroes/axe/axe_weapon.vmdl_c'}};
+ const item={id:kind==='mace'?'game-7571':'game-12964',gameItemId:kind==='mace'?'7571':'12964',slot:'weapon',model:kind==='mace'?'models/items/faceless_void/mace_of_aeons/mace_of_aeons.vmdl_c':'models/development/invisiblebox.vmdl_c',nativeOverrides:{entries:[],particles:[],unsupported:[],skin:0,activities:[{asset:'ALL',modifier:kind==='mace'?'mace':'ti9'}]}};hero.items=[item];
+ const sourceBody='models/items/axe/ti9_jungle_axe/axe_bare.vmdl_c';fs.writeFileSync(path.join(root,'game.vpk'),packVpk(new Map([[hero.model,bytes],[item.model,bytes],[sourceBody,body]])));fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify({heroes:[hero],effects:[]}));fs.writeFileSync(path.join(root,'patcher'),'stub');let calls=0;
+ const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,activityRulesV1:true});const request=JSON.parse(fs.readFileSync(args[1]));if(args[0]==='--relocate'){for(const file of request.files)fs.copyFileSync(file.input,file.output);return '';}
+ assert.equal(kind,'mace');assert.equal(args[0],'--activity-rules');assert.equal(request.model,hero.defaultSlotModels.weapon);assert.deepEqual(request.rules,[{asset:'ALL',modifier:'mace'}]);calls++;fs.writeFileSync(request.output,patched);return '';};
+ const builder=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),job={id:kind};await builder.build([builder.cosmeticChoice(hero.id,item.id)],job);const vpk=new Vpk(job.file);
+ if(kind==='mace'){assert.equal(calls,1);assert.equal(vpk.read(hero.model),null);assert.deepEqual(vpk.read(hero.defaultSlotModels.weapon),patched);}else{assert.equal(calls,0);assert.deepEqual(vpk.read(hero.model),body);assert.deepEqual(vpk.read(hero.defaultSlotModels.weapon),bytes);assert.equal(vpk.read(sourceBody),null);}
+ }finally{fs.rmSync(root,{recursive:true,force:true});}}
+});

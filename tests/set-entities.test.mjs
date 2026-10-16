@@ -36,3 +36,9 @@ test('hero forms use their exact model replacement and selected material skin, a
  addSetEntities([hero],game,{},()=>true);assert.equal(hero.items[0].nativeOverrides.skin,1);assert.equal(hero.items[0].entityKind,'form');assert.equal(replacementTarget(hero,hero.items[0]),'models/heroes/lycan/lycan_wolf.vmdl_c');assert.equal(hero.items[0].entityReplacements.length,1);
  const missing={...hero,items:[],entitySlots:{},defaultSlotModels:{}};addSetEntities([missing],game,{},()=>false);assert.equal(missing.items.length,0);
 });
+test('numbered legacy wards resolve to an existing current unnumbered unit without inventing model paths',()=>{
+ const hero={id:'venomancer',npcName:'npc_dota_hero_venomancer',model:'models/heroes/venomancer/venomancer.vmdl_c',items:[],defaultSlotModels:{}};
+ const game={items:{6474:{name:'Splattering Forcipule',item_slot:'ability3',used_by_heroes:{npc_dota_hero_venomancer:'1'},visuals:{a:{type:'entity_model',asset:'npc_dota_venomancer_plague_ward_1',modifier:'models/items/venomancer/centipede_ward/centipede_ward.vmdl'},b:{type:'entity_model',asset:'npc_dota_venomancer_plague_ward_2',modifier:'models/items/venomancer/centipede_ward/centipede_ward.vmdl'}}}}};
+ const target='models/wards/verified_current.vmdl';addSetEntities([hero],game,{npc_dota_venomancer_plague_ward:{Model:target}},()=>true);const item=hero.items.find(i=>!i.isDefault);assert.equal(item.entityReplacements.length,1);assert.equal(item.entityReplacements[0].target,target+'_c');assert.equal(hero.entitySlots.ability3.name,'Чумные стражи');
+ const absent={...hero,items:[],defaultSlotModels:{},entitySlots:{}};addSetEntities([absent],game,{},()=>true);assert.equal(absent.items.length,0);
+});
