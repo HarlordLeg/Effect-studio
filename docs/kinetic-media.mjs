@@ -1,6 +1,19 @@
 import {kineticActionLabel} from './kinetic-gems.mjs';
 import {kineticGroups} from './kinetic-gems.mjs';
 export const kineticWikiPages={
+"animation-mage-slayer-main":"https://dota2.fandom.com/wiki/Glaive_of_the_Mage_Slayer",
+"animation-mage-slayer-offhand":"https://dota2.fandom.com/wiki/Glaive_of_the_Mage_Slayer_-_Off-Hand",
+"animation-mage-slayer-set":"https://dota2.fandom.com/wiki/The_Mage_Slayer's_Set",
+"animation-pegleg":"https://dota2.fandom.com/wiki/Pegleg_of_the_Cursed_Pirate",
+"animation-mace-chosen":"https://dota2.fandom.com/wiki/Mace_of_the_Chosen",
+"animation-lyralei-breeze":"https://dota2.fandom.com/wiki/Lyralei's_Breeze",
+"animation-screeauk-talon":"https://dota2.fandom.com/wiki/Scree'auk's_Talon",
+"animation-tormented-staff":"https://dota2.fandom.com/wiki/Tormented_Staff",
+"animation-crystal-dryad":"https://dota2.fandom.com/wiki/Crystal_Dryad",
+"animation-colossal-terrorpin":"https://dota2.fandom.com/wiki/Colossal_Terrorpin",
+"animation-kantusa":"https://dota2.fandom.com/wiki/Kantusa_the_Script_Sword",
+"animation-sword-colossus":"https://dota2.fandom.com/wiki/Sword_of_the_Colossus",
+"animation-black-death":"https://dota2.fandom.com/wiki/Chains_of_the_Black_Death",
  "kinetic-0": "https://dota2.fandom.com/wiki/Kinetic:_Pounce_of_the_Silent_Ripper",
  "kinetic-1": "https://dota2.fandom.com/wiki/Kinetic:_Flames_of_the_Pyre",
  "kinetic-2": "https://dota2.fandom.com/wiki/Kinetic:_Pits_of_Omoz",
@@ -117,7 +130,7 @@ export const kineticWikiClips={
  ]
 };
 export function kineticWikiPreview(option,downloaded={items:{}}){
- const id=option.id;if(!/^kinetic-\d+$/.test(id??''))return {page:null,clips:[]};
+ const id=option.id;if(!/^(?:kinetic-\d+|animation-[a-z0-9-]+)$/.test(id??''))return {page:null,clips:[]};
  const local=downloaded.items?.[id];
  const clips=[...(local?.clips??[]),...(kineticWikiClips[id]??[])].filter((clip,index,all)=>all.findIndex(c=>c.file===clip.file)===index);
  return {page:kineticWikiPages[id]??null,clips};

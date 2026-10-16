@@ -1,4 +1,12 @@
 export const translations = {
+"Анимации предмета: ":"Item animations: ",
+"Эффекты предмета: ":"Item effects: ",
+"Применяются только подтверждённые анимации предмета. Его модель и собственные частицы оружия не добавляются.":"Only confirmed item animations are applied. The donor model and weapon particles are not added.",
+"Применяются только подтверждённые эффекты способностей и иконки предмета. Его модель и собственные частицы оружия не добавляются.":"Only confirmed ability effects and icons are applied. The donor model and weapon particles are not added.",
+"На превью может быть показан сам предмет и его эффекты. Выбор применяет только перечисленные анимации; хват может отличаться с другим оружием.":"Previews may show the original item and its effects. Only the listed animations are applied; the grip may differ with another weapon.",
+"Атаки и смерть добавляют варианты к базовым анимациям, а не заменяют все стандартные варианты.":"Attack and death animations add variants to the defaults instead of replacing all default variants.",
+"Доступность зависит от таблицы анимаций установленной модели Tiny. Неподдерживаемая форма не будет применяться молча.":"Availability depends on the installed Tiny animation tables. Unsupported forms are not silently modified.",
+
 "Предмет: ":"Item: ","Выберите источник":"Choose a source","Выберите приоритет: ":"Choose priority: ","Иконка способности":"Ability icon","Иконка предмета":"Item icon","Эффект способности":"Ability effect",
 
 "Насмешка этого самоцвета отмечена на вики как неработающая и не применяется.":"The wiki marks this gem’s taunt as nonfunctional; it is not applied.",

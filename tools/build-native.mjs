@@ -17,7 +17,7 @@ try{
  for(const name of ['obj','bin'])fs.rmSync(path.join(projectDirectory,name),{recursive:true,force:true});
  run('dotnet',['publish',project,'-c','Release','-r','win-x64','--self-contained','true','--disable-build-servers','-p:UseSharedCompilation=false','-p:PublishSingleFile=true','-o',stage]);
  const executable=path.join(stage,options.exe);console.log('[CHECK] Fresh executable: '+executable);
- const raw=run(executable,['--capabilities'],true);console.log(raw.trim());const caps=JSON.parse(raw.trim());if(caps.version!=='1.1.0'||(!caps[options.cap]||(kind==='assets'&&!caps.animatedParticleModels)||(kind==='patcher'&&(!caps.activityRulesV4||!caps.activityRulesV3||!caps.activityRulesV2||!caps.activityRulesV1||!caps.heroActivitiesV4||!caps.terrorbladeBindingsV1||!caps.terrorbladeArcanaV4))))throw new Error('Fresh executable capability check failed');
+ const raw=run(executable,['--capabilities'],true);console.log(raw.trim());const caps=JSON.parse(raw.trim());if(caps.version!=='1.1.0'||(!caps[options.cap]||(kind==='assets'&&!caps.animatedParticleModels)||(kind==='patcher'&&(!caps.activityRulesV5||!caps.activityRulesV4||!caps.activityRulesV3||!caps.activityRulesV2||!caps.activityRulesV1||!caps.heroActivitiesV4||!caps.terrorbladeBindingsV1||!caps.terrorbladeArcanaV4))))throw new Error('Fresh executable capability check failed');
  if(kind==='patcher')run(process.execPath,[path.join(root,'tools','test-relocation.mjs'),executable]);
  const publish=path.join(projectDirectory,'publish');fs.mkdirSync(publish,{recursive:true});fs.cpSync(stage,publish,{recursive:true,force:true});
  console.log('[OK] Installed validated executable: '+path.join(publish,options.exe));

@@ -63,6 +63,12 @@ internal static class HeroActivitiesTests
    Check(report.MissingRequired.SequenceEqual(new[]{"ACT_DOTA_RUN / missing"}));
    Check(!Names(root["m_animArray"].Values.First()).Contains("gem"));Check(Names(root["m_animArray"].Values.Last()).Contains("gem"));
   }
+  // Mage Slayer adds authored attack/death variants to the normal pool.
+  {
+   var basic=Sequence("normal_attack","ACT_DOTA_ATTACK");var custom=Sequence("slasher_attack","ACT_DOTA_ATTACK","slasher_weapon");var root=KVObject.Collection();root["m_animArray"]=Array(basic,custom);
+   var report=HeroActivityRules.Bake(root,"m_animArray",new[]{new HeroActivityRules.Rule("ACT_DOTA_ATTACK","slasher_weapon",Priority:100,RetainBase:true)},new HashSet<string>{"slasher_weapon"});
+   Check(report.MissingRequired.Length==0&&Names(basic).Contains("ACT_DOTA_ATTACK")&&Names(custom).SequenceEqual(new[]{"ACT_DOTA_ATTACK"}));
+  }
   var skeleton=KVObject.Collection();skeleton["m_boneName"]=Array(new KVObject("root"));skeleton["m_nParent"]=Array(new KVObject(-1));foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})skeleton[key]=Array(new KVObject(1d));HeroActivities.ValidateSkeleton(skeleton,skeleton);
   var mismatched=KVObject.Collection();mismatched["m_boneName"]=Array(new KVObject("wrong"));mismatched["m_nParent"]=Array(new KVObject(-1));var rejected=false;try{HeroActivities.ValidateSkeleton(skeleton,mismatched);}catch(InvalidDataException){rejected=true;}Check(rejected);
   // Optional integration against the user's original compiled Anti-Mage model.

@@ -55,7 +55,7 @@ test('standalone stance VPK patches only the hero and never packs the source cos
 test('an entity cosmetic can also enable hero activities without changing its entity model mapping',()=>{
  const {hero,item}=fixture();item.setEntity=true;item.entityReplacements=[{target:'models/units/cog.vmdl_c',source:item.model}];item.nativeOverrides=nativeOverrides({a:activity('ALL','telebolt')});
  const original=structuredClone(item.entityReplacements);const [plan]=heroActivityPlans([{hero,item,effects:[]}]);assert.equal(plan.model,hero.model);assert.deepEqual(plan.rules,[{asset:'ALL',modifier:'telebolt'}]);assert.deepEqual(item.entityReplacements,original);
- assert.ok(stanceCandidates(hero).every(o=>o.id.startsWith('kinetic-')));
+ assert.ok(stanceCandidates(hero).every(o=>/^(kinetic-|animation-)/.test(o.id)));
 });
 test('verified model corrections distinguish weapon-local Mace animations, injured cast and alternate Axe body',async()=>{
  const {correctHeroRules,wearableActivityRules,heroBodyReplacement}=await import('../lib/activity-corrections.mjs');

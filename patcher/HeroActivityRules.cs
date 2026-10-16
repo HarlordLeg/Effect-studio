@@ -52,7 +52,7 @@ internal static class HeroActivityRules
         }
         var result=new byte[bytes.Length-8];Buffer.BlockCopy(bytes,0,result,0,64);result[0]=sourceVersion;Buffer.BlockCopy(bytes,72,result,64,bytes.Length-72);return result;
     }
-    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null,string[]? ExcludedActivities=null);
+    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null,string[]? ExcludedActivities=null,bool RetainBase=false);
     private sealed record Option(string Id,string Name,Rule[] Rules);
     private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false,bool RequireActivity=false);
     private static readonly HashSet<string> StanceActivities=["ACT_DOTA_IDLE","ACT_DOTA_IDLE_RARE","ACT_DOTA_RUN","ACT_DOTA_LOADOUT"];
@@ -76,7 +76,7 @@ internal static class HeroActivityRules
             }
         }
         var winners=candidates.GroupBy(c=>c.Signature).SelectMany(g=>{var priority=g.Max(c=>c.Priority);var size=g.Where(c=>c.Priority==priority).Max(c=>c.Specificity);return g.Where(c=>c.Priority==priority&&c.Specificity==size);}).ToArray();
-        var promoted=winners.Select(w=>w.Signature).ToHashSet();var names=new List<string>();
+        var promoted=winners.Where(w=>!rules.Any(r=>r.RetainBase&&Matches(r,w.Act)&&w.Strip.Contains(r.Modifier))).Select(w=>w.Signature).ToHashSet();var names=new List<string>();
         foreach(var row in rows){
             var labels=row["m_activityArray"].Values.ToArray();var tags=labels.Select(a=>Text(a,"m_name")).Where(n=>!n.StartsWith("ACT_",StringComparison.Ordinal)).ToArray();var selected=winners.Where(w=>ReferenceEquals(w.Row,row)).ToArray();
             var keep=new List<KVObject>();
@@ -105,7 +105,7 @@ internal static class HeroActivityRules
             foreach(var option in request.Options??[]){
                 var matches=option.Rules.Where(rule=>rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return (rule.Sequence is null||rule.Sequence==Text(row,"m_sName"))&&labels.Contains(rule.Modifier)&&labels.Any(a=>a.StartsWith("ACT_",StringComparison.Ordinal)&&Matches(rule,a));})).ToArray();
                 audit.Add(new{id=option.Id,name=option.Name,matchedRules=matches,missingRules=option.Rules.Except(matches).ToArray()});
-                var genuine=option.Id.StartsWith("kinetic-",StringComparison.Ordinal);
+                var genuine=(option.Id.StartsWith("kinetic-",StringComparison.Ordinal)||option.Id.StartsWith("animation-",StringComparison.Ordinal));
                 var actions=rows.SelectMany(row=>row["m_activityArray"].Values.Select(a=>Text(a,"m_name"))).Where(a=>a.StartsWith("ACT_",StringComparison.Ordinal)).Distinct().ToArray();
                 var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?(genuine?actions:StanceActivities.ToArray()).Select(a=>r with{Asset=a}):genuine||StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).Where(r=>!genuine||rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return Matches(r,r.Asset)&&labels.Contains(r.Modifier)&&labels.Contains(r.Asset);})).Distinct().ToArray();
                 var selected=rules.Select(r=>r.Modifier).ToHashSet();

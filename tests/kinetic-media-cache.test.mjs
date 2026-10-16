@@ -69,3 +69,11 @@ test('all article videos survive unrelated filenames, unknown actions and templa
 });
 
 test('apostrophes in wiki filenames are preserved rather than downloading suffixes',()=>{const clips=extractWikiAnimations("[[File:Bladebiter's Strike.gif]]\n{{Video|Trapper's Treachery.webm}}");assert.deepEqual(clips.map(c=>c.file),["Bladebiter's_Strike.gif","Trapper's_Treachery.webm"]);});
+
+test('new wiki media resolves its real repository URL instead of assuming the old CDN',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-media-repository-'));try{
+ const file='New_clip.mp4',actual='https://liquipedia.net/commons/images/a/ab/New_clip.mp4',movie=Buffer.concat([Buffer.from([0,0,0,16]),Buffer.from('ftypisomfixture')]),calls=[];
+ const mock=async url=>{calls.push(String(url));if(String(url).includes('static.wikia'))return new Response(null,{status:404});if(String(url).includes('api.php'))return new Response(JSON.stringify({query:{pages:{1:{imageinfo:[{url:actual}]}}}}));assert.equal(String(url),actual);return new Response(movie);};
+ const cached=await cacheWikiClip(root,{file,url:'https://static.wikia.nocookie.net/dota2_gamepedia/images/a/ab/'+file},mock);assert.equal(cached.type,'video');assert.match(cached.url,/\.mp4$/);assert.equal(calls.length,3);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
