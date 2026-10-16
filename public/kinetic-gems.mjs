@@ -4,7 +4,7 @@ export const kineticActionLabel=action=>kineticActionLabels[action]??(action.sta
 export const kineticActions=['ACT_DOTA_IDLE','ACT_DOTA_IDLE_RARE','ACT_DOTA_RUN','ACT_DOTA_LOADOUT'];
 export function kineticGroups(options){
  const groups=new Map();
- for(const option of options)for(const rule of option.rules??[]){const asset=rule.asset??rule.Asset;for(const action of asset==='ALL'?kineticActions:[asset]){if(!groups.has(action))groups.set(action,[]);const entries=groups.get(action);if(!entries.some(e=>e.id===option.id))entries.push(option);}}
+ for(const option of options)for(const rule of option.rules??[]){const asset=rule.asset??rule.Asset;for(const action of asset==='ALL'?kineticActions:[asset]){if((rule.excludedActivities??rule.ExcludedActivities??[]).includes(action))continue;if(!groups.has(action))groups.set(action,[]);const entries=groups.get(action);if(!entries.some(e=>e.id===option.id))entries.push(option);}}
  for(const option of options)for(const entry of option.native?.entries??[]){const key='resource:'+entry.target;if(!groups.has(key))groups.set(key,[]);if(!groups.get(key).some(o=>o.id===option.id))groups.get(key).push(option);}
  return groups;
 }
@@ -14,15 +14,28 @@ export function resolveKinetics(options,priorities={}){
   if(action.startsWith('resource:'))continue;
   const winner=candidates.length===1?candidates[0]:candidates.find(o=>o.id===priorities[action]);
   if(!winner)throw new Error('Choose kinetic gem priority: '+action);
-  for(const rule of winner.rules??[]){const asset=rule.asset??rule.Asset;if(asset==='ALL'||asset===action)rules.push({...rule,asset:action,modifier:rule.modifier??rule.Modifier});}
+  for(const rule of winner.rules??[]){const asset=rule.asset??rule.Asset;if(!(rule.excludedActivities??rule.ExcludedActivities??[]).includes(action)&&(asset==='ALL'||asset===action))rules.push({...rule,asset:action,modifier:rule.modifier??rule.Modifier});}
  }
  return rules;
 }
 
-export function resolveKineticOverrides(options,priorities={}){
- const groups=kineticGroups(options),entries=new Map(),particles=new Set(),unsupported=new Set();
- for(const option of options){for(const p of option.native?.particles??[])particles.add(p);for(const u of option.native?.unsupported??[])unsupported.add(u);
-  for(const entry of option.native?.entries??[]){const key='resource:'+entry.target,candidates=groups.get(key);const winner=candidates.length===1?candidates[0].id:priorities[key];if(!candidates.some(o=>o.id===winner))throw new Error('Choose kinetic gem priority');if(option.id===winner)entries.set(entry.target,entry);}
+export function kineticChoiceGroups(options,items=[]){
+ const groups=kineticGroups(options);
+ for(const item of items){const native=item.nativeOverrides;if(!native)continue;const option={id:'item:'+item.id,name:'Предмет: '+item.name,native,rules:[]};
+  for(const entry of native.entries??[]){const key='resource:'+entry.target;if(!groups.has(key)||!['particle','ability_icon','inventory_icon'].includes(entry.type))continue;if(!groups.get(key).some(o=>o.id===option.id))groups.get(key).push(option);}
  }
- return {entries:[...entries.values()],particles:[...particles],unsupported:[...unsupported],skin:0};
+ for(const [key,candidates] of groups){if(!key.startsWith('resource:'))continue;const target=key.slice(9),sources=new Set(candidates.map(o=>o.native.entries.find(e=>e.target===target)?.source));if(sources.size===1)groups.set(key,[candidates[0]]);}
+ return groups;
+}
+export function kineticPriorityLabel(action){if(!action.startsWith('resource:'))return kineticActionLabel(action);return /\/spellicons\//.test(action)?'Иконка способности':/\/images\/items\//.test(action)?'Иконка предмета':'Эффект способности';}
+export function resolveKineticOverrides(options,priorities={},items=[]){
+ const entries=[],particles=new Set(),unsupported=new Set();
+ for(const option of options){for(const p of option.native?.particles??[])particles.add(p);for(const u of option.native?.unsupported??[])unsupported.add(u);}
+ for(const [key,candidates] of kineticChoiceGroups(options,items)){
+  if(!key.startsWith('resource:'))continue;
+  const winner=candidates.length===1?candidates[0]:candidates.find(o=>o.id===priorities[key]);
+  if(!winner)throw new Error('Выберите приоритет: '+kineticPriorityLabel(key));
+  entries.push(winner.native.entries.find(e=>e.target===key.slice(9)));
+ }
+ return {entries,particles:[...particles],unsupported:[...unsupported],skin:0};
 }

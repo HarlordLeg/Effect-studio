@@ -1,4 +1,9 @@
 export const translations = {
+"Предмет: ":"Item: ","Выберите источник":"Choose a source","Выберите приоритет: ":"Choose priority: ","Иконка способности":"Ability icon","Иконка предмета":"Item icon","Эффект способности":"Ability effect",
+
+"Насмешка этого самоцвета отмечена на вики как неработающая и не применяется.":"The wiki marks this gem’s taunt as nonfunctional; it is not applied.",
+"Редкая idle-анимация не работает в игре и не применяется. Самоцвет несовместим с Frost Avalanche.":"The rare idle animation does not work in-game and is not applied. This gem is incompatible with Frost Avalanche.",
+
 "На вики нет доступного файла превью":"The wiki has no available preview file",
 "По примечанию вики, этот эффект сейчас не работает в игре. Файл его превью на вики также недоступен.":"The wiki notes that this effect currently does not work in-game. Its preview file is also unavailable on the wiki.",
 "Что меняет":"What it changes",

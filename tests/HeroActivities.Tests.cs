@@ -56,6 +56,13 @@ internal static class HeroActivitiesTests
    var report=HeroActivityRules.Bake(root,"m_localS1SeqDescArray",new[]{new HeroActivityRules.Rule("ACT_DOTA_CAST_ABILITY_1","actual",Sequence:"injured")},new HashSet<string>{"actual"});
    Check(report.Count==1);Check(Names(normal).Contains("actual"));Check(!Names(injured).Contains("actual"));Check(Names(injured).Contains("injured"));
   }
+  // Explicit gems must not silently apply only a subset of requested actions.
+  {
+   var root=KVObject.Collection();root["m_animArray"]=Array(Sequence("idle","ACT_DOTA_IDLE","gem"),Sequence("taunt","ACT_DOTA_TAUNT","gem"));
+   var report=HeroActivityRules.Bake(root,"m_animArray",new[]{new HeroActivityRules.Rule("ALL","gem",Priority:100,ExcludedActivities:new[]{"ACT_DOTA_TAUNT"}),new HeroActivityRules.Rule("ACT_DOTA_RUN","missing",Priority:100)},new HashSet<string>{"gem","missing"});
+   Check(report.MissingRequired.SequenceEqual(new[]{"ACT_DOTA_RUN / missing"}));
+   Check(!Names(root["m_animArray"].Values.First()).Contains("gem"));Check(Names(root["m_animArray"].Values.Last()).Contains("gem"));
+  }
   var skeleton=KVObject.Collection();skeleton["m_boneName"]=Array(new KVObject("root"));skeleton["m_nParent"]=Array(new KVObject(-1));foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})skeleton[key]=Array(new KVObject(1d));HeroActivities.ValidateSkeleton(skeleton,skeleton);
   var mismatched=KVObject.Collection();mismatched["m_boneName"]=Array(new KVObject("wrong"));mismatched["m_nParent"]=Array(new KVObject(-1));var rejected=false;try{HeroActivities.ValidateSkeleton(skeleton,mismatched);}catch(InvalidDataException){rejected=true;}Check(rejected);
   // Optional integration against the user's original compiled Anti-Mage model.

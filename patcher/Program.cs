@@ -26,7 +26,7 @@ internal static class Program
                 return 0;
             }
 
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"heroActivitiesV4\":true,\"darkclawActivities\":true,\"activityRulesV1\":true,\"activityRulesV2\":true,\"activityRulesV3\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true,\"terrorbladeArcanaV3\":true,\"terrorbladeArcanaV4\":true,\"terrorbladeBindingsV1\":true}");return 0; }
+            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"heroActivitiesV4\":true,\"darkclawActivities\":true,\"activityRulesV1\":true,\"activityRulesV2\":true,\"activityRulesV3\":true,\"activityRulesV4\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true,\"terrorbladeArcanaV3\":true,\"terrorbladeArcanaV4\":true,\"terrorbladeBindingsV1\":true}");return 0; }
             if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--terrorblade-bindings") { TerrorbladeBindings.Run(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--terrorblade-arcana") { TerrorbladeArcana.Run(args[1]); return 0; }

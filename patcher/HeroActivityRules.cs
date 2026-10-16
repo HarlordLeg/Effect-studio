@@ -52,7 +52,7 @@ internal static class HeroActivityRules
         }
         var result=new byte[bytes.Length-8];Buffer.BlockCopy(bytes,0,result,0,64);result[0]=sourceVersion;Buffer.BlockCopy(bytes,72,result,64,bytes.Length-72);return result;
     }
-    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null);
+    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null,string[]? ExcludedActivities=null);
     private sealed record Option(string Id,string Name,Rule[] Rules);
     private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false,bool RequireActivity=false);
     private static readonly HashSet<string> StanceActivities=["ACT_DOTA_IDLE","ACT_DOTA_IDLE_RARE","ACT_DOTA_RUN","ACT_DOTA_LOADOUT"];
@@ -60,8 +60,8 @@ internal static class HeroActivityRules
     private static KVObject Data(Block block)=>block is KeyValuesOrNTRO kv?kv.Data:block is BinaryKV3 binary?binary.Data.Root:throw new InvalidDataException("Unsupported activity block "+block.Type);
     private static KVObject Array(IEnumerable<KVObject> rows){var result=KVObject.Array();foreach(var row in rows)result.Add(row);return result;}
     private static string Payload(Block block,string key){var rows=Data(block)[key].Values.ToArray();var labels=rows.Select(r=>r["m_activityArray"]).ToArray();try{foreach(var row in rows)row["m_activityArray"]=KVObject.Array();return block.ToString()!;}finally{for(var i=0;i<rows.Length;i++)rows[i]["m_activityArray"]=labels[i];}}
-    private static bool Matches(Rule rule,string activity)=>! (rule.ExcludeStance&&StanceActivities.Contains(activity))&&(rule.Asset=="ALL"||rule.Asset==activity);
-    internal static (int Count,string[] Names,string[] Missing,int StanceCount) Bake(KVObject data,string key,Rule[] rules,IReadOnlySet<string> known)
+    private static bool Matches(Rule rule,string activity)=>!(rule.ExcludedActivities?.Contains(activity)??false)&&! (rule.ExcludeStance&&StanceActivities.Contains(activity))&&(rule.Asset=="ALL"||rule.Asset==activity);
+    internal static (int Count,string[] Names,string[] Missing,int StanceCount,string[] MissingRequired) Bake(KVObject data,string key,Rule[] rules,IReadOnlySet<string> known)
     {
         var rows=data[key].Values.ToArray();var candidates=new List<(KVObject Row,KVObject[] Labels,string Act,string Signature,int Specificity,int Priority,string[] Strip)>();var found=new HashSet<string>();
         foreach(var row in rows){
@@ -90,7 +90,7 @@ internal static class HeroActivityRules
             if(selected.Length>0){var keepActs=selected.Select(w=>w.Act).ToHashSet();keep.RemoveAll(l=>Text(l,"m_name").StartsWith("ACT_",StringComparison.Ordinal)&&!keepActs.Contains(Text(l,"m_name")));names.Add(Text(row,key=="m_animArray"?"m_name":"m_sName"));}
             row["m_activityArray"]=Array(keep);
         }
-        return (winners.Select(w=>w.Row).Distinct().Count(),names.Distinct().ToArray(),rules.Select(r=>r.Modifier).Distinct().Except(found).ToArray(),winners.Count(w=>w.Priority>=100&&StanceActivities.Contains(w.Act)));
+        return (winners.Select(w=>w.Row).Distinct().Count(),names.Distinct().ToArray(),rules.Select(r=>r.Modifier).Distinct().Except(found).ToArray(),winners.Count(w=>w.Priority>=100&&StanceActivities.Contains(w.Act)),rules.Where(r=>r.Priority>=100&&!winners.Any(w=>Matches(r,w.Act)&&w.Strip.Contains(r.Modifier)&&(r.Sequence is null||r.Sequence==Text(w.Row,key=="m_animArray"?"m_name":"m_sName")))).Select(r=>r.Asset+" / "+r.Modifier).Distinct().ToArray());
     }
     public static void Run(string manifest,bool inspect=false)
     {
@@ -107,7 +107,7 @@ internal static class HeroActivityRules
                 audit.Add(new{id=option.Id,name=option.Name,matchedRules=matches,missingRules=option.Rules.Except(matches).ToArray()});
                 var genuine=option.Id.StartsWith("kinetic-",StringComparison.Ordinal);
                 var actions=rows.SelectMany(row=>row["m_activityArray"].Values.Select(a=>Text(a,"m_name"))).Where(a=>a.StartsWith("ACT_",StringComparison.Ordinal)).Distinct().ToArray();
-                var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?(genuine?actions:StanceActivities.ToArray()).Select(a=>r with{Asset=a}):genuine||StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).Where(r=>!genuine||rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Contains(r.Modifier)&&labels.Contains(r.Asset);})).Distinct().ToArray();
+                var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?(genuine?actions:StanceActivities.ToArray()).Select(a=>r with{Asset=a}):genuine||StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).Where(r=>!genuine||rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return Matches(r,r.Asset)&&labels.Contains(r.Modifier)&&labels.Contains(r.Asset);})).Distinct().ToArray();
                 var selected=rules.Select(r=>r.Modifier).ToHashSet();
                 var eligible=rows.Where(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Where(n=>n.StartsWith("ACT_",StringComparison.Ordinal)).Any(a=>rules.Any(r=>Matches(r,a)&&labels.Contains(r.Modifier)))&&!labels.Where(known.Contains).Any(t=>!selected.Contains(t));}).ToArray();
                 if(eligible.Length>0)options.Add(new{id=option.Id,name=option.Name,rules,animations=eligible.OrderBy(r=>r["m_activityArray"].Values.Count(a=>!Text(a,"m_name").StartsWith("ACT_",StringComparison.Ordinal))).ThenBy(r=>r["m_activityArray"].Values.Any(a=>Text(a,"m_name")=="ACT_DOTA_IDLE")?0:1).Select(r=>Text(r,"m_sName")).ToArray()});
@@ -121,6 +121,7 @@ internal static class HeroActivityRules
             using(var reader=new BinaryReader(new MemoryStream(bytes))){reader.BaseStream.Position=block.Offset;binary.Read(reader);}
             binary.SerializationCompressionMethod=(KV3BinaryCompressionMethod)(BitConverter.ToUInt32(bytes,(int)block.Offset+20)&0xff);
             snapshots[type]=Payload(binary,key);var report=Bake(binary.Data.Root,key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
+            if(type=="ASEQ"&&request.RequireActivity&&report.MissingRequired.Length>0)throw new InvalidDataException("Kinetic changes could not all be applied: "+string.Join(", ",report.MissingRequired));
             if(type=="ASEQ"&&request.RequireActivity&&report.Count==0)throw new InvalidDataException("This kinetic gem has no compatible animations in the installed hero model");
             if(type=="ASEQ"&&request.RequireStance&&report.StanceCount==0)throw new InvalidDataException("This stance has no compatible animations in the installed hero model");
             rawBlocks[block]=SerializeActivity(binary,bytes[(int)block.Offset]);

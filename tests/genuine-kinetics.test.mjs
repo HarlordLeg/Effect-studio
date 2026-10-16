@@ -29,7 +29,7 @@ test('particle-only Kunkka gems combine without packing or inspecting a hero ani
 });
 test('resource collisions require a declared winner',()=>{
  const options=['a','b'].map(id=>({id,rules:[],native:{entries:[{target:'particles/target.vpcf_c',source:'particles/'+id+'.vpcf_c',type:'particle'}]}}));
- assert.throws(()=>resolveKineticOverrides(options),/priority/);
+ assert.throws(()=>resolveKineticOverrides(options),/приоритет/);
  assert.equal(resolveKineticOverrides(options,{'resource:particles/target.vpcf_c':'b'}).entries[0].source,'particles/b.vpcf_c');
 });
 test('attack gem preserves an equipped item stance while overriding the matching action',()=>{
