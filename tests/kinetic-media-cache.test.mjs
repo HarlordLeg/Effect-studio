@@ -52,3 +52,8 @@ test('raw wiki tables discover Blood Chaser shared movement/idle GIFs despite un
 |}`;
  assert.deepEqual(extractWikiAnimations(raw).map(c=>[c.file,c.action]),[['The_Blood_Chaser_ambient.gif','ACT_DOTA_RUN'],['The_Blood_Chaser_Counter_Helix.gif','ACT_DOTA_IDLE']]);
 });
+
+test('sparse wiki rows do not crash table parsing or prevent later valid animation rows',()=>{
+ const html='<tr><td>A</td><td>B</td><td rowspan="2">C</td></tr><tr></tr><tr><td>Idle</td><td>Animation</td><td>[[File:Example_Idle.gif]]</td></tr>';
+ assert.equal(extractWikiAnimations(html)[0].file,'Example_Idle.gif');
+});
