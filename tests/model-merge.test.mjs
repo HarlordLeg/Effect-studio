@@ -81,3 +81,10 @@ test('external mesh dependencies reach the native merge manifest and temporary c
   else{await assert.rejects(action,/modelMergeV2/);assert.ok(!fs.readdirSync(temp).some(n=>n.includes('-external-')));}
  }finally{fs.rmSync(temp,{recursive:true,force:true});}}
 });
+test('merged Leshrac weapon requests authored attachment priority without enabling it on other parts',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-staff-attachments-'));try{
+  const h=hero('leshrac'),item={...h.items[0],slot:'weapon',mergeTarget:h.model},stage=stagedMergeTarget(h,item);const packed=new Map([[h.model,resource(1)],[stage,resource(2)]]);
+  await finalizeModelMerges({root:temp,store:{read:()=>null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:true,modelMergeV3:true});const req=JSON.parse(fs.readFileSync(args[1]));assert.equal(req.donors[0].overrideAttachments,true);assert.equal(req.donors[0].attachRootZero,false);fs.writeFileSync(req.output,resource(3));}},[{hero:h,item}],packed,[],temp,'patcher',{});
+  assert.deepEqual(packed.get(h.model),resource(3));
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});

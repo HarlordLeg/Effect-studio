@@ -9,7 +9,7 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false);
     private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
@@ -51,7 +51,11 @@ internal static class ModelMerge
         var donorParents=Values(donor,"m_nParent");if(donorParents.Length!=donorNames.Length)throw new InvalidDataException("Missing donor parents");
         for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0){if(Number(donorParents[i])<0){
                 var hostParents=Values(host,"m_nParent");var roots=hostParents.Select((p,index)=>(p,index)).Where(v=>Number(v.p)<0).Select(v=>v.index).ToArray();
-                if(!attachRootZero||donorNames[i]!="root_0"||roots.Length!=1)throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
+                // Valve wearables commonly spell the hero's Root_0 as root_0.
+                // Keep both bone names and rebase the new child bind pose;
+                // do not make every skeleton name case-insensitive.
+                var rootCaseAlias=roots.Length==1&&string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)&&string.Equals(hostNames[roots[0]],donorNames[i],StringComparison.OrdinalIgnoreCase);
+                if((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1)throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
                 attachedRoots[i]=(roots[0],RootLocalPose(host,roots[0],donor,i));
             }index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
         foreach(var key in new[]{"m_boneName","m_nParent","m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
@@ -88,6 +92,16 @@ internal static class ModelMerge
             result[i]=boneMap[bone];
         }
         return result;
+    }
+    internal static int OverrideMeshAttachments(KVObject mesh,IReadOnlyDictionary<string,KVObject> replacements){
+        if(replacements.Count==0)return 0;
+        var count=0;var rows=Values(mesh,"m_attachments").ToList();var existing=new HashSet<string>(StringComparer.Ordinal);
+        foreach(var row in rows)if(row.TryGetValue("key",out var name)){
+            var key=Text(name);existing.Add(key);if(replacements.TryGetValue(key,out var attachment)){row["value"]=attachment;count++;}
+        }
+        foreach(var (name,value) in replacements)if(existing.Add(name)){var row=KVObject.Collection();row["key"]=new KVObject(name);row["value"]=value;rows.Add(row);count++;}
+        if(count>0)mesh["m_attachments"]=Array(rows);
+        return count;
     }
     static void EnsureArray(KVObject root,string key,int count,Func<KVObject> value){var rows=Values(root,key).ToList();while(rows.Count<count)rows.Add(value());root[key]=Array(rows);}
     static void AddReferences(Resource host,Resource donor){
@@ -168,7 +182,7 @@ internal static class ModelMerge
     static void RunEmbedded(Request request){
         var original=File.ReadAllBytes(request.Input);using var host=new Resource{FileName=request.Input};host.Read(request.Input);if(host.DataBlock is not Model)throw new InvalidDataException("Merge host must be a model");
         var dataBlock=host.DataBlock;var ctrlBlock=host.Blocks.Single(b=>b.Type==BlockType.CTRL);var data=Read(host,original,dataBlock);var ctrl=Read(host,original,ctrlBlock);var root=data.Data.Root;var control=ctrl.Data.Root;
-        var meshRows=Values(control,"embedded_meshes").ToList();if(meshRows.Count==0)throw new InvalidDataException("Merge host has no embedded meshes");
+        var meshRows=Values(control,"embedded_meshes").ToList();var attachmentOverrides=new Dictionary<string,KVObject>(StringComparer.Ordinal);var editedHostMeshes=new HashSet<int>();if(meshRows.Count==0)throw new InvalidDataException("Merge host has no embedded meshes");
         var chunks=host.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();var imported=new List<string>();
         var meshGroups=Values(root,"m_meshGroups").ToList();if(meshGroups.Count>=63)throw new InvalidDataException("Host has no free mesh group bit");
         var mergedMask=1UL<<meshGroups.Count;meshGroups.Add(new KVObject("harlord_merged"));root["m_meshGroups"]=Array(meshGroups);
@@ -214,11 +228,23 @@ internal static class ModelMerge
             root["m_remappingTable"]=Array(boneTable);root["m_remappingTableStarts"]=Array(starts);
             // Keep material choices on draw calls; material groups append the
             // selected donor materials to each host skin instead of changing it.
+            if(entry.OverrideAttachments){
+                var selected=new HashSet<string>(StringComparer.Ordinal);
+                foreach(var block in donor.Blocks.Where(b=>b.Type==BlockType.MDAT&&blocks.ContainsKey(donor.Blocks.IndexOf(b))))
+                    foreach(var attachment in Values(Read(donor,bytes,block).Data.Root,"m_attachments"))
+                        if(attachment.TryGetValue("key",out var name)&&attachment.TryGetValue("value",out var value)&&selected.Add(Text(name)))attachmentOverrides[Text(name)]=value;
+            }
             var donorGroups=Values(source,"m_materialGroups");var donorMaterials=entry.MetadataOnly?System.Array.Empty<KVObject>():donorGroups.Length>0?Values(donorGroups[0],"m_materials"):donor.Blocks.Where(b=>blocks.ContainsKey(donor.Blocks.IndexOf(b))&&b.Type==BlockType.MDAT).SelectMany(b=>Values(Read(donor,bytes,b).Data.Root,"m_sceneObjects")).SelectMany(scene=>Values(scene,"m_drawCalls")).Where(draw=>draw.ContainsKey("m_material")).Select(draw=>draw["m_material"]).DistinctBy(Text).ToArray();
             foreach(var group in Values(root,"m_materialGroups"))group["m_materials"]=Array(Values(group,"m_materials").Concat(donorMaterials));
             var info=root["m_modelInfo"];var sourceInfo=source["m_modelInfo"];if(sourceInfo.TryGetValue("m_keyValueText",out var text)&&Text(text).Length>0)info["m_keyValueText"]=new KVObject(MergeParticleText(info.TryGetValue("m_keyValueText",out var old)?Text(old):"",Text(text)));
             AddReferences(host,donor);
             foreach(var key in new[]{"pool_size_hint","pool_size_hint_mesh"})if(control.TryGetValue(key,out var hint))control[key]=new KVObject(checked(hint.ToInt64(CultureInfo.InvariantCulture)+(sourceCtrl.TryGetValue(key,out var sourceHint)?sourceHint.ToInt64(CultureInfo.InvariantCulture):bytes.Length*4L)));
+        }
+        // A merged weapon is no longer a separate wearable entity. Its authored
+        // attack attachments must replace colliding base-hand attachments.
+        if(attachmentOverrides.Count>0)foreach(var block in host.Blocks.Where(b=>b.Type==BlockType.MDAT)){
+            var mesh=Read(host,original,block);if(OverrideMeshAttachments(mesh.Data.Root,attachmentOverrides)==0)continue;
+            var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
         }
         control["embedded_meshes"]=Array(meshRows);
         chunks[host.Blocks.IndexOf(dataBlock)]=new Chunk(dataBlock.Type,Serialize(data,original[(int)dataBlock.Offset]));chunks[host.Blocks.IndexOf(ctrlBlock)]=new Chunk(ctrlBlock.Type,Serialize(ctrl,original[(int)ctrlBlock.Offset]));
@@ -226,7 +252,7 @@ internal static class ModelMerge
         Write(original,chunks,request.Output);
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);var combined=check.DataBlock as Model??throw new InvalidDataException("Merged resource is not a model");var names=Values(combined.Data["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();if(!names.Take(originalSkeleton.Length).SequenceEqual(originalSkeleton))throw new InvalidDataException("Host bone indices changed");
         var decodedMeshes=combined.GetEmbeddedMeshes().ToArray();if(decodedMeshes.Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
-        var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL)continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
+        var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL||editedHostMeshes.Contains(i))continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
         File.WriteAllText(request.Output+".merge.json",JsonSerializer.Serialize(new{meshes=imported,bones=names.Length,preservedHostBlocks=host.Blocks.Count}));Console.WriteLine("[OK] Embedded model merge: "+imported.Count+" meshes, "+names.Length+" bones; host animations and physics preserved");
     }
     static void Write(byte[] original,List<Chunk> chunks,string output){

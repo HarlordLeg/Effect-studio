@@ -63,6 +63,19 @@ internal static class ModelMergeTests
   Check(Math.Abs(rootHost["m_boneScaleParent"][1].ToSingle(null)-0.5f)<0.00001f);
   try{ModelMerge.MergeSkeleton(Skeleton(["root"],[-1]),rootDonor);throw new Exception("Root profile applied implicitly");}catch(InvalidDataException){}
   try{ModelMerge.MergeSkeleton(Skeleton(["root","cloth"],[-1,-1]),rootDonor,true);throw new Exception("Ambiguous host roots accepted");}catch(InvalidDataException){}
+  var caseHost=Skeleton(["Root_0"],[-1]);caseHost["m_bonePosParent"]=Array(Vector(10,20,30));caseHost["m_boneRotParent"]=Array(Vector(0,0,0,1));caseHost["m_boneScaleParent"]=Array(new KVObject(2f));
+  Check(ModelMerge.MergeSkeleton(caseHost,rootDonor).SequenceEqual(new[]{1,2}));
+  Check(caseHost["m_boneName"][0].ToString(null)=="Root_0"&&caseHost["m_boneName"][1].ToString(null)=="root_0");
+  Check(caseHost["m_nParent"][1].ToInt32(null)==0);
+  Check(caseHost["m_bonePosParent"][1].Values.Select(v=>v.ToSingle(null)).SequenceEqual(new[]{2f,3f,4f}));
+  try{ModelMerge.MergeSkeleton(Skeleton(["Root_0","cloth"],[-1,-1]),rootDonor);throw new Exception("Ambiguous case alias accepted");}catch(InvalidDataException){}
+  KVObject AttachmentValue(string bone){var value=KVObject.Collection();value["m_influenceNames"]=Array(new KVObject(bone));return value;}
+  KVObject Attachment(string name,string bone){var row=KVObject.Collection();row["key"]=new KVObject(name);row["value"]=AttachmentValue(bone);return row;}
+  var mesh=KVObject.Collection();mesh["m_attachments"]=Array(Attachment("attach_attack1","Arm_3_R"),Attachment("attach_hitloc","Spine_1"));
+  Check(ModelMerge.OverrideMeshAttachments(mesh,new Dictionary<string,KVObject>{{"attach_attack1",AttachmentValue("staff")},{"attach_weapon_bot",AttachmentValue("staff")}})==2);
+  Check(mesh["m_attachments"][0]["value"]["m_influenceNames"][0].ToString(null)=="staff");
+  Check(mesh["m_attachments"][1]["value"]["m_influenceNames"][0].ToString(null)=="Spine_1");
+  Check(mesh["m_attachments"].Values.Count()==3);
   var header="<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:vmdlkeys4:version{9f5c1002-f19f-470c-bd42-c3c26c063d33} -->";
   var donorText=header+"\n{ particle_cfg_list = [{ name = resource:\"particles/ambient.vpcf\" config = \"authored\" controls = [1,2,3] }] death = resource:\"particles/death.vpcf\" }";
   var merged=ModelMerge.MergeParticleText("",donorText);Check(merged.Contains("authored")&&merged.Contains("controls")&&!merged.Contains("particles/death.vpcf"));
