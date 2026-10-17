@@ -1,4 +1,5 @@
 export const translations = {
+"Стадия роста · ":"Growth stage · ",
 "Приоритет анимаций":"Animation priority",
 "Самоцвет и Skullbasher меняют одни и те же анимации. Выбери, какой вариант использовать.":"The gem and Skullbasher change the same animations. Choose which version to use.",
 
