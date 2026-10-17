@@ -8,10 +8,11 @@ using ValveResourceFormat.ResourceTypes;
 internal static class ResourceRelocator
 {
     private sealed record FileEntry(string Input, string Output, int[]? Color = null, string? Name = null, Dictionary<string,string>? Paths = null);
-    private sealed record Request(FileEntry[] Files, Dictionary<string,string> Paths);
+    private sealed record Request(FileEntry[] Files, Dictionary<string,string> Paths, bool Watermark=false);
     public static void Run(string manifest)
     {
         var request = JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest), new JsonSerializerOptions { PropertyNameCaseInsensitive=true }) ?? throw new InvalidDataException("Empty relocation request");
+        if(request.Watermark){ResourceWatermark.Run(manifest);return;}
         foreach(var file in request.Files)
         {
             try
