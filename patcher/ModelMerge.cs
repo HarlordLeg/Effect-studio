@@ -13,6 +13,7 @@ internal static class ModelMerge
     private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
+    internal static string MeshReference(KVObject value)=>value.ValueType==KVValueType.Null?string.Empty:value.ValueType==KVValueType.String?Text(value):throw new InvalidDataException("Mesh reference must be a resource string or null");
     static int Number(KVObject value)=>value.ToInt32(CultureInfo.InvariantCulture);
     static KVObject Array(IEnumerable<KVObject> values){var a=KVObject.Array();foreach(var value in values)a.Add(value);return a;}
     static KVObject[] Values(KVObject root,string key)=>root.TryGetValue(key,out var a)?a.Values.ToArray():[];
@@ -108,13 +109,13 @@ internal static class ModelMerge
         var original=File.ReadAllBytes(input);using var model=new Resource{FileName=input};model.Read(input);
         if(model.DataBlock is not Model)throw new InvalidDataException("Expected model: "+input);
         var data=Read(model,original,model.DataBlock);var refs=Values(data.Data.Root,"m_refMeshes");
-        if(!refs.Any(v=>Text(v).Length>0))return input;
+        if(!refs.Any(v=>MeshReference(v).Length>0))return input;
         var ctrlBlock=model.Blocks.FirstOrDefault(b=>b.Type==BlockType.CTRL);
         var ctrl=ctrlBlock is null?new BinaryKV3(KVObject.Collection(),new ValveKeyValue.KeyValues3.KV3ID("generic",new Guid("7412167c-06e9-4698-aff2-e63eb59037e7")),BlockType.CTRL){Resource=model}:Read(model,original,ctrlBlock);
         var rows=Values(ctrl.Data.Root,"embedded_meshes").ToList();
         var chunks=model.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();
         for(var meshIndex=0;meshIndex<refs.Length;meshIndex++){
-            var reference=Text(refs[meshIndex]);if(reference.Length==0)continue;
+            var reference=MeshReference(refs[meshIndex]);if(reference.Length==0)continue;
             var key=reference.Replace('\\','/');if(!key.EndsWith("_c",StringComparison.Ordinal))key+="_c";
             if(meshes is null||!meshes.TryGetValue(key,out var file))throw new InvalidDataException("Missing external mesh in merge manifest: "+key+" (model "+input+")");
             if(rows.Any(row=>MeshIndex(row)==meshIndex))throw new InvalidDataException("Mesh is both referenced and embedded: "+key);
@@ -176,7 +177,7 @@ internal static class ModelMerge
         foreach(var entry in request.Donors){
             var bytes=File.ReadAllBytes(entry.Input);using var donor=new Resource{FileName=entry.Input};donor.Read(entry.Input);if(donor.DataBlock is not Model)throw new InvalidDataException("Merge donor must be a model");
             var source=Read(donor,bytes,donor.DataBlock).Data.Root;var sourceCtrl=Read(donor,bytes,donor.Blocks.Single(b=>b.Type==BlockType.CTRL)).Data.Root;
-            if(Values(source,"m_refMeshes").Any(v=>Text(v).Length>0))throw new InvalidDataException("External donor meshes must be embedded before merging");
+            if(Values(source,"m_refMeshes").Any(v=>MeshReference(v).Length>0))throw new InvalidDataException("External donor meshes must be embedded before merging");
             if(Values(source,"m_boneFlexDrivers").Length>0)throw new InvalidDataException("Donor bone flex drivers require a dedicated merge profile");
             if(!entry.MetadataOnly&&donor.Blocks.Any(b=>b.Type==BlockType.PHYS&&(b.ToString()?.Contains("m_cloth",StringComparison.OrdinalIgnoreCase)??false)))throw new InvalidDataException("Donor contains cloth physics; use a dedicated merge profile");
             if(!entry.MetadataOnly&&Values(source,"m_ExtParts").Length>0)throw new InvalidDataException("Donor external parts require a dedicated merge profile");

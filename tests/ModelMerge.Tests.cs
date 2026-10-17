@@ -5,6 +5,11 @@ internal static class ModelMergeTests
  static KVObject Skeleton(string[] names,int[] parents){var s=KVObject.Collection();s["m_boneName"]=Array(names.Select(n=>new KVObject(n)).ToArray());s["m_nParent"]=Array(parents.Select(n=>new KVObject(n)).ToArray());foreach(var key in new[]{"m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"})s[key]=Array(names.Select(_=>new KVObject(1)).ToArray());return s;}
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
+  Check(ModelMerge.MeshReference(KVObject.Null())=="");
+  Check(ModelMerge.MeshReference(new KVObject(""){Flag=KVFlag.Resource})=="");
+  Check(ModelMerge.MeshReference(new KVObject("models/test/head.vmesh"){Flag=KVFlag.Resource})=="models/test/head.vmesh");
+  try{ModelMerge.MeshReference(new KVObject(7));throw new Exception("Invalid mesh reference accepted");}catch(InvalidDataException){}
+
   var host=Skeleton(["root","Head_1"],[-1,0]);var donor=Skeleton(["Head_1","hair","tip"],[-1,0,1]);
   donor["m_nFlag"]=Array(new KVObject(4),new KVObject(8),new KVObject(16));
   var map=ModelMerge.MergeSkeleton(host,donor);Check(map.SequenceEqual(new[]{1,2,3}));Check(host["m_nParent"].Values.Select(v=>v.ToInt32(null)).SequenceEqual(new[]{-1,0,1,2}));
