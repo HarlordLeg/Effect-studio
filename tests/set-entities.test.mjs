@@ -37,8 +37,12 @@ test('hero forms use their exact model replacement and selected material skin, a
  const missing={...hero,items:[],entitySlots:{},defaultSlotModels:{}};addSetEntities([missing],game,{},()=>false);assert.equal(missing.items.length,0);
 });
 test('numbered legacy wards resolve to an existing current unnumbered unit without inventing model paths',()=>{
- const hero={id:'venomancer',npcName:'npc_dota_hero_venomancer',model:'models/heroes/venomancer/venomancer.vmdl_c',items:[],defaultSlotModels:{}};
- const game={items:{6474:{name:'Splattering Forcipule',item_slot:'ability3',used_by_heroes:{npc_dota_hero_venomancer:'1'},visuals:{a:{type:'entity_model',asset:'npc_dota_venomancer_plague_ward_1',modifier:'models/items/venomancer/centipede_ward/centipede_ward.vmdl'},b:{type:'entity_model',asset:'npc_dota_venomancer_plague_ward_2',modifier:'models/items/venomancer/centipede_ward/centipede_ward.vmdl'}}}}};
- const target='models/wards/verified_current.vmdl';addSetEntities([hero],game,{npc_dota_venomancer_plague_ward:{Model:target}},()=>true);const item=hero.items.find(i=>!i.isDefault);assert.equal(item.entityReplacements.length,1);assert.equal(item.entityReplacements[0].target,target+'_c');assert.equal(hero.entitySlots.ability3.name,'Чумные стражи');
- const absent={...hero,items:[],defaultSlotModels:{},entitySlots:{}};addSetEntities([absent],game,{},()=>true);assert.equal(absent.items.length,0);
+ const target='models/heroes/venomancer/venomancer_ward.vmdl',source='models/items/venomancer/custom_ward/custom_ward.vmdl';
+ const makeHero=()=>({id:'venomancer',npcName:'npc_dota_hero_venomancer',model:'models/heroes/venomancer/venomancer.vmdl_c',defaultSlotModels:{},items:[]});
+ const game={items:{1:{name:'Custom ward',item_slot:'ability3',used_by_heroes:{npc_dota_hero_venomancer:'1'},visuals:{a:{type:'entity_model',asset:'npc_dota_venomancer_plague_ward_1',modifier:source}}}}};
+ const units={npc_dota_venomancer_plague_ward:{Model:target},npc_dota_venomancer_plague_ward_other:{Model:'models/unrelated.vmdl'}};
+ const hero=makeHero();addSetEntities([hero],game,units,()=>true);
+ assert.deepEqual(hero.items.find(i=>!i.isDefault).entityReplacements,[{source:source+'_c',target:target+'_c'}]);
+ const absent=makeHero();addSetEntities([absent],game,{},()=>true);assert.equal(absent.items.length,0);
+ const missing=makeHero();addSetEntities([missing],game,units,p=>p!==target+'_c');assert.equal(missing.items.length,0);
 });
