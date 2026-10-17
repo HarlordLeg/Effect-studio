@@ -66,3 +66,18 @@ test('AA arms and selected shoulders pack together in both orders, retaining abi
   assert.deepEqual(result.read(target),resource(4));assert.deepEqual(result.read('particles/ability.vpcf_c'),resource(6));assert.deepEqual(result.read('panorama/icon.vtex_c'),resource(7));assert.deepEqual(result.read(h.model),resource(9));assert.ok(!result.entries.has(native.entries[0].source));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}}
 });
+test('Arc Warden exposes a head slot even when its default head is embedded in the body',()=>{
+ const h=hero('arc_warden');h.defaultSlotModels={shoulder:'models/heroes/arc_warden/arc_warden_shoulder.vmdl_c'};
+ configureModelMerging({heroes:[h]},{read:()=>null});assert.equal(h.items[0].arcWardenHead,true);assert.ok(setSlots(h).includes('head'));
+});
+function referringResource(name){const text=Buffer.from(name+'\0'),b=Buffer.alloc(56+text.length);b.writeUInt32LE(b.length);b.writeUInt32LE(8,8);b.writeUInt32LE(1,12);b.write('RERL',16);b.writeUInt32LE(12,20);b.writeUInt32LE(b.length-32,24);b.writeUInt32LE(8,32);b.writeUInt32LE(1,36);b.writeBigInt64LE(8n,48);text.copy(b,56);return b;}
+test('external mesh dependencies reach the native merge manifest and temporary copies are cleaned',async()=>{
+ for(const supported of [true,false]){const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-external-merge-'));try{
+  const h=hero(),item={...h.items[0],mergeTarget:h.model},stage=stagedMergeTarget(h,item),meshName='models/test/head.vmesh_c';
+  const packed=new Map([[h.model,resource(1)],[stage,referringResource(meshName.replace(/_c$/,''))],[meshName,resource(2)]]);let meshFile;
+  const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:supported});assert.equal(args[0],'--merge-models');const req=JSON.parse(fs.readFileSync(args[1]));meshFile=req.meshes[meshName];assert.deepEqual(fs.readFileSync(meshFile),resource(2));fs.writeFileSync(req.output,resource(3));};
+  const action=finalizeModelMerges({root:temp,store:{read:()=>null},run},[{hero:h,item}],packed,[],temp,'patcher',{});
+  if(supported){await action;assert.equal(fs.existsSync(meshFile),false);assert.deepEqual(packed.get(h.model),resource(3));}
+  else{await assert.rejects(action,/modelMergeV2/);assert.ok(!fs.readdirSync(temp).some(n=>n.includes('-external-')));}
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}}
+});

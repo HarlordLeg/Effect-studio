@@ -9,8 +9,8 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false);
-    private sealed record Request(string Input,string Output,Donor[] Donors);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false);
+    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
     static int Number(KVObject value)=>value.ToInt32(CultureInfo.InvariantCulture);
@@ -25,17 +25,34 @@ internal static class ModelMerge
     static ulong Mask(KVObject value){var text=Text(value);return text.StartsWith('-')?unchecked((ulong)long.Parse(text,CultureInfo.InvariantCulture)):ulong.Parse(text,CultureInfo.InvariantCulture);}
     static int MeshIndex(KVObject row)=>Number(row[Field(row,"m_nMeshIndex","mesh_index")]);
     static string MeshName(KVObject row)=>Text(row[Field(row,"m_Name","name")]);
-    static readonly HashSet<string> BlockFields=["m_nDataBlock","m_nMorphBlock","m_nVBIBBlock","m_nToolsVBBlock","m_nBlockIndex","data_block","vbib_block","morph_block"];
+    static readonly HashSet<string> BlockFields=["m_nDataBlock","m_nMorphBlock","m_nVBIBBlock","m_nToolsVBBlock","m_nBlockIndex","tools_vb_block","data_block","vbib_block","morph_block"];
     static void BlockReferences(KVObject value,Action<KVObject,string,int> action){
         if(value.ValueType is not (KVValueType.Collection or KVValueType.Array))return;
         foreach(var (key,child) in value){if(BlockFields.Contains(key)){var index=Number(child);if(index>=0)action(value,key,index);}else BlockReferences(child,action);}
     }
-    internal static int[] MergeSkeleton(KVObject host,KVObject donor){
+    static Dictionary<string,KVObject> RootLocalPose(KVObject host,int parent,KVObject donor,int bone){
+        System.Numerics.Matrix4x4 Pose(KVObject skeleton,int index){
+            var pos=Values(skeleton,"m_bonePosParent")[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();
+            var rot=Values(skeleton,"m_boneRotParent")[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();
+            var scales=Values(skeleton,"m_boneScaleParent");var scale=scales.Length==0?1f:scales[index].ToSingle(CultureInfo.InvariantCulture);
+            if(pos.Length!=3||rot.Length!=4||!pos.Concat(rot).Append(scale).All(float.IsFinite)||scale<=0)throw new InvalidDataException("Invalid root attachment bind pose");
+            var q=new System.Numerics.Quaternion(rot[0],rot[1],rot[2],rot[3]);if(q.LengthSquared()<0.000001f)throw new InvalidDataException("Invalid root attachment rotation");
+            return System.Numerics.Matrix4x4.CreateScale(scale)*System.Numerics.Matrix4x4.CreateFromQuaternion(System.Numerics.Quaternion.Normalize(q))*System.Numerics.Matrix4x4.CreateTranslation(pos[0],pos[1],pos[2]);
+        }
+        if(!System.Numerics.Matrix4x4.Invert(Pose(host,parent),out var inverse)||!System.Numerics.Matrix4x4.Decompose(Pose(donor,bone)*inverse,out var scale,out var rotation,out var translation))throw new InvalidDataException("Cannot preserve root attachment bind pose");
+        if(Math.Abs(scale.X-scale.Y)>0.00001f||Math.Abs(scale.X-scale.Z)>0.00001f)throw new InvalidDataException("Nonuniform root attachment scale");
+        return new(){["m_bonePosParent"]=Array(new[]{translation.X,translation.Y,translation.Z}.Select(v=>new KVObject(v))),["m_boneRotParent"]=Array(new[]{rotation.X,rotation.Y,rotation.Z,rotation.W}.Select(v=>new KVObject(v))),["m_boneScaleParent"]=new KVObject(scale.X)};
+    }
+    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false){
         var hostNames=Values(host,"m_boneName").Select(Text).ToList();var donorNames=Values(donor,"m_boneName").Select(Text).ToArray();
         if(hostNames.Distinct(StringComparer.Ordinal).Count()!=hostNames.Count||donorNames.Distinct(StringComparer.Ordinal).Count()!=donorNames.Length)throw new InvalidDataException("Duplicate skeleton bone name");
-        var map=new int[donorNames.Length];var added=new List<int>();
+        var map=new int[donorNames.Length];var added=new List<int>();var attachedRoots=new Dictionary<int,(int Parent,Dictionary<string,KVObject> Pose)>();
         var donorParents=Values(donor,"m_nParent");if(donorParents.Length!=donorNames.Length)throw new InvalidDataException("Missing donor parents");
-        for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0){if(Number(donorParents[i])<0)throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]);index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
+        for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0){if(Number(donorParents[i])<0){
+                var hostParents=Values(host,"m_nParent");var roots=hostParents.Select((p,index)=>(p,index)).Where(v=>Number(v.p)<0).Select(v=>v.index).ToArray();
+                if(!attachRootZero||donorNames[i]!="root_0"||roots.Length!=1)throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
+                attachedRoots[i]=(roots[0],RootLocalPose(host,roots[0],donor,i));
+            }index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
         foreach(var key in new[]{"m_boneName","m_nParent","m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
             var source=Values(donor,key);var original=Values(host,key);
             // Scale is optional in compiled model skeletons; an omitted or
@@ -50,7 +67,7 @@ internal static class ModelMerge
             if(original.Length!=hostNames.Count-added.Count||source.Length!=donorNames.Length)throw new InvalidDataException("Incomplete skeleton field: "+key+" (host "+original.Length+"/"+(hostNames.Count-added.Count)+", donor "+source.Length+"/"+donorNames.Length+")");
             var result=original.ToList();
             if(key=="m_nFlag"||key=="m_boneSphere")for(var i=0;i<map.Length;i++)if(map[i]<original.Length){if(key=="m_nFlag")result[map[i]]=new KVObject(unchecked((uint)(result[map[i]].ToInt64(CultureInfo.InvariantCulture)|source[i].ToInt64(CultureInfo.InvariantCulture))));else result[map[i]]=new KVObject(Math.Max(result[map[i]].ToDouble(CultureInfo.InvariantCulture),source[i].ToDouble(CultureInfo.InvariantCulture)));}
-            foreach(var i in added){var value=source[i];if(key=="m_nParent"){var parent=Number(value);if(parent>=map.Length||parent==i)throw new InvalidDataException("Invalid donor bone parent");value=new KVObject(parent<0?-1:map[parent]);}result.Add(value);}host[key]=Array(result);
+            foreach(var i in added){var value=source[i];if(attachedRoots.TryGetValue(i,out var attachment)&&attachment.Pose.TryGetValue(key,out var pose))value=pose;if(key=="m_nParent"){var parent=Number(value);if(parent>=map.Length||parent==i)throw new InvalidDataException("Invalid donor bone parent");value=new KVObject(attachedRoots.TryGetValue(i,out var rootAttachment)?rootAttachment.Parent:parent<0?-1:map[parent]);}result.Add(value);}host[key]=Array(result);
         }
         if(hostNames.Count>1024)throw new InvalidDataException("Combined skeleton exceeds 1024 bones");
         // Shared bones retain host poses. Newly appended bones retain donor local
@@ -87,9 +104,67 @@ internal static class ModelMerge
         foreach(var row in particles.Values)if(row.TryGetValue("name",out var name)&&known.Add(Text(name)))rows.Add(row);
         target.Root["particle_cfg_list"]=Array(rows);using var output=new MemoryStream();serializer.Serialize(output,target);return System.Text.Encoding.UTF8.GetString(output.ToArray());
     }
+    static string EmbedExternalMeshes(string input,Dictionary<string,string>? meshes,List<string> temporary){
+        var original=File.ReadAllBytes(input);using var model=new Resource{FileName=input};model.Read(input);
+        if(model.DataBlock is not Model)throw new InvalidDataException("Expected model: "+input);
+        var data=Read(model,original,model.DataBlock);var refs=Values(data.Data.Root,"m_refMeshes");
+        if(!refs.Any(v=>Text(v).Length>0))return input;
+        var ctrlBlock=model.Blocks.FirstOrDefault(b=>b.Type==BlockType.CTRL);
+        var ctrl=ctrlBlock is null?new BinaryKV3(KVObject.Collection(),new ValveKeyValue.KeyValues3.KV3ID("generic",new Guid("7412167c-06e9-4698-aff2-e63eb59037e7")),BlockType.CTRL){Resource=model}:Read(model,original,ctrlBlock);
+        var rows=Values(ctrl.Data.Root,"embedded_meshes").ToList();
+        var chunks=model.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();
+        for(var meshIndex=0;meshIndex<refs.Length;meshIndex++){
+            var reference=Text(refs[meshIndex]);if(reference.Length==0)continue;
+            var key=reference.Replace('\\','/');if(!key.EndsWith("_c",StringComparison.Ordinal))key+="_c";
+            if(meshes is null||!meshes.TryGetValue(key,out var file))throw new InvalidDataException("Missing external mesh in merge manifest: "+key+" (model "+input+")");
+            if(rows.Any(row=>MeshIndex(row)==meshIndex))throw new InvalidDataException("Mesh is both referenced and embedded: "+key);
+            var bytes=File.ReadAllBytes(file);using var mesh=new Resource{FileName=file};mesh.Read(file);
+            if(mesh.DataBlock is not Mesh)throw new InvalidDataException("External geometry is not a mesh: "+key);
+            var meshData=Read(mesh,bytes,mesh.DataBlock);var map=new Dictionary<int,int>();
+            int Copy(int index){
+                if(map.TryGetValue(index,out var found))return found;
+                if(index<0||index>=mesh.Blocks.Count)throw new InvalidDataException("External mesh block index invalid: "+key);
+                var block=mesh.Blocks[index];var kind=block==mesh.DataBlock?BlockType.MDAT:block.Type;
+                if(kind.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unsupported external geometry block: "+kind+" / "+key);
+                var target=chunks.Count;map[index]=target;chunks.Add(new Chunk(kind,bytes.AsSpan((int)block.Offset,(int)block.Size).ToArray()));return target;
+            }
+            // Copy geometry payloads unchanged, then relocate only descriptors.
+            foreach(var block in mesh.Blocks)if(block==mesh.DataBlock||block.Type.ToString() is "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF")Copy(mesh.Blocks.IndexOf(block));
+            var row=KVObject.Collection();var name=Path.GetFileNameWithoutExtension(reference);
+            var vbib=mesh.Blocks.FirstOrDefault(b=>b.Type==BlockType.VBIB);var morph=mesh.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
+            if(vbib is not null){
+                row["name"]=new KVObject(name);row["mesh_index"]=new KVObject(meshIndex);row["data_block"]=new KVObject(Copy(mesh.Blocks.IndexOf(mesh.DataBlock)));row["vbib_block"]=new KVObject(Copy(mesh.Blocks.IndexOf(vbib)));row["morph_block"]=new KVObject(morph is null?-1:Copy(mesh.Blocks.IndexOf(morph)));
+                var tools=mesh.Blocks.FirstOrDefault(b=>b.Type.ToString()=="TBUF");if(tools is not null)row["tools_vb_block"]=new KVObject(Copy(mesh.Blocks.IndexOf(tools)));
+            }else{
+                foreach(var keyName in new[]{"m_vertexBuffers","m_indexBuffers","m_toolsBuffers"})if(meshData.Data.Root.TryGetValue(keyName,out var buffers))row[keyName]=buffers;
+                if(!row.ContainsKey("m_vertexBuffers")||!row.ContainsKey("m_indexBuffers"))throw new InvalidDataException("External mesh buffer descriptors missing: "+key);
+                BlockReferences(meshData.Data.Root,(parent,field,index)=>parent[field]=new KVObject(Copy(index)));
+                row["m_Name"]=new KVObject(name);row["m_nMeshIndex"]=new KVObject(meshIndex);row["m_nDataBlock"]=new KVObject(Copy(mesh.Blocks.IndexOf(mesh.DataBlock)));row["m_nMorphBlock"]=new KVObject(morph is null?-1:Copy(mesh.Blocks.IndexOf(morph)));
+                // DATA can also contain buffer block descriptors; update a copy
+                // of the decoded mesh data, leaving vertex/index bytes intact.
+                chunks[Copy(mesh.Blocks.IndexOf(mesh.DataBlock))]=new Chunk(BlockType.MDAT,Serialize(meshData,bytes[(int)mesh.DataBlock.Offset]));
+            }
+            rows.Add(row);refs[meshIndex]=new KVObject(""){Flag=KVFlag.Resource};AddReferences(model,mesh);
+        }
+        data.Data.Root["m_refMeshes"]=Array(refs);ctrl.Data.Root["embedded_meshes"]=Array(rows);
+        chunks[model.Blocks.IndexOf(model.DataBlock)]=new Chunk(BlockType.DATA,Serialize(data,original[(int)model.DataBlock.Offset]));
+        var ctrlBytes=Serialize(ctrl,ctrlBlock is null?original[(int)model.DataBlock.Offset]:original[(int)ctrlBlock.Offset]);
+        if(ctrlBlock is null)chunks.Add(new Chunk(BlockType.CTRL,ctrlBytes));else chunks[model.Blocks.IndexOf(ctrlBlock)]=new Chunk(BlockType.CTRL,ctrlBytes);
+        if(model.ExternalReferences is {} references){using var buffer=new MemoryStream();references.Serialize(buffer);chunks[model.Blocks.IndexOf(references)]=new Chunk(BlockType.RERL,buffer.ToArray());}
+        var output=input+".embedded-"+Guid.NewGuid().ToString("N")+".vmdl_c";temporary.Add(output);Write(original,chunks,output);
+        using var check=new Resource{FileName=output};check.Read(output);if(check.DataBlock is not Model combined||combined.GetEmbeddedMeshes().Count()!=rows.Count)throw new InvalidDataException("External mesh embedding validation failed: "+input);
+        return output;
+    }
     public static void Run(string manifest){
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty mesh merge manifest");
         if(request.Donors.Length is <1 or >32)throw new InvalidDataException("Choose 1–32 merge donors");
+        var temporary=new List<string>();
+        try{
+            request=request with{Input=EmbedExternalMeshes(request.Input,request.Meshes,temporary),Donors=request.Donors.Select(d=>d.MetadataOnly?d:d with{Input=EmbedExternalMeshes(d.Input,request.Meshes,temporary)}).ToArray()};
+            RunEmbedded(request);
+        }finally{foreach(var file in temporary)File.Delete(file);}
+    }
+    static void RunEmbedded(Request request){
         var original=File.ReadAllBytes(request.Input);using var host=new Resource{FileName=request.Input};host.Read(request.Input);if(host.DataBlock is not Model)throw new InvalidDataException("Merge host must be a model");
         var dataBlock=host.DataBlock;var ctrlBlock=host.Blocks.Single(b=>b.Type==BlockType.CTRL);var data=Read(host,original,dataBlock);var ctrl=Read(host,original,ctrlBlock);var root=data.Data.Root;var control=ctrl.Data.Root;
         var meshRows=Values(control,"embedded_meshes").ToList();if(meshRows.Count==0)throw new InvalidDataException("Merge host has no embedded meshes");
@@ -109,13 +184,13 @@ internal static class ModelMerge
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
                 if(donorMorph is not null){var controls=Values(Read(donor,bytes,donorMorph).Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostMorph is null?System.Array.Empty<string>():Values(Read(host,original,hostMorph).Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length)))throw new InvalidDataException("Donor morph controller order requires a dedicated merge profile");}
             }
-            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"]);
+            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero);
             var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");
             var sourceGroups=Values(source,"m_refMeshGroupMasks");var sourceDefault=source.TryGetValue("m_nDefaultMeshGroupMask",out var sourceMask)?Mask(sourceMask):ulong.MaxValue;
             var sourceRows=Values(sourceCtrl,"embedded_meshes").Where(r=>!entry.MetadataOnly).Where(r=>MeshIndex(r)>=sourceGroups.Length||(Mask(sourceGroups[MeshIndex(r)])&sourceDefault)!=0).Where(r=>entry.MeshNames is null||entry.MeshNames.Contains(MeshName(r),StringComparer.Ordinal)).ToArray();
             if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true)throw new InvalidDataException("Requested donor mesh not found");
             var blocks=new Dictionary<int,int>();
-            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;chunks.Add(new Chunk(b.Type,bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray()));blocks[index]=mapped;return mapped;}
+            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;chunks.Add(new Chunk(b.Type,bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray()));blocks[index]=mapped;return mapped;}
             var nextIndex=new[]{meshRows.Max(MeshIndex)+1,starts.Count,Values(root,"m_refMeshes").Length,Values(root,"m_refMeshGroupMasks").Length}.Max();
             foreach(var row in sourceRows){
                 var oldIndex=MeshIndex(row);var newIndex=nextIndex++;var name=MeshName(row);imported.Add(name);

@@ -47,6 +47,17 @@ internal static class ModelMergeTests
   try{ModelMerge.RemapMeshBones(palette,0,4,[17],3,"bad active bone");throw new Exception("Invalid active palette accepted");}catch(InvalidDataException){}
   try{ModelMerge.RemapMeshBones(palette,4,5,[17],2,"short palette");throw new Exception("Short palette accepted");}catch(InvalidDataException){}
   try{ModelMerge.RemapMeshBones(palette,0,4,[17],null,"unknown mesh skeleton");throw new Exception("Invalid unknown palette accepted");}catch(InvalidDataException){}
+  // Enigma root_0 is attached only by an explicit profile and keeps its
+  // model-space bind pose under the unique hero root (including rotation/scale).
+  KVObject Vector(params float[] values)=>Array(values.Select(v=>new KVObject(v)).ToArray());
+  var rootHost=Skeleton(["root"],[-1]);rootHost["m_bonePosParent"]=Array(Vector(10,20,30));rootHost["m_boneRotParent"]=Array(Vector(0,0,0,1));rootHost["m_boneScaleParent"]=Array(new KVObject(2f));
+  var rootDonor=Skeleton(["root_0","tip"],[-1,0]);rootDonor["m_bonePosParent"]=Array(Vector(14,26,38),Vector(1,0,0));rootDonor["m_boneRotParent"]=Array(Vector(0,0,0,1),Vector(0,0,0,1));
+  Check(ModelMerge.MergeSkeleton(rootHost,rootDonor,true).SequenceEqual(new[]{1,2}));
+  Check(rootHost["m_nParent"].Values.Select(v=>v.ToInt32(null)).SequenceEqual(new[]{-1,0,1}));
+  Check(rootHost["m_bonePosParent"][1].Values.Select(v=>v.ToSingle(null)).SequenceEqual(new[]{2f,3f,4f}));
+  Check(Math.Abs(rootHost["m_boneScaleParent"][1].ToSingle(null)-0.5f)<0.00001f);
+  try{ModelMerge.MergeSkeleton(Skeleton(["root"],[-1]),rootDonor);throw new Exception("Root profile applied implicitly");}catch(InvalidDataException){}
+  try{ModelMerge.MergeSkeleton(Skeleton(["root","cloth"],[-1,-1]),rootDonor,true);throw new Exception("Ambiguous host roots accepted");}catch(InvalidDataException){}
   var header="<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:vmdlkeys4:version{9f5c1002-f19f-470c-bd42-c3c26c063d33} -->";
   var donorText=header+"\n{ particle_cfg_list = [{ name = resource:\"particles/ambient.vpcf\" config = \"authored\" controls = [1,2,3] }] death = resource:\"particles/death.vpcf\" }";
   var merged=ModelMerge.MergeParticleText("",donorText);Check(merged.Contains("authored")&&merged.Contains("controls")&&!merged.Contains("particles/death.vpcf"));
