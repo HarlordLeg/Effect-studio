@@ -57,6 +57,20 @@ internal static class ModelMerge
         // poses under their mapped parent; vertex inverse bind matrices stay raw.
         return map;
     }
+    internal static int[] RemapMeshBones(KVObject[] table,int start,int end,int[] boneMap,int? meshBoneCount,string context){
+        if(start<0||end<start||end>table.Length)throw new InvalidDataException("Invalid donor remap range: "+context);
+        // Some legacy models retain an obsolete palette tail between mesh
+        // starts. Only the MDAT skeleton's bones address this mesh's palette.
+        var count=meshBoneCount??(end-start);
+        if(count<0||count>end-start)throw new InvalidDataException("Donor mesh palette is shorter than its skeleton: "+context);
+        var result=new int[count];
+        for(var i=0;i<count;i++){
+            var bone=Number(table[start+i]);
+            if(bone<0||bone>=boneMap.Length)throw new InvalidDataException("Donor vertex bone mapping is outside its skeleton: "+context+", palette["+i+"]="+bone+", skeleton bones="+boneMap.Length);
+            result[i]=boneMap[bone];
+        }
+        return result;
+    }
     static void EnsureArray(KVObject root,string key,int count,Func<KVObject> value){var rows=Values(root,key).ToList();while(rows.Count<count)rows.Add(value());root[key]=Array(rows);}
     static void AddReferences(Resource host,Resource donor){
         var target=host.ExternalReferences??throw new InvalidDataException("Host has no RERL");
@@ -109,7 +123,11 @@ internal static class ModelMerge
                 var start=Number(sourceStarts[oldIndex]);var end=oldIndex+1<sourceStarts.Length?Number(sourceStarts[oldIndex+1]):sourceTable.Length;
                 if(start<0||end<start||end>sourceTable.Length)throw new InvalidDataException("Invalid donor remap range");
                 while(starts.Count<newIndex)starts.Add(new KVObject(boneTable.Count));starts.Add(new KVObject(boneTable.Count));
-                for(var i=start;i<end;i++){var bone=Number(sourceTable[i]);if(bone<0||bone>=boneMap.Length)throw new InvalidDataException("Donor vertex bone mapping is outside its skeleton");boneTable.Add(new KVObject(boneMap[bone]));}
+                var meshBlock=Number(row[Field(row,"m_nDataBlock","data_block")]);
+                if(meshBlock<0||meshBlock>=donor.Blocks.Count||donor.Blocks[meshBlock].Type!=BlockType.MDAT)throw new InvalidDataException("Invalid donor MDAT: "+name);
+                var meshData=Read(donor,bytes,donor.Blocks[meshBlock]).Data.Root;
+                int? meshBoneCount=meshData.TryGetValue("m_skeleton",out var meshSkeleton)&&meshSkeleton.ContainsKey("m_bones")?Values(meshSkeleton,"m_bones").Length:null;
+                foreach(var bone in RemapMeshBones(sourceTable,start,end,boneMap,meshBoneCount,entry.Input+" / "+name))boneTable.Add(new KVObject(bone));
                 BlockReferences(row,(parent,key,index)=>parent[key]=new KVObject(CopyBlock(index)));
                 row[Field(row,"m_nMeshIndex","mesh_index")]=new KVObject(newIndex);meshRows.Add(row);
                 EnsureArray(root,"m_refMeshes",newIndex+1,()=>new KVObject(""){Flag=KVFlag.Resource});

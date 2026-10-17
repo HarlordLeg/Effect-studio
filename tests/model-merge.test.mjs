@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {configureModelMerging,stagedMergeTarget,finalizeModelMerges,mergeHostRoots,profileSources,invisibleModel} from '../lib/model-merge.mjs';import {Builder} from '../lib/build.mjs';import {Vpk,packVpk} from '../lib/vpk.mjs';import {setSlots} from '../public/set-studio.mjs';
+import {preferSelectedWearableModels,configureModelMerging,stagedMergeTarget,finalizeModelMerges,mergeHostRoots,profileSources,invisibleModel} from '../lib/model-merge.mjs';import {Builder} from '../lib/build.mjs';import {Vpk,packVpk} from '../lib/vpk.mjs';import {setSlots} from '../public/set-studio.mjs';
 const resource=tag=>{const b=Buffer.alloc(17);b.writeUInt32LE(17);b.writeUInt32LE(8,8);b[16]=tag;return b;};
 function hero(id='morphling'){return {id,model:`models/heroes/${id}/${id}.vmdl_c`,partsFolder:`models/heroes/${id}`,defaultSlotModels:{},embeddedWearableSlots:['head','back'],items:[{id:'head',slot:'head',model:`models/items/${id}/head.vmdl_c`,nativeOverrides:{entries:[],particles:[],unsupported:[],skin:0}},{id:'back',slot:'back',model:`models/items/${id}/back.vmdl_c`,nativeOverrides:{entries:[],particles:[],unsupported:[],skin:0}}]};}
 test('schema-declared empty wearable slots merge into the actual existing base, never an invented target',()=>{
@@ -38,4 +38,31 @@ test('moving only the Arc Warden head preserves the original shoulder geometry i
  await finalizeModelMerges({root:temp,store:{read:p=>p===h.defaultSlotModels.shoulder?resource(5):null},run:async(_,args)=>{const r=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(5));fs.writeFileSync(r.output,resource(9));}},[{hero:h,item:h.items[0]}],packed,[],temp,'patcher',{});
  assert.deepEqual(packed.get(h.defaultSlotModels.shoulder),resource(2));assert.deepEqual(packed.get(h.defaultSlotModels.head),resource(4));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+
+test('selected AA shoulders supersede the arms default refit without changing other native overrides or catalog',()=>{
+ const h=hero('ancient_apparition'),target='models/heroes/ancient_apparition/ancient_apparition_shoulder.vmdl_c';h.defaultSlotModels.shoulder=target;
+ const entries=[{type:'model',target,source:'models/items/aa/refit.vmdl_c'},{type:'particle',target:'particles/ability.vpcf_c',source:'particles/immortal.vpcf_c'},{type:'ability_icon',target:'panorama/icon.vtex_c',source:'panorama/immortal.vtex_c'}];
+ const arms={hero:h,item:{id:'rule',slot:'arms',nativeOverrides:{entries,particles:['particles/ambient.vpcf_c'],skin:1}}},shoulder={hero:h,item:{id:'core',slot:'shoulder'}};
+ for(const choices of [[arms,shoulder],[shoulder,arms]]){
+  const result=preferSelectedWearableModels(choices).find(c=>c.item.id==='rule');assert.deepEqual(result.item.nativeOverrides.entries,entries.slice(1));assert.deepEqual(result.item.nativeOverrides.particles,arms.item.nativeOverrides.particles);assert.equal(result.item.nativeOverrides.skin,1);
+ }
+ assert.equal(arms.item.nativeOverrides.entries.length,3);assert.equal(preferSelectedWearableModels([arms])[0],arms);
+ assert.equal(preferSelectedWearableModels([arms,{...shoulder,item:{...shoulder.item,isDefault:true}}])[0],arms);
+ assert.equal(preferSelectedWearableModels([arms,{...shoulder,hero:{...h,id:'other'}}])[0],arms);
+});
+test('AA arms and selected shoulders pack together in both orders, retaining ability particles and icons',async()=>{
+ for(const reverse of [false,true]){const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-aa-refit-'));try{
+  const h=hero('ancient_apparition'),target='models/heroes/ancient_apparition/ancient_apparition_shoulder.vmdl_c';h.defaultSlotModels={shoulder:target};h.embeddedWearableSlots=['arms','head'];
+  const native={entries:[{type:'model',target,source:'models/items/aa/refit.vmdl_c'},{type:'particle',target:'particles/ability.vpcf_c',source:'particles/immortal.vpcf_c'},{type:'ability_icon',target:'panorama/icon.vtex_c',source:'panorama/immortal.vtex_c'}],particles:[],unsupported:[],skin:0};
+  h.items=[{id:'rule',slot:'arms',model:'models/items/aa/rule.vmdl_c',nativeOverrides:native},{id:'core',slot:'shoulder',model:'models/items/aa/core.vmdl_c',nativeOverrides:{entries:[],particles:[],unsupported:[],skin:0}}];
+  const assets=new Map([[h.model,resource(1)],[target,resource(2)],[h.items[0].model,resource(3)],[h.items[1].model,resource(4)],[native.entries[0].source,resource(5)],[native.entries[1].source,resource(6)],[native.entries[2].source,resource(7)]]);
+  fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[h],effects:[]}));fs.writeFileSync(path.join(temp,'patcher'),'stub');
+  const builder=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},async(_,args)=>{
+   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,modelMergeV1:true});
+   const req=JSON.parse(fs.readFileSync(args[1]));if(args[0]==='--relocate'){for(const row of req.files)fs.copyFileSync(row.input,row.output);}else{assert.equal(args[0],'--merge-models');fs.writeFileSync(req.output,resource(9));}return '';
+  });
+  const choices=builder.catalog.heroes[0].items.map(i=>builder.cosmeticChoice(h.id,i.id));if(reverse)choices.reverse();const job={id:'aa'};await builder.build(choices,job);const result=new Vpk(job.file);
+  assert.deepEqual(result.read(target),resource(4));assert.deepEqual(result.read('particles/ability.vpcf_c'),resource(6));assert.deepEqual(result.read('panorama/icon.vtex_c'),resource(7));assert.deepEqual(result.read(h.model),resource(9));assert.ok(!result.entries.has(native.entries[0].source));
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}}
 });
