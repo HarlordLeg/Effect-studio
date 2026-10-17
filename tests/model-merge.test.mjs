@@ -27,7 +27,7 @@ test('Arc Warden keeps selected shoulders only in the merged body and clears the
  for(const reversed of [false,true]){const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-arc-merge-'));try{
  const h=hero('arc_warden');h.items[1].slot='shoulder';h.defaultSlotModels={head:'models/heroes/arc_warden/head.vmdl_c',shoulder:'models/heroes/arc_warden/shoulder.vmdl_c'};configureModelMerging({heroes:[h]},{read:()=>null});const rows=h.items.map(item=>({hero:h,item}));if(reversed)rows.reverse();
  const stage=stagedMergeTarget(h,h.items[1]),packed=new Map([[h.model,resource(1)],[h.defaultSlotModels.shoulder,resource(2)],[stage,resource(3)],[invisibleModel,resource(4)]]),roots=[stage],targets=new Set([stage,h.model,h.defaultSlotModels.shoulder]);
- await finalizeModelMerges({root:temp,store:{read:()=>null},run:async(_,args)=>{const r=JSON.parse(fs.readFileSync(args[1]));assert.equal(r.donors.length,1);assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(3));fs.writeFileSync(r.output,resource(9));}},rows,packed,roots,temp,'patcher',{},targets);
+ await finalizeModelMerges({root:temp,store:{read:()=>null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:true,modelMergeV4:true});const r=JSON.parse(fs.readFileSync(args[1]));assert.equal(r.donors[0].matchBoneCase,true);assert.equal(r.donors.length,1);assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(3));fs.writeFileSync(r.output,resource(9));}},rows,packed,roots,temp,'patcher',{},targets);
  assert.deepEqual(packed.get(h.model),resource(9));assert.deepEqual(packed.get(h.defaultSlotModels.shoulder),resource(2));assert.deepEqual(packed.get(h.defaultSlotModels.head),resource(4));assert.equal(packed.has(stage),false);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}}
 });
@@ -35,7 +35,7 @@ test('moving only the Arc Warden head preserves the original shoulder geometry i
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-arc-head-'));try{
  const h=hero('arc_warden');h.defaultSlotModels={head:'models/heroes/arc_warden/head.vmdl_c',shoulder:'models/heroes/arc_warden/shoulder.vmdl_c'};configureModelMerging({heroes:[h]},{read:()=>null});
  const packed=new Map([[h.model,resource(1)],[h.defaultSlotModels.shoulder,resource(2)],[invisibleModel,resource(4)]]);
- await finalizeModelMerges({root:temp,store:{read:p=>p===h.defaultSlotModels.shoulder?resource(5):null},run:async(_,args)=>{const r=JSON.parse(fs.readFileSync(args[1]));assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(5));fs.writeFileSync(r.output,resource(9));}},[{hero:h,item:h.items[0]}],packed,[],temp,'patcher',{});
+ await finalizeModelMerges({root:temp,store:{read:p=>p===h.defaultSlotModels.shoulder?resource(5):null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:true,modelMergeV4:true});const r=JSON.parse(fs.readFileSync(args[1]));assert.equal(r.donors[0].matchBoneCase,true);assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(5));fs.writeFileSync(r.output,resource(9));}},[{hero:h,item:h.items[0]}],packed,[],temp,'patcher',{});
  assert.deepEqual(packed.get(h.defaultSlotModels.shoulder),resource(2));assert.deepEqual(packed.get(h.defaultSlotModels.head),resource(4));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });

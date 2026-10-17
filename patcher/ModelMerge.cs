@@ -9,7 +9,7 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false);
     private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
@@ -44,12 +44,15 @@ internal static class ModelMerge
         if(Math.Abs(scale.X-scale.Y)>0.00001f||Math.Abs(scale.X-scale.Z)>0.00001f)throw new InvalidDataException("Nonuniform root attachment scale");
         return new(){["m_bonePosParent"]=Array(new[]{translation.X,translation.Y,translation.Z}.Select(v=>new KVObject(v))),["m_boneRotParent"]=Array(new[]{rotation.X,rotation.Y,rotation.Z,rotation.W}.Select(v=>new KVObject(v))),["m_boneScaleParent"]=new KVObject(scale.X)};
     }
-    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false){
+    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false,bool matchBoneCase=false){
         var hostNames=Values(host,"m_boneName").Select(Text).ToList();var donorNames=Values(donor,"m_boneName").Select(Text).ToArray();
         if(hostNames.Distinct(StringComparer.Ordinal).Count()!=hostNames.Count||donorNames.Distinct(StringComparer.Ordinal).Count()!=donorNames.Length)throw new InvalidDataException("Duplicate skeleton bone name");
         var map=new int[donorNames.Length];var added=new List<int>();var attachedRoots=new Dictionary<int,(int Parent,Dictionary<string,KVObject> Pose)>();
         var donorParents=Values(donor,"m_nParent");if(donorParents.Length!=donorNames.Length)throw new InvalidDataException("Missing donor parents");
-        for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0){if(Number(donorParents[i])<0){
+        for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0&&matchBoneCase){
+                var aliases=hostNames.Select((name,index)=>(name,index)).Where(v=>string.Equals(v.name,donorNames[i],StringComparison.OrdinalIgnoreCase)).ToArray();
+                if(aliases.Length==1&&donorNames.Count(name=>string.Equals(name,donorNames[i],StringComparison.OrdinalIgnoreCase))==1)index=aliases[0].index;
+            }if(index<0){if(Number(donorParents[i])<0){
                 var hostParents=Values(host,"m_nParent");var roots=hostParents.Select((p,index)=>(p,index)).Where(v=>Number(v.p)<0).Select(v=>v.index).ToArray();
                 // Valve wearables commonly spell the hero's Root_0 as root_0.
                 // Keep both bone names and rebase the new child bind pose;
@@ -78,6 +81,10 @@ internal static class ModelMerge
         // Shared bones retain host poses. Newly appended bones retain donor local
         // poses under their mapped parent; vertex inverse bind matrices stay raw.
         return map;
+    }
+    internal static void RenameMeshBones(KVObject mesh,IReadOnlyDictionary<string,string> names){
+        if(mesh.TryGetValue("m_skeleton",out var skeleton))foreach(var bone in Values(skeleton,"m_bones"))foreach(var key in new[]{"m_boneName","m_parentName"})if(bone.TryGetValue(key,out var value)&&names.TryGetValue(Text(value),out var renamed))bone[key]=new KVObject(renamed);
+        foreach(var row in Values(mesh,"m_attachments"))if(row.TryGetValue("value",out var attachment)&&attachment.TryGetValue("m_influenceNames",out var influences))attachment["m_influenceNames"]=Array(influences.Values.Select(value=>names.TryGetValue(Text(value),out var renamed)?new KVObject(renamed):value));
     }
     internal static int[] RemapMeshBones(KVObject[] table,int start,int end,int[] boneMap,int? meshBoneCount,string context){
         if(start<0||end<start||end>table.Length)throw new InvalidDataException("Invalid donor remap range: "+context);
@@ -199,13 +206,15 @@ internal static class ModelMerge
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
                 if(donorMorph is not null){var controls=Values(Read(donor,bytes,donorMorph).Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostMorph is null?System.Array.Empty<string>():Values(Read(host,original,hostMorph).Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length)))throw new InvalidDataException("Donor morph controller order requires a dedicated merge profile");}
             }
-            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero);
+            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase);
+            var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
+            var renamedBones=entry.MetadataOnly?new Dictionary<string,string>():Values(source["m_modelSkeleton"],"m_boneName").Select((name,index)=>(name:Text(name),mapped:Text(mergedBoneNames[boneMap[index]]))).Where(v=>v.name!=v.mapped).ToDictionary(v=>v.name,v=>v.mapped,StringComparer.Ordinal);
             var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");
             var sourceGroups=Values(source,"m_refMeshGroupMasks");var sourceDefault=source.TryGetValue("m_nDefaultMeshGroupMask",out var sourceMask)?Mask(sourceMask):ulong.MaxValue;
             var sourceRows=Values(sourceCtrl,"embedded_meshes").Where(r=>!entry.MetadataOnly).Where(r=>MeshIndex(r)>=sourceGroups.Length||(Mask(sourceGroups[MeshIndex(r)])&sourceDefault)!=0).Where(r=>entry.MeshNames is null||entry.MeshNames.Contains(MeshName(r),StringComparer.Ordinal)).ToArray();
             if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true)throw new InvalidDataException("Requested donor mesh not found");
             var blocks=new Dictionary<int,int>();
-            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;chunks.Add(new Chunk(b.Type,bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray()));blocks[index]=mapped;return mapped;}
+            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&renamedBones.Count>0){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;return mapped;}
             var nextIndex=new[]{meshRows.Max(MeshIndex)+1,starts.Count,Values(root,"m_refMeshes").Length,Values(root,"m_refMeshGroupMasks").Length}.Max();
             foreach(var row in sourceRows){
                 var oldIndex=MeshIndex(row);var newIndex=nextIndex++;var name=MeshName(row);imported.Add(name);

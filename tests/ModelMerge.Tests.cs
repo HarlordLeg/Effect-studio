@@ -5,6 +5,20 @@ internal static class ModelMergeTests
  static KVObject Skeleton(string[] names,int[] parents){var s=KVObject.Collection();s["m_boneName"]=Array(names.Select(n=>new KVObject(n)).ToArray());s["m_nParent"]=Array(parents.Select(n=>new KVObject(n)).ToArray());foreach(var key in new[]{"m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"})s[key]=Array(names.Select(_=>new KVObject(1)).ToArray());return s;}
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
+  {
+  var arcHost=Skeleton(["root","clavicle_R","bicep_R"],[-1,0,1]);
+  var caseDonor=Skeleton(["root","clavicle_r","bicep_r","cloth_tip"],[-1,0,1,2]);
+  Check(ModelMerge.MergeSkeleton(arcHost,caseDonor,matchBoneCase:true).SequenceEqual(new[]{0,1,2,3}));
+  Check(arcHost["m_boneName"][1].ToString(null)=="clavicle_R");
+  Check(arcHost["m_nParent"][3].ToInt32(null)==2);
+  var ambiguous=Skeleton(["root","Arm_R","arm_r"],[-1,0,0]);
+  Check(ModelMerge.MergeSkeleton(ambiguous,Skeleton(["root","ARM_R"],[-1,0]),matchBoneCase:true).SequenceEqual(new[]{0,3}));
+  var arcMesh=KVObject.Collection();var meshSkeleton=KVObject.Collection();var meshBone=KVObject.Collection();meshBone["m_boneName"]=new KVObject("clavicle_r");meshBone["m_parentName"]=new KVObject("root");meshSkeleton["m_bones"]=Array(meshBone);arcMesh["m_skeleton"]=meshSkeleton;
+  var attachment=KVObject.Collection();attachment["m_influenceNames"]=Array(new KVObject("clavicle_r"));var row=KVObject.Collection();row["value"]=attachment;arcMesh["m_attachments"]=Array(row);
+  ModelMerge.RenameMeshBones(arcMesh,new Dictionary<string,string>{{"clavicle_r","clavicle_R"}});
+  Check(meshBone["m_boneName"].ToString(null)=="clavicle_R"&&meshBone["m_parentName"].ToString(null)=="root");Check(attachment["m_influenceNames"][0].ToString(null)=="clavicle_R");
+
+  }
   Check(ModelMerge.MeshReference(KVObject.Null())=="");
   Check(ModelMerge.MeshReference(new KVObject(""){Flag=KVFlag.Resource})=="");
   Check(ModelMerge.MeshReference(new KVObject("models/test/head.vmesh"){Flag=KVFlag.Resource})=="models/test/head.vmesh");
