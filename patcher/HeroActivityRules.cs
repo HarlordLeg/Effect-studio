@@ -20,6 +20,7 @@ internal static class HeroActivityRules
     };
     internal static byte[] SerializeActivity(BinaryKV3 binary,byte sourceVersion)
     {
+        if(sourceVersion<4)PromoteLegacyNumbers(binary.Data.Root);
         binary.SerializationVersion=WritableVersion(sourceVersion);
         // Keep activity metadata and binary animation blobs in the documented raw layout.
         // v4 Zstd readers expect one stream covering both metadata and blob lanes.
@@ -28,6 +29,22 @@ internal static class HeroActivityRules
         RepairAllocationCounts(bytes,binary.Data.Root);
         if(sourceVersion>=4)return bytes;
         return LegacyActivityBuffer(bytes,sourceVersion);
+    }
+    // FLOAT (node 19) and 16-bit numeric lanes were introduced after KV3 v3.
+    // The modern writer accepts these KVObject types even when its output is
+    // subsequently wrapped as v2/v3. Widen exactly, preserving resource flags.
+    internal static KVObject PromoteLegacyNumbers(KVObject value)
+    {
+        KVObject? replacement=value.ValueType switch{
+            KVValueType.FloatingPoint=>new KVObject((double)value.ToSingle(CultureInfo.InvariantCulture)),
+            KVValueType.Int16=>new KVObject(value.ToInt64(CultureInfo.InvariantCulture)),
+            KVValueType.UInt16=>new KVObject(value.ToUInt64(CultureInfo.InvariantCulture)),
+            KVValueType.Array=>Array(value.Values.Select(PromoteLegacyNumbers)),
+            _=>null
+        };
+        if(replacement is not null){replacement.Flag=value.Flag;return replacement;}
+        if(value.ValueType==KVValueType.Collection)foreach(var (key,child) in value.ToArray())value[key]=PromoteLegacyNumbers(child);
+        return value;
     }
     // VRF releases which emit zero allocation hints still round-trip through
     // their reader, but omit the counts used by the game KV3 loader.

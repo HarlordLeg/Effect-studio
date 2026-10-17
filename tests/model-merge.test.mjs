@@ -18,7 +18,7 @@ test('Dark Artistry cape profile applies only to the exact ordinary cape, not pe
 test('several missing-slot cosmetics produce one merged hero with no staging models left in the VPK',async()=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-model-merge-'));try{
  const h=hero();const base=resource(1),head=resource(2),back=resource(3);fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(new Map([[h.model,base],[h.items[0].model,head],[h.items[1].model,back]])));fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[h],effects:[]}));fs.writeFileSync(path.join(temp,'patcher'),'stub');let calls=0;
- const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,modelMergeV1:true});const r=JSON.parse(fs.readFileSync(args[1]));if(args[0]==='--relocate'){for(const row of r.files)fs.copyFileSync(row.input,row.output);return '';}
+ const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,version:'1.1.0',legacyRaw:true,modelOnly:true,modelMergeV1:true});const r=JSON.parse(fs.readFileSync(args[1]));if(args[0]==='--relocate'){for(const row of r.files)fs.copyFileSync(row.input,row.output);return '';}
  assert.equal(args[0],'--merge-models');calls++;assert.deepEqual(fs.readFileSync(r.input),base);assert.deepEqual(r.donors.map(d=>fs.readFileSync(d.input)),[head,back]);fs.writeFileSync(r.output,resource(9));return '';};
  const builder=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),choices=builder.catalog.heroes[0].items.map(i=>builder.cosmeticChoice(h.id,i.id));const job={id:'merged'};await builder.build(choices,job);const result=new Vpk(job.file);assert.equal(calls,1);assert.deepEqual(result.read(h.model),resource(9));assert.ok(![...result.entries.keys()].some(p=>p.includes('/harlord_merge/')));assert.deepEqual(job.replacements,[h.model]);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
@@ -27,7 +27,7 @@ test('Arc Warden keeps selected shoulders only in the merged body and clears the
  for(const reversed of [false,true]){const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-arc-merge-'));try{
  const h=hero('arc_warden');h.items[1].slot='shoulder';h.defaultSlotModels={head:'models/heroes/arc_warden/head.vmdl_c',shoulder:'models/heroes/arc_warden/shoulder.vmdl_c'};configureModelMerging({heroes:[h]},{read:()=>null});const rows=h.items.map(item=>({hero:h,item}));if(reversed)rows.reverse();
  const stage=stagedMergeTarget(h,h.items[1]),packed=new Map([[h.model,resource(1)],[h.defaultSlotModels.shoulder,resource(2)],[stage,resource(3)],[invisibleModel,resource(4)]]),roots=[stage],targets=new Set([stage,h.model,h.defaultSlotModels.shoulder]);
- await finalizeModelMerges({root:temp,store:{read:()=>null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:true,modelMergeV4:true});const r=JSON.parse(fs.readFileSync(args[1]));assert.equal(r.donors[0].matchBoneCase,true);assert.equal(r.donors.length,1);assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(3));fs.writeFileSync(r.output,resource(9));}},rows,packed,roots,temp,'patcher',{},targets);
+ await finalizeModelMerges({root:temp,store:{read:()=>null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeV2:true,modelMergeV4:true});const r=JSON.parse(fs.readFileSync(args[1]));assert.equal(r.donors[0].matchBoneCase,true);assert.equal(r.donors.length,1);assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(3));fs.writeFileSync(r.output,resource(9));}},rows,packed,roots,temp,'patcher',{},targets);
  assert.deepEqual(packed.get(h.model),resource(9));assert.deepEqual(packed.get(h.defaultSlotModels.shoulder),resource(2));assert.deepEqual(packed.get(h.defaultSlotModels.head),resource(4));assert.equal(packed.has(stage),false);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}}
 });
@@ -35,7 +35,7 @@ test('moving only the Arc Warden head preserves the original shoulder geometry i
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-arc-head-'));try{
  const h=hero('arc_warden');h.defaultSlotModels={head:'models/heroes/arc_warden/head.vmdl_c',shoulder:'models/heroes/arc_warden/shoulder.vmdl_c'};configureModelMerging({heroes:[h]},{read:()=>null});
  const packed=new Map([[h.model,resource(1)],[h.defaultSlotModels.shoulder,resource(2)],[invisibleModel,resource(4)]]);
- await finalizeModelMerges({root:temp,store:{read:p=>p===h.defaultSlotModels.shoulder?resource(5):null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:true,modelMergeV4:true});const r=JSON.parse(fs.readFileSync(args[1]));assert.equal(r.donors[0].matchBoneCase,true);assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(5));fs.writeFileSync(r.output,resource(9));}},[{hero:h,item:h.items[0]}],packed,[],temp,'patcher',{});
+ await finalizeModelMerges({root:temp,store:{read:p=>p===h.defaultSlotModels.shoulder?resource(5):null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeV2:true,modelMergeV4:true});const r=JSON.parse(fs.readFileSync(args[1]));assert.equal(r.donors[0].matchBoneCase,true);assert.deepEqual(fs.readFileSync(r.donors[0].input),resource(5));fs.writeFileSync(r.output,resource(9));}},[{hero:h,item:h.items[0]}],packed,[],temp,'patcher',{});
  assert.deepEqual(packed.get(h.defaultSlotModels.shoulder),resource(2));assert.deepEqual(packed.get(h.defaultSlotModels.head),resource(4));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
@@ -59,7 +59,7 @@ test('AA arms and selected shoulders pack together in both orders, retaining abi
   const assets=new Map([[h.model,resource(1)],[target,resource(2)],[h.items[0].model,resource(3)],[h.items[1].model,resource(4)],[native.entries[0].source,resource(5)],[native.entries[1].source,resource(6)],[native.entries[2].source,resource(7)]]);
   fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[h],effects:[]}));fs.writeFileSync(path.join(temp,'patcher'),'stub');
   const builder=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},async(_,args)=>{
-   if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,modelMergeV1:true});
+   if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,version:'1.1.0',legacyRaw:true,modelOnly:true,modelMergeV1:true});
    const req=JSON.parse(fs.readFileSync(args[1]));if(args[0]==='--relocate'){for(const row of req.files)fs.copyFileSync(row.input,row.output);}else{assert.equal(args[0],'--merge-models');fs.writeFileSync(req.output,resource(9));}return '';
   });
   const choices=builder.catalog.heroes[0].items.map(i=>builder.cosmeticChoice(h.id,i.id));if(reverse)choices.reverse();const job={id:'aa'};await builder.build(choices,job);const result=new Vpk(job.file);
@@ -75,7 +75,7 @@ test('external mesh dependencies reach the native merge manifest and temporary c
  for(const supported of [true,false]){const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-external-merge-'));try{
   const h=hero(),item={...h.items[0],mergeTarget:h.model},stage=stagedMergeTarget(h,item),meshName='models/test/head.vmesh_c';
   const packed=new Map([[h.model,resource(1)],[stage,referringResource(meshName.replace(/_c$/,''))],[meshName,resource(2)]]);let meshFile;
-  const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:supported});assert.equal(args[0],'--merge-models');const req=JSON.parse(fs.readFileSync(args[1]));meshFile=req.meshes[meshName];assert.deepEqual(fs.readFileSync(meshFile),resource(2));fs.writeFileSync(req.output,resource(3));};
+  const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeV2:supported});assert.equal(args[0],'--merge-models');const req=JSON.parse(fs.readFileSync(args[1]));meshFile=req.meshes[meshName];assert.deepEqual(fs.readFileSync(meshFile),resource(2));fs.writeFileSync(req.output,resource(3));};
   const action=finalizeModelMerges({root:temp,store:{read:()=>null},run},[{hero:h,item}],packed,[],temp,'patcher',{});
   if(supported){await action;assert.equal(fs.existsSync(meshFile),false);assert.deepEqual(packed.get(h.model),resource(3));}
   else{await assert.rejects(action,/modelMergeV2/);assert.ok(!fs.readdirSync(temp).some(n=>n.includes('-external-')));}
@@ -84,7 +84,7 @@ test('external mesh dependencies reach the native merge manifest and temporary c
 test('merged Leshrac weapon requests authored attachment priority without enabling it on other parts',async()=>{
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-staff-attachments-'));try{
   const h=hero('leshrac'),item={...h.items[0],slot:'weapon',mergeTarget:h.model},stage=stagedMergeTarget(h,item);const packed=new Map([[h.model,resource(1)],[stage,resource(2)]]);
-  await finalizeModelMerges({root:temp,store:{read:()=>null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV2:true,modelMergeV3:true});const req=JSON.parse(fs.readFileSync(args[1]));assert.equal(req.donors[0].overrideAttachments,true);assert.equal(req.donors[0].attachRootZero,false);fs.writeFileSync(req.output,resource(3));}},[{hero:h,item}],packed,[],temp,'patcher',{});
+  await finalizeModelMerges({root:temp,store:{read:()=>null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeV2:true,modelMergeV3:true});const req=JSON.parse(fs.readFileSync(args[1]));assert.equal(req.donors[0].overrideAttachments,true);assert.equal(req.donors[0].attachRootZero,false);fs.writeFileSync(req.output,resource(3));}},[{hero:h,item}],packed,[],temp,'patcher',{});
   assert.deepEqual(packed.get(h.model),resource(3));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });

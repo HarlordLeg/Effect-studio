@@ -19,6 +19,24 @@ internal static class ModelMergeTests
   Check(meshBone["m_boneName"].ToString(null)=="clavicle_R"&&meshBone["m_parentName"].ToString(null)=="root");Check(attachment["m_influenceNames"][0].ToString(null)=="clavicle_R");
 
   }
+  {
+   var legacy=KVObject.Collection();legacy["float"]=new KVObject(1.25f);legacy["negativeZero"]=new KVObject(-0.0f);legacy["short"]=new KVObject((short)-17);legacy["ushort"]=new KVObject((ushort)65535);legacy["string"]=new KVObject("materials/test.vmat"){Flag=KVFlag.Resource};legacy["nested"]=Array(new KVObject(0.1f));
+   HeroActivityRules.PromoteLegacyNumbers(legacy);
+   Check(legacy["float"].ValueType==KVValueType.FloatingPoint64&&legacy["float"].ToDouble(null)==1.25);
+   Check(BitConverter.DoubleToInt64Bits(legacy["negativeZero"].ToDouble(null))==long.MinValue);
+   Check(legacy["short"].ToInt64(null)==-17&&legacy["ushort"].ToUInt64(null)==65535);
+   Check(legacy["nested"][0].ValueType==KVValueType.FloatingPoint64&&legacy["nested"][0].ToDouble(null)==(double)0.1f);
+   Check(legacy["string"].Flag==KVFlag.Resource&&legacy["string"].ToString(null)=="materials/test.vmat");
+  }
+  foreach(byte version in new byte[]{2,3}){
+   var root=KVObject.Collection();root["nested"]=Array(new KVObject(1.25f),new KVObject((short)-4));
+   var binary=new ValveResourceFormat.ResourceTypes.BinaryKV3(root,new ValveKeyValue.KeyValues3.KV3ID("generic",new Guid("7412167c-06e9-4698-aff2-e63eb59037e7")),ValveResourceFormat.BlockType.DATA){Resource=new ValveResourceFormat.Resource()};
+   var bytes=HeroActivityRules.SerializeActivity(binary,version);Check(bytes[0]==version);
+   var parsed=new ValveResourceFormat.ResourceTypes.BinaryKV3(ValveResourceFormat.BlockType.DATA){Resource=new ValveResourceFormat.Resource(),Offset=0,Size=(uint)bytes.Length};
+   using var reader=new BinaryReader(new MemoryStream(bytes));parsed.Read(reader);
+   Check(parsed.Data.Root["nested"][0].ValueType==KVValueType.FloatingPoint64&&parsed.Data.Root["nested"][0].ToDouble(null)==1.25);
+   Check(parsed.Data.Root["nested"][1].ToInt64(null)==-4);
+  }
   Check(ModelMerge.MeshReference(KVObject.Null())=="");
   Check(ModelMerge.MeshReference(new KVObject(""){Flag=KVFlag.Resource})=="");
   Check(ModelMerge.MeshReference(new KVObject("models/test/head.vmesh"){Flag=KVFlag.Resource})=="models/test/head.vmesh");
