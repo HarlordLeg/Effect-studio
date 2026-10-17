@@ -37,7 +37,17 @@ internal static class ModelMerge
         var donorParents=Values(donor,"m_nParent");if(donorParents.Length!=donorNames.Length)throw new InvalidDataException("Missing donor parents");
         for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0){if(Number(donorParents[i])<0)throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]);index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
         foreach(var key in new[]{"m_boneName","m_nParent","m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
-            var source=Values(donor,key);var original=Values(host,key);if(original.Length!=hostNames.Count-added.Count||source.Length!=donorNames.Length)throw new InvalidDataException("Incomplete skeleton field: "+key);
+            var source=Values(donor,key);var original=Values(host,key);
+            // Scale is optional in compiled model skeletons; an omitted or
+            // empty array means identity scale, not an incomplete skeleton.
+            // Sphere radii are also optional (no authored radius => zero).
+            // Never pad a non-empty partial array: that hides malformed data.
+            if(key=="m_boneScaleParent"||key=="m_boneSphere"){
+                var fallback=key=="m_boneScaleParent"?1.0f:0.0f;
+                if(original.Length==0)original=Enumerable.Range(0,hostNames.Count-added.Count).Select(_=>new KVObject(fallback)).ToArray();
+                if(source.Length==0)source=Enumerable.Range(0,donorNames.Length).Select(_=>new KVObject(fallback)).ToArray();
+            }
+            if(original.Length!=hostNames.Count-added.Count||source.Length!=donorNames.Length)throw new InvalidDataException("Incomplete skeleton field: "+key+" (host "+original.Length+"/"+(hostNames.Count-added.Count)+", donor "+source.Length+"/"+donorNames.Length+")");
             var result=original.ToList();
             if(key=="m_nFlag"||key=="m_boneSphere")for(var i=0;i<map.Length;i++)if(map[i]<original.Length){if(key=="m_nFlag")result[map[i]]=new KVObject(unchecked((uint)(result[map[i]].ToInt64(CultureInfo.InvariantCulture)|source[i].ToInt64(CultureInfo.InvariantCulture))));else result[map[i]]=new KVObject(Math.Max(result[map[i]].ToDouble(CultureInfo.InvariantCulture),source[i].ToDouble(CultureInfo.InvariantCulture)));}
             foreach(var i in added){var value=source[i];if(key=="m_nParent"){var parent=Number(value);if(parent>=map.Length||parent==i)throw new InvalidDataException("Invalid donor bone parent");value=new KVObject(parent<0?-1:map[parent]);}result.Add(value);}host[key]=Array(result);

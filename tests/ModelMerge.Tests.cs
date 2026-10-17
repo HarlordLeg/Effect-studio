@@ -12,6 +12,33 @@ internal static class ModelMergeTests
   Check(host["m_boneName"][0].ToString(null)=="root"&&host["m_boneName"][1].ToString(null)=="Head_1");
   try{ModelMerge.MergeSkeleton(host,Skeleton(["unrelated_root"],[-1]));throw new Exception("Unattached root accepted");}catch(InvalidDataException){}
   try{ModelMerge.MergeSkeleton(Skeleton(["root"],[-1]),Skeleton(["root","root"],[-1,0]));throw new Exception("Duplicate bones accepted");}catch(InvalidDataException){}
+  // Missing and empty optional fields occur in real compiled wearables.
+  foreach(var emptyHost in new[]{false,true})foreach(var emptyDonor in new[]{false,true}){
+   var h=Skeleton(["root","Head_1"],[-1,0]);var d=Skeleton(["Head_1","hair","tip"],[-1,0,1]);
+   if(emptyHost)h["m_boneScaleParent"]=Array();else h.Remove("m_boneScaleParent");
+   if(emptyDonor)d["m_boneScaleParent"]=Array();else d.Remove("m_boneScaleParent");
+   h.Remove("m_boneSphere");d["m_boneSphere"]=Array();
+   ModelMerge.MergeSkeleton(h,d);
+   Check(h["m_boneScaleParent"].Values.Select(v=>v.ToSingle(null)).SequenceEqual(new[]{1f,1f,1f,1f}));
+   Check(h["m_boneSphere"].Values.All(v=>v.ToSingle(null)==0));
+  }
+  var scaledHost=Skeleton(["root","Head_1"],[-1,0]);var scaledDonor=Skeleton(["Head_1","hair","tip"],[-1,0,1]);
+  scaledHost["m_boneScaleParent"]=Array(new KVObject(2f),new KVObject(3f));
+  scaledDonor["m_boneScaleParent"]=Array(new KVObject(9f),new KVObject(4f),new KVObject(5f));
+  ModelMerge.MergeSkeleton(scaledHost,scaledDonor);
+  Check(scaledHost["m_boneScaleParent"].Values.Select(v=>v.ToSingle(null)).SequenceEqual(new[]{2f,3f,4f,5f}));
+  foreach(var missingHost in new[]{true,false}){
+   var h=Skeleton(["root","Head_1"],[-1,0]);var d=Skeleton(["Head_1","hair"],[-1,0]);
+   h["m_boneScaleParent"]=Array(new KVObject(2f),new KVObject(3f));
+   d["m_boneScaleParent"]=Array(new KVObject(9f),new KVObject(4f));
+   if(missingHost)h.Remove("m_boneScaleParent");else d.Remove("m_boneScaleParent");
+   ModelMerge.MergeSkeleton(h,d);
+   Check(h["m_boneScaleParent"].Values.Select(v=>v.ToSingle(null)).SequenceEqual(missingHost?new[]{1f,1f,4f}:new[]{2f,3f,1f}));
+  }
+  foreach(var field in new[]{"m_boneScaleParent","m_boneSphere","m_bonePosParent","m_boneRotParent","m_nFlag"}){
+   var h=Skeleton(["root","Head_1"],[-1,0]);var d=Skeleton(["Head_1","hair"],[-1,0]);d[field]=Array(new KVObject(1f));
+   try{ModelMerge.MergeSkeleton(h,d);throw new Exception("Partial skeleton array accepted: "+field);}catch(InvalidDataException){}
+  }
   var header="<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:vmdlkeys4:version{9f5c1002-f19f-470c-bd42-c3c26c063d33} -->";
   var donorText=header+"\n{ particle_cfg_list = [{ name = resource:\"particles/ambient.vpcf\" config = \"authored\" controls = [1,2,3] }] death = resource:\"particles/death.vpcf\" }";
   var merged=ModelMerge.MergeParticleText("",donorText);Check(merged.Contains("authored")&&merged.Contains("controls")&&!merged.Contains("particles/death.vpcf"));
