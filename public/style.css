@@ -141,3 +141,13 @@ input[type="checkbox"]:disabled{opacity:.45;cursor:default}
 
 .kinetic-option{display:flex;align-items:center;gap:8px}.kinetic-option>label{flex:1;min-width:0}.kinetic-info{flex-shrink:0;font-size:12px;padding:9px}.kinetic-media-tabs{max-height:180px;overflow:auto}
 @media(max-width:420px){.kinetic-option{align-items:stretch;flex-direction:column;gap:0}.kinetic-info{align-self:flex-end}}
+
+/* Independent TB interface images stay beside the equipment slots. */
+.set-loadout-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start;min-width:0}
+.set-loadout-controls.has-arcana-icons{grid-template-columns:170px minmax(0,1fr)}
+#set-arcana-icons{display:grid;gap:14px;padding:13px;border:1px solid var(--border,#384253);border-radius:12px;background:var(--panel,#141a23);min-width:0}
+#set-arcana-icons[hidden]{display:none}
+#set-arcana-icons h3{margin:0;font-size:13px;line-height:1.4}
+#set-arcana-icons label{display:grid;gap:7px;margin:0;min-width:0;font-size:11px;line-height:1.4;color:var(--muted,#a9b3c8)}
+#set-arcana-icons select{width:100%;min-width:0;font-size:11px;padding:9px 5px;color:var(--text,#e4e7eb);background:#0d131c;border:1px solid var(--border,#384253);border-radius:6px}
+@media(max-width:540px){.set-loadout-controls.has-arcana-icons{grid-template-columns:minmax(0,1fr)}#set-arcana-icons{grid-template-columns:repeat(3,minmax(0,1fr))}#set-arcana-icons h3{grid-column:1/-1}}

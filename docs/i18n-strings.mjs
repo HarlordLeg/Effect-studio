@@ -1,4 +1,13 @@
 export const translations = {
+"Иконки интерфейса":"Interface icons",
+"Иконка на верхней панели":"Top bar hero icon",
+"Мини-иконка героя":"Small hero icon",
+"Классические":"Classic",
+"Оригинальные от арканы":"Original Arcana",
+"Под цвет арканы":"Match Arcana color",
+"Иконки Rictus Ripper":"Rictus Ripper icons",
+"Иконки Manta / Skadi":"Manta / Skadi icons",
+
 "Стадия роста · ":"Growth stage · ",
 "Приоритет анимаций":"Animation priority",
 "Самоцвет и Skullbasher меняют одни и те же анимации. Выбери, какой вариант использовать.":"The gem and Skullbasher change the same animations. Choose which version to use.",
