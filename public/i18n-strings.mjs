@@ -1,4 +1,8 @@
 export const translations = {
+"Поиск комплекта":"Search sets",
+"Предметов":"Items",
+"Превью недоступно":"Preview unavailable",
+
 "Иконки интерфейса":"Interface icons",
 "Иконка на верхней панели":"Top bar hero icon",
 "Мини-иконка героя":"Small hero icon",

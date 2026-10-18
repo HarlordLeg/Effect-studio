@@ -1,3 +1,4 @@
+import {TerrorbladeIconPreviews,iconPreviewRequest} from './lib/terrorblade-icon-previews.mjs';
 import {kineticBuildChoices} from './lib/kinetic-build.mjs';
 import {readMediaManifest,serveKineticMedia} from './lib/kinetic-media-cache.mjs';
 import {itemActivityRules} from './lib/hero-activities.mjs';
@@ -23,7 +24,7 @@ function publicJob(job){const {file,owner,...result}=job;return result;}
 export function startServer({port:overridePort}={}) {
   const configPath=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'));
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
-  const itemIcons=new ItemIcons(root,config,builder.store);
+  const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons);
   const admin=new AdminAuth(root),statistics=new Statistics(root);
   const tracking=new WeakMap();
   const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
@@ -41,7 +42,7 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
-      const integrationRoute=/^\/api\/(catalog|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|item-icon|set-icon|terrorblade-icon|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
@@ -71,6 +72,14 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=session?session.id+':'+session.nonce:'local';previews.touch(owner);
       if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits',{source:session?.origin??'local'});return json(res,200,{ok:true});}
+      if(url.pathname==='/api/terrorblade-icon'&&req.method==='GET'){
+        let options;try{options=iconPreviewRequest(url.searchParams);}catch(error){return json(res,400,{error:error.message});}
+        try{const file=await tbIconPreviews.get(options);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Icon preview unavailable'});}
+      }
+      if(url.pathname==='/api/set-icon'&&req.method==='GET'){
+        const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),set=hero?.sets?.find(s=>s.id===url.searchParams.get('setId'));if(!set)return json(res,404,{error:'Set not found'});
+        const item=hero.items.find(i=>set.items.some(row=>row.itemId===i.id));try{const file=await itemIcons.get({model:item?.model??hero.model,imageInventory:set.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Set image unavailable'});}
+      }
       if(url.pathname==='/api/item-icon'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
         try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}

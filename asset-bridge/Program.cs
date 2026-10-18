@@ -33,7 +33,7 @@ internal static class Program
 
             if (request.ThumbnailTexture is not null)
             {
-                if (!request.ThumbnailTexture.StartsWith("panorama/images/econ/", StringComparison.Ordinal) || !request.ThumbnailTexture.EndsWith(".vtex_c", StringComparison.Ordinal) || request.ThumbnailTexture.Split('/').Contains("..")) throw new InvalidDataException("Invalid inventory texture");
+                if (!new[]{"panorama/images/econ/","panorama/images/heroes/","panorama/images/spellicons/","panorama/images/items/"}.Any(prefix=>request.ThumbnailTexture.StartsWith(prefix,StringComparison.Ordinal)) || !request.ThumbnailTexture.EndsWith(".vtex_c", StringComparison.Ordinal) || request.ThumbnailTexture.Split('/').Contains("..")) throw new InvalidDataException("Invalid inventory texture");
                 using var image = loader.LoadFile(request.ThumbnailTexture) ?? throw new FileNotFoundException("Inventory texture missing");
                 if (image.DataBlock is not Texture texture) throw new InvalidDataException("Inventory image is not a texture");
                 using var bitmap = texture.GenerateBitmap();
