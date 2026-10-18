@@ -17,10 +17,10 @@ test('set preview collage contains real member items, skips missing images and i
  const hero={items:Array.from({length:6},(_,i)=>({id:String(i),imageInventory:i?'econ/item/'+i:null}))},set={items:[{itemId:'absent'},...hero.items.map(i=>({itemId:i.id}))]};assert.deepEqual(setPreviewItems(hero,set).map(i=>i.id),['1','2','3','4']);assert.deepEqual(setPreviewItems(hero,null),[]);
 });
 
-test('variant cards show all ability images and clicking a preview changes only that group',async()=>{
+test('TB sidebar requests only current icons, not every variant at startup',async()=>{
  const {drawTerrorbladeIconControls}=await import('../public/terrorblade-icon-controls.mjs');
- class Node{constructor(tag,doc){this.tag=tag;this.ownerDocument=doc;this.children=[];this.events={};this.dataset={};this.attributes={};this.classList={add(){},toggle(){}};}append(...nodes){this.children.push(...nodes);}replaceChildren(){this.children=[];}setAttribute(k,v){this.attributes[k]=v;}addEventListener(k,v){this.events[k]=v;}}
- const doc={createElement:tag=>new Node(tag,doc)},container=new Node('aside',doc),arcana={color:[1,2,3]},urls=[];
- drawTerrorbladeIconControls(container,arcana,{previewUrl:(...args)=>{urls.push(args);return '/image?'+args.join('-');}});
- assert.equal(urls.length,24);const topbarVariants=container.children[2].children[2],classic=topbarVariants.children[0];classic.events.click({preventDefault(){}});assert.equal(arcana.iconStyles.topbar,'classic');assert.equal(arcana.iconStyles.abilities,'colored');assert.equal(classic.attributes['aria-pressed'],'true');assert.equal(topbarVariants.children[2].attributes['aria-pressed'],'false');
+ class Node{constructor(tag,doc){this.tag=tag;this.ownerDocument=doc;this.children=[];this.events={};}append(...nodes){this.children.push(...nodes);}replaceChildren(){this.children=[];}setAttribute(){}addEventListener(k,v){this.events[k]=v;}}
+ const doc={createElement:tag=>new Node(tag,doc)},container=new Node('aside',doc),urls=[];
+ drawTerrorbladeIconControls(container,{color:[1,2,3]},{previewUrl:(...args)=>{urls.push(args);return '/icon';}});
+ assert.equal(urls.length,8);assert.equal(container.children.length,9);assert.equal(urls.filter(([group])=>group==='abilities').length,6);
 });

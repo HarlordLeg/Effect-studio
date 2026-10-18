@@ -286,5 +286,12 @@ export const translations = {
   "Недоступно": "Unavailable",
   "Выбранные здесь иконки имеют приоритет над цветом иконок арканы.": "Icons selected here take priority over Arcana icon colors.",
   "Имморталки": "Immortals",
-  "Кинетики и имморталки": "Kinetics and Immortals"
+  "Кинетики и имморталки": "Kinetics and Immortals",
+  "Способности и иконки": "Abilities and icons",
+  "Выбери иконку и эффект способности": "Choose an ability icon and effect",
+  "Применить эффект": "Apply effect",
+  "Анимация применения": "Cast animation",
+  "Общий набор: ": "Shared bundle: ",
+  "Другие эффекты": "Other effects",
+  "Эффект: ": "Effect: "
 };

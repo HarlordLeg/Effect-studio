@@ -12,7 +12,8 @@
   async request(route,data,{signal}={}){await this.session();const response=await fetch(this.base+route,{method:data===undefined?'GET':'POST',headers:{Authorization:'Bearer '+this.token,'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data),signal});const value=await response.json();if(!response.ok){const error=new Error(value.error??'API failed');error.status=response.status;throw error;}return value;}
   catalog(){return this.request('/api/catalog');}
   stances(heroId){return this.request('/api/stances?heroId='+encodeURIComponent(heroId));}
-  async immortalEffects(heroId){const {options}=await this.stances(heroId);return {options:options.filter(o=>o.category==='immortal')};}
+  async immortalEffects(heroId){const {options,abilities=[]}=await this.stances(heroId);return {options:options.filter(o=>o.category==='immortal'),abilities};}
+  async abilityIconUrl(heroId,abilityId){await this.session();return this.base+'/api/ability-icon?'+new URLSearchParams({heroId,abilityId,token:this.token});}
   async immortalIconUrl(heroId,optionId,index=0,variant='immortal'){await this.session();return this.base+'/api/immortal-icon?'+new URLSearchParams({heroId,optionId,index:String(index),variant,token:this.token});}
   inspect(selection){return this.request('/api/inspect',selection);}
   preview(selection){return this.request('/api/preview',selection);}

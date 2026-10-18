@@ -41,11 +41,13 @@ test('prepared overlays skip recoloring fixed icons, keep independent caches, an
 test('independent icon preferences survive a multi-hero basket request',()=>{
  const hero={id:'terrorblade',defaultSlotModels:{},items:[]},arcana={mode:'owned',color:[1,2,3],iconStyles:{abilities:'classic',topbar:'arcana',portrait:'colored'}};const payload=combinedSetPayload([hero,{id:'axe'}],new Map([['terrorblade',{selected:new Map(),effects:new Map(),arcana}]]));assert.deepEqual(payload.selections[0].arcana,arcana);
 });
-test('left panel renders three independently selected controls and only exposes Rictus abilities for its set',()=>{
- class Element{constructor(tag,ownerDocument){this.tag=tag;this.ownerDocument=ownerDocument;this.children=[];this.handlers={};}append(...nodes){this.children.push(...nodes);}replaceChildren(){this.children=[];}setAttribute(){}addEventListener(event,fn){this.handlers[event]=fn;}}
- const doc={createElement:tag=>new Element(tag,doc)},box=new Element('aside',doc),arcana={mode:'base',color:[1,2,3]};let changed;
- drawTerrorbladeIconControls(box,arcana,{hasSet:false,onChange:(...args)=>changed=args});const controls=box.children.slice(1).map(l=>l.children[1]);assert.equal(controls.length,3);assert.ok(controls.every(c=>c.children.length===3));controls[1].value='classic';controls[1].handlers.change();assert.equal(arcana.iconStyles.topbar,'classic');assert.equal(arcana.iconStyles.abilities,'colored');assert.deepEqual(changed,['topbar','classic']);
- drawTerrorbladeIconControls(box,arcana,{hasSet:true,disabled:true});assert.equal(box.children[1].children[1].children.length,4);assert.ok(box.children.slice(1).every(l=>l.children[1].disabled));
+test('individual TB ability styles preserve other abilities and hero image choices',async()=>{
+ const {setTerrorbladeIconStyle,terrorbladeIconStyle,terrorbladeIconChoices}=await import('../public/terrorblade-icon-controls.mjs');
+ const arcana={iconStyles:defaultTerrorbladeIconStyles({})};setTerrorbladeIconStyle(arcana,'abilities','sunder','classic');
+ assert.equal(terrorbladeIconStyle(arcana,'abilities','sunder'),'classic');assert.equal(terrorbladeIconStyle(arcana,'abilities','reflection'),'colored');assert.equal(arcana.iconStyles.topbar,'colored');
+ assert.equal(terrorbladeIconChoices('abilities',true).length,4);assert.equal(terrorbladeIconChoices('portrait',true).length,3);
+ const normalized=normalizeTerrorbladeIconStyles(arcana.iconStyles);assert.deepEqual(normalized.abilityOverrides,{sunder:'classic'});normalized.abilityOverrides.sunder='arcana';assert.equal(arcana.iconStyles.abilityOverrides.sunder,'classic');
+ for(const overrides of [{unknown:'classic'},{sunder:'nope'},[],null])assert.throws(()=>normalizeTerrorbladeIconStyles({abilityOverrides:overrides}),/Invalid/);
 });
 
 test('unrelated Immortal source icons are not treated as additional Arcana destinations',()=>{const f=fixture();f.game.set('panorama/images/spellicons/terrorblade_sunder_ti8_png.vtex_c',Buffer.from('immortal'));const plan=terrorbladeIconPlan(f.store,f.template,{});assert.ok(!plan.some(r=>r.target.includes('_ti8_')));});

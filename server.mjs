@@ -1,3 +1,4 @@
+import {abilityCatalog} from './lib/ability-catalog.mjs';
 import {immortalEffectCandidates,immortalIconEntry} from './lib/immortal-effects.mjs';
 import {TerrorbladeIconPreviews,iconPreviewRequest} from './lib/terrorblade-icon-previews.mjs';
 import {kineticBuildChoices} from './lib/kinetic-build.mjs';
@@ -43,7 +44,7 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
-      const integrationRoute=/^\/api\/(catalog|item-icon|set-icon|terrorblade-icon|immortal-icon|stances|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|item-icon|set-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
@@ -85,12 +86,16 @@ export function startServer({port:overridePort}={}) {
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
         try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}
       }
+      if(url.pathname==='/api/ability-icon'&&req.method==='GET'){
+        const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId'));
+        try{if(!hero)throw new Error('Unknown hero');const options=immortalEffectCandidates(hero),ability=abilityCatalog(builder,hero.id,options).find(a=>a.id===url.searchParams.get('abilityId'));if(!ability?.texture)throw new Error('Unknown ability');const file=await itemIcons.getTexture(ability.texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Ability icon unavailable'});}
+      }
       if(url.pathname==='/api/immortal-icon'&&req.method==='GET'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId'));
         const option=hero&&immortalEffectCandidates(hero).find(o=>o.id===url.searchParams.get('optionId'));
         try{const entry=immortalIconEntry(option,url.searchParams.get('index'));const texture=url.searchParams.get('variant')==='classic'?entry.target:entry.source;const file=await itemIcons.getTexture(texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Immortal icon unavailable'});}
       }
-      if(url.pathname==='/api/stances'&&req.method==='GET'){const result=await heroStances(builder,url.searchParams.get('heroId'));return json(res,200,{options:result.options});}
+      if(url.pathname==='/api/stances'&&req.method==='GET'){const heroId=url.searchParams.get('heroId'),result=await heroStances(builder,heroId);return json(res,200,{options:result.options,abilities:abilityCatalog(builder,heroId,result.options)});}
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),terrorbladeArcana:hasTerrorbladeArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
