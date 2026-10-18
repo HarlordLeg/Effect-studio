@@ -86,9 +86,14 @@ export function startServer({port:overridePort}={}) {
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
         try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}
       }
+      if(url.pathname.startsWith('/images/personas/')&&req.method==='GET'){
+        const id=url.pathname.match(/^\/images\/personas\/([a-z0-9_]+)\.png$/)?.[1],hero=builder.catalog.heroes.find(h=>h.id===id&&h.isPersona);
+        if(!hero)return json(res,404,{error:'Persona not found'});
+        try{const texture='panorama/images/heroes/'+hero.personaNpcName+'_png.vtex_c';const file=builder.store.read(texture)?await itemIcons.getTexture(texture,{model:hero.model}):await itemIcons.get({model:hero.model,imageInventory:hero.personaInventoryImage});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Persona portrait unavailable'});}
+      }
       if(url.pathname==='/api/ability-icon'&&req.method==='GET'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId'));
-        try{if(!hero)throw new Error('Unknown hero');const options=immortalEffectCandidates(hero),ability=abilityCatalog(builder,hero.id,options).find(a=>a.id===url.searchParams.get('abilityId'));if(!ability?.texture)throw new Error('Unknown ability');const file=await itemIcons.getTexture(ability.texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Ability icon unavailable'});}
+        try{if(!hero)throw new Error('Unknown hero');const options=immortalEffectCandidates(hero),ability=abilityCatalog(builder,hero.id,options).find(a=>a.id===url.searchParams.get('abilityId'));if(!ability?.texture)throw new Error('Unknown ability');const file=await itemIcons.getTexture(ability.defaultTexture??ability.texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Ability icon unavailable'});}
       }
       if(url.pathname==='/api/immortal-icon'&&req.method==='GET'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId'));
@@ -99,7 +104,7 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),terrorbladeArcana:hasTerrorbladeArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
+        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));

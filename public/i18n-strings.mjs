@@ -293,5 +293,10 @@ export const translations = {
   "Анимация применения": "Cast animation",
   "Общий набор: ": "Shared bundle: ",
   "Другие эффекты": "Other effects",
-  "Эффект: ": "Effect: "
+  "Эффект: ": "Effect: ",
+  "Предмет не принадлежит выбранной личности": "This item does not belong to the selected Persona",
+  "Обычный герой и его личности не могут одновременно заменять одну модель: ": "A hero and its Personas cannot replace the same model in one VPK: ",
+  "У обычного героя недостаточно слотов для личности ": "The base hero has too few wearable slots for this Persona: ",
+  "Не найдена базовая модель для личности ": "Base hero model not found for Persona: ",
+  "Не найдена модель личности: ": "Persona model not found: "
 };
