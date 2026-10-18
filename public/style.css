@@ -165,3 +165,19 @@ main:has(.set-workspace.has-arcana-icons:not(.choosing-hero)){max-width:1780px}
 @media(max-width:700px){.set-workspace.has-arcana-icons:not(.choosing-hero){grid-template-columns:minmax(0,1fr)}#set-arcana-icons.set-icon-sidebar{position:static;max-height:none;grid-template-columns:minmax(0,1fr)}#set-arcana-icons .tb-icon-variants{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:420px){#set-arcana-icons .tb-icon-variants{grid-template-columns:minmax(0,1fr)}}
 .set-preset-picker:not([open])>.set-preset-popup{display:none}
+
+/* Standalone Immortal ability effects. */
+.immortal-open{width:100%;text-align:left;color:#e6c57a;margin:8px 0}
+.immortal-picker{width:min(1000px,94vw);max-height:88vh;padding:0 22px 18px;overflow:auto;border:1px solid #3a4249;border-radius:16px;background:#121a20;color:#e5e9ea}
+.immortal-picker::backdrop{background:#000a;backdrop-filter:blur(5px)}
+.immortal-picker>.set-picker-top{position:sticky;top:0;background:#121a20;z-index:2;padding:16px 0;margin:0;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.immortal-picker h2{font-size:21px;margin:0}.immortal-picker>input{width:100%;margin:10px 0 18px}
+.immortal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-items:start}
+.immortal-effect-card{position:relative;border:1px solid #806a394f;background:#1b242a;border-radius:12px;padding:14px;min-width:0}
+.immortal-heading{display:flex;gap:12px;align-items:center;margin-bottom:10px}.immortal-heading>img{width:72px;height:48px;object-fit:contain}.immortal-heading h3{font-size:14px;line-height:1.4;margin:0}
+.immortal-effect-card>.rarity-immortal{position:static;display:inline-block;margin-bottom:10px}
+.immortal-switch{display:flex;gap:9px;align-items:center;margin:12px 0 6px;font-size:14px}.immortal-switch input{accent-color:#d8b76a;width:16px;height:16px;flex:none}
+.immortal-icon-pairs{display:flex;gap:10px;flex-wrap:wrap}.immortal-icon-pair{display:flex;align-items:center;gap:6px}.immortal-icon-pair img{width:40px;height:40px;object-fit:contain;border-radius:6px;background:#10171c}.immortal-icon-pair span{color:#a6b4ba}
+.immortal-changes{display:block;overflow-wrap:anywhere;color:#9baab1;font-size:11px;max-height:60px;overflow:auto}
+.immortal-footer{position:sticky;bottom:-18px;background:#121a20;border-top:1px solid #34414b;margin-top:20px;padding:14px 0;display:flex;gap:16px;align-items:end;justify-content:space-between}.immortal-priorities{flex:1;display:grid;gap:8px}.immortal-priorities label{font-size:12px}.immortal-priorities select{display:block;width:100%}
+@media(max-width:600px){.immortal-grid{grid-template-columns:1fr}.immortal-picker{padding:0 12px 12px}.immortal-footer{flex-direction:column;align-items:stretch}.immortal-priorities{width:100%}}

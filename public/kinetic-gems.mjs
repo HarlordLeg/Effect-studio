@@ -29,7 +29,7 @@ export function skullbasherActivityRules(item){
 }
 export function kineticChoiceGroups(options,items=[]){
  const groups=kineticGroups(options);
- for(const item of items){const native=item.nativeOverrides??{entries:[]};const option={id:'item:'+item.id,name:'Предмет: '+item.name,native,rules:skullbasherActivityRules(item)};
+ for(const item of items){const native=item.nativeOverrides??{entries:[]};const option={id:'item:'+item.id,name:'Предмет: '+item.name,native,rules:skullbasherActivityRules(item).length?skullbasherActivityRules(item):(native.activities??[])};
   for(const [action] of kineticGroups([option])){if(!groups.has(action)||action.startsWith('resource:'))continue;if(!groups.get(action).some(o=>o.id===option.id))groups.get(action).push(option);}
   for(const entry of native.entries??[]){const key='resource:'+entry.target;if(!groups.has(key)||!['particle','ability_icon','inventory_icon'].includes(entry.type))continue;if(!groups.get(key).some(o=>o.id===option.id))groups.get(key).push(option);}
  }

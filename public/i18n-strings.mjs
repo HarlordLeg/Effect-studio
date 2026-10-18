@@ -273,5 +273,16 @@ export const translations = {
   "Модель ещё не загружена": "The model has not loaded yet",
   "Модель ещё не готова": "The model is not ready yet",
   "Сборка не найдена": "Build not found",
-  "Предпросмотр не найден": "Preview not found"
+  "Предпросмотр не найден": "Preview not found",
+  "Эффекты и иконки имморталок": "Immortal effects and icons",
+  "Поиск имморталки": "Search Immortals",
+  "Эффекты": "Effects",
+  "Иконки": "Icons",
+  "Анимации способностей": "Ability animations",
+  "Сохрани свой скин. Выбери эффекты, иконки и анимации способностей отдельно. Свечение самой шмотки не переносится.": "Keep your cosmetic. Choose ability effects, icons and cast animations separately. Wearable ambient effects are not transferred.",
+  "Ресурсы предмета отсутствуют в установленной Dota": "Item resources are missing from the installed Dota",
+  "Базовая иконка": "Default icon",
+  "Иконка имморталки": "Immortal icon",
+  "Недоступно": "Unavailable",
+  "Выбранные здесь иконки имеют приоритет над цветом иконок арканы.": "Icons selected here take priority over Arcana icon colors."
 };
