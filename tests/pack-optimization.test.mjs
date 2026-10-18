@@ -7,7 +7,22 @@ import {fileURLToPath} from 'node:url';
 import {Vpk,packVpk,crc32,references,AssetStore} from '../lib/vpk.mjs';
 import {prepareTerrorbladeArcana} from '../lib/terrorblade-arcana.mjs';
 import {namespacePlan} from '../lib/namespace.mjs';
-import {pruneUnusedCopies} from '../lib/pack-optimization.mjs';
+import {pruneUnusedCopies,omitMountedMaterials} from '../lib/pack-optimization.mjs';
+
+test('mounted unchanged materials are omitted; recolors, effect aliases and icons survive',()=>{
+ const same=Buffer.from('original'),changed=Buffer.from('recolored');
+ const files=new Map([
+  ['materials/native.vmat_c',same],['materials/native.vtex_c',same],
+  ['materials/tb.vtex_c',changed],['materials/generated.vmat_c',changed],
+  ['harlord/materials/courier.vmat_c',same],['harlord/materials/courier.vtex_c',changed],
+  ['panorama/images/hero_png.vtex_c',same],['models/hero.vmdl_c',same]
+ ]);
+ const store={read:name=>name==='materials/generated.vmat_c'?null:same};
+ const stats=omitMountedMaterials(files,store);
+ assert.equal(stats.omittedMaterialFiles,2);assert.equal(stats.omittedMaterialBytes,same.length*2);
+ assert.equal(files.has('materials/native.vmat_c'),false);assert.equal(files.has('materials/native.vtex_c'),false);
+ for(const name of ['materials/tb.vtex_c','materials/generated.vmat_c','harlord/materials/courier.vmat_c','harlord/materials/courier.vtex_c','panorama/images/hero_png.vtex_c','models/hero.vmdl_c'])assert.ok(files.has(name),name);
+});
 import {Builder} from '../lib/build.mjs';
 
 function resource(refs=[],tag=1){
@@ -44,7 +59,7 @@ test('ordinary cosmetic builds keep native particle resources at game paths',asy
   const catalog=JSON.parse(fs.readFileSync(path.join(sourceRoot,'data/catalog.json'))),item=catalog.heroes[0].items[0],particle='particles/econ/native.vpcf_c';item.model='models/items/kunkka/native_weapon.vmdl_c';catalog.heroes[0].defaultSlotModels={weapon:'models/heroes/kunkka/kunkka_sword.vmdl_c'};item.nativeOverrides={skin:0,entries:[],particles:[particle],unsupported:[]};
   fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify(catalog));fs.writeFileSync(path.join(temp,'patcher'),'stub');fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(new Map([[item.model,resource(['materials/native.vtex_c'])],[particle,resource(['materials/native.vtex_c'])],['materials/native.vtex_c',resource()]])));
   const run=async(exe,args)=>{if(args[0]==='--capabilities')return '{"version":"1.1.0","legacyRaw":true,"modelOnly":true}';if(args[0]==='--relocate'){const manifest=JSON.parse(fs.readFileSync(args[1]));assert.ok(manifest.files.every(f=>!f.name.startsWith('harlord/')));for(const f of manifest.files)fs.copyFileSync(f.input,f.output);return '';}fs.copyFileSync(args[args.indexOf('--input')+1],args[args.indexOf('--output')+1]);return '';};
-  const builder=new Builder(temp,{archives:[path.join(temp,'game.vpk')],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),choice=builder.choice('kunkka','kunkka-sword','frostbloom'),job={id:'native-paths'};choice.effects=[];choice.cosmeticsOnly=true;await builder.build(choice,job);const packed=new Vpk(job.file);assert.ok(packed.entries.has(particle));assert.equal(packed.entries.has('harlord/'+particle),false);
+  const builder=new Builder(temp,{archives:[path.join(temp,'game.vpk')],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),choice=builder.choice('kunkka','kunkka-sword','frostbloom'),job={id:'native-paths'};choice.effects=[];choice.cosmeticsOnly=true;await builder.build(choice,job);const packed=new Vpk(job.file);assert.ok(packed.entries.has(particle));assert.equal(packed.entries.has('harlord/'+particle),false);assert.equal(packed.entries.has('materials/native.vtex_c'),false);assert.equal(job.optimization.omittedMaterialFiles,1);assert.ok(builder.store.closure([particle],new Map([...packed.entries.keys()].map(n=>[n,packed.read(n)]))).files.has('materials/native.vtex_c'));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('TB recolor imports selected native trees without copying unselected weapon styles',async()=>{
@@ -56,4 +71,18 @@ test('TB recolor imports selected native trees without copying unselected weapon
   const result=await prepareTerrorbladeArcana(builder,{arcana:{mode:'base',color:[1,2,3]}},[{hero:{id:'terrorblade'},item:{slot:'weapon',model,nativeOverrides:{entries:[],particles:[selected]}}}]);
   assert.ok(result.files.has(selected));assert.ok(result.files.has(texture));assert.equal(result.files.has(unused),false);assert.equal(result.files.has('materials/manta.vtex_c'),false);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('ordinary added effects use mounted materials while courier trees keep private material copies',async()=>{
+ const sourceRoot=fileURLToPath(new URL('..',import.meta.url));
+ for(const courier of [false,true]){
+  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-material-policy-'));try{
+   const catalog=JSON.parse(fs.readFileSync(path.join(sourceRoot,'data/catalog.json'))),item=catalog.heroes[0].items[0],particle='particles/test.vpcf_c',material='materials/test.vmat_c',texture='materials/test.vtex_c';
+   item.model='models/items/kunkka/weapon.vmdl_c';item.nativeOverrides={skin:0,entries:[],particles:[],unsupported:[]};catalog.heroes[0].defaultSlotModels={weapon:'models/heroes/kunkka/kunkka_sword.vmdl_c'};catalog.effects=[{id:'frostbloom',particle:particle.slice(0,-2),courier}];item.effects=['frostbloom'];
+   fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify(catalog));fs.writeFileSync(path.join(temp,'patcher'),'stub');fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(new Map([[item.model,resource([material])],[particle,resource([material])],[material,resource([texture])],[texture,resource()]])));
+   const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true});if(args[0]==='--relocate'){const manifest=JSON.parse(fs.readFileSync(args[1]));assert.equal(manifest.paths[material.slice(0,-2)],courier?'harlord/'+material.slice(0,-2):undefined);for(const row of manifest.files)fs.copyFileSync(row.input,row.output);return '';}fs.copyFileSync(args[args.indexOf('--input')+1],args[args.indexOf('--output')+1]);return '';};
+   const builder=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),job={id:'materials'};await builder.build(builder.choice('kunkka','kunkka-sword','frostbloom'),job);const archive=new Vpk(job.file);
+   assert.ok(archive.entries.has('harlord/'+particle));for(const name of [material,texture]){assert.equal(archive.entries.has(name),false);assert.equal(archive.entries.has('harlord/'+name),courier);}
+  }finally{fs.rmSync(temp,{recursive:true,force:true});}
+ }
 });
