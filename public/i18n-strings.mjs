@@ -284,5 +284,7 @@ export const translations = {
   "Базовая иконка": "Default icon",
   "Иконка имморталки": "Immortal icon",
   "Недоступно": "Unavailable",
-  "Выбранные здесь иконки имеют приоритет над цветом иконок арканы.": "Icons selected here take priority over Arcana icon colors."
+  "Выбранные здесь иконки имеют приоритет над цветом иконок арканы.": "Icons selected here take priority over Arcana icon colors.",
+  "Имморталки": "Immortals",
+  "Кинетики и имморталки": "Kinetics and Immortals"
 };
