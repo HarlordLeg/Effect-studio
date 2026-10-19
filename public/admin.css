@@ -4,3 +4,4 @@
 .admin:has(#cosmetics-studio:not([hidden])){max-width:1600px}.admin #cosmetics-studio .cosmetics-layout{grid-template-columns:180px minmax(0,1fr) 250px}@media(max-width:900px){.admin #cosmetics-studio .cosmetics-layout{grid-template-columns:1fr}.admin #cosmetics-studio .cosmetics-categories{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .admin .cosmetics-heroes label{display:flex;margin:0}.admin .cosmetics-heroes input[type=checkbox]{display:inline-block;width:auto;margin:0;padding:0}
+.admin .cosmetics-courier-effects label{display:flex;margin:0}.admin .cosmetics-courier-effects input[type=checkbox]{width:auto;margin:0;padding:0}

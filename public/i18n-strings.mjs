@@ -1,4 +1,13 @@
 export const translations = {
+"Дополнительные эффекты курьера":"Additional courier effects",
+"Сначала выбери курьера":"Choose a courier first",
+"Скачать ZIP с ландшафтом":"Download terrain ZIP",
+"Не найден архив ландшафта maps/*.vpk":"Terrain map archive maps/*.vpk not found",
+"Не найден звуковой банк":"Sound bank not found",
+"Не найдены партиклы атаки":"Attack particles not found",
+"Сохранены стандартные реплики без аналога: ":"Unmatched lines retain the original voice: ",
+"Не найден необязательный ресурс: ":"Optional resource not found: ",
+
 "Косметика":"Cosmetics",
 "Твоя косметика.":"Your cosmetics.",
 "Варды":"Wards",

@@ -27,7 +27,7 @@ export const root=path.dirname(fileURLToPath(import.meta.url));
 const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
 const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
 async function body(req){let b='';for await(const chunk of req){b+=chunk;if(b.length>16384)throw new Error('Слишком большой запрос');}return JSON.parse(b||'{}');}
-function publicJob(job){const {file,owner,...result}=job;return result;}
+function publicJob(job){const {file,owner,_terrain,...result}=job;return result;}
 export function startServer({port:overridePort,adminAuth}={}) {
   const configPath=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'));
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
@@ -65,7 +65,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
         if(url.pathname==='/api/admin/cosmetic-heroes'&&req.method==='GET')return json(res,200,{heroes:builder.catalog.heroes.map(h=>({id:h.id,name:h.name,isPersona:h.isPersona}))});
         if(url.pathname==='/api/admin/cosmetic-icon'&&req.method==='GET'){
           const item=cosmeticCatalog(builder).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
-          try{const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
+          try{const style=item.styles?.find(s=>s.id===url.searchParams.get('styleId'));const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:style?.imageInventory??item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
         }
         if(url.pathname==='/api/admin/build-cosmetics'&&req.method==='POST'){
           const data=await body(req),cosmetics=cosmeticChoices(builder,data.cosmetics??[]);if(!cosmetics.length)throw new Error('Choose cosmetics');vpkFilename(data.vpkNumber??1);
@@ -75,7 +75,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
         if(adminJob&&req.method==='GET'){
           const job=builder.jobs.get(adminJob[1]);if(!job||job.owner!==adminOwner)return json(res,404,{error:'Build not found'});
           if(!adminJob[2])return json(res,200,publicJob(job));if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});
-          res.writeHead(200,{'Content-Type':'application/octet-stream','Cache-Control':'no-store','Content-Disposition':`attachment; filename="${job.filename??vpkFilename()}"`,'Referrer-Policy':'no-referrer'});return fs.createReadStream(job.file).pipe(res);
+          res.writeHead(200,{'Content-Type':job.packageType==='terrain-zip'?'application/zip':'application/octet-stream','Cache-Control':'no-store','Content-Disposition':`attachment; filename="${job.filename??vpkFilename()}"`,'Referrer-Policy':'no-referrer'});return fs.createReadStream(job.file).pipe(res);
         }
         if(url.pathname==='/api/admin/statistics'&&req.method==='GET')return json(res,200,statistics.snapshot(Number(url.searchParams.get('days')??0)));
         if(url.pathname==='/api/admin/logout'&&req.method==='POST'){admin.logout(adminToken);return json(res,200,{ok:true});}

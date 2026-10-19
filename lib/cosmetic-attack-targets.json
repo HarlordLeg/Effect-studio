@@ -1,0 +1,610 @@
+[
+  {
+    "path": "particles/econ/items/huskar/huskar_2021_immortal/huskar_2021_immortal_base_attack_gold_trail_dark.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/huskar/huskar_2021_immortal/huskar_2021_immortal_burning_spear_gold_glow_silhouette.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/huskar/huskar_2021_immortal/huskar_2021_immortal_burning_spear_glow_silhouette.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/huskar/huskar_2021_immortal/huskar_2021_immortal_base_attack_trail_dark.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_weaver/weaver_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_morphling/morphling_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/luna/luna_crescent_moon/luna_attack_model_crescent_moon.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_bane/bane_projectile.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_leshrac/leshrac_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/razor/razor_ti6/razor_base_attack_ti6.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/ancient_apparition/aa_2021_immortal/aa_2021_immortal_chilling_projectile_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_razor/razor_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_rubick/rubick_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/sniper/sniper_fall20_immortal/sniper_fall20_immortal_base_attack_projectile_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_viper/viper_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_viper/viper_poison_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_luna/luna_base_attack.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_luna/luna_moon_glaive.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_oracle/oracle_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/keeper_of_the_light/kotl_weapon_arcane_staff/keeper_base_attack_arcane_staff_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_invoker_kid/invoker_kid_base_attack_wex.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_invoker_kid/invoker_kid_base_attack_all.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_invoker_kid/invoker_kid_base_attack_quas.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_invoker_kid/invoker_kid_base_attack_exort.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_warlock/warlock_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_dragon_knight/dragon_knight_elder_dragon_fire.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_dragon_knight/dragon_knight_elder_dragon_corrosive.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_dragon_knight/dragon_knight_elder_dragon_attack_black.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_dragon_knight/dragon_knight_elder_dragon_frost.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_techies/techies_base_attack_model.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/leshrac/leshrac_tormented_staff_retro/leshrac_base_attack_retro_blue_dust_tormented.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_drow/drow_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_drow/drow_shard_hypothermia_projectile.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_drow/drow_base_attack_linear_proj.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_drow/drow_marksmanship_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_drow/drow_ice_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_drow/drow_marksmanship_frost_arrow_model.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_drow/drow_multishot_proj_linear_proj.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_disruptor/disruptor_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/windrunner/windranger_arcana/windranger_arcana_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/windrunner/windranger_arcana/windranger_arcana_focusfire_attack_v2_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/windrunner/windranger_arcana/windranger_arcana_base_attack_v2_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/windrunner/windranger_arcana/windranger_arcana_focusfire_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_pugna/pugna_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_wisp/wisp_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_ti9_immortal/drow_ti9_marksman_frost_dark.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/drow/drow_ti9_immortal/drow_ti9_marksman_dark.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/drow/drow_ti9_immortal/drow_ti9_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/luna/luna_lucent_rider/luna_attack_model_lucent_rider.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_grimstroke/grimstroke_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_attack_trail_mid.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_v2_frost_arrow_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_frost_arrow_glow_outline.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_attack_tip_frost.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_frost_arrow_v2_glow_outline.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_v2_base_attack_trail_cloudy.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_shard_hypothermia_projectile_glow_outline.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_base_attack_v2_trail_cloudy.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_shard_v2_hypothermia_projectile_glow_outline.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/drow/drow_arcana/drow_arcana_base_attack_trail_cloudy.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/viper/viper_ti7_immortal/viper_poison_attack_ti7_drips_dark.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/viper/viper_ti7_immortal/viper_poison_crimson_attack_ti7_drips_dark.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_tinker/tinker_base_attack_trail_c.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/luna/luna_ti9_weapon_gold/luna_ti9_gold_base_attack_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/templar_assassin/templar_assassin_butterfly/templar_assassin_meld_attack_trail_butterfly.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_nevermore/sf_necromastery_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_nevermore/nevermore_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_witchdoctor/witchdoctor_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_jakiro/jakiro_base_attack_fire.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_jakiro/jakiro_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/techies/techies_ti9/techies_ti9_base_attack_b.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_mirana/mirana_base_attack_trail_c.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_venomancer/venomancer_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_vengeful/vengeful_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_crystalmaiden/maiden_base_attack_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/rubick/rubick_staff_wandering/rubick_base_attack_trail_b_whset.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_dark_willow/dark_willow_base_attack_ring.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_dark_willow/dark_willow_shadow_attack_trail_dark.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_queenofpain/queen_base_attack_spark_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_visage/visage_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/items_fx/desolator_projectile_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/luna/luna_ti9_weapon/luna_ti9_base_attack_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_lion/lion_base_attack_trail_b.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/luna/luna_eternal_eclipse/luna_attack_model_eternal_eclipse.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_batrider/batrider_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/techies/techies_arcana/techies_base_attack_arcana_model.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_chen/chen_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_windrunner/windrunner_focusfire_attack_trail_c.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_windrunner/windrunner_base_attack_trail_c.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_winter_wyvern/winter_wyvern_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_winter_wyvern/winter_wyvern_arctic_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/hoodwink/hoodwink_2022_immortal/hoodwink_2022_immortal_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/hoodwink/hoodwink_2022_immortal/hoodwink_2022_immortal_base_attack_blossom_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_arcane_orb.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_gyrocopter/gyro_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_enchantress/enchantress_base_attack_trail_a.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_enchantress/enchantress_impetus_glow.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/mirana/mirana_persona/mirana_persona_base_attack_trail_c.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_templar_assassin/templar_assassin_meld_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_templar_assassin/templar_assassin_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_puck/puck_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_zuus/zuus_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/sniper/sniper_witch_hunter/sniper_witch_hunter_base_attack_launch.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/puck/puck_alliance_set/puck_base_attack_trail_aproset.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/luna/nightsilver_woods_weapon/luna_attack_model_nightsilver.vpcf_c",
+    "controlPoint": 3
+  },
+  {
+    "path": "particles/units/heroes/hero_shadow_demon/shadow_demon_base_attack_fogline02.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/gyrocopter/hero_gyrocopter_gyrotechnics/gyro_base_attack_highlight.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_death_prophet/death_prophet_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/leshrac/leshrac_tormented_staff/leshrac_base_attack_blue_dust_tormented.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_ancient_apparition/ancient_apparition_chilling_touch_projectile_trail.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_ancient_apparition/ancient_apparition_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_necrolyte/necrolyte_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_keeper_of_the_light/keeper_of_the_light_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_lina/lina_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/hoodwink/hood_2021_blossom/hood_2021_blossom_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_sniper/sniper_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_furion/furion_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/clinkz/clinkz_maraxiform/clinkz_maraxiform_searing_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_huskar/huskar_burning_spear_flame.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_huskar/huskar_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_stormspirit/stormspirit_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_shadowshaman/shadowshaman_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_dazzle/dazzle_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/templar_assassin/templar_assassin_focal/templar_assassin_meld_focal_attack_smoke.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/templar_assassin/templar_assassin_focal/ta_focal_base_attack_launch.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_phoenix/phoenix_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_hoodwink/hoodwink_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/enchantress/enchantress_virgas/ench_impetus_virgas_d.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_silencer/silencer_base_attack_trail_c.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_silencer/silencer_glaives_of_wisdom_glow.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_troll_warlord/troll_warlord_base_attack_trail_d.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_brewmaster/brewmaster_storm_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/sniper/sniper_charlie/sniper_base_attack_trace_charlie.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/zeus/lightning_weapon_fx/zuus_base_attack_trail_immortal_lightning.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/queen_of_pain/qop_ti8_immortal/qop_ti8_base_attack_trail_c.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_lich/lich_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/silencer/silencer_ti8/silencer_ti8_glaive_shadow.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/silencer/silencer_ti8/silencer_ti8_attack_trail_c.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/econ/items/shadow_fiend/sf_fire_arcana/sf_fire_arcana_base_attack_parent.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/items2_fx/skadi_projectile_core_glow.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_medusa/medusa_base_attack.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_clinkz/clinkz_searing_arrow_flame.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_clinkz/clinkz_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_enigma/enigma_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/econ/items/shadow_fiend/sf_desolation/sf_base_attack_desolation_embers.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_lone_druid/lone_druid_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_arc_warden/arc_warden_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_base_attack_trail.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_terrorblade/terrorblade_metamorphosis_base_attack_trail_c.vpcf_c",
+    "controlPoint": 4
+  },
+  {
+    "path": "particles/units/heroes/hero_invoker/invoker_base_attack.vpcf_c",
+    "controlPoint": 1
+  },
+  {
+    "path": "particles/units/heroes/hero_snapfire/hero_snapfire_base_attack.vpcf_c",
+    "controlPoint": 4
+  }
+]
