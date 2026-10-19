@@ -41,3 +41,9 @@ test('default cart comes from the template and preview uses the same fixed body'
 test('interface groups and per-ability overrides are independent; preview rejects unknown requests',()=>{
  const base='panorama/images/spellicons/techies_sticky_bomb_png.vtex_c',template=new Map([[base,Buffer.from('custom')]]),store={read:name=>name.startsWith('panorama/')?Buffer.from('original'):null};const rows=techiesIconPlan(store,template,{abilities:'arcana',topbar:'classic',portrait:'colored',abilityOverrides:{sticky_bomb:'colored'}});assert.equal(rows.find(r=>r.target===base).data.toString(),'original');assert.equal(rows.find(r=>r.target===base).recolor,true);assert.equal(rows.find(r=>r.group==='topbar').recolor,false);assert.ok(rows.filter(r=>r.group==='portrait').every(r=>r.recolor));assert.throws(()=>normalizeTechiesIcons({abilityOverrides:{sunder:'classic'}}));assert.throws(()=>techiesIconRequest(new URLSearchParams({group:'abilities',style:'set'})));assert.equal(techiesIconRequest(new URLSearchParams({group:'topbar',style:'classic'})).color.join(','),'255,255,255');
 });
+test('one Techies icon preview does not require unrelated icons and respects AbilityTextureName',()=>{
+ const icon='panorama/images/spellicons/techies/custom_tazer_png.vtex_c';
+ const store={read:name=>name===icon?Buffer.from('tazer-icon'):name==='scripts/npc/abilities/techies_reactive_tazer.txt'?Buffer.from('"DOTAAbilities" { "techies_reactive_tazer" { "AbilityTextureName" "techies/custom_tazer" } }'):null};
+ const rows=techiesIconPlan(store,new Map(),{abilities:'classic'},{group:'abilities',ability:'reactive_tazer'});
+ assert.equal(rows.length,1);assert.equal(rows[0].data.toString(),'tazer-icon');assert.equal(rows[0].target,'panorama/images/spellicons/techies_reactive_tazer_png.vtex_c');
+});

@@ -1,3 +1,4 @@
+import {techiesArcanaNative} from './lib/techies-icons.mjs';
 import {hasTechiesArcana} from './lib/techies-arcana.mjs';
 import {TechiesIconPreviews,techiesIconRequest} from './lib/techies-icon-previews.mjs';
 import {abilityCatalog} from './lib/ability-catalog.mjs';
@@ -46,7 +47,7 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
-      const integrationRoute=/^\/api\/(catalog|item-icon|set-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|item-icon|set-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
@@ -87,6 +88,9 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname==='/api/set-icon'&&req.method==='GET'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),set=hero?.sets?.find(s=>s.id===url.searchParams.get('setId'));if(!set)return json(res,404,{error:'Set not found'});
         const item=hero.items.find(i=>set.items.some(row=>row.itemId===i.id));try{const file=await itemIcons.get({model:item?.model??hero.model,imageInventory:set.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Set image unavailable'});}
+      }
+      if(url.pathname==='/api/techies-cart-icon'&&req.method==='GET'){
+        try{const native=techiesArcanaNative(builder.store);const file=await itemIcons.get({model:'models/heroes/techies/techies_cart.vmdl_c',imageInventory:native?.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Arcana cart icon unavailable'});}
       }
       if(url.pathname==='/api/item-icon'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
