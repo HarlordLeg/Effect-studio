@@ -229,3 +229,10 @@ html[data-shared-basket=true] .set-basket,html[data-shared-basket=true] #cart-li
 .color-values input[type=number]{appearance:textfield}.color-values input::-webkit-inner-spin-button,.color-values input::-webkit-outer-spin-button{appearance:none;margin:0}.cosmetics-browser>input[type=search]{background:#101722;border:1px solid #394758;border-radius:8px;color:#e5e7ec;padding:12px;box-sizing:border-box}
 
 .cosmetic-source{color:var(--accent);font-size:12px;text-decoration:none;align-self:flex-start}.cosmetic-source:hover{text-decoration:underline}.cosmetic-source:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* Grouped shared basket */
+.basket-group{border:1px solid var(--line,#343744);border-radius:10px;background:#161920;margin:0 0 8px;overflow:hidden}
+.basket-group summary{display:flex;align-items:center;gap:9px;padding:10px;cursor:pointer;list-style:none;min-height:54px}
+.basket-group summary::-webkit-details-marker{display:none}.basket-group summary::after{content:'⌄';margin-left:2px;color:#aaa}.basket-group[open] summary::after{transform:rotate(180deg)}
+.basket-group summary>span:first-of-type{flex:1;min-width:0;overflow-wrap:anywhere}.basket-count{font-size:12px;padding:2px 7px;border-radius:20px;background:#35313e;color:#eee}
+.basket-group summary img{width:52px;height:30px;object-fit:cover;border-radius:5px}.basket-group-items{border-top:1px solid #343744;padding:0 8px}.basket-group-items .shared-basket-item{gap:7px;font-size:12px}.shared-basket-item>img{width:38px;height:34px;object-fit:contain;flex-shrink:0}.shared-basket-item>span{min-width:0;flex:1;overflow-wrap:anywhere}.shared-basket-item>button{flex-shrink:0}.basket-group summary:focus-visible{outline:2px solid #dbae68;outline-offset:-3px}

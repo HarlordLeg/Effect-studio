@@ -1,4 +1,10 @@
 export const translations = {
+"Скачать ZIP":"Download ZIP",
+"отдельный VPK":"separate VPK",
+"Дополнительные эффекты варда":"Additional ward effects",
+"Сначала выбери предмет":"Select an item first",
+"Свой цвет RGB":"Custom RGB color",
+"Цвет эффекта":"Effect color",
 "Источник":"Source",
 "Выбрать цвет":"Choose color",
 "Отмена":"Cancel",

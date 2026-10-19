@@ -5,3 +5,5 @@ test('cosmetics and hero selections share a build while categories remain indepe
 });
 
 test('shared basket merges one hero slot, preserves both effect lists and removes both providers',()=>{let sets=[{heroId:'axe',itemId:'weapon',slot:'weapon',effectIds:['frost']}],effects=[{heroId:'axe',itemId:'weapon',slot:'weapon',effectIds:['lava']}];registerSetBasket(()=>({selections:sets}),()=>{sets=[];});registerEffectBasket(()=>effects,()=>{effects=[];});const rows=basketRows();assert.equal(rows.length,1);assert.deepEqual(rows[0].row.effectIds,['frost','lava']);removeBasketRow(rows[0]);assert.equal(sharedBuildPayload().selections.length,0);registerEffectBasket(()=>[]);registerSetBasket(()=>({selections:[]}));});
+
+test('RGB selections are copied into the shared request independently of the selected item',()=>{const color=[10,20,30];chooseCosmetic('emblem_attack',{id:'attack',category:'emblem_attack',color});const payload=sharedBuildPayload();payload.cosmetics.find(i=>i.id==='attack').color[0]=200;assert.deepEqual(selectedCosmetics().find(i=>i.id==='attack').color,[10,20,30]);chooseCosmetic('emblem_attack',null);});
