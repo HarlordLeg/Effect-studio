@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto';
+import {cosmeticCatalog,cosmeticChoices} from './lib/global-cosmetics.mjs';
 import {techiesArcanaNative} from './lib/techies-icons.mjs';
 import {hasTechiesArcana} from './lib/techies-arcana.mjs';
 import {TechiesIconPreviews,techiesIconRequest} from './lib/techies-icon-previews.mjs';
@@ -26,11 +28,11 @@ const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/jso
 const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
 async function body(req){let b='';for await(const chunk of req){b+=chunk;if(b.length>16384)throw new Error('Слишком большой запрос');}return JSON.parse(b||'{}');}
 function publicJob(job){const {file,owner,...result}=job;return result;}
-export function startServer({port:overridePort}={}) {
+export function startServer({port:overridePort,adminAuth}={}) {
   const configPath=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'));
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
   const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons),techiesIconPreviews=new TechiesIconPreviews(builder,itemIcons);
-  const admin=new AdminAuth(root),statistics=new Statistics(root);
+  const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root);
   const tracking=new WeakMap();
   const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
   builder.onReady=job=>count('vpks',tracking.get(job));
@@ -55,8 +57,26 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname.startsWith('/api/admin/')){
         if(origin&&origin!==`http://${host}`&&origin!==config.publicBaseUrl)return json(res,403,{error:'Origin не разрешён'});
         if(url.pathname==='/api/admin/login'&&req.method==='POST'){const data=await body(req);try{return json(res,200,{token:await admin.login(data.username,data.password)});}catch(e){return json(res,401,{error:e.message});}}
-        const adminToken=req.headers.authorization?.replace(/^Bearer /,'');
+        const tokenInUrl=req.method==='GET'&&/^\/api\/admin\/(cosmetic-icon|jobs\/[a-f0-9]{32}\/download)$/.test(url.pathname)?url.searchParams.get('token'):null;
+        const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
+        const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
+        if(url.pathname==='/api/admin/cosmetics'&&req.method==='GET')return json(res,200,cosmeticCatalog(builder));
+        if(url.pathname==='/api/admin/cosmetic-heroes'&&req.method==='GET')return json(res,200,{heroes:builder.catalog.heroes.map(h=>({id:h.id,name:h.name,isPersona:h.isPersona}))});
+        if(url.pathname==='/api/admin/cosmetic-icon'&&req.method==='GET'){
+          const item=cosmeticCatalog(builder).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
+          try{const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
+        }
+        if(url.pathname==='/api/admin/build-cosmetics'&&req.method==='POST'){
+          const data=await body(req),cosmetics=cosmeticChoices(builder,data.cosmetics??[]);if(!cosmetics.length)throw new Error('Choose cosmetics');vpkFilename(data.vpkNumber??1);
+          const job=builder.create([],adminOwner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:[],source:'admin'});return json(res,202,publicJob(job));
+        }
+        const adminJob=url.pathname.match(/^\/api\/admin\/jobs\/([a-f0-9]{32})(\/download)?$/);
+        if(adminJob&&req.method==='GET'){
+          const job=builder.jobs.get(adminJob[1]);if(!job||job.owner!==adminOwner)return json(res,404,{error:'Build not found'});
+          if(!adminJob[2])return json(res,200,publicJob(job));if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});
+          res.writeHead(200,{'Content-Type':'application/octet-stream','Cache-Control':'no-store','Content-Disposition':`attachment; filename="${job.filename??vpkFilename()}"`,'Referrer-Policy':'no-referrer'});return fs.createReadStream(job.file).pipe(res);
+        }
         if(url.pathname==='/api/admin/statistics'&&req.method==='GET')return json(res,200,statistics.snapshot(Number(url.searchParams.get('days')??0)));
         if(url.pathname==='/api/admin/logout'&&req.method==='POST'){admin.logout(adminToken);return json(res,200,{ok:true});}
         return json(res,404,{error:'Маршрут не найден'});
@@ -114,7 +134,7 @@ export function startServer({port:overridePort}={}) {
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),terrorbladeArcana:hasTerrorbladeArcana(root),techiesArcana:hasTechiesArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req),choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
+        const data=await body(req);if(Object.hasOwn(data,'cosmetics'))return json(res,403,{error:'Cosmetics are available only in the admin panel'});const choices=normalizeSelections(builder,data),choice=choices[0];if(data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));

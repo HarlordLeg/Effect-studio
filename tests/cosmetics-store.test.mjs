@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {chooseCosmetic,selectedCosmetics,registerSetBasket,sharedBuildPayload} from '../public/cosmetics-store.mjs';
+test('cosmetics and hero selections share a build while categories remain independent',()=>{
+ registerSetBasket(()=>({mode:'set',selections:[{heroId:'axe',itemId:'weapon'}]}));chooseCosmetic('emblem',{id:'e',category:'emblem'},['axe']);chooseCosmetic('emblem_attack',{id:'a',category:'emblem_attack'},['lina']);chooseCosmetic('courier',{id:'c1',category:'courier'});chooseCosmetic('courier',{id:'c2',category:'courier'});
+ const payload=sharedBuildPayload();assert.equal(payload.selections[0].itemId,'weapon');assert.equal(payload.cosmetics.length,3);assert.deepEqual(payload.cosmetics.find(c=>c.id==='a').heroIds,['lina']);assert.ok(payload.cosmetics.some(c=>c.id==='c2'));assert.ok(!payload.cosmetics.some(c=>c.id==='c1'));payload.cosmetics[0].heroIds.push('pudge');assert.deepEqual(selectedCosmetics()[0].heroIds,['axe']);chooseCosmetic('emblem',null);assert.ok(selectedCosmetics().some(c=>c.id==='a'));for(const id of ['emblem_attack','courier'])chooseCosmetic(id,null);
+});

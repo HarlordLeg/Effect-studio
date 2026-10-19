@@ -1,0 +1,10 @@
+import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
+import {Builder} from '../lib/build.mjs';import {cosmeticCatalog} from '../lib/global-cosmetics.mjs';
+const root=path.dirname(path.dirname(fileURLToPath(import.meta.url))),configFile=path.join(root,'config.json');
+if(!fs.existsSync(configFile))throw new Error('Run configure-dota.bat first.');
+const builder=new Builder(root,JSON.parse(fs.readFileSync(configFile))),catalog=cosmeticCatalog(builder),names=new Set(builder.store.archives.flatMap(v=>[...v.entries.keys()]));
+const resources=[...names].filter(n=>/^(panorama\/.*(?:hud|versus|skin)|soundevents\/.*(?:announcer|music)|materials\/dev\/.*(?:post_process|aghanim|graphic)|models\/.*(?:ancient|fort|roshan)|particles\/econ\/events\/.*(?:emblem|attack_modifier))/.test(n));
+const report={generated:new Date().toISOString(),categories:catalog.categories.map(c=>({...c,total:catalog.items.filter(i=>i.category===c.id).length,available:catalog.items.filter(i=>i.category===c.id&&i.available).length})),items:catalog.items,resources};
+const soundNames=resources.filter(n=>n.startsWith('soundevents/')&&n.endsWith('.vsndevts_c'));
+if(soundNames.length){const stage=fs.mkdtempSync(path.join(root,'cosmetics-audit-'));try{const files=soundNames.map((name,i)=>{const input=path.join(stage,i+'.vsndevts_c');fs.writeFileSync(input,builder.store.read(name));return {name,input};}),output=path.join(stage,'events.json'),manifest=path.join(stage,'index.json');fs.writeFileSync(manifest,JSON.stringify({files,output}));await builder.run(path.resolve(root,builder.config.patcher),['--index-sound-events',manifest],{cwd:root,timeout:240000});report.soundBanks=JSON.parse(fs.readFileSync(output));}catch(error){report.soundIndexError=error.message;}finally{fs.rmSync(stage,{recursive:true,force:true});}}
+const output=path.join(root,'output','cosmetics-audit.json');fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(report,null,2));for(const c of report.categories)console.log(`${c.id}: ${c.available}/${c.total} available`);console.log('Saved: '+output);
