@@ -7,7 +7,7 @@ using ValveResourceFormat.ResourceTypes;
 
 internal static class ResourceRelocator
 {
-    private sealed record FileEntry(string Input, string Output, int[]? Color = null, string? Name = null, Dictionary<string,string>? Paths = null);
+    private sealed record FileEntry(string Input, string Output, int[]? Color = null, string? Name = null, Dictionary<string,string>? Paths = null, bool PreserveModelName = false);
     private sealed record Request(FileEntry[] Files, Dictionary<string,string> Paths, bool Watermark=false);
     public static void Run(string manifest)
     {
@@ -23,6 +23,7 @@ internal static class ResourceRelocator
             if(file.Input.EndsWith(".vtex_c",StringComparison.OrdinalIgnoreCase)||file.Input.EndsWith(".vsnd_c",StringComparison.OrdinalIgnoreCase)) { File.Copy(file.Input,file.Output,true); continue; }
             using var resource=new Resource { FileName=file.Input }; resource.Read(file.Input);
             var isModel=resource.DataBlock is Model;
+            var originalModelName=isModel&&file.PreserveModelName&&((Model)resource.DataBlock!).Data.TryGetValue("m_name",out var originalName)?originalName:null;
             var ids=new Dictionary<ulong,ulong>();
             if(resource.ExternalReferences is not null)
                 foreach(var reference in resource.ExternalReferences.ResourceRefInfoList.ToArray())
@@ -58,6 +59,7 @@ internal static class ResourceRelocator
                 else if(block is BinaryKV3 binary)Rewrite(binary.Data.Root,paths,ids,ref changed);
                 if(changed){changedBlocks.Add(block);if(ReferenceEquals(block,resource.DataBlock))dataChanged=true;}
             }
+            if(originalModelName is not null)((Model)resource.DataBlock!).Data["m_name"]=originalModelName;
             if(file.Color is not null)
             {
                 if(file.Color.Length!=3||file.Color.Any(x=>x<0||x>255))throw new InvalidDataException("Invalid particle RGB");

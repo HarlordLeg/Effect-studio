@@ -8,7 +8,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class GlobalCosmetics
 {
     private sealed record ModelFile(string Input,string Output,string[] Particles,int Skin=0,string? Replacements=null);
-    private sealed record ParticleFile(string Input,string Output,string? Original=null,string? Effect=null,int ControlPoint=1,string[]? AppendChildren=null,JsonElement? Binding=null);
+    private sealed record ParticleFile(string Input,string Output,string? Original=null,string? Effect=null,int ControlPoint=1,string[]? AppendChildren=null,JsonElement? Binding=null,bool RespectEntity=false);
     private sealed record SoundFile(string Input,string Source,string Output,string Kind);
     private sealed record Request(ModelFile[]? Models=null,ParticleFile[]? Particles=null,SoundFile[]? Sounds=null);
     private static string Semantic(string name){
@@ -18,21 +18,22 @@ internal static class GlobalCosmetics
         if(pirate>=0)text=text[(pirate+"announcer_capn_".Length)..];
         else {foreach(var prefix in new[]{"announcer_killing_spree_announcer_","announcer_announcer_"})if(text.StartsWith(prefix,StringComparison.OrdinalIgnoreCase)){text=text[prefix.Length..];break;}
         var match=Regex.Match(text,@"^.*?_(?:ann|announcer)_(.+)$",RegexOptions.IgnoreCase);text=match.Success?match.Groups[1].Value:Regex.Replace(text,@"^announcer_","",RegexOptions.IgnoreCase);}
+        text=Regex.Replace(text,@"^ann_[^_]+_","",RegexOptions.IgnoreCase);
         return Regex.Replace(text,@"_?0*(\d+)$",m=>"_"+int.Parse(m.Groups[1].Value,CultureInfo.InvariantCulture));
     }
     internal static void AppendChildren(KVObject data,IEnumerable<string> names){
         var children=data.TryGetValue("m_Children",out var existing)?existing:KVObject.Array();
         foreach(var name in names)if(!children.Values.Any(v=>v.TryGetValue("m_ChildRef",out var value)&&value.ToString(null)==name)){var row=KVObject.Collection();row["m_ChildRef"]=new KVObject(name){Flag=KVFlag.Resource};children.Add(row);}data["m_Children"]=children;
     }
-    internal static void BindCourier(KVObject data,JsonElement binding){
+    internal static void BindCourier(KVObject data,JsonElement binding,bool respectEntity=false){
         static string Attach(string value)=>value switch {"point_follow"=>"PATTACH_POINT_FOLLOW","point"=>"PATTACH_POINT","rootbone_follow"=>"PATTACH_ROOTBONE_FOLLOW","customorigin"=>"PATTACH_ABSORIGIN_FOLLOW","absorigin"=>"PATTACH_ABSORIGIN","renderorigin_follow"=>"PATTACH_RENDERORIGIN_FOLLOW",_=>"PATTACH_ABSORIGIN_FOLLOW"};
         static string Text(JsonElement e,string key,string fallback="")=>e.TryGetProperty(key,out var v)?v.ToString():fallback;
         if(!binding.TryGetProperty("attach_type",out _)&&!binding.TryGetProperty("control_points",out _)&&data.TryGetValue("m_controlPointConfigurations",out var authored)&&authored.Values.Any()){
-            foreach(var configuration in authored.Values)if(configuration.TryGetValue("m_drivers",out var nativeDrivers))foreach(var driver in nativeDrivers.Values)if(driver.TryGetValue("m_entityName",out var entity)&&entity.ToString(null)=="parent")driver["m_entityName"]=new KVObject("self");
+            foreach(var configuration in authored.Values)if(configuration.TryGetValue("m_drivers",out var nativeDrivers))foreach(var driver in nativeDrivers.Values)if(!respectEntity&&driver.TryGetValue("m_entityName",out var entity)&&entity.ToString(null)=="parent")driver["m_entityName"]=new KVObject("self");
             if(!authored.Values.Any(v=>v.TryGetValue("m_name",out var n)&&n.ToString(null)=="preview")){var previewConfig=KVObject.Collection();previewConfig["m_name"]=new KVObject("preview");if(authored.Values.First().TryGetValue("m_drivers",out var sourceDrivers))previewConfig["m_drivers"]=sourceDrivers;authored.Add(previewConfig);}return;
         }
         var drivers=KVObject.Array();
-        void Driver(int index,JsonElement row){var driver=KVObject.Collection();driver["m_iControlPoint"]=new KVObject(index);driver["m_iAttachType"]=new KVObject(Attach(Text(row,"attach_type","absorigin_follow")));driver["m_entityName"]=new KVObject("self");var attachment=Text(row,"attachment");if(attachment.Length>0)driver["m_attachmentName"]=new KVObject(attachment);drivers.Add(driver);}
+        void Driver(int index,JsonElement row){var driver=KVObject.Collection();driver["m_iControlPoint"]=new KVObject(index);driver["m_iAttachType"]=new KVObject(Attach(Text(row,"attach_type","absorigin_follow")));driver["m_entityName"]=new KVObject(respectEntity?Text(row,"attach_entity",Text(binding,"attach_entity","self")):"self");var attachment=Text(row,"attachment");if(attachment.Length>0)driver["m_attachmentName"]=new KVObject(attachment);drivers.Add(driver);}
         var points=binding.TryGetProperty("control_points",out var cp)?cp:default;
         if(points.ValueKind!=JsonValueKind.Object||!points.EnumerateObject().Any(p=>Text(p.Value,"control_point_index",p.Name)=="0"))Driver(0,binding);
         if(points.ValueKind==JsonValueKind.Object)foreach(var point in points.EnumerateObject())Driver(int.Parse(Text(point.Value,"control_point_index",point.Name),CultureInfo.InvariantCulture),point.Value);
@@ -70,7 +71,7 @@ internal static class GlobalCosmetics
                 var children=KVObject.Array();foreach(var name in new[]{file.Effect,file.Original}){var row=KVObject.Collection();row["m_ChildRef"]=new KVObject(name){Flag=KVFlag.Resource};children.Add(row);Reference(resource,name);}particle.Data["m_Children"]=children;
             }else if(particle.Data.TryGetValue("m_ForceGenerators",out var forces))foreach(var force in forces.Values){if(force.TryGetValue("_class",out var kind)&&kind.ToString(null)=="C_OP_AttractToControlPoint")force["m_nControlPointNumber"]=new KVObject(file.ControlPoint);}
             if(file.AppendChildren is not null){AppendChildren(particle.Data,file.AppendChildren);foreach(var name in file.AppendChildren)Reference(resource,name);}
-            if(file.Binding is {} binding)BindCourier(particle.Data,binding);
+            if(file.Binding is {} binding)BindCourier(particle.Data,binding,file.RespectEntity);
             var changed=new HashSet<object>();if((file.AppendChildren is not null||file.Original is not null)&&resource.ExternalReferences is not null)changed.Add(resource.ExternalReferences);if(file.Original is not null&&resource.ExternalReferences is not null)changed.Add(resource.ExternalReferences);using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,changed,preserveMetadata:true);
         }
         foreach(var file in request.Sounds??[]){

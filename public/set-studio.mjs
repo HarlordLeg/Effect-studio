@@ -55,7 +55,7 @@ const back=document.createElement('button');back.type='button';back.className='s
  back.textContent='← Все герои';
  $('set-build').disabled=working||!rows.length||pendingPriorities();notifyBasket();
  }
- function thumbnail(item,heroId=hero().id){const box=document.createElement('div');box.className='set-thumb';const src=itemImage(item,heroId,token);if(src){const image=document.createElement('img');image.src=src;image.loading='lazy';image.alt='';image.addEventListener('error',()=>{image.remove();box.textContent='◇';},{once:true});box.append(image);}else box.textContent='◇';return box;}
+ function thumbnail(item,heroId=hero().id){const box=document.createElement('div');box.className='set-thumb';const src=itemImage(item,heroId,token);if(src){const image=document.createElement('img');image.src=src;image.loading='lazy';image.alt='';image.addEventListener('error',()=>{image.remove();box.textContent='◇';},{once:true});box.append(image);}else box.textContent='◇';if(item.sharedInventoryImage){const badge=document.createElement('span');badge.className='shared-icon-slot';badge.textContent=slotNames[item.slot]??item.slot;box.append(badge);}return box;}
  function selectedEquipment(h,state){return [...state.selected.values()].map(id=>h.items.find(i=>i.id===id)).filter(Boolean);}
  function validatePriorities(h,state){
  if(!state?.stanceId||!state.stanceOptions)return;const selection=typeof state.stanceId==='string'?{ids:[state.stanceId],priorities:{}}:state.stanceId,options=state.stanceOptions.filter(o=>selection.ids.includes(o.id));
