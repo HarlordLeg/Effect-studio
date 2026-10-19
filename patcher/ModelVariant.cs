@@ -9,8 +9,20 @@ internal static class ModelVariant
     {
         var changed=new HashSet<object>();if(skin==0)return changed;
         var model=resource.DataBlock as Model ?? throw new InvalidDataException("Expected model");
-        if(skin<0 || !model.Data.TryGetValue("m_materialGroups",out var groups) || !groups.IsArray || skin>=groups.Count)
-            throw new InvalidDataException("Material skin group does not exist: "+skin);
+        if(skin<0)throw new InvalidDataException("Invalid material skin: "+skin);
+        if(!model.Data.TryGetValue("m_materialGroups",out var groups) || !groups.IsArray || skin>=groups.Count){
+            // Full Throttle is an authored Tellurian style with separate particles.
+            // Valve's arms/head/shoulder/weapon models contain only skins 0 and 1;
+            // the back explicitly repeats the base material at index 2. Do the
+            // same for these four parts, without weakening validation elsewhere.
+            var name=model.Data.TryGetValue("m_name",out var identity)?identity.ToString(CultureInfo.InvariantCulture):"";
+            var parts=new[]{"arms","head","shoulder","weapon"};
+            if(skin==2 && groups is not null && groups.IsArray && groups.Count==2 && parts.Any(part=>name=="models/items/slark/cavern_crawl_2020_slark_"+part+"/cavern_crawl_2020_slark_"+part+".vmdl")){
+                Console.WriteLine("[WARN] Tellurian Full Throttle uses its base material and style-specific particles: "+name);
+                return changed;
+            }
+            throw new InvalidDataException("Material skin group does not exist: "+skin+" ("+name+")");
+        }
         var values=groups.Values.ToArray();
         if(!values[0].TryGetValue("m_materials",out var baseline) || !baseline.IsArray || !values[skin].TryGetValue("m_materials",out var selected) || !selected.IsArray || baseline.Count!=selected.Count)
             throw new InvalidDataException("Material skin groups have incompatible slots: "+skin);
