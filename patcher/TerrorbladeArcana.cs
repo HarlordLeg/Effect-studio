@@ -8,7 +8,7 @@ using ValveResourceFormat.ResourceTypes;
 
 internal static class TerrorbladeArcana
 {
-    private sealed record Entry(string Input,string Output,bool Texture=false,string? ReferenceInput=null,bool OptionalMaterial=false,int[]? SourceColor=null,string? Name=null,string[]? ExcludedChildren=null,bool InferSourceColor=false);
+    private sealed record Entry(string Input,string Output,bool Texture=false,string? ReferenceInput=null,bool OptionalMaterial=false,int[]? SourceColor=null,string? Name=null,string[]? ExcludedChildren=null,bool InferSourceColor=false,bool RestoreOnly=false);
     private sealed record Request(Entry[] Files,int[] Color);
     private static readonly double[] Source=Hsv(255,60,40);
     private static double[] Hsv(double r,double g,double b){r/=255;g/=255;b/=255;var max=Math.Max(r,Math.Max(g,b));var min=Math.Min(r,Math.Min(g,b));var d=max-min;var h=d==0?0:max==r?((g-b)/d)%6:max==g?(b-r)/d+2:(r-g)/d+4;return [(h*60+360)%360,max==0?0:d/max,max];}
@@ -81,9 +81,15 @@ internal static class TerrorbladeArcana
     internal static SKColor Accent(SKColor p,int[] rgb,int[]? sourceColor=null){
         if(!IsAccent(p,sourceColor))return p;var mapped=Color([p.Red,p.Green,p.Blue],rgb,sourceColor);return new SKColor((byte)mapped[0],(byte)mapped[1],(byte)mapped[2],p.Alpha);
     }
-    private static void TextureFile(Texture texture,string target,int[] rgb,int[]? sourceColor=null){
+    internal static int[]? TextureSourceColor(Texture texture){
+        using var bitmap=texture.GenerateBitmap();
+        var colors=bitmap.Pixels.Where(p=>p.Alpha>127).Select(p=>(Pixel:p,Hsv:Hsv(p.Red,p.Green,p.Blue))).Where(p=>p.Hsv[1]>.25&&p.Hsv[2]>.15).GroupBy(p=>(int)(p.Hsv[0]/10)).OrderByDescending(g=>g.Count()).FirstOrDefault();
+        if(colors is null)return null;var pixel=colors.OrderByDescending(p=>p.Hsv[1]*p.Hsv[2]).First().Pixel;return [pixel.Red,pixel.Green,pixel.Blue];
+    }
+    private static void TextureFile(Texture texture,string target,int[] rgb,int[]? sourceColor=null,byte[]? originalBytes=null){
         using var bitmap=texture.GenerateBitmap();var pixels=bitmap.Pixels;
-        for(var i=0;i<pixels.Length;i++){pixels[i]=Accent(pixels[i],rgb,sourceColor);}
+        var changed=false;for(var i=0;i<pixels.Length;i++){var mapped=Accent(pixels[i],rgb,sourceColor);changed|=mapped!=pixels[i];pixels[i]=mapped;}
+        if(!changed&&originalBytes is not null){File.WriteAllBytes(target,originalBytes);return;}
         // Source 2 accepts RGBA8888. A fresh texture header avoids stale DXT and
         // compressed-mip metadata; alpha, dimensions and every generated mip survive.
         var width=bitmap.Width;var height=bitmap.Height;var mipCount=1;for(var n=Math.Max(width,height);n>1;n/=2)mipCount++;
@@ -99,7 +105,7 @@ internal static class TerrorbladeArcana
         var colorTextures=new HashSet<string>(StringComparer.Ordinal);
         var textures=request.Files.Where(f=>f.Texture&&f.Name is not null).ToDictionary(f=>f.Name!,StringComparer.Ordinal);
         var accents=new Dictionary<string,bool>(StringComparer.Ordinal);var neutralTints=new Dictionary<string,HashSet<string>>(StringComparer.Ordinal);
-        bool HasAccent(string name){if(accents.TryGetValue(name,out var cached))return cached;if(!textures.TryGetValue(name,out var textureFile))return false;using var r=new Resource{FileName=textureFile.Input};r.Read(textureFile.Input);if(r.DataBlock is not Texture texture||texture.ExtraData.ContainsKey(VTexExtraData.SHEET))return false;using var bitmap=texture.GenerateBitmap();return accents[name]=bitmap.Pixels.Any(p=>IsAccent(p,textureFile.SourceColor));}
+        bool HasAccent(string name){if(accents.TryGetValue(name,out var cached))return cached;if(!textures.TryGetValue(name,out var textureFile))return false;using var r=new Resource{FileName=textureFile.Input};r.Read(textureFile.Input);if(r.DataBlock is not Texture texture||texture.ExtraData.ContainsKey(VTexExtraData.SHEET))return false;using var bitmap=texture.GenerateBitmap();var sourceColor=textureFile.SourceColor??(textureFile.InferSourceColor?TextureSourceColor(texture):null);return accents[name]=bitmap.Pixels.Any(p=>IsAccent(p,sourceColor));}
         foreach(var file in request.Files.Where(f=>f.Input.EndsWith(".vmat_c",StringComparison.OrdinalIgnoreCase))){
             using var materialResource=new Resource{FileName=file.Input};materialResource.Read(file.Input);
             if(materialResource.DataBlock is Material material)foreach(var pair in material.TextureParams)
@@ -109,13 +115,13 @@ internal static class TerrorbladeArcana
                 }
         }
         foreach(var file in request.Files){var bytes=File.ReadAllBytes(file.Input);using var resource=new Resource{FileName=file.Input};resource.Read(file.Input);Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file.Output))!);
-            if(file.Texture){if(file.Name is not null&&!file.Name.StartsWith("panorama/",StringComparison.Ordinal)&&!colorTextures.Contains(file.Name)){File.WriteAllBytes(file.Output,bytes);continue;}if(resource.DataBlock is not Texture texture)throw new InvalidDataException("Expected texture");if(texture.ExtraData.ContainsKey(VTexExtraData.SHEET)){File.WriteAllBytes(file.Output,bytes);continue;}TextureFile(texture,file.Output,request.Color,file.SourceColor);}
+            if(file.Texture){if(file.Name is not null&&!file.Name.StartsWith("panorama/",StringComparison.Ordinal)&&!colorTextures.Contains(file.Name)){File.WriteAllBytes(file.Output,bytes);continue;}if(resource.DataBlock is not Texture texture)throw new InvalidDataException("Expected texture");if(texture.ExtraData.ContainsKey(VTexExtraData.SHEET)){File.WriteAllBytes(file.Output,bytes);continue;}TextureFile(texture,file.Output,request.Color,file.SourceColor??(file.InferSourceColor?TextureSourceColor(texture):null),bytes);}
             else if(resource.DataBlock is Material material){var legacy=resource.ContainsBlockType(ValveResourceFormat.BlockType.NTRO);if(Material(bytes,material,request.Color,neutralTints.GetValueOrDefault(file.Input),legacy)==0&&!file.OptionalMaterial)throw new InvalidDataException("Arcana tint expression missing: "+file.Input);if(legacy)File.WriteAllBytes(file.Output,bytes);else{using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}}
             else if(resource.DataBlock is ParticleSystem particle){
                 if(file.ExcludedChildren is not null&&particle.Data.TryGetValue("m_Children",out var children)){
                     var retained=KVObject.Array();foreach(var child in children.Values)if(!child.TryGetValue("m_ChildRef",out var reference)||!file.ExcludedChildren.Contains(reference.ToString(CultureInfo.InvariantCulture),StringComparer.Ordinal))retained.Add(child);particle.Data["m_Children"]=retained;
                 }
-                if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}Recolor(particle.Data,request.Color,file.SourceColor??(file.InferSourceColor?ParticleSourceColor(particle.Data):null));using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
+                if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}if(!file.RestoreOnly)Recolor(particle.Data,request.Color,file.SourceColor??(file.InferSourceColor?ParticleSourceColor(particle.Data):null));using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
             else throw new InvalidDataException("Unsupported arcana resource: "+file.Input);
             using var check=new Resource{FileName=file.Output};check.Read(file.Output);
         }

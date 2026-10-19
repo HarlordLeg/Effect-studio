@@ -1,4 +1,6 @@
 export const translations = {
+"Звуки арканы":"Arcana sounds",
+"Классическая":"Classic",
 "Поиск комплекта":"Search sets",
 "Предметов":"Items",
 "Превью недоступно":"Preview unavailable",
@@ -125,6 +127,7 @@ export const translations = {
   "Выбери предметы или добавь эффекты — они появятся здесь.": "Choose items or add effects — they will appear here.",
   "Убрать предмет из VPK": "Remove item from VPK",
   "Свой цвет": "Custom color",
+  "Исходные цвета Dota": "Original Dota colors",
   "← Все герои": "← All heroes",
   "Выбрать предмет": "Choose item",
   "Поиск предмета": "Search items",

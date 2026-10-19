@@ -1,3 +1,4 @@
+import {techiesArcanaAbilities} from './techies-arcana-controls.mjs';
 import {kineticChoiceGroups,kineticPriorityLabel,resolveKinetics,resolveKineticOverrides} from './kinetic-gems.mjs';
 import {abilityIconRow,iconImage,iconPickerDialog} from './ability-icon-ui.mjs';
 import {defaultTerrorbladeIconStyles,terrorbladeIconChoices,terrorbladeIconStyle,setTerrorbladeIconStyle,drawTerrorbladeIconControls} from './terrorblade-icon-controls.mjs';
@@ -18,7 +19,7 @@ export function drawImmortalControls(container,{hero,options=[],abilities=[],sel
  const optionForEntry=(entry)=>options.find(o=>o.kind==='icons'&&!o.legacyBundle&&o.native.entries.some(e=>e.target===entry.target&&e.source===entry.source));
  const currentEntries=()=>{try{return resolveKineticOverrides(options.filter(o=>idsOf(selection).includes(o.id)),selection?.priorities??{},items).entries;}catch{return [];}};
  for(const ability of abilities){
-  const related=available.filter(o=>ability.optionIds?.includes(o.id)),tbAbility=arcana&&ability.id.startsWith('terrorblade_')?ability.id.slice(12):null;
+  const related=available.filter(o=>ability.optionIds?.includes(o.id)),tbAbility=arcana&&ability.id.startsWith(hero.id+'_')&&(hero.id==='terrorblade'||hero.id==='techies'&&techiesArcanaAbilities.includes(ability.id.slice(8)))?ability.id.slice(hero.id.length+1):null;
   const iconEntry=currentEntries().find(e=>e.target===ability.texture)??(!arcana?items.flatMap(i=>i.nativeOverrides?.entries??[]).find(e=>e.target===ability.texture):null),current=iconEntry&&optionForEntry(iconEntry);
   const currentStyle=tbAbility?terrorbladeIconStyle(arcana,'abilities',tbAbility):null;
   const url=current?iconUrl(current):tbAbility?previewUrl?.('abilities',currentStyle,tbAbility):abilityUrl(ability);
