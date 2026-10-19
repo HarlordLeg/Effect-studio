@@ -19,3 +19,10 @@ type.GetMethod("BindCourier",BindingFlags.NonPublic|BindingFlags.Static)!.Invoke
 var drivers=data["m_controlPointConfigurations"].Values.First()["m_drivers"].Values.ToArray();
 if(drivers.Length!=2||drivers[1]["m_attachmentName"].ToString(null)!="attach_eye_r"||drivers.Any(d=>d["m_entityName"].ToString(null)!="self"))throw new Exception("Courier authored attachments must follow the replacement model");
 Console.WriteLine("Pirate suffixes, non-destructive emblem children, courier authored eye bindings: passed.");
+
+var selectSkin=type.GetMethod("CosmeticSkin",BindingFlags.NonPublic|BindingFlags.Static)!;var materialGroups=KVObject.Array();var single=KVObject.Collection();single["m_name"]=new KVObject("6");materialGroups.Add(single);
+if((int)selectSkin.Invoke(null,new object[]{materialGroups,6})! !=0)throw new Exception("Named cosmetic skin should resolve before array indexing");single["m_name"]=new KVObject("default");if((int)selectSkin.Invoke(null,new object[]{materialGroups,6})! !=0)throw new Exception("Standalone cosmetic baked material should remain usable");
+Console.WriteLine("Named skin and standalone courier material groups: passed.");
+
+using var emptyBinding=System.Text.Json.JsonDocument.Parse("{}");drivers[1]["m_entityName"]=new KVObject("parent");type.GetMethod("BindCourier",BindingFlags.NonPublic|BindingFlags.Static)!.Invoke(null,new object[]{data,emptyBinding.RootElement});
+var retained=data["m_controlPointConfigurations"].Values.First()["m_drivers"].Values.ToArray();if(retained.Length!=2||retained[1]["m_attachmentName"].ToString(null)!="attach_eye_r"||retained[1]["m_entityName"].ToString(null)!="self")throw new Exception("Aghanim/Jade native configuration must retain all authored CP drivers");

@@ -27,6 +27,10 @@ internal static class GlobalCosmetics
     internal static void BindCourier(KVObject data,JsonElement binding){
         static string Attach(string value)=>value switch {"point_follow"=>"PATTACH_POINT_FOLLOW","point"=>"PATTACH_POINT","rootbone_follow"=>"PATTACH_ROOTBONE_FOLLOW","customorigin"=>"PATTACH_ABSORIGIN_FOLLOW","absorigin"=>"PATTACH_ABSORIGIN","renderorigin_follow"=>"PATTACH_RENDERORIGIN_FOLLOW",_=>"PATTACH_ABSORIGIN_FOLLOW"};
         static string Text(JsonElement e,string key,string fallback="")=>e.TryGetProperty(key,out var v)?v.ToString():fallback;
+        if(!binding.TryGetProperty("attach_type",out _)&&!binding.TryGetProperty("control_points",out _)&&data.TryGetValue("m_controlPointConfigurations",out var authored)&&authored.Values.Any()){
+            foreach(var configuration in authored.Values)if(configuration.TryGetValue("m_drivers",out var nativeDrivers))foreach(var driver in nativeDrivers.Values)if(driver.TryGetValue("m_entityName",out var entity)&&entity.ToString(null)=="parent")driver["m_entityName"]=new KVObject("self");
+            if(!authored.Values.Any(v=>v.TryGetValue("m_name",out var n)&&n.ToString(null)=="preview")){var previewConfig=KVObject.Collection();previewConfig["m_name"]=new KVObject("preview");if(authored.Values.First().TryGetValue("m_drivers",out var sourceDrivers))previewConfig["m_drivers"]=sourceDrivers;authored.Add(previewConfig);}return;
+        }
         var drivers=KVObject.Array();
         void Driver(int index,JsonElement row){var driver=KVObject.Collection();driver["m_iControlPoint"]=new KVObject(index);driver["m_iAttachType"]=new KVObject(Attach(Text(row,"attach_type","absorigin_follow")));driver["m_entityName"]=new KVObject("self");var attachment=Text(row,"attachment");if(attachment.Length>0)driver["m_attachmentName"]=new KVObject(attachment);drivers.Add(driver);}
         var points=binding.TryGetProperty("control_points",out var cp)?cp:default;
@@ -45,11 +49,19 @@ internal static class GlobalCosmetics
             if(match is null)continue;var fields=match[0].Where(p=>p.Key.StartsWith("vsnd_",StringComparison.Ordinal)).ToArray();if(fields.Length==0)continue;foreach(var old in target[key].Keys.Where(k=>k.StartsWith("vsnd_",StringComparison.Ordinal)).ToArray())target[key].Remove(old);foreach(var field in fields)target[key][field.Key]=field.Value;count++;
         }return count;
     }
+    internal static int CosmeticSkin(KVObject groups,int skin){
+        if(skin<=0)return skin;var values=groups.Values.ToArray();
+        for(var i=0;i<values.Length;i++)if(values[i].TryGetValue("m_name",out var name)&&name.ToString(null)==skin.ToString(CultureInfo.InvariantCulture))return i;
+        if(skin<values.Length)return skin;
+        // A standalone courier model can have its requested material baked into its only group.
+        if(values.Length==1)return 0;
+        throw new InvalidDataException("Courier material group missing: "+skin+"; available: "+values.Length);
+    }
     private static void Reference(Resource resource,string name){if(resource.ExternalReferences is not {} refs)return;if(!refs.ResourceRefInfoList.Any(r=>r.Name==name))refs.ResourceRefInfoList.Add(new ResourceExtRefList.ResourceReferenceInfo{Name=name,Id=Program.ComputeResourceId(name)});}
     public static void Run(string manifest){
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty cosmetics request");
-        var matched=0;var unmatched=new List<string>();
-        foreach(var model in request.Models??[]){var args=new List<string>{"--input",model.Input,"--output",model.Output,"--no-backup"};if(model.Particles.Length==0)args.Add("--model-only");foreach(var particle in model.Particles){args.Add("--particle");args.Add(particle);}if(model.Skin>0){args.Add("--skin");args.Add(model.Skin.ToString());}if(model.Replacements is not null){args.Add("--particle-replacements");args.Add(model.Replacements);}if(Program.Main(args.ToArray())!=0)throw new InvalidDataException("Cosmetic model patch failed: "+model.Input);}
+        var matched=0;var unmatched=new List<string>();var warnings=new List<string>();
+        foreach(var model in request.Models??[]){var args=new List<string>{"--input",model.Input,"--output",model.Output,"--no-backup"};if(model.Particles.Length==0)args.Add("--model-only");foreach(var particle in model.Particles){args.Add("--particle");args.Add(particle);}if(model.Skin>0){using var input=new Resource{FileName=model.Input};input.Read(model.Input);if(input.DataBlock is not Model donor)throw new InvalidDataException("Expected cosmetic model");if(!donor.Data.TryGetValue("m_materialGroups",out var groups))throw new InvalidDataException("Cosmetic model has no material groups");var skin=CosmeticSkin(groups,model.Skin);if(skin==0&&groups.Count==1)warnings.Add("У модели один вариант материала: использован встроенный материал вместо skin "+model.Skin);if(skin>0){args.Add("--skin");args.Add(skin.ToString(CultureInfo.InvariantCulture));}}if(model.Replacements is not null){args.Add("--particle-replacements");args.Add(model.Replacements);}if(Program.Main(args.ToArray())!=0)throw new InvalidDataException("Cosmetic model patch failed: "+model.Input);}
         foreach(var file in request.Particles??[]){
             var bytes=File.ReadAllBytes(file.Input);using var resource=new Resource{FileName=file.Input};resource.Read(file.Input);if(resource.DataBlock is not ParticleSystem particle)throw new InvalidDataException("Not a particle: "+file.Input);
             if(file.Original is not null&&file.Effect is not null){
@@ -69,6 +81,6 @@ internal static class GlobalCosmetics
             foreach(var (key,value) in sourceBank.Data.Root)if(!targetBank.Data.Root.ContainsKey(key))targetBank.Data.Root[key]=value;
             PersonaVoices.Write(target,file.Input,file.Output);
         }
-        Console.WriteLine(JsonSerializer.Serialize(new {matchedSoundEvents=matched,unmatchedSoundEvents=unmatched}));
+        Console.WriteLine(JsonSerializer.Serialize(new {matchedSoundEvents=matched,unmatchedSoundEvents=unmatched,warnings=warnings}));
     }
 }

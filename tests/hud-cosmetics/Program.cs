@@ -1,0 +1,16 @@
+using System.Reflection;using System.Text;using System.Text.Json;using ValveResourceFormat;using ValveResourceFormat.ResourceTypes;using SkiaSharp;
+var type=Assembly.Load("Dota2UnusualPatcher").GetType("HudCosmetics")!;var flags=BindingFlags.NonPublic|BindingFlags.Static;var crc=type.GetMethod("Crc",flags)!;
+uint Crc(byte[] data)=>(uint)crc.Invoke(null,new object[]{data})!;
+var dir=Path.Combine(Path.GetTempPath(),"des-hud-native-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(dir);
+try{
+string input=Path.Combine(dir,"hud.vcss_c"),output=input+".out.vcss_c";var css=Encoding.UTF8.GetBytes("#HUDSkinMinimap{visibility:collapse;}#inventory{width:20px;}");
+using(var stream=File.Create(input))using(var w=new BinaryWriter(stream)){w.Write((uint)(34+css.Length));w.Write((ushort)12);w.Write((ushort)3);w.Write(8u);w.Write(1u);w.Write(Encoding.ASCII.GetBytes("DATA"));w.Write(8u);w.Write((uint)(6+css.Length));w.Write(Crc(css));w.Write((ushort)0);w.Write(css);}
+using(var original=new Resource{FileName=input}){original.Read(input);if(original.DataBlock is not PanoramaStyle)throw new Exception("Fixture CSS not parsed");}
+string png=Path.Combine(dir,"input.png"),texture=Path.Combine(dir,"input.vtex_c");using(var bitmap=new SKBitmap(2,1)){bitmap.SetPixel(0,0,new SKColor(255,70,20,128));bitmap.SetPixel(1,0,new SKColor(0,0,0,0));using var image=SKImage.FromBitmap(bitmap);using var data=image.Encode(SKEncodedImageFormat.Png,100);File.WriteAllBytes(png,data.ToArray());}
+var manifest=Path.Combine(dir,"request.json");File.WriteAllText(manifest,JsonSerializer.Serialize(new{textures=new[]{new{input=png,output=texture,name="panorama/images/harlord/hud/test/a.vtex_c"}},styles=new[]{new{input,output,bindings=new[]{new{selector="#HUDSkinMinimap",texture="panorama/images/harlord/hud/test/a.vtex"}}}}}));
+type.GetMethod("Run",BindingFlags.Public|BindingFlags.Static)!.Invoke(null,new object[]{manifest});
+using(var result=new Resource{FileName=output}){result.Read(output);var style=(PanoramaStyle)result.DataBlock!;var text=Encoding.UTF8.GetString(style.Data);if(!text.StartsWith(Encoding.UTF8.GetString(css))||!text.Contains("s2r://panorama/images/harlord/hud/test/a.vtex")||style.CRC32!=Crc(style.Data))throw new Exception("CSS preservation or CRC failed");}
+using(var result=new Resource{FileName=texture}){result.Read(texture);using var bitmap=((Texture)result.DataBlock!).GenerateBitmap();var color=bitmap.GetPixel(0,0);if(color.Red!=255||color.Green!=70||color.Blue!=20||color.Alpha!=128||bitmap.GetPixel(1,0).Alpha!=0)throw new Exception("PNG colors/alpha did not survive VTEX");}
+var rules=type.GetMethod("Rules",flags)!;try{rules.Invoke(null,new object[]{"#Other{}",new[]{("#HUDSkinMinimap","panorama/images/harlord/hud/test/a.vtex")}});throw new Exception("Missing panel accepted");}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException){}
+Console.WriteLine("HUD: real resource roundtrip, CSS CRC, original rules, PNG RGBA/alpha and missing-panel refusal passed.");
+}finally{Directory.Delete(dir,true);}
