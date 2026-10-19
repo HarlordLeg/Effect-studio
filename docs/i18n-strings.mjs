@@ -1,4 +1,16 @@
 export const translations = {
+"Источник":"Source",
+"Выбрать цвет":"Choose color",
+"Отмена":"Cancel",
+"Оттенок":"Hue",
+"Насыщенность и яркость":"Saturation and brightness",
+
+"Добавь предметы или косметику.":"Add items or cosmetics.",
+"Выбери приоритет конфликтующих эффектов":"Choose which conflicting effects take priority",
+"Цвет эффектов курьера":"Courier effect color",
+"Этот HUD использует отдельные панели Panorama.":"This HUD uses dedicated Panorama panels.",
+"Не найдены файлы Panorama этого HUD":"Panorama files for this HUD were not found",
+
 "Дополнительные эффекты курьера":"Additional courier effects",
 "Сначала выбери курьера":"Choose a courier first",
 "Скачать ZIP с ландшафтом":"Download terrain ZIP",

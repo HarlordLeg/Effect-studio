@@ -1,3 +1,4 @@
+import {registerSetBasket,notifyBasket} from './cosmetics-store.mjs';
 import {drawTechiesArcanaControls} from './techies-arcana-controls.mjs';
 import {additionSummary} from './selection-labels.mjs';
 import {drawImmortalControls} from './immortal-controls.mjs';
@@ -39,6 +40,7 @@ const back=document.createElement('button');back.type='button';back.className='s
  const available=catalog.heroes.filter(h=>setSlots(h).length);for(const h of available){const o=document.createElement('option');o.value=h.id;o.textContent=h.name;$('set-hero').append(o);}for(let n=1;n<=99;n++){const o=document.createElement('option');o.value=n;o.textContent='pak'+String(n).padStart(2,'0')+'_dir.vpk';$('set-vpk').append(o);}
  if(hero()?.isPersona)selected=initialSetSelection(hero());heroStates.set($('set-hero').value,{selected,effects:slotEffects});initHeroPicker($('set-hero'),available,{inline:true});
  function collectionPayload(){return combinedSetPayload(catalog.heroes,heroStates);}
+ registerSetBasket(()=>({...collectionPayload(),ready:!pendingPriorities()}),row=>{const state=heroStates.get(row.heroId);if(row.arcana)state.arcana=null;if(row.stanceId)state.stanceId=null;state.selected.delete(row.slot);state.effects.delete(row.slot);draw();if(hero().id===row.heroId&&!choosingHero)schedulePreview();});
  function drawCollection(){
  const rows=collectionPayload().selections;$('set-collection').replaceChildren();$('set-basket-empty').hidden=!!rows.length;
  for(const row of rows){
@@ -50,8 +52,8 @@ const back=document.createElement('button');back.type='button';back.className='s
   remove.className='text-button';remove.textContent='×';remove.setAttribute('aria-label','Убрать предмет из VPK');remove.disabled=working;
   remove.addEventListener('click',()=>{const state=heroStates.get(h.id);if(row.arcana)state.arcana=null;if(row.stanceId)state.stanceId=null;state.selected.delete(row.slot);state.effects.delete(row.slot);$('set-download').hidden=true;draw();if(hero().id===h.id&&!choosingHero)schedulePreview();});line.append(open,remove);$('set-collection').append(line);
  }
- back.textContent='← Все герои · Корзина'+(rows.length?' ('+rows.length+')':'');
- $('set-build').disabled=working||!rows.length||pendingPriorities();
+ back.textContent='← Все герои';
+ $('set-build').disabled=working||!rows.length||pendingPriorities();notifyBasket();
  }
  function thumbnail(item,heroId=hero().id){const box=document.createElement('div');box.className='set-thumb';const src=itemImage(item,heroId,token);if(src){const image=document.createElement('img');image.src=src;image.loading='lazy';image.alt='';image.addEventListener('error',()=>{image.remove();box.textContent='◇';},{once:true});box.append(image);}else box.textContent='◇';return box;}
  function selectedEquipment(h,state){return [...state.selected.values()].map(id=>h.items.find(i=>i.id===id)).filter(Boolean);}

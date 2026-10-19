@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {hexRgb,rgbHex,hsvRgb} from '../public/color-picker.mjs';
+test('color picker accepts HEX and rejects partial or invalid values',()=>{assert.deepEqual(hexRgb('#123456'),[18,52,86]);assert.deepEqual(hexRgb('#AABBCC'),[170,187,204]);for(const value of ['123456','#fff','#gg0011',''])assert.equal(hexRgb(value),null);});
+test('color picker HSV produces exact primary colors and grayscale',()=>{assert.deepEqual(hsvRgb(0,1,1),[255,0,0]);assert.deepEqual(hsvRgb(120,1,1),[0,255,0]);assert.deepEqual(hsvRgb(240,1,1),[0,0,255]);assert.deepEqual(hsvRgb(75,0,1),[255,255,255]);assert.deepEqual(hsvRgb(75,1,0),[0,0,0]);});
+test('color picker formats clamped RGB without changing channels',()=>{assert.equal(rgbHex([18,52,86]),'#123456');assert.equal(rgbHex([-10,300,0]),'#00ff00');});

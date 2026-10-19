@@ -9,7 +9,7 @@ internal static class HudCosmetics
 {
     private sealed record TextureFile(string Input,string Output,string Name);
     private sealed record Binding(string Selector,string Texture);
-    private sealed record StyleFile(string Input,string Output,Binding[] Bindings);
+    private sealed record StyleFile(string Input,string Output,Binding[] Bindings,string? Donor=null);
     private sealed record Request(TextureFile[] Textures,StyleFile[] Styles);
     internal static uint Crc(byte[] bytes){uint crc=0xffffffff;foreach(var b in bytes){crc^=b;for(var i=0;i<8;i++)crc=(crc&1)!=0?(crc>>1)^0xedb88320:crc>>1;}return ~crc;}
     internal static string Rules(string css,IEnumerable<(string Selector,string Texture)> bindings){
@@ -41,7 +41,19 @@ internal static class HudCosmetics
             var bytes=File.ReadAllBytes(file.Input);using var resource=new Resource{FileName=file.Input};resource.Read(file.Input);
             if(resource.DataBlock is not PanoramaStyle style)throw new InvalidDataException("Expected compiled Panorama CSS");
             var css=Encoding.UTF8.GetString(style.Data).TrimEnd('\0');var rules=Rules(css,file.Bindings.Select(b=>(b.Selector,b.Texture)));var trailingZero=style.Data.Length>0&&style.Data[^1]==0;
-            var newData=Encoding.UTF8.GetBytes(css+rules+(trailingZero?"\0":""));
+            var imports="";
+            if(file.Donor is not null){
+                using var donor=new Resource{FileName=file.Donor};donor.Read(file.Donor);if(donor.DataBlock is not PanoramaStyle donorStyle)throw new InvalidDataException("Invalid HUD donor CSS");
+                var donorCss=Encoding.UTF8.GetString(donorStyle.Data).TrimEnd('\0');
+                donorCss=Regex.Replace(donorCss,@"@import\s+url\([^;]+;",m=>{imports+=m.Value+"\n";return "";});
+                // The game applies this class when equipping a HUD. Make the chosen style
+                // apply to existing HUD panels when replacing the default interface.
+                donorCss=donorCss.Replace(".CustomHUDSkin",".Reborn");
+                rules+="\n"+donorCss+"\n";
+                foreach(var selector in new[]{"#HUDSkinMinimap","#HUDSkinPortrait","#HUDSkinAbilityContainerBG","#HUDSkinTopBarBG"})
+                    if(css.Contains(selector)&&donorCss.Contains(selector))rules+=(selector=="#HUDSkinTopBarBG"?"DOTATopBar ":"DOTAHud ")+selector+"{visibility:visible;}\n";
+            }
+            var newData=Encoding.UTF8.GetBytes(imports+css+rules+(trailingZero?"\0":""));
             var originalData=bytes.AsSpan((int)style.Offset,(int)style.Size);var prefixSize=originalData.Length-style.Data.Length;
             if(prefixSize<6||!originalData[prefixSize..].SequenceEqual(style.Data))throw new InvalidDataException("Unsupported Panorama DATA framing");
             var payload=new byte[prefixSize+newData.Length];originalData[..prefixSize].CopyTo(payload);newData.CopyTo(payload,prefixSize);BitConverter.GetBytes(Crc(newData)).CopyTo(payload,0);
