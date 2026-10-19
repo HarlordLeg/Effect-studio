@@ -48,3 +48,15 @@ test('geometryless slot models accept JSON-only GLB, but missing binary geometry
  assert.throws(()=>parseGlb(broken.buffer),/BIN/);
  assert.throws(()=>composeHero(hero,broken),/Embedded GLB/);
 });
+
+test('weapon-only animation joints remain animated in both scene compositors',async()=>{
+ const {composeParts}=await import('../public/renderer/parts.mjs');
+ const base=renameJoints(fs.readFileSync(path.join(root,'public/models/renderer-demo.glb')));
+ const change=fn=>{const n=base.readUInt32LE(12),j=JSON.parse(base.subarray(20,20+n).toString().trim());fn(j);const raw=Buffer.from(JSON.stringify(j)),text=Buffer.concat([raw,Buffer.alloc((4-raw.length%4)%4,32)]),tail=base.subarray(20+n),head=Buffer.from(base.subarray(0,20));head.writeUInt32LE(20+text.length+tail.length,8);head.writeUInt32LE(text.length,12);return Buffer.concat([head,text,tail]);};
+ const hero=change(j=>{j.animations[0].name='idle_latch';j.nodes[2].name='hero_weapon';});
+ const item=change(j=>{j.animations[0].name='idle_latch';j.nodes[2].name='weapon_3';j.animations[0].channels[0].target.node=2;});
+ const array=b=>b.buffer.slice(b.byteOffset,b.byteOffset+b.length),composed=composeHero(hero,item).bytes;
+ for(const a of [parseGlb(array(composed)),composeParts([{role:'hero',key:'hero',bytes:array(hero)},{role:'item',id:'blade',key:'blade',bytes:array(item)}])]){
+  const clip=a.json.animations[0],channel=clip.channels.find(c=>a.json.nodes[c.target.node]?.name==='weapon_3');assert.ok(channel);const sampler=clip.samplers[channel.sampler];assert.ok(sampler.input>=parseGlb(array(hero)).json.accessors.length);assert.ok(a.accessor(sampler.output).values.length>0);assert.ok(worldMatrices(a,0,.5).every(m=>[...m].every(Number.isFinite)));
+ }
+});
