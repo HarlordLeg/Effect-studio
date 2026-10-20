@@ -6,6 +6,15 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   var target=KVObject.Collection();target["targetname"]=new KVObject("[PR#]default_RF");target["weather_type"]=new KVObject(-1);target["origin"]=new KVObject("terrain origin");target["inner_radius"]=new KVObject(7000);target["fog_flow_map_texture"]=new KVObject("terrain/fog.vtex");target["preview_day_or_night"]=new KVObject(1);
+   var source=KVObject.Collection();source["targetname"]=new KVObject("[PR#]rain_RF");source["weather_type"]=new KVObject(2);source["origin"]=new KVObject("source origin");source["inner_radius"]=new KVObject(100);source["fog_flow_map_texture"]=new KVObject("source/fog.vtex");source["preview_day_or_night"]=new KVObject(0);source["fog_end_day"]=new KVObject(2500);source["fog_end_night"]=new KVObject(2200);source["fog_color_day"]=Array(new KVObject(153),new KVObject(161),new KVObject(176));source["lightning_sound"]=new KVObject("lightning.thunder");
+   MapWeather.ApplyRainAtmosphere(target,target,new Dictionary<string,KVObject>{{"RF",source}});
+   Check(target["fog_end_day"].ToInt32(null)==2500&&target["fog_end_night"].ToInt32(null)==2200);Check(target["weather_type"].ToInt32(null)==-1&&target["inner_radius"].ToInt32(null)==7000);Check(target["origin"].ToString(null)=="terrain origin"&&target["targetname"].ToString(null)=="[PR#]default_RF");Check(target["fog_flow_map_texture"].ToString(null)=="terrain/fog.vtex"&&target["preview_day_or_night"].ToInt32(null)==1);Check(target["lightning_sound"].ToString(null)=="lightning.thunder");
+   target["fog_color_day"].Add(new KVObject(5));Check(source["fog_color_day"].Count==3);
+   try{MapWeather.ApplyRainAtmosphere(target,target,new Dictionary<string,KVObject>());throw new Exception("Missing rain profile accepted");}catch(InvalidDataException){}
+  }
+
+  {
    KVObject Controller(string name){var c=KVObject.Collection();c["m_szName"]=new KVObject(name);c["m_szType"]=new KVObject("default");c["min"]=new KVObject(0);c["max"]=new KVObject(1);return c;}
    KVObject Morph(bool extra){var m=KVObject.Collection();m["m_FlexControllers"]=extra?Array(Controller("jaw"),Controller("orig")):Array(Controller("jaw"));var fetch=KVObject.Collection();fetch["m_OpCode"]=new KVObject("FLEX_OP_FETCH1");fetch["m_Data"]=new KVObject(extra?1:0);var rule=KVObject.Collection();rule["m_nFlex"]=new KVObject(7);rule["m_FlexOps"]=Array(fetch);m["m_FlexRules"]=Array(rule);m["m_pTextureAtlas"]=new KVObject("original_atlas");return m;}
    var hostMorph=Morph(false);var donorMorph=Morph(true);ModelMerge.NormalizeOriginalMorph(donorMorph,hostMorph);
