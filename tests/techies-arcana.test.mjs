@@ -47,3 +47,13 @@ test('one Techies icon preview does not require unrelated icons and respects Abi
  const rows=techiesIconPlan(store,new Map(),{abilities:'classic'},{group:'abilities',ability:'reactive_tazer'});
  assert.equal(rows.length,1);assert.equal(rows[0].data.toString(),'tazer-icon');assert.equal(rows[0].target,'panorama/images/spellicons/techies_reactive_tazer_png.vtex_c');
 });
+
+test('M.A.D. explosion children join the color manifest even when absent from the template',async()=>{
+ const f=fixture();try{
+  const root='particles/units/heroes/hero_techies/techies_mad_explode.vpcf_c',originalRead=f.builder.store.read.bind(f.builder.store),originalClosure=f.builder.store.closure.bind(f.builder.store);
+  f.builder.store.read=n=>n===root?resource(120):originalRead(n);
+  f.builder.store.closure=(roots,...args)=>{const result=originalClosure(roots.filter(n=>n!==root),...args);if(roots.includes(root))result.files.set(root,resource(120));return result;};
+  const run=f.builder.run;let included=false;f.builder.run=async(exe,args,opts)=>{if(args[0]==='--terrorblade-arcana'){const request=JSON.parse(fs.readFileSync(args[1]));included=request.files.some(row=>row.name===root&&row.referenceInput);}return run(exe,args,opts);};
+  const overlay=await prepareTechiesArcana(f.builder,techiesArcanaChoice(f.builder,f.row));assert.ok(included);assert.ok(overlay.files.has(root));
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});

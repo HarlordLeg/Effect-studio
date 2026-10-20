@@ -46,3 +46,14 @@ test('numbered legacy wards resolve to an existing current unnumbered unit witho
  const absent=makeHero();addSetEntities([absent],game,{},()=>true);assert.equal(absent.items.length,0);
  const missing=makeHero();addSetEntities([missing],game,units,p=>p!==target+'_c');assert.equal(missing.items.length,0);
 });
+
+test('one entity item may declare the same secondary model through native metadata and entity variants',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-entity-own-target-'));try{
+ const hero=fixture(),item=hero.items.find(i=>!i.isDefault),bytes=Buffer.alloc(16);bytes.writeUInt32LE(16);bytes.writeUInt32LE(8,8);
+ item.nativeOverrides.entries.push({target:greater,source:cosmetic,type:'entity_model'});
+ fs.writeFileSync(path.join(temp,'game.vpk'),packVpk(new Map([[cosmetic,bytes]])));fs.writeFileSync(path.join(temp,'catalog.json'),JSON.stringify({heroes:[hero],effects:[]}));fs.writeFileSync(path.join(temp,'patcher'),'stub');
+ const builder=new Builder(temp,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},async(_exe,args)=>{if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true});assert.equal(args[0],'--relocate');for(const row of JSON.parse(fs.readFileSync(args[1])).files)fs.copyFileSync(row.input,row.output);return '';});
+ const choice=builder.cosmeticChoice(hero.id,item.id),job={id:'own-target'};await builder.build([choice],job);const vpk=new Vpk(job.file);assert.deepEqual(vpk.read(primary),bytes);assert.deepEqual(vpk.read(greater),bytes);
+ const other={...choice,item:{...choice.item,id:'another',replacesModel:greater,entityReplacements:[{source:cosmetic,target:greater}],nativeOverrides:{...choice.item.nativeOverrides,entries:[]}}};await assert.rejects(builder.build([choice,other],{id:'real-conflict'}),/один базовый слот|Conflicting entity replacement/);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
