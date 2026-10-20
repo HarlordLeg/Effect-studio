@@ -8,10 +8,21 @@ internal static class ModelMergeTests
   {
    var target=KVObject.Collection();target["targetname"]=new KVObject("[PR#]default_RF");target["weather_type"]=new KVObject(-1);target["origin"]=new KVObject("terrain origin");target["inner_radius"]=new KVObject(7000);target["fog_flow_map_texture"]=new KVObject("terrain/fog.vtex");target["preview_day_or_night"]=new KVObject(1);
    var source=KVObject.Collection();source["targetname"]=new KVObject("[PR#]rain_RF");source["weather_type"]=new KVObject(2);source["origin"]=new KVObject("source origin");source["inner_radius"]=new KVObject(100);source["fog_flow_map_texture"]=new KVObject("source/fog.vtex");source["preview_day_or_night"]=new KVObject(0);source["fog_end_day"]=new KVObject(2500);source["fog_end_night"]=new KVObject(2200);source["fog_color_day"]=Array(new KVObject(153),new KVObject(161),new KVObject(176));source["lightning_sound"]=new KVObject("lightning.thunder");
-   MapWeather.ApplyRainAtmosphere(target,target,new Dictionary<string,KVObject>{{"RF",source}});
+   MapWeather.ApplyAtmosphere(target,target,new Dictionary<string,KVObject>{{"RF",source}});
    Check(target["fog_end_day"].ToInt32(null)==2500&&target["fog_end_night"].ToInt32(null)==2200);Check(target["weather_type"].ToInt32(null)==-1&&target["inner_radius"].ToInt32(null)==7000);Check(target["origin"].ToString(null)=="terrain origin"&&target["targetname"].ToString(null)=="[PR#]default_RF");Check(target["fog_flow_map_texture"].ToString(null)=="terrain/fog.vtex"&&target["preview_day_or_night"].ToInt32(null)==1);Check(target["lightning_sound"].ToString(null)=="lightning.thunder");
    target["fog_color_day"].Add(new KVObject(5));Check(source["fog_color_day"].Count==3);
-   try{MapWeather.ApplyRainAtmosphere(target,target,new Dictionary<string,KVObject>());throw new Exception("Missing rain profile accepted");}catch(InvalidDataException){}
+   try{MapWeather.ApplyAtmosphere(target,target,new Dictionary<string,KVObject>());throw new Exception("Missing rain profile accepted");}catch(InvalidDataException){}
+  }
+
+  {
+   var roots=new[]{"econ_snow","econ_rain","econ_moonlight","econ_weather_pestilence","econ_weather_harvest","econ_weather_sirocco","econ_weather_spring","econ_weather_ash","econ_weather_aurora"};
+   for(int i=0;i<roots.Length;i++)Check(MapWeather.ProfileType("particles/rain_fx/"+roots[i]+".vpcf")==i+1);
+   KVObject Entity(int type){var v=KVObject.Collection();v["classname"]=new KVObject("ent_dota_lightinfo");v["targetname"]=new KVObject("weather_RF");v["weather_type"]=new KVObject(type);v["origin"]=new KVObject("local");var kv=KVObject.Collection();kv["values"]=v;var e=KVObject.Collection();e["keyValues3Data"]=kv;return e;}
+   var profile=KVObject.Collection();profile["fog_end_day"]=new KVObject(3500);profile["origin"]=new KVObject("foreign");
+   var profiles=new Dictionary<string,KVObject>{{"RF",profile}};var root=KVObject.Collection();root["m_entityKeyValues"]=Array(Entity(0),Entity(1),Entity(3));long next=10;
+   Check(MapWeather.PatchEntities(root,"particles/rain_fx/econ_moonlight.vpcf",true,null,ref next,profiles)==3);
+   foreach(var e in root["m_entityKeyValues"].Values){var v=e["keyValues3Data"]["values"];Check(v["fog_end_day"].ToInt32(null)==3500&&v["origin"].ToString(null)=="local"&&v["weather_effect"].ToString(null)=="particles/rain_fx/econ_moonlight.vpcf");}
+   root["m_entityKeyValues"]=Array(Entity(1),Entity(3));Check(MapWeather.PatchEntities(root,"particles/rain_fx/econ_snow.vpcf",false,1,ref next,profiles)==3);Check(root["m_entityKeyValues"][2]["keyValues3Data"]["values"]["weather_type"].ToInt32(null)==0);
   }
 
   {
