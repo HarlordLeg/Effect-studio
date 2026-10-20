@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {cosmeticCatalog,cosmeticChoices} from './lib/global-cosmetics.mjs';
+import {cosmeticCatalog,browserCosmeticCatalog,cosmeticChoices} from './lib/global-cosmetics.mjs';
 import {techiesArcanaNative} from './lib/techies-icons.mjs';
 import {hasTechiesArcana} from './lib/techies-arcana.mjs';
 import {TechiesIconPreviews,techiesIconRequest} from './lib/techies-icon-previews.mjs';
@@ -61,7 +61,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
         const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
         const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
-        if(url.pathname==='/api/admin/cosmetics'&&req.method==='GET')return json(res,200,cosmeticCatalog(builder));
+        if(url.pathname==='/api/admin/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder):cosmeticCatalog(builder));
         if(url.pathname==='/api/admin/cosmetic-heroes'&&req.method==='GET')return json(res,200,{heroes:builder.catalog.heroes.map(h=>({id:h.id,name:h.name,isPersona:h.isPersona}))});
         if(url.pathname==='/api/admin/cosmetic-icon'&&req.method==='GET'){
           const item=cosmeticCatalog(builder).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
@@ -131,7 +131,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
         try{const entry=immortalIconEntry(option,url.searchParams.get('index'));const texture=url.searchParams.get('variant')==='classic'?entry.target:entry.source;const file=await itemIcons.getTexture(texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Immortal icon unavailable'});}
       }
       if(url.pathname==='/api/stances'&&req.method==='GET'){const heroId=url.searchParams.get('heroId'),result=await heroStances(builder,heroId);return json(res,200,{options:result.options,abilities:abilityCatalog(builder,heroId,result.options)});}
-      if(url.pathname==='/api/cosmetics'&&req.method==='GET')return json(res,200,cosmeticCatalog(builder));
+      if(url.pathname==='/api/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder):cosmeticCatalog(builder));
       if(url.pathname==='/api/cosmetic-icon'&&req.method==='GET'){
         const item=cosmeticCatalog(builder).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
         try{const style=item.styles?.find(s=>s.id===url.searchParams.get('styleId'));const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:style?.imageInventory??item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}

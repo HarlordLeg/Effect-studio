@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),destination=path.join(root,'dist','DotaEffectStudio');
-for(const relative of ['patcher/publish/Dota2UnusualPatcher.exe','asset-bridge/publish/DotaAssetBridge.exe','node_modules/electron/dist/electron.exe'])if(!fs.existsSync(path.join(root,relative)))throw new Error('Missing build output: '+relative);
+for(const relative of ['patcher/publish/Dota2UnusualPatcher.exe','asset-bridge/publish/DotaAssetBridge.exe','asset-bridge/publish/DotaIconBridge.exe','node_modules/electron/dist/electron.exe'])if(!fs.existsSync(path.join(root,relative)))throw new Error('Missing build output: '+relative);
 fs.rmSync(destination,{recursive:true,force:true});fs.mkdirSync(destination,{recursive:true});
 function copy(relative,target=relative){const out=path.join(destination,target);fs.mkdirSync(path.dirname(out),{recursive:true});fs.cpSync(path.join(root,relative),out,{recursive:true});}
 for(const relative of ['public','lib','licenses','samples','server.mjs','desktop.cjs','package.json','config.example.json'])copy(relative);
@@ -14,6 +14,7 @@ fs.mkdirSync(path.join(destination,'runtime'),{recursive:true});const nodeLicens
 copy('tools');
 copy('docs');
 const bat=(name,command)=>fs.writeFileSync(path.join(destination,name),'@echo off\r\ncd /d "%~dp0"\r\n'+command+'\r\npause\r\n');
+bat('preexport-assets.bat','runtime\\node.exe tools\\preexport-assets.mjs %*');
 bat('preexport-models.bat','runtime\\node.exe tools\\preexport-models.mjs %*');
 bat('configure-dota.bat','runtime\\node.exe tools\\configure-dota.mjs');
 bat('configure-admin.bat','runtime\\node.exe tools\\configure-admin.mjs');

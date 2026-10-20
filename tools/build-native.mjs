@@ -5,8 +5,8 @@ import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const kind=process.argv[2];
-const options={patcher:{directory:'patcher',project:'Dota2UnusualPatcher.csproj',exe:'Dota2UnusualPatcher.exe',cap:'legacyRaw'},assets:{directory:'asset-bridge',project:'AssetBridge.csproj',exe:'DotaAssetBridge.exe',cap:'skipModel'}}[kind];
-if(!options)throw new Error('Use build-native.mjs patcher|assets');
+const options={icons:{directory:'icon-bridge',project:'IconBridge.csproj',exe:'DotaIconBridge.exe',cap:'thumbnailBatchV1'},patcher:{directory:'patcher',project:'Dota2UnusualPatcher.csproj',exe:'Dota2UnusualPatcher.exe',cap:'legacyRaw'},assets:{directory:'asset-bridge',project:'AssetBridge.csproj',exe:'DotaAssetBridge.exe',cap:'skipModel'}}[kind];
+if(!options)throw new Error('Use build-native.mjs patcher|assets|icons');
 const projectDirectory=path.join(root,options.directory),project=path.join(projectDirectory,options.project),source=path.join(projectDirectory,'Program.cs');
 const stage=fs.mkdtempSync(path.join(os.tmpdir(),'des-native-'));
 function run(exe,args,capture=false){const result=spawnSync(exe,args,{cwd:root,stdio:capture?'pipe':'inherit',encoding:'utf8',windowsHide:true});if(result.error)throw result.error;if(result.status!==0)throw new Error('Command failed: '+exe+' '+args.join(' ')+'\n'+(result.stdout??'')+(result.stderr??''));return result.stdout??'';}
@@ -23,6 +23,6 @@ try{
  const executable=path.join(stage,options.exe);console.log('[CHECK] Fresh executable: '+executable);
  const raw=run(executable,['--capabilities'],true);console.log(raw.trim());const caps=JSON.parse(raw.trim());if(caps.version!=='1.1.0'||(!caps[options.cap]||(kind==='assets'&&!caps.animatedParticleModels)||(kind==='patcher'&&(!caps.cosmeticShaderRgbV1||!caps.globalHudV2||!caps.globalHudV1||!caps.wearableBindingsV1||!caps.globalCosmeticsV1||!caps.techiesArcanaV1||!caps.soundOverridesV1||!caps.personaRuntimeV1||!caps.personaVoicesV1||!caps.watermarkV1||!caps.modelMergeV5||!caps.modelMergeV4||!caps.modelMergeV3||!caps.modelMergeV2||!caps.modelMergeV1||!caps.activityRulesV9||!caps.activityRulesV8||!caps.activityRulesV7||!caps.activityRulesV6||!caps.activityRulesV5||!caps.activityRulesV4||!caps.activityRulesV3||!caps.activityRulesV2||!caps.activityRulesV1||!caps.heroActivitiesV4||!caps.terrorbladeBindingsV1||!caps.terrorbladeArcanaV4))))throw new Error('Fresh executable capability check failed');
  if(kind==='patcher')run(process.execPath,[path.join(root,'tools','test-relocation.mjs'),executable]);
- const publish=path.join(projectDirectory,'publish');fs.mkdirSync(publish,{recursive:true});fs.cpSync(stage,publish,{recursive:true,force:true});
+ const publish=kind==='icons'?path.join(root,'asset-bridge','publish'):path.join(projectDirectory,'publish');fs.mkdirSync(publish,{recursive:true});fs.cpSync(stage,publish,{recursive:true,force:true});
  console.log('[OK] Installed validated executable: '+path.join(publish,options.exe));
 }catch(error){console.error('[ERROR] '+error.message);process.exitCode=1;}finally{fs.rmSync(stage,{recursive:true,force:true});}

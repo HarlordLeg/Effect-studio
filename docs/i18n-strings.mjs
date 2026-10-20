@@ -1,4 +1,5 @@
 export const translations = {
+ "Загружаем каталог…":"Loading catalog…",
  "Добавить скин":"Add skin","Конфликт в корзине":"Basket conflict","Оставить: ":"Keep: ","Заменить на: ":"Replace with: ","Обычный герой и его личность заменяют одни и те же игровые файлы. Выбери вариант для сборки.":"The hero and its persona replace the same game files. Choose which version to build.","В сборке может быть только одна карта. Выбери, какой комплект оставить.":"Only one terrain can be included. Choose which bundle to keep.","Новая карта заменит текущую карту вместе с её погодой. Выбери, что оставить.":"The new terrain replaces the current terrain and its weather. Choose what to keep.",
 
  'Погода':'Weather','Карта для погоды':'Choose terrain for weather','Поиск карты':'Search terrains','Выбрать карту':'Choose terrain','Изменить карту':'Change terrain','Стандартная карта':'Default terrain','Снег':'Snow','Дождь':'Rain','Лунный свет':'Moonbeam','Мор':'Pestilence','Сирокко':'Sirocco','Осень':'Harvest','Пепел':'Ash','Северное сияние':'Aurora','Весна':'Spring',
