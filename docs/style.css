@@ -238,3 +238,13 @@ html[data-shared-basket=true] .set-basket,html[data-shared-basket=true] #cart-li
 .basket-group summary img{width:52px;height:30px;object-fit:cover;border-radius:5px}.basket-group-items{border-top:1px solid #343744;padding:0 8px}.basket-group-items .shared-basket-item{gap:7px;font-size:12px}.shared-basket-item>img{width:38px;height:34px;object-fit:contain;flex-shrink:0}.shared-basket-item>span{min-width:0;flex:1;overflow-wrap:anywhere}.shared-basket-item>button{flex-shrink:0}.basket-group summary:focus-visible{outline:2px solid #dbae68;outline-offset:-3px}
 
 .set-thumb{position:relative}.shared-icon-slot{position:absolute;left:4px;bottom:4px;max-width:calc(100% - 8px);padding:3px 6px;border-radius:4px;background:#101722e6;color:#f3c27d;font-size:10px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+
+/* Weather + terrain chooser */
+.weather-map-picker{width:min(920px,94vw);max-height:85dvh;overflow:auto;padding:0 20px 20px;background:var(--panel,#151922);color:inherit;border:1px solid #363c4a;border-radius:16px}
+.weather-map-picker .hero-picker-top{position:sticky;top:0;z-index:2;background:var(--panel,#151922);padding:16px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.weather-map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:16px;align-content:start}
+.weather-map-card{display:flex;flex-direction:column;gap:10px;text-align:left;padding:10px;border-radius:12px;border:1px solid #363c4a;background:#1c2230;color:inherit;cursor:pointer;min-width:0}
+.weather-map-card img{width:100%;aspect-ratio:16/10;object-fit:contain;border-radius:8px;background:#11151d}
+.weather-map-card:hover:not(:disabled){border-color:#d4af68;background:#272c38}.weather-map-card:disabled{opacity:.45;cursor:not-allowed}.weather-map-card small{white-space:normal}
+
+.basket-conflict-dialog{width:min(560px,92vw);padding:24px;border:1px solid #42495b;border-radius:16px;background:#171c27;color:#e8e9ef}.basket-conflict-dialog::backdrop{background:#000b;backdrop-filter:blur(5px)}.basket-conflict-dialog>div{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}.basket-conflict-dialog button{flex:1;white-space:normal;min-width:180px}#set-add-persona{margin:12px 0}

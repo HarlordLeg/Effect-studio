@@ -4,7 +4,7 @@ import {catalogFromGame} from '../lib/game-catalog.mjs';
 import {configurePersonaReplacements,completePersonaChoices,validatePersonaSelections} from '../lib/persona-build.mjs';
 import {resolveDefaultLoadout} from '../lib/default-loadout.mjs';import {kineticCandidates} from '../lib/kinetic-catalog.mjs';
 import {Builder} from '../lib/build.mjs';import {packVpk,Vpk} from '../lib/vpk.mjs';import {normalizeSelections} from '../lib/namespace.mjs';
-import {initialSetSelection} from '../public/set-studio.mjs';import {heroImage} from '../public/hero-picker.mjs';
+import {initialSetSelection,defaultPersonaSelection} from '../public/set-studio.mjs';import {heroImage} from '../public/hero-picker.mjs';
 const base='models/heroes/crystal_maiden/crystal_maiden.vmdl_c',wolf='models/heroes/crystal_maiden_persona/crystal_maiden_persona.vmdl_c';
 const heroes='"DOTAHeroes" { "npc_dota_hero_crystal_maiden" { "EnglishName" "Crystal Maiden" "Model" "models/heroes/crystal_maiden/crystal_maiden.vmdl" "Persona" { "1" { "name" "npc_dota_hero_crystal_maiden_persona1" "Model" "models/heroes/crystal_maiden_persona/crystal_maiden_persona.vmdl" } } } }';
 const used='"used_by_heroes" { "npc_dota_hero_crystal_maiden" "1" }';
@@ -15,7 +15,7 @@ test('Personas become distinct catalog heroes, receive only own wearable slots, 
  const normal=catalog.find(h=>!h.isPersona),persona=catalog.find(h=>h.isPersona);assert.equal(persona.id,'crystal_maiden_persona1');assert.equal(persona.name,'Crystal Maiden (Persona)');assert.equal(persona.model,wolf);assert.equal(persona.npcName,normal.npcName);
  assert.deepEqual(persona.items.map(i=>i.gameItemId).sort(),['3','4']);assert.deepEqual(normal.items.map(i=>i.gameItemId).sort(),['1','2','5']);assert.ok(persona.items.every(i=>i.isPersonaItem&&!i.specialKind&&!i.previewUnsupported));assert.deepEqual(Object.keys(persona.defaultSlotModels),['head']);
  const loadout=resolveDefaultLoadout({read:()=>{throw new Error('must not inspect normal folders');}},persona,{slot:'weapon'});assert.deepEqual(loadout.parts.map(p=>p.model),['models/heroes/crystal_maiden_persona/mane.vmdl_c']);
- assert.equal(heroImage(persona),'/images/personas/crystal_maiden_persona1.png');assert.deepEqual([...initialSetSelection(persona)],[['head','game-3']]);assert.equal(initialSetSelection(normal).size,0);assert.ok(!kineticCandidates({...persona,baseHeroId:'crystal_maiden'}).some(c=>c.id==='kinetic-13'));
+ assert.equal(heroImage(persona),'/images/personas/crystal_maiden_persona1.png');assert.equal(initialSetSelection(persona).size,0);assert.deepEqual([...defaultPersonaSelection(persona)],[['head','game-3']]);assert.equal(initialSetSelection(normal).size,0);assert.ok(!kineticCandidates({...persona,baseHeroId:'crystal_maiden'}).some(c=>c.id==='kinetic-13'));
  const absent=catalogFromGame({heroText:heroes,itemText:items,exists:name=>name!==wolf,effects:[]});assert.ok(!absent.some(h=>h.isPersona));
 });
 test('CM uses the supplied reference layout and all base hero parts are either replaced or hidden',()=>{
