@@ -9,7 +9,7 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false);
     private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
@@ -202,9 +202,10 @@ internal static class ModelMerge
             if(Values(source,"m_boneFlexDrivers").Length>0)throw new InvalidDataException("Donor bone flex drivers require a dedicated merge profile");
             if(!entry.MetadataOnly&&donor.Blocks.Any(b=>b.Type==BlockType.PHYS&&(b.ToString()?.Contains("m_cloth",StringComparison.OrdinalIgnoreCase)??false)))throw new InvalidDataException("Donor contains cloth physics; use a dedicated merge profile");
             if(!entry.MetadataOnly&&Values(source,"m_ExtParts").Length>0)throw new InvalidDataException("Donor external parts require a dedicated merge profile");
+            var normalizedMorphs=new Dictionary<int,byte[]>();
             if(!entry.MetadataOnly){
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
-                if(donorMorph is not null){var controls=Values(Read(donor,bytes,donorMorph).Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostMorph is null?System.Array.Empty<string>():Values(Read(host,original,hostMorph).Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length)))throw new InvalidDataException("Donor morph controller order requires a dedicated merge profile");}
+                if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);var hostData=hostMorph is null?null:Read(host,original,hostMorph);var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(!entry.NeutralizeOriginalMorph||hostData is null)throw new InvalidDataException("Donor morph controller order requires a dedicated merge profile");NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
             var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase);
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
@@ -214,7 +215,7 @@ internal static class ModelMerge
             var sourceRows=Values(sourceCtrl,"embedded_meshes").Where(r=>!entry.MetadataOnly).Where(r=>MeshIndex(r)>=sourceGroups.Length||(Mask(sourceGroups[MeshIndex(r)])&sourceDefault)!=0).Where(r=>entry.MeshNames is null||entry.MeshNames.Contains(MeshName(r),StringComparer.Ordinal)).ToArray();
             if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true)throw new InvalidDataException("Requested donor mesh not found");
             var blocks=new Dictionary<int,int>();
-            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&renamedBones.Count>0){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;return mapped;}
+            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=normalizedMorphs.TryGetValue(index,out var normalized)?normalized:bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&renamedBones.Count>0){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;return mapped;}
             var nextIndex=new[]{meshRows.Max(MeshIndex)+1,starts.Count,Values(root,"m_refMeshes").Length,Values(root,"m_refMeshGroupMasks").Length}.Max();
             foreach(var row in sourceRows){
                 var oldIndex=MeshIndex(row);var newIndex=nextIndex++;var name=MeshName(row);imported.Add(name);
@@ -263,6 +264,18 @@ internal static class ModelMerge
         var decodedMeshes=combined.GetEmbeddedMeshes().ToArray();if(decodedMeshes.Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
         var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL||editedHostMeshes.Contains(i))continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
         File.WriteAllText(request.Output+".merge.json",JsonSerializer.Serialize(new{meshes=imported,bones=names.Length,preservedHostBlocks=host.Blocks.Count}));Console.WriteLine("[OK] Embedded model merge: "+imported.Count+" meshes, "+names.Length+" bones; host animations and physics preserved");
+    }
+    // The Wilding Tiger appends a zero-default "orig" shape controller which
+    // the base hero never drives. Keep its atlas/shape indices, but evaluate
+    // that one shape at neutral instead of shifting all facial controllers.
+    internal static void NormalizeOriginalMorph(KVObject donor,KVObject host){
+        var source=Values(donor,"m_FlexControllers");var target=Values(host,"m_FlexControllers");
+        if(source.Length!=target.Length+1||Text(source[^1]["m_szName"])!="orig"||source[^1]["min"].ToSingle(CultureInfo.InvariantCulture)!=0)throw new InvalidDataException("Unsupported original morph profile");
+        for(int i=0;i<target.Length;i++)foreach(var key in new[]{"m_szName","m_szType","min","max"})if(Text(source[i][key])!=Text(target[i][key]))throw new InvalidDataException("Facial controller mismatch: "+i);
+        var operations=Values(donor,"m_FlexRules").SelectMany(rule=>Values(rule,"m_FlexOps")).Where(op=>Text(op["m_OpCode"])=="FLEX_OP_FETCH1").ToArray();
+        foreach(var op in operations)if(Number(op["m_Data"])<0||Number(op["m_Data"])>=source.Length)throw new InvalidDataException("Invalid facial controller index");
+        foreach(var op in operations.Where(op=>Number(op["m_Data"])==target.Length)){op["m_OpCode"]=new KVObject("FLEX_OP_CONST");op["m_Data"]=new KVObject(0);}
+        donor["m_FlexControllers"]=Array(source.Take(target.Length));
     }
     static void Write(byte[] original,List<Chunk> chunks,string output){
         using var stream=File.Create(output);using var writer=new BinaryWriter(stream);writer.Write(0u);writer.Write(original.AsSpan(4,4));writer.Write(8u);writer.Write((uint)chunks.Count);writer.Write(new byte[chunks.Count*12]);

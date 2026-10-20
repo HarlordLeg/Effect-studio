@@ -88,3 +88,11 @@ test('merged Leshrac weapon requests authored attachment priority without enabli
   assert.deepEqual(packed.get(h.model),resource(3));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
+test('Wilding Tiger head gets an explicit neutral-orig morph profile; old patcher is rejected',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-brew-morph-'));try{
+  const h=hero('brewmaster'),item={...h.items[0],model:'models/items/brewmaster/brewmaster_hujiang_head/brewmaster_hujiang_head.vmdl_c',mergeTarget:h.model},choice={hero:h,item},staged=stagedMergeTarget(h,item);let supported=false,calls=0;
+  const builder={root:temp,store:{read:()=>null},run:async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeMorphV1:supported});assert.equal(args[0],'--merge-models');const request=JSON.parse(fs.readFileSync(args[1]));assert.equal(request.donors[0].neutralizeOriginalMorph,true);calls++;fs.writeFileSync(request.output,resource(3));return '';}};
+  const packed=()=>new Map([[h.model,resource(1)],[staged,resource(2)]]);
+  await assert.rejects(finalizeModelMerges(builder,[choice],packed(),[],temp,'patcher',{}),/modelMergeMorphV1/);assert.equal(calls,0);supported=true;const files=packed();await finalizeModelMerges(builder,[choice],files,[],temp,'patcher',{});assert.equal(calls,1);assert(files.get(h.model).equals(resource(3)));assert(!files.has(staged));
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});

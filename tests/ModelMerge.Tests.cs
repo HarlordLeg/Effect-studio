@@ -6,6 +6,24 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   KVObject Controller(string name){var c=KVObject.Collection();c["m_szName"]=new KVObject(name);c["m_szType"]=new KVObject("default");c["min"]=new KVObject(0);c["max"]=new KVObject(1);return c;}
+   KVObject Morph(bool extra){var m=KVObject.Collection();m["m_FlexControllers"]=extra?Array(Controller("jaw"),Controller("orig")):Array(Controller("jaw"));var fetch=KVObject.Collection();fetch["m_OpCode"]=new KVObject("FLEX_OP_FETCH1");fetch["m_Data"]=new KVObject(extra?1:0);var rule=KVObject.Collection();rule["m_nFlex"]=new KVObject(7);rule["m_FlexOps"]=Array(fetch);m["m_FlexRules"]=Array(rule);m["m_pTextureAtlas"]=new KVObject("original_atlas");return m;}
+   var hostMorph=Morph(false);var donorMorph=Morph(true);ModelMerge.NormalizeOriginalMorph(donorMorph,hostMorph);
+   Check(donorMorph["m_FlexControllers"].Count==1&&hostMorph["m_FlexControllers"].Count==1);Check(donorMorph["m_FlexRules"][0]["m_nFlex"].ToInt32(null)==7);Check(donorMorph["m_FlexRules"][0]["m_FlexOps"][0]["m_OpCode"].ToString(null)=="FLEX_OP_CONST");Check(donorMorph["m_FlexRules"][0]["m_FlexOps"][0]["m_Data"].ToInt32(null)==0);Check(donorMorph["m_pTextureAtlas"].ToString(null)=="original_atlas");Check(hostMorph["m_FlexRules"][0]["m_FlexOps"][0]["m_OpCode"].ToString(null)=="FLEX_OP_FETCH1");
+   var unknown=Morph(true);unknown["m_FlexControllers"][1]["m_szName"]=new KVObject("unknown");try{ModelMerge.NormalizeOriginalMorph(unknown,hostMorph);throw new Exception("Unknown morph accepted");}catch(InvalidDataException){}
+   var mismatch=Morph(true);mismatch["m_FlexControllers"][0]["m_szName"]=new KVObject("different");try{ModelMerge.NormalizeOriginalMorph(mismatch,hostMorph);throw new Exception("Different facial order accepted");}catch(InvalidDataException){}
+  }
+  {
+   KVObject Entity(int type,string name){var v=KVObject.Collection();v["classname"]=new KVObject("ent_dota_lightinfo");v["weather_type"]=new KVObject(type);v["targetname"]=new KVObject(name);v["origin"]=new KVObject("1 2 3");v["night_color"]=Array(new KVObject(1),new KVObject(2));var kv=KVObject.Collection();kv["values"]=v;var e=KVObject.Collection();e["keyValues3Data"]=kv;return e;}
+   var root=KVObject.Collection();var snow=Entity(1,"snow");var rain=Entity(2,"rain");root["m_entityKeyValues"]=Array(snow,rain);long next=100;
+   Check(MapWeather.PatchEntities(root,"particles/rain_fx/econ_rain.vpcf",false,null,ref next)==0&&root["m_entityKeyValues"].Count==2);
+   Check(MapWeather.PatchEntities(root,"particles/rain_fx/econ_rain.vpcf",false,1,ref next)==1&&root["m_entityKeyValues"].Count==3);
+   var copy=root["m_entityKeyValues"][2]["keyValues3Data"]["values"];Check(copy["weather_type"].ToInt32(null)==0&&snow["keyValues3Data"]["values"]["weather_type"].ToInt32(null)==1);Check(copy["origin"].ToString(null)=="1 2 3"&&copy["night_color"][1].ToInt32(null)==2);Check(!snow["keyValues3Data"]["values"].ContainsKey("weather_effect"));
+   copy["night_color"].Add(new KVObject(99));Check(snow["keyValues3Data"]["values"]["night_color"].Count==2);
+   root["m_entityKeyValues"]=Array(Entity(-1,"reef"),Entity(2,"other-weather"));Check(MapWeather.PatchEntities(root,"particles/rain_fx/econ_snow.vpcf",true,null,ref next)==1);Check(root["m_entityKeyValues"][0]["keyValues3Data"]["values"]["weather_type"].ToInt32(null)==-1);Check(!root["m_entityKeyValues"][1]["keyValues3Data"]["values"].ContainsKey("weather_effect"));
+  }
+
+  {
   var arcHost=Skeleton(["root","clavicle_R","bicep_R"],[-1,0,1]);
   var caseDonor=Skeleton(["root","clavicle_r","bicep_r","cloth_tip"],[-1,0,1,2]);
   Check(ModelMerge.MergeSkeleton(arcHost,caseDonor,matchBoneCase:true).SequenceEqual(new[]{0,1,2,3}));
