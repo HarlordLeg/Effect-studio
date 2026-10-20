@@ -1,4 +1,7 @@
 export const translations = {
+"Сохранить":"Save",
+"Сохранённые сборки":"Saved builds","Новая сборка":"New build","Название сборки":"Build name","Сохранить копию":"Save a copy","Загрузить":"Load","Удалить":"Delete","Сохранено в этом браузере":"Saved in this browser","Удалить сохранённую сборку?":"Delete this saved build?","Сохранение удалено":"Saved build deleted","Заменить текущую корзину сохранённой сборкой?":"Replace the current basket with this saved build?","Сборка загружена. Можно менять и собирать VPK.":"Build loaded. Edit it or build a VPK.","Загружено. Недоступные предметы пропущены: ":"Loaded. Unavailable items skipped: ","Не удалось прочитать сохранения: ":"Unable to read saved builds: ","Сначала выбери приоритеты эффектов":"Choose effect priorities first",
+
  "Загружаем каталог…":"Loading catalog…",
  "Добавить скин":"Add skin","Конфликт в корзине":"Basket conflict","Оставить: ":"Keep: ","Заменить на: ":"Replace with: ","Обычный герой и его личность заменяют одни и те же игровые файлы. Выбери вариант для сборки.":"The hero and its persona replace the same game files. Choose which version to build.","В сборке может быть только одна карта. Выбери, какой комплект оставить.":"Only one terrain can be included. Choose which bundle to keep.","Новая карта заменит текущую карту вместе с её погодой. Выбери, что оставить.":"The new terrain replaces the current terrain and its weather. Choose what to keep.",
 
