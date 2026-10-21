@@ -10,7 +10,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class ModelMerge
 {
     private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false);
-    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null);
+    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
     internal static string MeshReference(KVObject value)=>value.ValueType==KVValueType.Null?string.Empty:value.ValueType==KVValueType.String?Text(value):throw new InvalidDataException("Mesh reference must be a resource string or null");
@@ -44,7 +44,7 @@ internal static class ModelMerge
         if(Math.Abs(scale.X-scale.Y)>0.00001f||Math.Abs(scale.X-scale.Z)>0.00001f)throw new InvalidDataException("Nonuniform root attachment scale");
         return new(){["m_bonePosParent"]=Array(new[]{translation.X,translation.Y,translation.Z}.Select(v=>new KVObject(v))),["m_boneRotParent"]=Array(new[]{rotation.X,rotation.Y,rotation.Z,rotation.W}.Select(v=>new KVObject(v))),["m_boneScaleParent"]=new KVObject(scale.X)};
     }
-    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false,bool matchBoneCase=false){
+    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false,bool matchBoneCase=false,IReadOnlySet<string>? knownRootBones=null){
         var hostNames=Values(host,"m_boneName").Select(Text).ToList();var donorNames=Values(donor,"m_boneName").Select(Text).ToArray();
         if(hostNames.Distinct(StringComparer.Ordinal).Count()!=hostNames.Count||donorNames.Distinct(StringComparer.Ordinal).Count()!=donorNames.Length)throw new InvalidDataException("Duplicate skeleton bone name");
         var map=new int[donorNames.Length];var added=new List<int>();var attachedRoots=new Dictionary<int,(int Parent,Dictionary<string,KVObject> Pose)>();
@@ -52,7 +52,7 @@ internal static class ModelMerge
         for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0&&matchBoneCase){
                 var aliases=hostNames.Select((name,index)=>(name,index)).Where(v=>string.Equals(v.name,donorNames[i],StringComparison.OrdinalIgnoreCase)).ToArray();
                 if(aliases.Length==1&&donorNames.Count(name=>string.Equals(name,donorNames[i],StringComparison.OrdinalIgnoreCase))==1)index=aliases[0].index;
-            }if(index<0){if(Number(donorParents[i])<0){
+            }if(index<0){if(Number(donorParents[i])<0&&!(knownRootBones?.Contains(donorNames[i])??false)){
                 var hostParents=Values(host,"m_nParent");var roots=hostParents.Select((p,index)=>(p,index)).Where(v=>Number(v.p)<0).Select(v=>v.index).ToArray();
                 // Valve wearables commonly spell the hero's Root_0 as root_0.
                 // Keep both bone names and rebase the new child bind pose;
@@ -189,6 +189,14 @@ internal static class ModelMerge
     static void RunEmbedded(Request request){
         var original=File.ReadAllBytes(request.Input);using var host=new Resource{FileName=request.Input};host.Read(request.Input);if(host.DataBlock is not Model)throw new InvalidDataException("Merge host must be a model");
         var dataBlock=host.DataBlock;var ctrlBlock=host.Blocks.Single(b=>b.Type==BlockType.CTRL);var data=Read(host,original,dataBlock);var ctrl=Read(host,original,ctrlBlock);var root=data.Data.Root;var control=ctrl.Data.Root;
+        HashSet<string>? knownRootBones=null;
+        if(request.SkeletonReference is not null){
+            using var reference=new Resource{FileName=request.SkeletonReference};reference.Read(request.SkeletonReference);
+            if(reference.DataBlock is not Model)throw new InvalidDataException("Skeleton reference must be a model");
+            var referenceData=Read(reference,File.ReadAllBytes(request.SkeletonReference),reference.DataBlock).Data.Root;
+            knownRootBones=Values(referenceData["m_modelSkeleton"],"m_boneName").Select(Text).ToHashSet(StringComparer.Ordinal);
+            if(Values(root["m_modelSkeleton"],"m_boneName").Where((_,i)=>Number(Values(root["m_modelSkeleton"],"m_nParent")[i])<0).Any(n=>!knownRootBones.Contains(Text(n))))throw new InvalidDataException("Host roots are absent from hero skeleton reference");
+        }
         var meshRows=Values(control,"embedded_meshes").ToList();var attachmentOverrides=new Dictionary<string,KVObject>(StringComparer.Ordinal);var editedHostMeshes=new HashSet<int>();if(meshRows.Count==0)throw new InvalidDataException("Merge host has no embedded meshes");
         var chunks=host.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();var imported=new List<string>();
         var meshGroups=Values(root,"m_meshGroups").ToList();if(meshGroups.Count>=63)throw new InvalidDataException("Host has no free mesh group bit");
@@ -209,7 +217,7 @@ internal static class ModelMerge
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
                 if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
-            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase);
+            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase,knownRootBones);
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
             var renamedBones=entry.MetadataOnly?new Dictionary<string,string>():Values(source["m_modelSkeleton"],"m_boneName").Select((name,index)=>(name:Text(name),mapped:Text(mergedBoneNames[boneMap[index]]))).Where(v=>v.name!=v.mapped).ToDictionary(v=>v.name,v=>v.mapped,StringComparer.Ordinal);
             var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");

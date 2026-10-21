@@ -6,6 +6,16 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   var partialDonor=Skeleton(["Head_0","bicep_R","bicep_L"],[-1,-1,-1]);
+   try{ModelMerge.MergeSkeleton(Skeleton(["Spine_3","Head_0"],[-1,0]),partialDonor);throw new Exception("Unverified root accepted");}catch(InvalidDataException){}
+   var partialHost=Skeleton(["Spine_3","Head_0"],[-1,0]);
+   ModelMerge.MergeSkeleton(partialHost,partialDonor,knownRootBones:new HashSet<string>{"Spine_3","Head_0","bicep_R","bicep_L"});
+   Check(partialHost["m_nParent"][2].ToInt32(null)==-1&&partialHost["m_nParent"][3].ToInt32(null)==-1);
+   Check(partialHost["m_bonePosParent"][2].ToInt32(null)==1);
+   try{ModelMerge.MergeSkeleton(Skeleton(["Spine_3","Head_0"],[-1,0]),partialDonor,knownRootBones:new HashSet<string>{"Head_0"});throw new Exception("Unknown reference root accepted");}catch(InvalidDataException){}
+  }
+
+  {
    var target=KVObject.Collection();target["targetname"]=new KVObject("[PR#]default_RF");target["weather_type"]=new KVObject(-1);target["origin"]=new KVObject("terrain origin");target["inner_radius"]=new KVObject(7000);target["fog_flow_map_texture"]=new KVObject("terrain/fog.vtex");target["preview_day_or_night"]=new KVObject(1);
    var source=KVObject.Collection();source["targetname"]=new KVObject("[PR#]rain_RF");source["weather_type"]=new KVObject(2);source["origin"]=new KVObject("source origin");source["inner_radius"]=new KVObject(100);source["fog_flow_map_texture"]=new KVObject("source/fog.vtex");source["preview_day_or_night"]=new KVObject(0);source["fog_end_day"]=new KVObject(2500);source["fog_end_night"]=new KVObject(2200);source["fog_color_day"]=Array(new KVObject(153),new KVObject(161),new KVObject(176));source["lightning_sound"]=new KVObject("lightning.thunder");
    MapWeather.ApplyAtmosphere(target,target,new Dictionary<string,KVObject>{{"RF",source}});
