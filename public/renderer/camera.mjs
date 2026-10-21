@@ -1,1 +1,4 @@
 export function cameraMovement(keys,yaw,pitch,speed,dt){const forward=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0),side=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0),up=(keys.has('KeyE')?1:0)-(keys.has('KeyQ')?1:0),length=Math.hypot(forward,side,up)||1,scale=speed*Math.min(dt,.1)/length;return [(-Math.sin(yaw)*Math.cos(pitch)*forward+Math.cos(yaw)*side)*scale,(-Math.sin(pitch)*forward+up)*scale,(-Math.cos(yaw)*Math.cos(pitch)*forward-Math.sin(yaw)*side)*scale].map(v=>v||0);}
+
+// Keep the smaller viewport dimension framed when a browser zoom narrows it.
+export function previewFov(aspect){const safe=Number.isFinite(aspect)&&aspect>0?aspect:1;return 2*Math.atan(Math.tan(.35)/Math.min(1,safe));}
