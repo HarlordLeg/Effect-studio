@@ -59,3 +59,26 @@ test('M.A.D. explosion children join the color manifest even when absent from th
   const overlay=await prepareTechiesArcana(f.builder,techiesArcanaChoice(f.builder,f.row));assert.ok(included);assert.ok(overlay.files.has(root));
  }finally{fs.rmSync(f.root,{recursive:true,force:true});}
 });
+
+test('Techies custom RGB colors particles and icons only; material and texture dependencies stay mounted',async()=>{
+ const f=fixture();try{
+  const material='materials/particle/techies/explosion/techies_explosion_fx.vmat_c',texture='materials/particle/techies/explosion/techies_explosion_fx.vtex_c';
+  const originalClosure=f.builder.store.closure.bind(f.builder.store);
+  f.builder.store.closure=(...args)=>{const result=originalClosure(...args);result.files.set(material,resource(140));result.files.set(texture,resource(141));return result;};
+  const originalRun=f.builder.run;let sawParticle=false;
+  f.builder.run=async(exe,args,opts)=>{
+   if(args[0]==='--terrorblade-arcana'){
+    const request=JSON.parse(fs.readFileSync(args[1]));
+    assert.ok(request.files.every(row=>row.name.endsWith('.vpcf_c')||row.name.startsWith('panorama/')));
+    sawParticle=request.files.some(row=>row.name.endsWith('.vpcf_c')&&!row.restoreOnly);
+    for(const row of request.files)fs.copyFileSync(row.input,row.output);return '';
+   }
+   assert.notEqual(args[0],'--relocate');return originalRun(exe,args,opts);
+  };
+  const row={...f.row,arcana:{...f.row.arcana,customColor:true}};
+  const overlay=await prepareTechiesArcana(f.builder,techiesArcanaChoice(f.builder,row));
+  assert.ok(sawParticle);assert.ok(!overlay.files.has(material));assert.ok(!overlay.files.has(texture));
+  assert.ok([...overlay.files.keys()].some(n=>n.startsWith('panorama/')&&n.endsWith('.vtex_c')));
+  assert.deepEqual(overlay.files.get(techiesBody),f.fixed);
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});
