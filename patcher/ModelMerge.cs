@@ -194,6 +194,8 @@ internal static class ModelMerge
         var meshGroups=Values(root,"m_meshGroups").ToList();if(meshGroups.Count>=63)throw new InvalidDataException("Host has no free mesh group bit");
         var mergedMask=1UL<<meshGroups.Count;meshGroups.Add(new KVObject("harlord_merged"));root["m_meshGroups"]=Array(meshGroups);
         root["m_nDefaultMeshGroupMask"]=new KVObject((root.TryGetValue("m_nDefaultMeshGroupMask",out var maskValue)?Mask(maskValue):ulong.MaxValue)|mergedMask);
+        var morphBlock=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
+        var mergedMorph=morphBlock is null?null:Read(host,original,morphBlock);var morphEdited=false;
         var originalSkeleton=Values(root["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();
         foreach(var entry in request.Donors){
             var bytes=File.ReadAllBytes(entry.Input);using var donor=new Resource{FileName=entry.Input};donor.Read(entry.Input);if(donor.DataBlock is not Model)throw new InvalidDataException("Merge donor must be a model");
@@ -205,7 +207,7 @@ internal static class ModelMerge
             var normalizedMorphs=new Dictionary<int,byte[]>();
             if(!entry.MetadataOnly){
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
-                if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);var hostData=hostMorph is null?null:Read(host,original,hostMorph);var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(!entry.NeutralizeOriginalMorph||hostData is null)throw new InvalidDataException("Donor morph controller order requires a dedicated merge profile");NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
+                if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
             var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase);
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
@@ -256,18 +258,50 @@ internal static class ModelMerge
             var mesh=Read(host,original,block);if(OverrideMeshAttachments(mesh.Data.Root,attachmentOverrides)==0)continue;
             var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
         }
+        if(morphEdited&&mergedMorph is not null&&morphBlock is not null)chunks[host.Blocks.IndexOf(morphBlock)]=new Chunk(BlockType.MRPH,Serialize(mergedMorph,original[(int)morphBlock.Offset]));
         control["embedded_meshes"]=Array(meshRows);
         chunks[host.Blocks.IndexOf(dataBlock)]=new Chunk(dataBlock.Type,Serialize(data,original[(int)dataBlock.Offset]));chunks[host.Blocks.IndexOf(ctrlBlock)]=new Chunk(ctrlBlock.Type,Serialize(ctrl,original[(int)ctrlBlock.Offset]));
         if(host.ExternalReferences is { } references){using var buffer=new MemoryStream();references.Serialize(buffer);chunks[host.Blocks.IndexOf(references)]=new Chunk(references.Type,buffer.ToArray());}
         Write(original,chunks,request.Output);
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);var combined=check.DataBlock as Model??throw new InvalidDataException("Merged resource is not a model");var names=Values(combined.Data["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();if(!names.Take(originalSkeleton.Length).SequenceEqual(originalSkeleton))throw new InvalidDataException("Host bone indices changed");
         var decodedMeshes=combined.GetEmbeddedMeshes().ToArray();if(decodedMeshes.Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
-        var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL||editedHostMeshes.Contains(i))continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
+        var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL||(morphEdited&&b==morphBlock)||editedHostMeshes.Contains(i))continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
         File.WriteAllText(request.Output+".merge.json",JsonSerializer.Serialize(new{meshes=imported,bones=names.Length,preservedHostBlocks=host.Blocks.Count}));Console.WriteLine("[OK] Embedded model merge: "+imported.Count+" meshes, "+names.Length+" bones; host animations and physics preserved");
     }
     // The Wilding Tiger appends a zero-default "orig" shape controller which
     // the base hero never drives. Keep its atlas/shape indices, but evaluate
     // that one shape at neutral instead of shifting all facial controllers.
+    // Controller indices are local to the donor's table. Keep the host prefix
+    // intact (animation tracks use it), then append genuinely new named inputs.
+    // Shape indices, atlas rectangles and FETCH2 rule references stay untouched.
+    internal static void RemapMorphControllers(KVObject donor,KVObject host){
+        var source=Values(donor,"m_FlexControllers");var target=Values(host,"m_FlexControllers").ToList();
+        string Name(KVObject c)=>Text(c["m_szName"]);
+        if(source.Select(Name).Distinct(StringComparer.Ordinal).Count()!=source.Length||target.Select(Name).Distinct(StringComparer.Ordinal).Count()!=target.Count)throw new InvalidDataException("Duplicate morph controller name");
+        var mapping=new int[source.Length];var transforms=new (float Scale,float Bias)[source.Length];
+        for(var i=0;i<source.Length;i++){
+            var index=target.FindIndex(c=>Name(c)==Name(source[i]));
+            if(index<0){index=target.Count;target.Add(source[i]);}
+            else if(Text(source[i]["m_szType"])!=Text(target[index]["m_szType"]))throw new InvalidDataException("Incompatible morph controller type: "+Name(source[i]));
+            float F(KVObject row,string key)=>row[key].ToSingle(CultureInfo.InvariantCulture);
+            var sourceMin=F(source[i],"min");var sourceMax=F(source[i],"max");var targetMin=F(target[index],"min");var targetMax=F(target[index],"max");
+            if(!float.IsFinite(sourceMin)||!float.IsFinite(sourceMax)||!float.IsFinite(targetMin)||!float.IsFinite(targetMax)||sourceMax<=sourceMin||targetMax<=targetMin)throw new InvalidDataException("Invalid morph controller range");
+            var scale=(sourceMax-sourceMin)/(targetMax-targetMin);transforms[i]=(scale,sourceMin-targetMin*scale);mapping[i]=index;
+        }
+        var ops=Values(donor,"m_FlexRules").SelectMany(r=>Values(r,"m_FlexOps")).ToArray();
+        var allowed=new HashSet<string>{"FLEX_OP_CONST","FLEX_OP_FETCH1","FLEX_OP_FETCH2","FLEX_OP_ADD","FLEX_OP_SUB","FLEX_OP_MUL","FLEX_OP_DIV","FLEX_OP_NEG","FLEX_OP_MAX","FLEX_OP_MIN"};
+        foreach(var op in ops){var code=Text(op["m_OpCode"]);if(!allowed.Contains(code))throw new InvalidDataException("Morph remapping requires unsupported operator: "+code);if(code=="FLEX_OP_FETCH1"&&(Number(op["m_Data"])<0||Number(op["m_Data"])>=mapping.Length))throw new InvalidDataException("Invalid morph controller reference");}
+        KVObject Operation(string code,float value){var op=KVObject.Collection();op["m_OpCode"]=new KVObject(code);op["m_Data"]=new KVObject(value);return op;}
+        foreach(var rule in Values(donor,"m_FlexRules")){
+            var remapped=new List<KVObject>();foreach(var op in Values(rule,"m_FlexOps")){
+                remapped.Add(op);if(Text(op["m_OpCode"])!="FLEX_OP_FETCH1")continue;
+                var index=Number(op["m_Data"]);op["m_Data"]=new KVObject(mapping[index]);var (scale,bias)=transforms[index];
+                if(scale!=1){remapped.Add(Operation("FLEX_OP_CONST",scale));remapped.Add(Operation("FLEX_OP_MUL",0));}
+                if(bias!=0){remapped.Add(Operation("FLEX_OP_CONST",bias));remapped.Add(Operation("FLEX_OP_ADD",0));}
+            }rule["m_FlexOps"]=Array(remapped);
+        }
+        host["m_FlexControllers"]=Array(target);donor["m_FlexControllers"]=Array(target);
+    }
     internal static void NormalizeOriginalMorph(KVObject donor,KVObject host){
         var source=Values(donor,"m_FlexControllers");var target=Values(host,"m_FlexControllers");
         if(source.Length!=target.Length+1||Text(source[^1]["m_szName"])!="orig"||source[^1]["min"].ToSingle(CultureInfo.InvariantCulture)!=0)throw new InvalidDataException("Unsupported original morph profile");

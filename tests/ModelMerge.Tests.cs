@@ -26,6 +26,20 @@ internal static class ModelMergeTests
   }
 
   {
+   KVObject C(string name,float min=0,float max=1){var c=KVObject.Collection();c["m_szName"]=new KVObject(name);c["m_szType"]=new KVObject("default");c["min"]=new KVObject(min);c["max"]=new KVObject(max);return c;}
+   KVObject M(KVObject[] cs,int index){var m=KVObject.Collection();m["m_FlexControllers"]=Array(cs);var op=KVObject.Collection();op["m_OpCode"]=new KVObject("FLEX_OP_FETCH1");op["m_Data"]=new KVObject(index);var rule=KVObject.Collection();rule["m_nFlex"]=new KVObject(7);rule["m_FlexOps"]=Array(op);m["m_FlexRules"]=Array(rule);m["m_pTextureAtlas"]=new KVObject("unchanged");return m;}
+   var hostControllerMorph=M([C("jaw"),C("eye",-1,1)],0);var donorControllerMorph=M([C("eye"),C("jaw"),C("phoneme")],0);
+   ModelMerge.RemapMorphControllers(donorControllerMorph,hostControllerMorph);
+   Check(hostControllerMorph["m_FlexControllers"].Count==3&&hostControllerMorph["m_FlexControllers"][0]["m_szName"].ToString(null)=="jaw");
+   var ops=donorControllerMorph["m_FlexRules"][0]["m_FlexOps"];
+   Check(ops.Count==5&&ops[0]["m_Data"].ToInt32(null)==1);
+   Check(ops[1]["m_Data"].ToSingle(null)==0.5f&&ops[2]["m_OpCode"].ToString(null)=="FLEX_OP_MUL"&&ops[3]["m_Data"].ToSingle(null)==0.5f);
+   Check(donorControllerMorph["m_FlexRules"][0]["m_nFlex"].ToInt32(null)==7&&donorControllerMorph["m_pTextureAtlas"].ToString(null)=="unchanged");
+   Check(hostControllerMorph["m_FlexRules"][0]["m_FlexOps"][0]["m_Data"].ToInt32(null)==0);
+   var invalid=M([C("jaw")],2);try{ModelMerge.RemapMorphControllers(invalid,hostControllerMorph);throw new Exception("Invalid controller index accepted");}catch(InvalidDataException){}
+   var duplicate=M([C("jaw"),C("jaw")],0);try{ModelMerge.RemapMorphControllers(duplicate,hostControllerMorph);throw new Exception("Duplicate controller accepted");}catch(InvalidDataException){}
+  }
+  {
    KVObject Controller(string name){var c=KVObject.Collection();c["m_szName"]=new KVObject(name);c["m_szType"]=new KVObject("default");c["min"]=new KVObject(0);c["max"]=new KVObject(1);return c;}
    KVObject Morph(bool extra){var m=KVObject.Collection();m["m_FlexControllers"]=extra?Array(Controller("jaw"),Controller("orig")):Array(Controller("jaw"));var fetch=KVObject.Collection();fetch["m_OpCode"]=new KVObject("FLEX_OP_FETCH1");fetch["m_Data"]=new KVObject(extra?1:0);var rule=KVObject.Collection();rule["m_nFlex"]=new KVObject(7);rule["m_FlexOps"]=Array(fetch);m["m_FlexRules"]=Array(rule);m["m_pTextureAtlas"]=new KVObject("original_atlas");return m;}
    var hostMorph=Morph(false);var donorMorph=Morph(true);ModelMerge.NormalizeOriginalMorph(donorMorph,hostMorph);
