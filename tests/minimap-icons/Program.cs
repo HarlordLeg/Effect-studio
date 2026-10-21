@@ -11,5 +11,10 @@ try{
  Apply(new object[]{new {target="tinted",source="red",targetRect=Rect(0),sourceRect=Rect(1),color=new[]{0,0,255},inputIcon=input}});
  using(var r=new Resource{FileName=output}){r.Read(output);var t=(Texture)r.DataBlock;var bytes=File.ReadAllBytes(output).AsSpan((int)(t.Offset+t.Size)).ToArray();if(bytes[0]!=0||bytes[1]!=0||bytes[2]!=255||bytes[3]!=128||!bytes.AsSpan(4).SequenceEqual(original.AsSpan(4)))throw new Exception("Minimap RGB changed alpha, a neighboring icon or the requested color");}
  foreach(var operations in new[]{new object[]{new {target="outside",source="B",targetRect=Rect(4),sourceRect=Rect(1)}},new object[]{new {target="A",source="B",targetRect=Rect(0,2),sourceRect=Rect(1,2)},new {target="overlap",source="B",targetRect=Rect(1),sourceRect=Rect(3)}}}){try{Apply(operations);throw new Exception("Invalid minimap rectangles were accepted");}catch(TargetInvocationException error)when(error.InnerException is InvalidDataException){}}
+ var type=Assembly.Load("Dota2UnusualPatcher").GetType("MinimapIcons")!;var rectType=type.GetNestedType("Rect",BindingFlags.NonPublic)!;
+ var tupleType=typeof(ValueTuple<,>).MakeGenericType(rectType,rectType);var resizing=Array.CreateInstance(tupleType,1);
+ resizing.SetValue(Activator.CreateInstance(tupleType,Activator.CreateInstance(rectType,0,0,2,1),Activator.CreateInstance(rectType,3,0,1,1)),0);
+ var resized=(byte[])type.GetMethod("CopyCells",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new object[]{original,4,1,resizing})!;
+ if(!resized.AsSpan(0,4).SequenceEqual(original.AsSpan(12,4))||!resized.AsSpan(4,4).SequenceEqual(original.AsSpan(12,4))||!resized.AsSpan(8).SequenceEqual(original.AsSpan(8)))throw new Exception("Packed-sheet resampling changes alpha or neighboring cells");
  Console.WriteLine("Minimap atlas: original donor snapshot, multiple heroes, alpha, unchanged cells, dimensions, flags, RGB and invalid rectangles passed.");
 }finally{Directory.Delete(root,true);}
