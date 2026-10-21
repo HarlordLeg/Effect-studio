@@ -61,14 +61,14 @@ export function startServer({port:overridePort,adminAuth}={}) {
         const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
         const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
-        if(url.pathname==='/api/admin/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder):cosmeticCatalog(builder));
+        if(url.pathname==='/api/admin/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder,{admin:true}):cosmeticCatalog(builder,{admin:true}));
         if(url.pathname==='/api/admin/cosmetic-heroes'&&req.method==='GET')return json(res,200,{heroes:builder.catalog.heroes.map(h=>({id:h.id,name:h.name,isPersona:h.isPersona}))});
         if(url.pathname==='/api/admin/cosmetic-icon'&&req.method==='GET'){
-          const item=cosmeticCatalog(builder).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
+          const item=cosmeticCatalog(builder,{admin:true}).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
           try{const style=item.styles?.find(s=>s.id===url.searchParams.get('styleId'));const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:style?.imageInventory??item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
         }
         if(url.pathname==='/api/admin/build-cosmetics'&&req.method==='POST'){
-          const data=await body(req),cosmetics=cosmeticChoices(builder,data.cosmetics??[]);if(!cosmetics.length)throw new Error('Choose cosmetics');vpkFilename(data.vpkNumber??1);
+          const data=await body(req),cosmetics=cosmeticChoices(builder,data.cosmetics??[],{admin:true});if(!cosmetics.length)throw new Error('Choose cosmetics');vpkFilename(data.vpkNumber??1);
           const job=builder.create([],adminOwner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:[],source:'admin'});return json(res,202,publicJob(job));
         }
         const adminJob=url.pathname.match(/^\/api\/admin\/jobs\/([a-f0-9]{32})(\/download)?$/);
