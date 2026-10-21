@@ -9,7 +9,7 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false);
     private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
@@ -44,7 +44,7 @@ internal static class ModelMerge
         if(Math.Abs(scale.X-scale.Y)>0.00001f||Math.Abs(scale.X-scale.Z)>0.00001f)throw new InvalidDataException("Nonuniform root attachment scale");
         return new(){["m_bonePosParent"]=Array(new[]{translation.X,translation.Y,translation.Z}.Select(v=>new KVObject(v))),["m_boneRotParent"]=Array(new[]{rotation.X,rotation.Y,rotation.Z,rotation.W}.Select(v=>new KVObject(v))),["m_boneScaleParent"]=new KVObject(scale.X)};
     }
-    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false,bool matchBoneCase=false,IReadOnlySet<string>? knownRootBones=null){
+    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false,bool matchBoneCase=false,IReadOnlySet<string>? knownRootBones=null,bool attachMorphlingSharkRoots=false){
         var hostNames=Values(host,"m_boneName").Select(Text).ToList();var donorNames=Values(donor,"m_boneName").Select(Text).ToArray();
         if(hostNames.Distinct(StringComparer.Ordinal).Count()!=hostNames.Count||donorNames.Distinct(StringComparer.Ordinal).Count()!=donorNames.Length)throw new InvalidDataException("Duplicate skeleton bone name");
         var map=new int[donorNames.Length];var added=new List<int>();var attachedRoots=new Dictionary<int,(int Parent,Dictionary<string,KVObject> Pose)>();
@@ -58,7 +58,10 @@ internal static class ModelMerge
                 // Keep both bone names and rebase the new child bind pose;
                 // do not make every skeleton name case-insensitive.
                 var rootCaseAlias=roots.Length==1&&string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)&&string.Equals(hostNames[roots[0]],donorNames[i],StringComparison.OrdinalIgnoreCase);
-                if((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1)throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
+                // Fluid Frenzy has independent shark roots absent from Morphling's
+                // base skeleton. Attach only these named roots, preserving bind pose.
+                var sharkRoot=attachMorphlingSharkRoots&&roots.Length==1&&hostNames[roots[0]]=="root"&&(donorNames[i]=="shark_R_01_JNT"||donorNames[i]=="shark_L_01_JNT");
+                if(!sharkRoot&&((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1))throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
                 attachedRoots[i]=(roots[0],RootLocalPose(host,roots[0],donor,i));
             }index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
         foreach(var key in new[]{"m_boneName","m_nParent","m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
@@ -217,7 +220,7 @@ internal static class ModelMerge
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
                 if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
-            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase,knownRootBones);
+            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots);
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
             var renamedBones=entry.MetadataOnly?new Dictionary<string,string>():Values(source["m_modelSkeleton"],"m_boneName").Select((name,index)=>(name:Text(name),mapped:Text(mergedBoneNames[boneMap[index]]))).Where(v=>v.name!=v.mapped).ToDictionary(v=>v.name,v=>v.mapped,StringComparer.Ordinal);
             var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");

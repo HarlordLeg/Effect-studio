@@ -6,6 +6,18 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   KVObject Posed(string name,float x){var s=Skeleton([name],[-1]);s["m_bonePosParent"]=Array(Array(new KVObject(x),new KVObject(0f),new KVObject(0f)));s["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return s;}
+   foreach(var side in new[]{"R","L"}){
+    var donor=Posed("shark_"+side+"_01_JNT",10f);
+    try{ModelMerge.MergeSkeleton(Posed("root",2f),donor);throw new Exception("Shark exception enabled globally");}catch(InvalidDataException){}
+    var host=Posed("root",2f);var map=ModelMerge.MergeSkeleton(host,donor,attachMorphlingSharkRoots:true);
+    Check(map.SequenceEqual(new[]{1})&&host["m_nParent"][1].ToInt32(null)==0);
+    Check(Math.Abs(host["m_bonePosParent"][1][0].ToSingle(null)-8f)<0.0001f);
+   }
+   try{ModelMerge.MergeSkeleton(Posed("root",0f),Posed("unknown_root",0f),attachMorphlingSharkRoots:true);throw new Exception("Unknown root accepted by shark exception");}catch(InvalidDataException){}
+  }
+
+  {
    var partialDonor=Skeleton(["Head_0","bicep_R","bicep_L"],[-1,-1,-1]);
    try{ModelMerge.MergeSkeleton(Skeleton(["Spine_3","Head_0"],[-1,0]),partialDonor);throw new Exception("Unverified root accepted");}catch(InvalidDataException){}
    var partialHost=Skeleton(["Spine_3","Head_0"],[-1,0]);
