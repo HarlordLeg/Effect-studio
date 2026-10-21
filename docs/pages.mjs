@@ -12,7 +12,7 @@ async function connect(){
   if(!config.siteKey)throw new Error('Администратор ещё не настроил подключение сайта');
   const session=await fetch(new URL('/api/widget/session',base),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:config.siteKey}),signal:AbortSignal.timeout(20000)});
   const data=await session.json();if(!session.ok)throw new Error(data.error??'Сервер отклонил подключение');
-  const url=new URL(adminMode?'/admin':'/widget',base);url.searchParams.set('token',data.token);url.searchParams.set('lang',document.documentElement.lang);
+  const url=new URL(adminMode?'/admin':'/widget',base);url.searchParams.set('token',data.token);if(!adminMode)url.searchParams.set('page',document.documentElement.dataset.studioPage??'effects');url.searchParams.set('lang',document.documentElement.lang);
   if(adminMode)url.searchParams.set('login',document.getElementById('admin-login').value);
   else if(!visited){url.searchParams.set('visit','1');visited=true;}
   frame.src=url.href;frame.hidden=false;status.hidden=true;

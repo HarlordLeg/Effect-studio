@@ -193,9 +193,10 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
       }
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:'Маршрут не найден'});
       if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET'});
+      const isSection=/^\/(effects|sets|cosmetics|weather)\.html$/.test(url.pathname);
       const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin';
       if(isWidget&&!session)return json(res,401,{error:'Нужна сессия виджета'});
-      const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin)&&session?session.origin:"'none'");
+      const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
       res.setHeader('Content-Security-Policy',csp);
       let file;
       {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}

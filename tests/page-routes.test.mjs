@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {pageFromLocation} from '../public/page-routes.mjs';import {startServer} from '../server.mjs';
+test('section links resolve for direct hosting and GitHub Pages, including embedded page override',()=>{
+ for(const [file,page] of [['effects','effects'],['sets','set'],['cosmetics','cosmetics'],['weather','weather']])assert.equal(pageFromLocation('https://example.org/Effect-studio/'+file+'.html?lang=ru'),page);
+ assert.equal(pageFromLocation('https://example.org/widget?page=weather&token=test'),'weather');assert.equal(pageFromLocation('https://example.org/index.html','set'),'set');assert.equal(pageFromLocation('https://example.org/?page=toString'),'effects');
+});
+test('all section HTML endpoints support direct opening and refresh',async()=>{const {server,url}=await startServer({port:0});try{for(const [file,page] of [['effects','effects'],['sets','set'],['cosmetics','cosmetics'],['weather','weather']]){const response=await fetch(url+'/'+file+'.html');assert.equal(response.status,200);const html=await response.text();assert.ok(html.includes('data-studio-page="'+page+'"'));assert.ok(html.includes('href="weather.html"'));assert.match(response.headers.get('content-type'),/text\/html/);}}finally{await new Promise(r=>server.close(r));}});
