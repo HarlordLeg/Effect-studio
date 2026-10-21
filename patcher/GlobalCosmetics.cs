@@ -42,12 +42,28 @@ internal static class GlobalCosmetics
     }
     private static IEnumerable<string> SoundNames(KVObject value){if(value.IsCollection){foreach(var pair in value)foreach(var s in SoundNames(pair.Value))yield return s;}else if(value.IsArray){foreach(var child in value.Values)foreach(var s in SoundNames(child))yield return s;}else if(value.ValueType==KVValueType.String){var s=value.ToString(CultureInfo.InvariantCulture);if(s.EndsWith(".vsnd")||s.EndsWith(".vsnd_c"))yield return s;}}
     internal static int MapSounds(KVObject target,KVObject source){
-        var lookup=new Dictionary<string,List<KVObject>>(StringComparer.OrdinalIgnoreCase);
-        foreach(var (key,value) in source){if(!value.IsCollection)continue;foreach(var name in SoundNames(value).Select(Semantic).Append(Semantic(key)).Distinct()){if(!lookup.TryGetValue(name,out var list))lookup[name]=list=new();list.Add(value);}}
+        var exact=new Dictionary<string,List<KVObject>>(StringComparer.OrdinalIgnoreCase);
+        var groups=new Dictionary<string,List<KVObject>>(StringComparer.OrdinalIgnoreCase);
+        static string Alias(string name)=>Regex.Replace(name,@"^kill_(1stblood|ownage)(?=_|$)","$1",RegexOptions.IgnoreCase);
+        static string Group(string name)=>Regex.Replace(name,@"_\d+$","");
+        static void Add(Dictionary<string,List<KVObject>> index,string name,KVObject value){if(!index.TryGetValue(name,out var list))index[name]=list=new();if(!list.Contains(value))list.Add(value);}
+        foreach(var (key,value) in source){if(!value.IsCollection)continue;foreach(var name in SoundNames(value).Select(Semantic).Append(Semantic(key)).Select(Alias).Distinct()){Add(exact,name,value);Add(groups,Group(name),value);}}
         var count=0;foreach(var key in target.Keys.ToArray()){
-            if(!target[key].IsCollection)continue;var names=SoundNames(target[key]).Select(Semantic).Prepend(Semantic(key)).Distinct();
-            var match=names.Select(n=>lookup.GetValueOrDefault(n)).FirstOrDefault(v=>v is {Count:>0});
-            if(match is null)continue;var fields=match[0].Where(p=>p.Key.StartsWith("vsnd_",StringComparison.Ordinal)).ToArray();if(fields.Length==0)continue;foreach(var old in target[key].Keys.Where(k=>k.StartsWith("vsnd_",StringComparison.Ordinal)).ToArray())target[key].Remove(old);foreach(var field in fields)target[key][field.Key]=field.Value;count++;
+            if(!target[key].IsCollection)continue;
+            var names=SoundNames(target[key]).Select(Semantic).Prepend(Semantic(key)).Select(Alias).Distinct().ToArray();
+            var match=names.Select(n=>exact.GetValueOrDefault(n)).FirstOrDefault(v=>v is {Count:>0});
+            // The default bank often has an unnumbered event, while DLC lines
+            // append _01/_02. Match the complete event first so countdown 10
+            // can never be confused with countdown 5 or another lane/team.
+            match??=names.Select(n=>groups.GetValueOrDefault(n)).FirstOrDefault(v=>v is {Count:>0});
+            match??=names.Select(n=>groups.GetValueOrDefault(Group(n))).FirstOrDefault(v=>v is {Count:>0});
+            // GLaDOS calls her introductory lines 'prelim', not 'welcome'.
+            if(match is null&&names.Any(n=>Group(n)=="welcome"))match=groups.GetValueOrDefault("prelim");
+            if(match is null)continue;
+            var number=Regex.Match(names.First(),@"_(\d+)$");var index=number.Success?Math.Max(0,int.Parse(number.Groups[1].Value,CultureInfo.InvariantCulture)-1):0;
+            var fields=match[index%match.Count].Where(p=>p.Key.StartsWith("vsnd_",StringComparison.Ordinal)).ToArray();if(fields.Length==0)continue;
+            foreach(var old in target[key].Keys.Where(k=>k.StartsWith("vsnd_",StringComparison.Ordinal)).ToArray())target[key].Remove(old);
+            foreach(var field in fields)target[key][field.Key]=field.Value;count++;
         }return count;
     }
     internal static int CosmeticSkin(KVObject groups,int skin){
@@ -78,7 +94,10 @@ internal static class GlobalCosmetics
             using var target=new Resource{FileName=file.Input};target.Read(file.Input);using var source=new Resource{FileName=file.Source};source.Read(file.Source);
             if(target.DataBlock is not BinaryKV3 targetBank||source.DataBlock is not BinaryKV3 sourceBank)throw new InvalidDataException("Unsupported announcer bank");
             var count=MapSounds(targetBank.Data.Root,sourceBank.Data.Root);if(count==0)throw new InvalidDataException("No matching announcer events; refusing an unchanged voice pack");matched+=count;
-            foreach(var key in targetBank.Data.Root.Keys)if(!SoundNames(targetBank.Data.Root[key]).Any(n=>sourceBank.Data.Root.Values.Any(v=>SoundNames(v).Contains(n))))unmatched.Add(key);
+            var selectedSounds=sourceBank.Data.Root.Values.SelectMany(SoundNames).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var remaining=targetBank.Data.Root.Where(p=>SoundNames(p.Value).Any(n=>!selectedSounds.Contains(n))).Select(p=>p.Key).ToArray();
+            if(file.Kind=="mega_kills"&&remaining.Length>0)throw new InvalidDataException("Incomplete killing-spree replacement: "+string.Join(", ",remaining));
+            unmatched.AddRange(remaining);
             foreach(var (key,value) in sourceBank.Data.Root)if(!targetBank.Data.Root.ContainsKey(key))targetBank.Data.Root[key]=value;
             PersonaVoices.Write(target,file.Input,file.Output);
         }
