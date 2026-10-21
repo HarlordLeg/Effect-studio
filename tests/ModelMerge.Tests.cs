@@ -6,6 +6,12 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   var host=Skeleton(["fk_Pelvis","arm_R"],[-1,0]);
+   var map=ModelMerge.MergeSkeleton(host,Skeleton(["fk_pelvis","arm_R"],[-1,0]),matchBoneCase:true);
+   Check(map.SequenceEqual(new[]{0,1})&&host["m_boneName"].Count==2);
+  }
+
+  {
    KVObject Posed(string name,float x){var s=Skeleton([name],[-1]);s["m_bonePosParent"]=Array(Array(new KVObject(x),new KVObject(0f),new KVObject(0f)));s["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return s;}
    foreach(var side in new[]{"R","L"}){
     var donor=Posed("shark_"+side+"_01_JNT",10f);

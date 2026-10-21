@@ -96,3 +96,17 @@ test('Wilding Tiger head gets an explicit neutral-orig morph profile; old patche
   await assert.rejects(finalizeModelMerges(builder,[choice],packed(),[],temp,'patcher',{}),/modelMergeMorphV1/);assert.equal(calls,0);supported=true;const files=packed();await finalizeModelMerges(builder,[choice],files,[],temp,'patcher',{});assert.equal(calls,1);assert(files.get(h.model).equals(resource(3)));assert(!files.has(staged));
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
+
+test('Pangolier merge opts into unique case matching for fk_pelvis / fk_Pelvis',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-pango-case-'));
+ try{
+  const h=hero('pangolier');const item=h.items[0];item.mergeTarget=h.model;
+  const staged=stagedMergeTarget(h,item),packed=new Map([[h.model,resource(1)],[staged,resource(2)]]);
+  let called=false;
+  const builder={root:temp,store:{read:()=>null},run:async(_,args)=>{
+   if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeV2:true,modelMergeV4:true});
+   const request=JSON.parse(fs.readFileSync(args[1]));assert.equal(request.donors[0].matchBoneCase,true);assert.equal(request.donors[0].attachMorphlingSharkRoots,false);called=true;fs.writeFileSync(request.output,resource(3));
+  }};
+  await finalizeModelMerges(builder,[{hero:h,item}],packed,[],temp,'patcher',{});assert.ok(called);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
