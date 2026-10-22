@@ -5,7 +5,8 @@ export function configureStaticPreview(catalog){catalogData=catalog;client=null;
 export async function assembleStaticPreview(data,catalog,manifest,load){
  const inputRows=data.selections??[{heroId:data.heroId,itemId:data.itemId,styleId:data.styleId,effectIds:data.effectIds??[data.effectId],courierColor:data.courierColor}],heroId=inputRows[0]?.heroId;
  if(!heroId||inputRows.some(r=>r.heroId!==heroId))throw Error('Preview supports one hero at a time');
- if(inputRows.some(r=>r.arcana)||data.previewForm&&data.previewForm!=='normal')throw Error('This custom arcana/form preview has not been prepublished. VPK building remains available.');
+ const entitySlot=data.previewForm?.startsWith('entity:')?data.previewForm.slice(7):null;
+ if(inputRows.some(r=>r.arcana)||data.previewForm&&data.previewForm!=='normal'&&!entitySlot)throw Error('This custom arcana/form preview has not been prepublished. VPK building remains available.');
  let rows=inputRows.filter(r=>!r.stanceId);const stanceRow=inputRows.find(r=>r.stanceId),preferredAnimations=[];
  if(stanceRow){
   if(!manifest.stances?.[heroId])throw Error('Kinetic preview metadata has not been prepublished');
@@ -16,7 +17,10 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
   const option=options.find(o=>o.id===selected);if(option?.available===false)throw Error('This kinetic is unavailable');preferredAnimations.push(...(option?.animations??[]));
  }
  const hero=catalog.heroes.find(h=>h.id===heroId);if(!hero)throw Error('Unknown hero');const reference=manifest.heroes[heroId];if(!reference)throw Error('This hero has not been prepublished yet.');const recipes=await load(reference),selected=[];if(!rows.length){const id=Object.keys(recipes.items).find(id=>id.startsWith('default:'));if(!id)throw Error('Base hero preview has not been prepublished');rows=[{heroId,itemId:id}];}
+ if(entitySlot){const selected=rows.find(r=>recipes.items[r.itemId]?.entity&&recipes.items[r.itemId]?.slot===entitySlot);rows=[selected??{heroId,itemId:'default:'+entitySlot}];}
  for(const original of rows){const row={...original};if(row.styleId!=null){const item=hero.items?.find(i=>i.id===row.itemId),variant=hero.items?.find(i=>(i.styleGroupId??i.id)===(item?.styleGroupId??item?.id)&&String(i.styleId??'0')===String(row.styleId));if(item&&!variant)throw Error('Unavailable item style');if(variant)row.itemId=variant.id;}let recipe=recipes.items[row.itemId??'default:'+row.slot];if(row.styleId!=null&&recipe?.styles?.[row.styleId])recipe=recipe.styles[row.styleId];if(!recipe)throw Error('This item has not been prepublished yet. VPK building remains available.');selected.push({row,recipe});}
+ if(entitySlot&&selected.some(s=>!s.recipe.entity||s.recipe.slot!==entitySlot))throw Error('This summon preview has not been prepublished yet.');
+ if(!entitySlot&&selected.length>1&&selected.some(s=>s.recipe.entity)){const gear=selected.filter(s=>!s.recipe.entity);if(!gear.length)throw Error('Choose a summon preview form');selected.splice(0,selected.length,...gear);}
  if(selected.some(s=>s.recipe.complexMerge&&(s.row.effectIds??[]).some(Boolean)))throw Error('Effects on merged preview meshes have not been prepublished. VPK building remains available.');
  if(selected.length>1&&selected.some(s=>s.recipe.complexMerge))throw Error('This merged preview combination has not been prepublished. VPK building remains available.');
  const baseSelection=selected.find(s=>s.recipe.complexMerge)??selected[0];const replaced=new Set(selected.map(s=>s.recipe.replaces).filter(Boolean));const first=baseSelection.recipe,slots=new Set(selected.map(x=>x.recipe.slot)),parts=first.parts.filter(p=>p.role==='hero'||p.role==='default'&&!slots.has(p.slot)&&!replaced.has(p.id));const effects=[],seen=new Set();

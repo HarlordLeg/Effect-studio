@@ -2,12 +2,16 @@ import {resolveDefaultLoadout} from '../lib/default-loadout.mjs';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {fileURLToPath} from 'node:url';
 import {Builder} from '../lib/build.mjs';import {PreviewService} from '../lib/preview.mjs';import {ItemIcons} from '../lib/item-icons.mjs';import {browserCosmeticCatalog} from '../lib/global-cosmetics.mjs';import {hasTerrorbladeArcana} from '../lib/terrorblade-arcana.mjs';import {hasTechiesArcana} from '../lib/techies-arcana.mjs';import {heroStances} from '../lib/hero-stances.mjs';import {abilityCatalog} from '../lib/ability-catalog.mjs';import {writeStaticFile,atomicJson} from '../lib/static-viewer.mjs';
+export async function exportPublishedChoice(service,choice,job){
+ if(choice.item.setEntity)return service.exportStandalone({...choice,partsOnly:true},job,choice.item,choice);
+ return service.export({...choice,selections:[choice],partsOnly:true},job,null);
+}
 export async function publishStaticViewer(root,config,{heroId=null,missingOnly=false,onProgress=console.log,stop=()=>false}={}){
  const directory=path.resolve(root,config.staticViewerDirectory??'cache/static-viewer'),builder=new Builder(root,config),service=new PreviewService(root,config,builder),icons=new ItemIcons(root,config,builder.store),base=(config.staticViewerBaseUrl??'/static-viewer/').replace(/\/?$/,'/');
  fs.mkdirSync(directory,{recursive:true});let manifest={version:1,heroes:{},effects:{},stances:{},icons:{}};try{manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'),'utf8'));}catch{}const errors=[];
  const optimizedModels=new Map();
  const blob=(value,ext='json')=>{let bytes;if(ext==='json')bytes=JSON.stringify(value);else if(ext==='glb'&&config.staticTextureOptimization!==false){const digest=crypto.createHash('sha256').update(fs.readFileSync(value)).update(fs.readFileSync(path.join(root,'tools/optimize-static-glb.py'))).digest('hex');let file=optimizedModels.get(digest)??path.join(root,'cache','static-webp',digest+'.glb');if(!fs.existsSync(file)){fs.mkdirSync(path.dirname(file),{recursive:true});const staged=file+'.'+process.pid+'.tmp';try{execFileSync(process.platform==='win32'?'py':'python3',[...(process.platform==='win32'?['-3']:[]),path.join(root,'tools/optimize-static-glb.py'),value,staged],{stdio:'pipe',timeout:180000});fs.renameSync(staged,file);}finally{fs.rmSync(staged,{force:true});}}optimizedModels.set(digest,file);bytes=fs.readFileSync(file);}else bytes=fs.readFileSync(value);return writeStaticFile(directory,bytes,ext).url;};
- const icon=async(url,item)=>{if(missingOnly&&manifest.icons[url]&&fs.existsSync(path.join(directory,manifest.icons[url])))return;try{manifest.icons[url]=blob(await icons.get(item),'png');}catch(error){errors.push({url,error:error.message});}};
+ const icon=async(url,item,fallbacks=[])=>{if(missingOnly&&manifest.icons[url]&&fs.existsSync(path.join(directory,manifest.icons[url])))return;try{let file,last;for(const candidate of [item,...fallbacks]){try{file=await icons.get(candidate);break;}catch(error){last=error;}}if(!file)throw last??Error('Inventory image not found');manifest.icons[url]=blob(file,'png');}catch(error){errors.push({url,error:error.message});}};
  const normalizedIcon=(route,params)=>route+'?'+[...new URLSearchParams(params)].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
  try{
  for(const hero of builder.catalog.heroes.filter(h=>!heroId||h.id===heroId)){
@@ -15,14 +19,14 @@ export async function publishStaticViewer(root,config,{heroId=null,missingOnly=f
   let completed=0;const choices=[...hero.items];for(const slot of Object.keys(hero.defaultSlotModels??{}))if(!choices.some(i=>i.id==='default:'+slot))choices.push({id:'default:'+slot,slot,isDefault:true});
   for(const item of choices){if(stop())break;if(missingOnly&&recipes.items[item.id]?.parts?.every(p=>fs.existsSync(path.join(directory,p.url)))){completed++;continue;}const job={id:crypto.randomBytes(16).toString('hex'),owner:'static-publish'};try{
    let choice;try{choice=builder.cosmeticChoice(hero.id,item.id.startsWith('default:')?null:item.id,item.slot);}catch(error){if(item.isDefault)throw error;choice={hero,item,effect:{id:'native-only',particle:null},effects:[],cosmeticsOnly:true};}
-   await service.export({...choice,selections:[choice],partsOnly:true},job,null);
+   await exportPublishedChoice(service,choice,job);
    const loadout=resolveDefaultLoadout(builder.store,choice.hero,choice.item);const parts=job.parts.map((p,i)=>{const url=blob(job.partFiles[i],'glb'),key=path.basename(url,'.glb'),bytes=fs.statSync(path.join(directory,url)).size;return {...p,key,bytes,url,slot:p.role==='default'?loadout.parts.find(part=>part.model===p.id)?.slot??Object.entries(hero.defaultSlotModels??{}).find(([,model])=>model===p.id)?.[0]:choice.item.slot};});
-   const effectFile=path.join(job.directory,'effect.json'),packet=fs.existsSync(effectFile)?JSON.parse(fs.readFileSync(effectFile,'utf8')):{effects:[]};recipes.items[item.id]={slot:choice.item.slot,name:choice.item.name,replaces:choice.item.replacesModel??hero.defaultSlotModels?.[choice.item.slot],complexMerge:!!(choice.item.mergeTarget||choice.item.mergeDefault),parts,native:blob(packet)};
+   const effectFile=path.join(job.directory,'effect.json'),packet=fs.existsSync(effectFile)?JSON.parse(fs.readFileSync(effectFile,'utf8')):{effects:[]};recipes.items[item.id]={entity:!!choice.item.setEntity,slot:choice.item.slot,name:choice.item.name,replaces:choice.item.replacesModel??hero.defaultSlotModels?.[choice.item.slot],complexMerge:!!(choice.item.mergeTarget||choice.item.mergeDefault),parts,native:blob(packet)};
    if(item.imageInventory)await icon(normalizedIcon('/api/item-icon',{heroId:hero.id,itemId:item.id}),item);
   }catch(error){errors.push({hero:hero.id,item:item.id,error:error.message});}finally{if(job.directory)fs.rmSync(job.directory,{recursive:true,force:true});}
   onProgress(`${hero.id} ${++completed}/${choices.length} | errors ${errors.length}`);
   }
-  for(const set of hero.sets??[])await icon(normalizedIcon('/api/set-icon',{heroId:hero.id,setId:set.id}),{model:hero.model,imageInventory:set.imageInventory});
+  for(const set of hero.sets??[])await icon(normalizedIcon('/api/set-icon',{heroId:hero.id,setId:set.id}),{model:hero.model,imageInventory:set.imageInventory},(set.items??[]).map(row=>hero.items.find(i=>i.id===row.itemId)).filter(Boolean));
   manifest.heroes[hero.id]=blob(recipes);try{const options=await heroStances(builder,hero.id);manifest.stances[hero.id]=blob({options:options.options,abilities:abilityCatalog(builder,hero.id,options.options)});}catch(error){errors.push({hero:hero.id,error:error.message});}
   atomicJson(path.join(directory,'publish-progress.json'),manifest);
  }

@@ -32,3 +32,20 @@ test('cached API catalog is invalidated when a new manifest is published',async(
   const result=await(await fetch(url)).json();assert.equal(result.heroes.length,2);assert.equal(result.heroes[0].id,'kunkka');
  }finally{await new Promise(resolve=>server.close(resolve));fs.rmSync(root,{recursive:true,force:true});}
 });
+
+test('static summon form uses its standalone hero and excludes normal equipment',async()=>{
+ const catalog={heroes:[{id:'enigma'}]},recipes={items:{hat:{slot:'head',parts:[{role:'hero',key:'enigma'},{role:'item',key:'hat'}]},eidolon:{entity:true,slot:'ability2',parts:[{role:'hero',key:'eidolon'}],native:'native'},'default:ability2':{entity:true,slot:'ability2',parts:[{role:'hero',key:'default-eidolon'}]}}};
+ const load=async ref=>ref==='native'?{effects:[{scope:'hero',effectId:'native',packet:{}}]}:recipes;
+ const manifest={heroes:{enigma:'recipes'}};
+ const selected=await assembleStaticPreview({previewForm:'entity:ability2',selections:[{heroId:'enigma',itemId:'hat'},{heroId:'enigma',itemId:'eidolon'}]},catalog,manifest,load);
+ assert.deepEqual(selected.parts.map(p=>p.key),['eidolon']);assert.equal(selected.effects[0].scope,'hero');
+ const fallback=await assembleStaticPreview({previewForm:'entity:ability2',heroId:'enigma',itemId:'hat'},catalog,manifest,load);assert.deepEqual(fallback.parts.map(p=>p.key),['default-eidolon']);
+ const normal=await assembleStaticPreview({selections:[{heroId:'enigma',itemId:'hat'},{heroId:'enigma',itemId:'eidolon'}]},catalog,manifest,load);assert.deepEqual(normal.parts.map(p=>p.key),['enigma','hat']);
+});
+
+test('publisher routes eidolons to standalone export and ordinary wearables to hero composition',async()=>{
+ const {exportPublishedChoice}=await import('../tools/publish-static-viewer.mjs'),calls=[],service={async exportStandalone(choice,job,item,chosen){calls.push({route:'standalone',choice,job,item,chosen});},async export(choice,job){calls.push({route:'hero',choice,job});}};
+ const entity={hero:{id:'enigma'},item:{id:'eidolon',setEntity:true,slot:'ability2'}},gear={hero:{id:'enigma'},item:{id:'arms',slot:'arms'}},job={id:'test'};
+ await exportPublishedChoice(service,entity,job);await exportPublishedChoice(service,gear,job);
+ assert.equal(calls[0].route,'standalone');assert.equal(calls[0].item,entity.item);assert.equal(calls[0].chosen,entity);assert.equal(calls[0].choice.partsOnly,true);assert.equal(calls[1].route,'hero');assert.deepEqual(calls[1].choice.selections,[gear]);
+});
