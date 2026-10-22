@@ -1,6 +1,6 @@
 import {adminArcanaCatalog,adminArcanaChoices} from './lib/admin-arcanas.mjs';
 import {Notifications} from './lib/notifications.mjs';
-import {drowArcanaChoices,drowArcanaCatalog} from './lib/drow-arcana.mjs';
+import {drowArcanaChoices,drowArcanaCatalog,drowArcanaIcons} from './lib/drow-arcana.mjs';
 import {assembleStaticPreview} from './public/static-preview.mjs';
 import {createStaticViewer} from './lib/static-viewer.mjs';
 import {createHash,randomBytes} from 'node:crypto';
@@ -59,7 +59,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
       if(url.pathname==='/api/notifications'&&req.method==='GET'){res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Cache-Control','public, max-age=60');return json(res,200,notifications.feed());}
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
-      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
@@ -149,6 +149,9 @@ export function startServer({port:overridePort,adminAuth}={}) {
         const id=url.pathname.match(/^\/images\/personas\/([a-z0-9_]+)\.png$/)?.[1],hero=builder.catalog.heroes.find(h=>h.id===id&&h.isPersona);
         if(!hero)return json(res,404,{error:'Persona not found'});
         try{const texture='panorama/images/heroes/'+hero.personaNpcName+'_png.vtex_c';const file=builder.store.read(texture)?await itemIcons.getTexture(texture,{model:hero.model}):await itemIcons.get({model:hero.model,imageInventory:hero.personaInventoryImage});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Persona portrait unavailable'});}
+      }
+      if(url.pathname==='/api/drow-icon'&&req.method==='GET'){
+        try{const raw=url.searchParams.get('style');if(!['0','1'].includes(raw))throw Error('Invalid style');const texture=drowArcanaIcons(builder,Number(raw))[url.searchParams.get('icon')];if(!texture)throw Error('Unknown Drow icon');const file=await itemIcons.getTexture(texture,{model:builder.catalog.heroes.find(h=>h.id==='drow_ranger').model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Drow icon unavailable'});}
       }
       if(url.pathname==='/api/ability-icon'&&req.method==='GET'){
         const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId'));

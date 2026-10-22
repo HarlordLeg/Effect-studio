@@ -17,3 +17,25 @@ test('new arcana endpoints reject unauthenticated public and widget callers befo
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-admin-arcanas-'));fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify({heroes:[],effects:[]}));fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({archives:[],catalog:'catalog.json',autoCatalog:false,patcher:'none'}));const {server,url,previews}=await startServer({root,port:0,adminAuth:{verify(t){if(t!=='admin')throw Error('Unauthorized');}}});
  try{for(const id of ['lina','monkey_king']){assert.equal((await fetch(url+'/api/admin/test-arcana/'+id)).status,401);assert.equal((await fetch(url+'/api/admin/build-test-arcana/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);}const catalog=await (await fetch(url+'/api/catalog')).json();assert.equal(catalog.linaArcana,undefined);assert.equal(catalog.monkeyKingArcana,undefined);}finally{previews.dispose();await new Promise(r=>server.close(r));fs.rmSync(root,{recursive:true,force:true});}
 });
+
+import {Builder} from '../lib/build.mjs';import {packVpk,Vpk} from '../lib/vpk.mjs';
+test('full admin arcana packing applies animations to the already skinned body for Lina and all four MK forms',async()=>{
+ for(const id of ['lina','monkey_king'])for(let style=0;style<(id==='lina'?1:4);style++){
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-arcana-pack-'));
+  try{
+   const b=builder(),rows=adminArcanaChoices(b,id,{style}),original=Buffer.alloc(16);original.writeUInt32LE(16);original.writeUInt32LE(8,8);
+   // Keep native activity and skin orchestration real; unrelated particle/image extraction is covered separately.
+   for(const row of rows){const n=row.item.nativeOverrides;n.particles=[];n.particleBindings=[];n.entries=[];n.particleReplacements={};}
+   const assets=new Map(rows.map(r=>[r.item.model,original]));fs.writeFileSync(path.join(root,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(root,'patcher'),'stub');fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify(b.catalog));let calls=0;
+   const run=async(_,args)=>{
+    if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,materialSkin:true,activityRulesV1:true,activityRulesV9:true,heroActivitiesV4:true});
+    if(args[0]==='--input'){const input=args[1],out=args[args.indexOf('--output')+1];assert.equal(Number(args[args.indexOf('--skin')+1]),id==='lina'?1:style+1);fs.writeFileSync(out,Buffer.concat([fs.readFileSync(input),Buffer.from('skin:'+String(style))]));return '';}
+    if(args[0]==='--activity-rules'){calls++;const m=JSON.parse(fs.readFileSync(args[1]));assert.match(fs.readFileSync(m.input).toString(),/skin:/);fs.writeFileSync(m.output,Buffer.concat([fs.readFileSync(m.input),Buffer.from(':activity')]));return '';}
+    if(args[0]==='--relocate'){const m=JSON.parse(fs.readFileSync(args[1]));for(const f of m.files)fs.copyFileSync(f.input,f.output);return '';}
+    throw Error('Unexpected patch step: '+args[0]);
+   };
+   const engine=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),job={id:'arcana'};
+   await engine.build(rows,job);assert.equal(job.status,'ready');assert.equal(calls,1);const packed=new Vpk(job.file);assert.match(packed.read(rows[0].hero.model).toString(),/skin:.*:activity/);assert.deepEqual(packed.read(rows[0].hero.defaultSlotModels.head),original);engine.dispose();
+  }finally{fs.rmSync(root,{recursive:true,force:true});}
+ }
+});

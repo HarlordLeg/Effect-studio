@@ -1,26 +1,24 @@
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {fileURLToPath} from 'node:url';
-import {Builder} from '../lib/build.mjs';import {PreviewService} from '../lib/preview.mjs';import {drowArcanaChoices} from '../lib/drow-arcana.mjs';import {writeStaticFile,atomicJson} from '../lib/static-viewer.mjs';
+import {Builder} from '../lib/build.mjs';import {PreviewService} from '../lib/preview.mjs';import {ItemIcons} from '../lib/item-icons.mjs';import {packVpk} from '../lib/vpk.mjs';import {drowArcanaChoices,drowArcanaIcons} from '../lib/drow-arcana.mjs';import {writeStaticFile,atomicJson,publishCatalogIndex} from '../lib/static-viewer.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),config=JSON.parse(fs.readFileSync(path.join(root,'config.json'),'utf8').replace(/^\uFEFF/,''));
-const lock=path.join(root,'cache/static-publish.lock');fs.mkdirSync(path.dirname(lock),{recursive:true});const fd=fs.openSync(lock,'wx');fs.writeSync(fd,String(process.pid));
-let service;
+const lock=path.join(root,'cache/static-publish.lock');fs.mkdirSync(path.dirname(lock),{recursive:true});const fd=fs.openSync(lock,'wx');fs.writeSync(fd,String(process.pid));let service;
 try{
- const directory=path.resolve(root,config.staticViewerDirectory??'cache/static-viewer'),file=path.join(directory,'manifest.json'),manifest=JSON.parse(fs.readFileSync(file,'utf8')),builder=new Builder(root,config);service=new PreviewService(root,config,builder);
- manifest.arcanas??={};manifest.arcanas.drow_ranger??={};
- const blob=(bytes,ext)=>writeStaticFile(directory,bytes,ext).url;
- for(const style of [0,1])for(const weaponId of ['37144','34594']){
-  const rows=drowArcanaChoices(builder,{style,weaponId}),parts=[],effects=[];const body=rows[0].item.model;
-  for(const row of rows){
-   const hero={...row.hero,model:body,defaultModels:[],defaultSlotModels:{},embeddedWearableSlots:['arcana']};
-   const job={id:crypto.randomBytes(16).toString('hex'),owner:'drow-static-publish'};
-   try{await service.export({...row,hero,partsOnly:true},job,null);
-    const bytes=fs.readFileSync(path.join(job.directory,'item.glb')),url=blob(bytes,'glb');
-    parts.push({id:row.item.id,url,key:path.basename(url,'.glb'),bytes:bytes.length,role:row.item.slot==='hero_base'?'hero':'default',slot:row.item.slot});
-    const packet=JSON.parse(fs.readFileSync(path.join(job.directory,'effect.json'),'utf8'));
-    for(const entry of packet.effects??[])effects.push({...entry,itemId:row.item.id,slot:row.item.slot,scope:row.item.slot==='hero_base'?'hero':'item'});
-   }finally{if(job.directory)fs.rmSync(job.directory,{recursive:true,force:true});}
-  }
-  const native=blob(JSON.stringify({effects}),'json');manifest.arcanas.drow_ranger[style+':'+weaponId]=blob(JSON.stringify({name:'Dread Retribution',slot:'arcana',parts,native}),'json');
-  console.log('Drow style '+style+' crossbow '+weaponId+' published');
+ const directory=path.resolve(root,config.staticViewerDirectory??'cache/static-viewer'),file=path.join(directory,'manifest.json'),manifest=JSON.parse(fs.readFileSync(file,'utf8')),builder=new Builder(root,config),icons=new ItemIcons(root,config,builder.store);service=new PreviewService(root,config,builder);
+ manifest.arcanas??={};manifest.arcanas.drow_ranger??={};manifest.icons??={};const hero=builder.catalog.heroes.find(h=>h.id==='drow_ranger');if(!hero)throw Error('Drow Ranger missing');
+ const blob=(bytes,ext='json')=>writeStaticFile(directory,bytes,ext).url;
+ const key=(route,values)=>route+'?'+[...new URLSearchParams(values)].sort(([a],[b])=>a.localeCompare(b)).map(([a,b])=>encodeURIComponent(a)+'='+encodeURIComponent(b)).join('&');
+ async function exportRow(row){
+  const overrides=new Map((row.item.nativeOverrides?.entries??[]).filter(e=>e.type==='material').map(e=>{const b=builder.store.read(e.source);if(!b)throw Error('Material missing: '+e.source);return [e.target,b];}));let overlay;
+  if(overrides.size){const bytes=packVpk(overrides),hash=crypto.createHash('sha256').update(bytes).digest('hex'),folder=path.join(root,'cache/drow-publish-overlays');fs.mkdirSync(folder,{recursive:true});const file=path.join(folder,hash+'.vpk');if(!fs.existsSync(file))fs.writeFileSync(file,bytes);overlay={file,key:hash};}
+  const h={...row.hero,model:'models/items/drow/drow_arcana/drow_arcana.vmdl_c',defaultModels:[],defaultSlotModels:{},embeddedWearableSlots:['arcana']},job={id:crypto.randomBytes(16).toString('hex'),owner:'drow-static-publish'};
+  try{await service.export({...row,hero:h,partsOnly:true,...(overlay?{arcanaOverlay:overlay}:{})},job,null);const bytes=fs.readFileSync(path.join(job.directory,'item.glb')),url=blob(bytes,'glb'),packet=JSON.parse(fs.readFileSync(path.join(job.directory,'effect.json'),'utf8'));return {part:{id:row.item.id,url,key:path.basename(url,'.glb'),bytes:bytes.length,slot:row.item.slot},effects:(packet.effects??[]).map(e=>({...e,itemId:row.item.id,slot:row.item.slot,scope:row.item.slot==='hero_base'?'hero':'item'}))};}finally{if(job.directory)fs.rmSync(job.directory,{recursive:true,force:true});}
  }
- manifest.updated=new Date().toISOString();atomicJson(file,manifest);console.log('Upload static assets to R2 next.');
+ for(const style of [0,1]){
+  const items={};for(const item of hero.items.filter(i=>i.requiresDrowArcana&&i.slot!=='weapon')){const row=drowArcanaChoices(builder,{style,items:{[item.slot]:item.id}}).find(r=>r.item.slot===item.slot),result=await exportRow(row);items[item.id]={slot:item.slot,name:item.name,parts:[{...result.part,role:'item'}],native:blob(JSON.stringify({effects:result.effects}))};console.log('Drow style '+style+' '+item.name);}
+  for(const weaponId of ['37144','34594']){const rows=drowArcanaChoices(builder,{style,weaponId}),parts=[],effects=[];for(const row of rows){const result=await exportRow(row);parts.push({...result.part,role:row.item.slot==='hero_base'?'hero':'default'});effects.push(...result.effects);}manifest.arcanas.drow_ranger[style+':'+weaponId]=blob(JSON.stringify({name:'Dread Retribution',slot:'arcana',parts,items,native:blob(JSON.stringify({effects}))}));}
+  for(const [id,texture]of Object.entries(drowArcanaIcons(builder,style))){const png=await icons.getTexture(texture,{model:hero.model});manifest.icons[key('/api/drow-icon',{style,icon:id})]=blob(fs.readFileSync(png),'png');}
+ }
+ for(const item of hero.items.filter(i=>i.requiresDrowArcana&&i.imageInventory)){const png=await icons.get(item);manifest.icons[key('/api/item-icon',{heroId:hero.id,itemId:item.id})]=blob(fs.readFileSync(png),'png');}
+ for(const set of hero.sets.filter(s=>s.arcana)){const item=hero.items.find(i=>i.id===set.items[0]?.itemId),png=await icons.get({model:hero.model,imageInventory:set.imageInventory??item?.imageInventory});manifest.icons[key('/api/set-icon',{heroId:hero.id,setId:set.id})]=blob(fs.readFileSync(png),'png');}
+ const old=JSON.parse(fs.readFileSync(path.join(directory,manifest.catalog),'utf8')),catalog={...old,drowArcana:true,heroes:old.heroes.map(h=>h.id===hero.id?hero:h)};manifest.catalog=blob(JSON.stringify(catalog));Object.assign(manifest,publishCatalogIndex(directory,catalog));manifest.updated=new Date().toISOString();atomicJson(file,manifest);console.log('Drow models, both sets and both icon styles published. Upload to R2 next.');
 }finally{service?.dispose();fs.closeSync(fd);fs.rmSync(lock,{force:true});}
