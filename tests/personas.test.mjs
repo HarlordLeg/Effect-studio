@@ -52,3 +52,14 @@ test('Persona body carries default transformed models while normal summons are n
  assert.ok(persona.personaNative.entries.some(e=>e.target==='models/units/base_dragon.vmdl_c'&&e.source==='models/units/persona_dragon.vmdl_c'));
  const normal=catalog.find(h=>!h.isPersona);normal.entitySlots={summon:{target:'models/units/summon.vmdl_c'}};normal.defaultSlotModels.summon='models/units/summon.vmdl_c';configurePersonaReplacements({heroes:catalog});assert.ok(!persona.personaHiddenTargets.includes('models/units/summon.vmdl_c'));
 });
+
+test('owned persona replaces only selected persona slots without a base hero swap',()=>{
+ const hero={id:'test_persona1',isPersona:true,personaId:'1',model:'models/heroes/test/persona.vmdl_c',personaReplacementModel:'models/heroes/test/base.vmdl_c',personaReplacementSlots:{head:'models/heroes/test/base_head.vmdl_c'},personaHiddenTargets:['models/heroes/test/base_arms.vmdl_c'],personaVoice:{file:'soundevents/base.vsndevts_c'},defaultSlotModels:{head:'models/heroes/test/persona_head.vmdl_c',arms:'models/heroes/test/persona_arms.vmdl_c'}};
+ const item={id:'hat',slot:'head',model:'models/items/test/hat.vmdl_c',personaId:'1',isPersonaItem:true};
+ const builder={cosmeticChoice(){throw Error('Must not add unselected default gear');}};
+ const rows=completePersonaChoices(builder,[{hero,item,personaOwned:true,effects:[]}]);
+ assert.equal(rows.length,1);assert.equal(rows[0].item.replacesModel,hero.defaultSlotModels.head);assert.equal(rows[0].hero.model,hero.model);assert.equal(rows[0].hero.personaVoice,null);assert.deepEqual(rows[0].hero.personaHiddenTargets,[]);assert.equal(rows.some(row=>row.item.personaBody),false);
+ const merged=completePersonaChoices(builder,[{hero,item:{...item,mergeTarget:hero.personaReplacementModel},personaOwned:true,effects:[]}]);assert.equal(merged[0].item.mergeTarget,hero.model);
+ const bodyRows=completePersonaChoices(builder,[{hero,item:{...item,nativeOverrides:{heroModels:[{asset:hero.npcName,model:'models/items/test/alternate_persona.vmdl_c'}]}},personaOwned:true,effects:[]}]);assert.equal(bodyRows.find(row=>row.item.personaBody).item.replacesModel,hero.model);
+ assert.throws(()=>completePersonaChoices(builder,[{hero,item,personaOwned:true},{hero,item:{...item,slot:'arms'},personaOwned:false}]),/ownership modes/);
+});

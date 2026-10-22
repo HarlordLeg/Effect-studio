@@ -283,3 +283,16 @@ main:has(>#cosmetics-studio:not([hidden]))>.shared-basket{margin-top:var(--cosme
 
 /* Section links keep the existing navigation appearance. */
 .studio-modes>a.secondary{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer}.studio-modes>a[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+
+/* Owned personas and viewport-safe studio panels. */
+.persona-owned-control{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:8px;line-height:1.4}
+.persona-owned-control input{width:18px;height:18px;flex:0 0 18px;accent-color:var(--accent)}
+.weather-map-picker[open]{display:flex;flex-direction:column;overflow:hidden;height:min(85dvh,900px);max-width:calc(100vw - 24px)}
+.weather-map-picker .hero-picker-top,.weather-map-picker .hero-picker-search{flex:0 0 auto}
+.weather-map-picker .weather-map-grid{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;grid-auto-rows:max-content;padding-right:8px;padding-bottom:12px}
+.weather-map-picker .weather-map-card{flex-shrink:0}
+html[data-shared-basket=true] .set-workspace:not(.choosing-hero){grid-template-columns:clamp(250px,22vw,320px) minmax(0,1fr)}
+.set-workspace>.controls,.set-workspace>.preview,.set-icon-sidebar,.shared-basket{min-width:0}
+.set-workspace .preview h2,.set-slot small,.ability-choice,.shared-basket summary{overflow-wrap:anywhere}
+@media(min-width:1640px){html[data-shared-basket=true] .set-workspace.has-arcana-icons:not(.choosing-hero){grid-template-columns:160px clamp(280px,21vw,340px) minmax(0,1fr)}}
+@media(max-width:960px){html[data-shared-basket=true] .set-workspace:not(.choosing-hero),html[data-shared-basket=true] .set-workspace.has-arcana-icons:not(.choosing-hero){grid-template-columns:minmax(0,1fr)}html[data-shared-basket=true] .set-workspace:not(.choosing-hero)>.controls{max-height:none;overflow:visible}.set-workspace>.preview{position:static;grid-row:2;height:clamp(340px,55dvh,540px)}.set-workspace.has-arcana-icons>.preview{grid-row:3}.set-workspace .set-slots{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}.weather-map-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}

@@ -8,3 +8,11 @@ test('namespace plan keeps base replacement paths and relocates full particle de
 test('native Immortal overrides use original ability particle and icon paths; activity names reported',()=>{const r=nativeOverrides({asset_modifier0:{type:'particle',asset:'particles/base.vpcf',modifier:'particles/immortal.vpcf'},asset_modifier1:{type:'ability_icon',asset:'spell',modifier:'spell_immortal'},asset_modifier2:{type:'activity',asset:'ACT_CAST',modifier:'ACT_CAST_IMMORTAL'}});assert.equal(r.entries[0].target,'particles/base.vpcf_c');assert.equal(r.entries[1].target,'panorama/images/spellicons/spell_png.vtex_c');assert.equal(r.unsupported.length,1);});
 test('WASD camera directions cancel and diagonal movement keeps speed',()=>{assert.deepEqual(cameraMovement(new Set(['KeyW','KeyS']),0,0,1,.1),[0,0,0]);assert.equal(cameraMovement(new Set(['KeyW']),0,0,1,.1)[2],-.1);const v=cameraMovement(new Set(['KeyW','KeyD']),0,0,1,.1);assert.ok(Math.abs(Math.hypot(...v)-.1)<1e-6);});
 test('courier RGB validates input and never changes shared catalog effects',()=>{const effect={id:'lava',courier:true},builder={choice:()=>({hero:{},item:{},effect})};const rows=normalizeSelections(builder,{effectId:'lava',courierColor:[255,80,0]});assert.deepEqual(rows[0].effects[0].color,[255,80,0]);assert.equal(effect.color,undefined);assert.throws(()=>normalizeSelections(builder,{effectId:'lava',courierColor:[256,0,0]}),/Цвет/);});
+test('set API validates and preserves the owned persona flag',()=>{
+ const builder={catalog:{effects:[]},cosmeticChoice:heroId=>({hero:{id:heroId,isPersona:heroId==='persona',baseHeroId:heroId==='persona'?'base':undefined},item:{id:'hat',slot:'head',isDefault:true},effect:{id:'native-only'}})};
+ const input={mode:'set',selections:[{heroId:'persona',itemId:'hat',personaOwned:true}]};
+ assert.equal(normalizeSelections(builder,input)[0].personaOwned,true);
+ assert.equal(normalizeSelections(builder,{...input,selections:[{heroId:'persona',itemId:'hat'}]})[0].personaOwned,false);
+ assert.throws(()=>normalizeSelections(builder,{...input,selections:[{heroId:'base',itemId:'hat',personaOwned:true}]}),/only available/);
+ assert.throws(()=>normalizeSelections(builder,{...input,selections:[{heroId:'persona',itemId:'hat',personaOwned:'true'}]}),/Invalid persona/);
+});
