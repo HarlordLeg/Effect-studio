@@ -5,7 +5,7 @@ test('browser assembles multiple slots and one hero-wide effect from static file
 test('missing publication fails immediately rather than scheduling a native exporter',async()=>{await assert.rejects(assembleStaticPreview({heroId:'axe',itemId:'missing'}, {heroes:[{id:'axe'}]}, {heroes:{axe:'hero'}},async()=>({items:{}})),/not been prepublished/);});
 test('a merged recipe supplies its own hero regardless of selected slot order',async()=>{
  const hero={role:'hero',key:'base'},merged={role:'hero',key:'merged'},recipes={items:{w:{slot:'weapon',parts:[hero,{role:'item',key:'w'}]},h:{slot:'head',complexMerge:true,parts:[merged,{role:'item',key:'h'}]}}};
- await assert.rejects(assembleStaticPreview({selections:[{heroId:'axe',itemId:'w'},{heroId:'axe',itemId:'h'}]},{heroes:[{id:'axe'}]}, {heroes:{axe:'recipes'}},async()=>recipes),/merged preview/);
+ const combined=await assembleStaticPreview({selections:[{heroId:'axe',itemId:'w'},{heroId:'axe',itemId:'h'}]},{heroes:[{id:'axe'}]}, {heroes:{axe:'recipes'}},async()=>recipes);assert.deepEqual(combined.parts.map(p=>p.key),['merged','w','h']);
  const result=await assembleStaticPreview({heroId:'axe',itemId:'h'},{heroes:[{id:'axe'}]}, {heroes:{axe:'recipes'}},async()=>recipes);assert.equal(result.parts[0].key,'merged');
 });
 test('style selections resolve to the published variant, not the base material',async()=>{
@@ -48,4 +48,16 @@ test('publisher routes eidolons to standalone export and ordinary wearables to h
  const entity={hero:{id:'enigma'},item:{id:'eidolon',setEntity:true,slot:'ability2'}},gear={hero:{id:'enigma'},item:{id:'arms',slot:'arms'}},job={id:'test'};
  await exportPublishedChoice(service,entity,job);await exportPublishedChoice(service,gear,job);
  assert.equal(calls[0].route,'standalone');assert.equal(calls[0].item,entity.item);assert.equal(calls[0].chosen,entity);assert.equal(calls[0].choice.partsOnly,true);assert.equal(calls[1].route,'hero');assert.deepEqual(calls[1].choice.selections,[gear]);
+});
+test('persona loadouts attach each selected wearable once and keep only untouched defaults',async()=>{
+ const hero={id:'invoker_persona1',items:[{id:'dh',slot:'head',isDefault:true},{id:'da',slot:'arms',isDefault:true},{id:'db',slot:'back',isDefault:true},{id:'hat',slot:'head'},{id:'arms',slot:'arms'}]},body={role:'hero',key:'body'};
+ const defaults=[{role:'item',id:'dh',key:'dh',slot:'head'},{role:'item',id:'da',key:'da',slot:'head'},{role:'item',id:'db',key:'db',slot:'head'}];
+ const recipes={items:{hat:{slot:'head',complexMerge:true,parts:[body,...defaults.filter(p=>p.id!=='dh'),{role:'item',id:'hat',key:'hat'}],native:'native'},arms:{slot:'arms',complexMerge:true,parts:[body,...defaults.filter(p=>p.id!=='da'),{role:'item',id:'arms',key:'arms'}]}}};
+ const manifest={heroes:{invoker_persona1:'recipes'},effects:{frost:'frost'}};
+ const result=await assembleStaticPreview({selections:[{heroId:hero.id,itemId:'hat',effectIds:['frost']},{heroId:hero.id,itemId:'arms'}]},{heroes:[hero],effects:[{id:'frost'}]},manifest,async ref=>ref==='recipes'?recipes:ref==='native'?{effects:[{itemId:'da',effectId:'native-0'},{itemId:'hat',effectId:'native-0'}]}:{systems:[]});
+ assert.deepEqual(result.parts.map(p=>p.key),['body','db','hat','arms']);assert.equal(result.effects.length,2);assert.equal(result.effects.at(-1).itemId,'hat');
+});
+test('different baked merge bodies cannot silently duplicate or discard geometry',async()=>{
+ const recipes={items:{a:{slot:'head',complexMerge:true,parts:[{role:'hero',key:'a'}]},b:{slot:'arms',complexMerge:true,parts:[{role:'hero',key:'b'}]}}};
+ await assert.rejects(assembleStaticPreview({selections:[{heroId:'morphling',itemId:'a'},{heroId:'morphling',itemId:'b'}]},{heroes:[{id:'morphling'}]},{heroes:{morphling:'r'}},async()=>recipes),/baked body/);
 });

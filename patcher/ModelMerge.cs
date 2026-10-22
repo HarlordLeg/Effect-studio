@@ -60,7 +60,7 @@ internal static class ModelMerge
                 var rootCaseAlias=roots.Length==1&&string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)&&string.Equals(hostNames[roots[0]],donorNames[i],StringComparison.OrdinalIgnoreCase);
                 // Fluid Frenzy has independent shark roots absent from Morphling's
                 // base skeleton. Attach only these named roots, preserving bind pose.
-                var sharkRoot=attachMorphlingSharkRoots&&roots.Length==1&&hostNames[roots[0]]=="root"&&(donorNames[i]=="shark_R_01_JNT"||donorNames[i]=="shark_L_01_JNT");
+                var sharkRoot=attachMorphlingSharkRoots&&roots.Length==1&&hostNames[roots[0]]=="root"&&(donorNames[i]=="shark_R_01_JNT"||donorNames[i]=="shark_L_01_JNT"||donorNames[i]=="shark_R_back_01_JNT"||donorNames[i]=="shark_L_back_01_JNT");
                 if(!sharkRoot&&((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1))throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
                 attachedRoots[i]=(roots[0],RootLocalPose(host,roots[0],donor,i));
             }index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
