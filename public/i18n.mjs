@@ -1,9 +1,12 @@
 import {translations} from './i18n-strings.mjs';
+const translationRules=Object.entries(translations).sort((a,b)=>b[0].length-a[0].length),translationCache=new Map();
 export function translate(text,language='en'){
  if(language==='ru')return text;
- if(translations[text])return translations[text];
+ if(Object.hasOwn(translations,text))return translations[text];
+ if(translationCache.has(text))return translationCache.get(text);
  let result=text;
- for(const [source,target] of Object.entries(translations).sort((a,b)=>b[0].length-a[0].length))result=result.split(source).join(target);
+ for(const [source,target] of translationRules)result=result.split(source).join(target);
+ if(translationCache.size>=8192)translationCache.delete(translationCache.keys().next().value);translationCache.set(text,result);
  return result;
 }
 export function initLanguage(){
@@ -16,7 +19,7 @@ export function initLanguage(){
   while(node=walker.nextNode()){
    if(['SCRIPT','STYLE'].includes(node.parentElement?.tagName)||node.parentElement?.closest('#language'))continue;
    const previous=texts.get(node),raw=previous&&node.nodeValue===previous.output?previous.raw:node.nodeValue;
-   const output=translate(raw,language);texts.set(node,{raw,output});if(node.nodeValue!==output)node.nodeValue=output;
+   const output=previous&&previous.raw===raw&&previous.language===language?previous.output:translate(raw,language);texts.set(node,{raw,output,language});if(node.nodeValue!==output)node.nodeValue=output;
   }
   for(const element of document.querySelectorAll('[placeholder],[aria-label],[title]')){
    if(element.id==='language')continue;const previous=attributes.get(element)??{};

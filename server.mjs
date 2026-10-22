@@ -55,7 +55,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
-      const integrationRoute=/^\/api\/(catalog|cosmetics|cosmetic-icon|item-icon|set-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
