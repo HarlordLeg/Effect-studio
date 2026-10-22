@@ -1,3 +1,4 @@
+import {drowArcanaChoices,drowArcanaCatalog} from './lib/drow-arcana.mjs';
 import {assembleStaticPreview} from './public/static-preview.mjs';
 import {createStaticViewer} from './lib/static-viewer.mjs';
 import {createHash,randomBytes} from 'node:crypto';
@@ -67,6 +68,12 @@ export function startServer({port:overridePort,adminAuth}={}) {
         const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
         const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
+        if(url.pathname==='/api/admin/drow-arcana'&&req.method==='GET')return json(res,200,drowArcanaCatalog(builder));
+        if(url.pathname==='/api/admin/build-drow-arcana'&&req.method==='POST'){
+          const data=await body(req);vpkFilename(data.vpkNumber??1);
+          const choices=drowArcanaChoices(builder,data),job=builder.create(choices,adminOwner,{vpkNumber:data.vpkNumber??1});
+          tracking.set(job,{selections:selectionStatistics(choices),source:'admin'});return json(res,202,publicJob(job));
+        }
         if(url.pathname==='/api/admin/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder,{admin:true}):cosmeticCatalog(builder,{admin:true}));
         if(url.pathname==='/api/admin/cosmetic-heroes'&&req.method==='GET')return json(res,200,{heroes:builder.catalog.heroes.map(h=>({id:h.id,name:h.name,isPersona:h.isPersona}))});
         if(url.pathname==='/api/admin/cosmetic-icon'&&req.method==='GET'){
