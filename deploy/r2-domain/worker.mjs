@@ -16,7 +16,7 @@ function reply(response,request){
 }
 export async function serveAssets(request,env,ctx,cache){
  const url=new URL(request.url),key=url.pathname.startsWith(prefix)?url.pathname.slice(prefix.length):'';
- if(key!=='manifest.json'&&!/^assets\/[a-f0-9]{64}\.(json|glb|png)$/.test(key))return failure('Not found',404);
+ if(key!=='manifest.json'&&!/^assets\/[a-f0-9]{64}\.(json|glb|png|gif|webp|webm|mp4)$/.test(key))return failure('Not found',404);
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors()});
  if(!['GET','HEAD'].includes(request.method)){const response=failure('Method not allowed',405);response.headers.set('Allow','GET, HEAD, OPTIONS');return response;}
  if(!env.ASSETS)return failure('R2 binding ASSETS is not configured',503);
@@ -29,7 +29,7 @@ export async function serveAssets(request,env,ctx,cache){
   if(!object){const response=failure('Not found',404);if(immutable){response.headers.set('Cache-Control','public, max-age=5, must-revalidate');if(cache&&request.method==='GET')ctx.waitUntil(cache.put(cacheKey,response.clone()).catch(()=>{}));}return response;}
   const headers=cors();object.writeHttpMetadata(headers);
   headers.set('ETag',object.httpEtag);
-  headers.set('Content-Type',key.endsWith('.glb')?'model/gltf-binary':key.endsWith('.png')?'image/png':'application/json; charset=utf-8');
+  headers.set('Content-Type',key.endsWith('.glb')?'model/gltf-binary':key.endsWith('.png')?'image/png':key.endsWith('.gif')?'image/gif':key.endsWith('.webp')?'image/webp':key.endsWith('.webm')?'video/webm':key.endsWith('.mp4')?'video/mp4':'application/json; charset=utf-8');
   headers.set('Content-Length',String(object.size));
   headers.set('Cache-Control',immutable?'public, max-age=31536000, immutable':'public, max-age=60, must-revalidate');
   if(matches(request.headers.get('If-None-Match'),object.httpEtag))return new Response(null,{status:304,headers});

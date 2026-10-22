@@ -10,7 +10,7 @@ def upload(directory, client, bucket, workers=4):
     data=json.loads(manifest.read_text(encoding='utf-8'))
     if data.get('version')!=1 or not data.get('catalog'):
         raise ValueError('Publish renderer assets before uploading')
-    files=sorted(p for p in (directory/'assets').iterdir() if p.is_file() and re.fullmatch(r'[a-f0-9]{64}\.(json|glb|png)',p.name))
+    files=sorted(p for p in (directory/'assets').iterdir() if p.is_file() and re.fullmatch(r'[a-f0-9]{64}\.(json|glb|png|gif|webp|webm|mp4)',p.name))
     def put(file, key, immutable):
         digest=file.name.split('.')[0] if immutable else hashlib.sha256(file.read_bytes()).hexdigest()
         try:
@@ -20,7 +20,7 @@ def upload(directory, client, bucket, workers=4):
         except ClientError as error:
             if str(error.response.get('Error',{}).get('Code')) not in ('404','NoSuchKey','NotFound'):
                 raise
-        content_type={'.json':'application/json','.glb':'model/gltf-binary','.png':'image/png'}[file.suffix]
+        content_type={'.json':'application/json','.glb':'model/gltf-binary','.png':'image/png','.gif':'image/gif','.webp':'image/webp','.webm':'video/webm','.mp4':'video/mp4'}[file.suffix]
         client.upload_file(str(file),bucket,key,ExtraArgs={'ContentType':content_type,'CacheControl':'public, max-age=31536000, immutable' if immutable else 'public, max-age=60','Metadata':{'sha256':digest}})
         return 'uploaded'
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:

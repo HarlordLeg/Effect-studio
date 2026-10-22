@@ -1,0 +1,4 @@
+import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';import {publishKineticMedia} from '../lib/static-media.mjs';import {atomicJson} from '../lib/static-viewer.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),config=JSON.parse(fs.readFileSync(path.join(root,'config.json'),'utf8').replace(/^\uFEFF/,'')),directory=path.resolve(root,config.staticViewerDirectory??'cache/static-viewer');
+if(fs.existsSync(path.join(root,'cache/static-publish.lock')))throw Error('Wait for the active static export to finish');
+const file=path.join(directory,'manifest.json'),manifest=JSON.parse(fs.readFileSync(file,'utf8')),result=publishKineticMedia(root,directory);manifest.kineticMedia=result.ref;manifest.updated=new Date().toISOString();atomicJson(file,manifest);console.log(JSON.stringify(result));

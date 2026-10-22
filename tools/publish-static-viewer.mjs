@@ -1,3 +1,6 @@
+import {publishKineticMedia} from '../lib/static-media.mjs';
+import {terrorbladeArcanaChoice} from '../lib/terrorblade-arcana.mjs';
+import {techiesArcanaChoice} from '../lib/techies-arcana.mjs';
 import {resolveDefaultLoadout} from '../lib/default-loadout.mjs';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {fileURLToPath} from 'node:url';
@@ -6,7 +9,7 @@ export async function exportPublishedChoice(service,choice,job){
  if(choice.item.setEntity)return service.exportStandalone({...choice,partsOnly:true},job,choice.item,choice);
  return service.export({...choice,selections:[choice],partsOnly:true},job,null);
 }
-export async function publishStaticViewer(root,config,{heroId=null,missingOnly=false,onProgress=console.log,stop=()=>false}={}){
+export async function publishStaticViewer(root,config,{heroId=null,missingOnly=false,arcanaOnly=false,onProgress=console.log,stop=()=>false}={}){
  const directory=path.resolve(root,config.staticViewerDirectory??'cache/static-viewer'),builder=new Builder(root,config),service=new PreviewService(root,config,builder),icons=new ItemIcons(root,config,builder.store),base=(config.staticViewerBaseUrl??'/static-viewer/').replace(/\/?$/,'/');
  fs.mkdirSync(directory,{recursive:true});let manifest={version:1,heroes:{},effects:{},stances:{},icons:{}};try{manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'),'utf8'));}catch{}const errors=[];
  const optimizedModels=new Map();
@@ -14,7 +17,7 @@ export async function publishStaticViewer(root,config,{heroId=null,missingOnly=f
  const icon=async(url,item,fallbacks=[])=>{if(missingOnly&&manifest.icons[url]&&fs.existsSync(path.join(directory,manifest.icons[url])))return;try{let file,last;for(const candidate of [item,...fallbacks]){try{file=await icons.get(candidate);break;}catch(error){last=error;}}if(!file)throw last??Error('Inventory image not found');manifest.icons[url]=blob(file,'png');}catch(error){errors.push({url,error:error.message});}};
  const normalizedIcon=(route,params)=>route+'?'+[...new URLSearchParams(params)].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
  try{
- for(const hero of builder.catalog.heroes.filter(h=>!heroId||h.id===heroId)){
+ for(const hero of builder.catalog.heroes.filter(h=>!arcanaOnly&&(!heroId||h.id===heroId))){
   if(stop())break;let recipes={items:{}};if(manifest.heroes[hero.id])try{recipes=JSON.parse(fs.readFileSync(path.join(directory,manifest.heroes[hero.id]),'utf8'));}catch{}
   if(hero.isPersona){const url='/images/personas/'+hero.id+'.png?';if(!(missingOnly&&manifest.icons[url]&&fs.existsSync(path.join(directory,manifest.icons[url])))){try{const texture='panorama/images/heroes/'+hero.personaNpcName+'_png.vtex_c';let file;try{file=await icons.getTexture(texture,{model:hero.model});}catch{file=await icons.get({model:hero.model,imageInventory:hero.personaInventoryImage});}manifest.icons[url]=blob(file,'png');}catch(error){errors.push({url,error:error.message});}}}
   let completed=0;const choices=[...hero.items];for(const slot of Object.keys(hero.defaultSlotModels??{}))if(!choices.some(i=>i.id==='default:'+slot))choices.push({id:'default:'+slot,slot,isDefault:true});
@@ -33,11 +36,29 @@ export async function publishStaticViewer(root,config,{heroId=null,missingOnly=f
  }
  // Export each unusual particle tree once, independently of wearer and RGB.
  const hero=builder.catalog.heroes.find(h=>h.items.some(i=>i.model)),item=hero?.items.find(i=>i.model);
- for(const effect of builder.catalog.effects.filter(e=>e.particle)){if(stop())break;if(missingOnly&&manifest.effects[effect.id]&&fs.existsSync(path.join(directory,manifest.effects[effect.id])))continue;try{const job={id:crypto.randomBytes(16).toString('hex'),owner:'static-effects'};try{await service.export({hero,item,effect,partsOnly:true},job,null);const packet=JSON.parse(fs.readFileSync(path.join(job.directory,'effect.json'),'utf8'));const pure=packet.effects?.find(e=>e.effectId===effect.id)?.packet??packet;if(pure.error)throw Error(pure.error);manifest.effects[effect.id]=blob(pure);}finally{if(job.directory)fs.rmSync(job.directory,{recursive:true,force:true});}}catch(error){errors.push({effect:effect.id,error:error.message});}}
+ for(const effect of builder.catalog.effects.filter(e=>!arcanaOnly&&e.particle)){if(stop())break;if(missingOnly&&manifest.effects[effect.id]&&fs.existsSync(path.join(directory,manifest.effects[effect.id])))continue;try{const job={id:crypto.randomBytes(16).toString('hex'),owner:'static-effects'};try{await service.export({hero,item,effect,partsOnly:true},job,null);const packet=JSON.parse(fs.readFileSync(path.join(job.directory,'effect.json'),'utf8'));const pure=packet.effects?.find(e=>e.effectId===effect.id)?.packet??packet;if(pure.error)throw Error(pure.error);manifest.effects[effect.id]=blob(pure);}finally{if(job.directory)fs.rmSync(job.directory,{recursive:true,force:true});}}catch(error){errors.push({effect:effect.id,error:error.message});}}
+ manifest.arcanas??={};
+ for(const id of ['terrorblade','techies']){
+  if(heroId&&heroId!==id||stop()||!(id==='techies'?hasTechiesArcana(root):hasTerrorbladeArcana(root)))continue;
+  manifest.arcanas[id]??={};
+  for(const mode of id==='techies'?['base']:['base','owned'])for(const form of id==='techies'?['normal']:['normal','demon']){
+   const name=mode+':'+form,previous=manifest.arcanas[id][name];if(missingOnly&&previous){try{const old=JSON.parse(fs.readFileSync(path.join(directory,previous),'utf8'));if(old.parts.every(p=>fs.existsSync(path.join(directory,p.url))))continue;}catch{}}
+   const job={id:crypto.randomBytes(16).toString('hex'),owner:'static-arcana'};
+   try{const seed={heroId:id,arcana:{mode,color:[0,255,0],customColor:false,voice:'arcana'}},choice=id==='techies'?techiesArcanaChoice(builder,seed):terrorbladeArcanaChoice(builder,seed);
+    await service.export({...choice,selections:[choice],partsOnly:true,previewForm:form},job);
+    const baselineSlot=id==='techies'?Object.entries(choice.hero.defaultSlotModels??{}).find(([,model])=>model==='models/heroes/techies/techies_cart.vmdl_c')?.[0]??'mount':form==='demon'?'demon':'head';
+    const loadout=resolveDefaultLoadout(builder.store,choice.hero,choice.item);
+    const parts=job.parts.map((p,i)=>{const url=blob(job.partFiles[i],'glb');return {...p,url,key:path.basename(url,'.glb'),bytes:fs.statSync(path.join(directory,url)).size,role:p.role==='item'?'default':p.role,slot:p.role==='item'?baselineSlot:loadout.parts.find(row=>row.model===p.id)?.slot??Object.entries(choice.hero.defaultSlotModels??{}).find(([,model])=>model===p.id)?.[0]};});
+    const packetFile=path.join(job.directory,'effect.json'),packet=fs.existsSync(packetFile)?JSON.parse(fs.readFileSync(packetFile,'utf8')):{effects:[]};
+    manifest.arcanas[id][name]=blob({name:choice.item.name,slot:'arcana',parts,native:blob(packet),referenceColor:id==='terrorblade'?[0,255,0]:null});onProgress('arcana '+id+' '+name+' exported');
+   }catch(error){errors.push({arcana:id,mode,form,error:error.message});}finally{if(job.directory)fs.rmSync(job.directory,{recursive:true,force:true});}
+  }
+ }
+ const kineticMedia=publishKineticMedia(root,directory);manifest.kineticMedia=kineticMedia.ref;onProgress('Kinetic previews: '+kineticMedia.files+' files, '+kineticMedia.missing+' missing');
  const cosmetics=browserCosmeticCatalog(builder);manifest.cosmetics=blob(cosmetics);
- for(const item of cosmetics.items){if(stop())break;await icon(normalizedIcon('/api/cosmetic-icon',{id:item.id}),{model:'models/heroes/techies/techies.vmdl_c',imageInventory:item.imageInventory});for(const style of item.styles??[])await icon(normalizedIcon('/api/cosmetic-icon',{id:item.id,styleId:style.id}),{model:'models/heroes/techies/techies.vmdl_c',imageInventory:style.imageInventory??item.imageInventory});}
+ for(const item of arcanaOnly?[]:cosmetics.items){if(stop())break;await icon(normalizedIcon('/api/cosmetic-icon',{id:item.id}),{model:'models/heroes/techies/techies.vmdl_c',imageInventory:item.imageInventory});for(const style of item.styles??[])await icon(normalizedIcon('/api/cosmetic-icon',{id:item.id,styleId:style.id}),{model:'models/heroes/techies/techies.vmdl_c',imageInventory:style.imageInventory??item.imageInventory});}
  manifest.catalog=blob({...builder.catalog,mode:'static',patcherReady:true,assetBridgeReady:true,staticPreview:{manifest:base+'manifest.json'},webParticles:true,terrorbladeArcana:hasTerrorbladeArcana(root),techiesArcana:hasTechiesArcana(root)});Object.assign(manifest,publishCatalogIndex(directory,JSON.parse(fs.readFileSync(path.join(directory,manifest.catalog),'utf8'))));manifest.updated=new Date().toISOString();manifest.errors=errors.length;atomicJson(path.join(directory,'publish-errors.json'),errors);atomicJson(path.join(directory,'manifest.json'),manifest);return {directory,heroes:Object.keys(manifest.heroes).length,effects:Object.keys(manifest.effects).length,errors:errors.length,stopped:stop()};
  }finally{service.dispose();}
 }
-async function main(){const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),args=process.argv.slice(2);const missingOnly=args.includes('--missing');const filtered=args.filter(a=>a!=='--missing');if(filtered.length&&!(filtered.length===2&&filtered[0]==='--hero'))throw Error('Usage: publish-static-viewer [--hero HERO_ID] [--missing]');const config=JSON.parse(fs.readFileSync(path.join(root,'config.json'),'utf8').replace(/^\uFEFF/,''));let stop=false;const interrupt=()=>{stop=true;console.log('Finishing current resource…');};process.on('SIGINT',interrupt);const lock=path.join(root,'cache/static-publish.lock');fs.mkdirSync(path.dirname(lock),{recursive:true});let fd;try{fd=fs.openSync(lock,'wx');fs.writeSync(fd,String(process.pid));console.log(JSON.stringify(await publishStaticViewer(root,config,{heroId:filtered[1],missingOnly,stop:()=>stop})));}finally{if(fd!==undefined){fs.closeSync(fd);fs.rmSync(lock,{force:true});}process.off('SIGINT',interrupt);}}
+async function main(){const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),args=process.argv.slice(2);const missingOnly=args.includes('--missing'),arcanaOnly=args.includes('--arcana-only');const filtered=args.filter(a=>!['--missing','--arcana-only'].includes(a));if(filtered.length&&!(filtered.length===2&&filtered[0]==='--hero'))throw Error('Usage: publish-static-viewer [--hero HERO_ID] [--missing] [--arcana-only]');const config=JSON.parse(fs.readFileSync(path.join(root,'config.json'),'utf8').replace(/^\uFEFF/,''));let stop=false;const interrupt=()=>{stop=true;console.log('Finishing current resource…');};process.on('SIGINT',interrupt);const lock=path.join(root,'cache/static-publish.lock');fs.mkdirSync(path.dirname(lock),{recursive:true});let fd;try{fd=fs.openSync(lock,'wx');fs.writeSync(fd,String(process.pid));console.log(JSON.stringify(await publishStaticViewer(root,config,{heroId:filtered[1],missingOnly,arcanaOnly,stop:()=>stop})));}finally{if(fd!==undefined){fs.closeSync(fd);fs.rmSync(lock,{force:true});}process.off('SIGINT',interrupt);}}
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))main().catch(e=>{console.error(e.message);process.exitCode=1;});

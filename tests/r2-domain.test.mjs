@@ -47,3 +47,6 @@ test('known missing hashed assets get a short negative cache, storage errors nev
  assert.equal((await serveAssets(new Request(url,{headers:{'If-None-Match':'*'}}),env,ctx,adapter)).status,404);assert.equal(reads,1);
  const error=await serveAssets(url,{ASSETS:{get:async()=>{throw Error('storage failure');}}},ctx);assert.equal(error.headers.get('Cache-Control'),'no-store');
 });
+test('published kinetic previews use video MIME types through the same hashed asset route',async()=>{
+ const f=fixture(),video='assets/'+'a'.repeat(64)+'.webm';const response=await f.request(video);assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'video/webm');assert.match(response.headers.get('Cache-Control'),/immutable/);
+});

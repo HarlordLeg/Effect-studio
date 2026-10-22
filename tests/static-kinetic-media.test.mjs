@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {publishKineticMedia} from '../lib/static-media.mjs';
+test('local kinetic clips are published without re-downloading and retain action metadata',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-static-media-'));try{const dir=path.join(root,'data/kinetic-media');fs.mkdirSync(dir,{recursive:true});const name='a'.repeat(64)+'.webm',bytes=Buffer.from('video fixture');fs.writeFileSync(path.join(dir,name),bytes);fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify({items:{'kinetic-1':{clips:[{file:'Preview.webm',action:'ACT_DOTA_RUN',url:'/kinetic-media/'+name},{url:'/kinetic-media/../config.json'},{url:'/kinetic-media/'+'b'.repeat(64)+'.gif'}]}}}));
+ const output=path.join(root,'static'),result=publishKineticMedia(root,output),data=JSON.parse(fs.readFileSync(path.join(output,result.ref)));assert.equal(result.files,1);assert.equal(result.missing,1);const clip=data.items['kinetic-1'].clips[0];assert.equal(clip.action,'ACT_DOTA_RUN');assert.match(clip.url,/^assets\/[a-f0-9]{64}\.webm$/);assert.deepEqual(fs.readFileSync(path.join(output,clip.url)),bytes);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});

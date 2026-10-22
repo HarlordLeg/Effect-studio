@@ -296,3 +296,12 @@ html[data-shared-basket=true] .set-workspace:not(.choosing-hero){grid-template-c
 .set-workspace .preview h2,.set-slot small,.ability-choice,.shared-basket summary{overflow-wrap:anywhere}
 @media(min-width:1640px){html[data-shared-basket=true] .set-workspace.has-arcana-icons:not(.choosing-hero){grid-template-columns:160px clamp(280px,21vw,340px) minmax(0,1fr)}}
 @media(max-width:960px){html[data-shared-basket=true] .set-workspace:not(.choosing-hero),html[data-shared-basket=true] .set-workspace.has-arcana-icons:not(.choosing-hero){grid-template-columns:minmax(0,1fr)}html[data-shared-basket=true] .set-workspace:not(.choosing-hero)>.controls{max-height:none;overflow:visible}.set-workspace>.preview{position:static;grid-row:2;height:clamp(340px,55dvh,540px)}.set-workspace.has-arcana-icons>.preview{grid-row:3}.set-workspace .set-slots{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}.weather-map-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
+
+/* Hero portrait variants need a full text row even in a compact sidebar. */
+.ability-hero-icons .ability-icon-row{display:grid;grid-template-columns:minmax(0,1fr) 14px;gap:8px;align-items:start}
+.ability-hero-icons .ability-icon-row>.ability-image{grid-column:1;grid-row:1;max-width:100%}
+.ability-hero-icons .ability-icon-row>span:nth-child(2){grid-column:1;grid-row:2;min-width:0}
+.ability-hero-icons .ability-icon-row>.ability-row-arrow{grid-column:2;grid-row:1/3;align-self:center}
+.ability-icon-row b,.ability-icon-row small{word-break:normal;overflow-wrap:break-word}
+@media(min-width:1640px){html[data-shared-basket=true] .set-workspace.has-arcana-icons:not(.choosing-hero){grid-template-columns:200px clamp(280px,21vw,340px) minmax(0,1fr)}}
+.header-telegram{display:inline-flex;align-items:center;gap:8px;color:#69c9f1;text-decoration:none;padding:8px 12px;border:1px solid #31516a;border-radius:8px;margin-left:auto;font-size:13px;flex-shrink:0}.header-telegram svg{width:20px;height:20px}.header-telegram:hover{color:#c7eeff;background:#163247}.header-telegram:focus-visible{outline:2px solid #69c9f1;outline-offset:3px}@media(max-width:480px){.header-telegram span{display:none}.header-telegram{padding:7px;margin-left:0}}

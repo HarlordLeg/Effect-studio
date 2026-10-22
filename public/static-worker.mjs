@@ -37,6 +37,7 @@ async function route(request,event){const url=new URL(request.url),name=url.path
  if(name==='/manifest.json')return publication(request.url,event,{manifest:true});
  if(/^\/assets\/[a-f0-9]{64}\.json$/.test(name))return publication(request.url,event);
  if(name.startsWith('/images/')&&!name.startsWith('/images/personas/'))return fetch(request);
+ if(name==='/kinetic-media/manifest.json'){const {base,manifest}=await assets(event);if(manifest.kineticMedia){const response=await publication(new URL(manifest.kineticMedia,base),event);if(!response.ok)return response;const data=await response.json();for(const item of Object.values(data.items??{}))for(const clip of item.clips??[])if(/^assets\/[a-f0-9]{64}\.(gif|webp|webm|mp4)$/.test(clip.url??''))clip.url=new URL(clip.url,base).href;return json(data);}}
  if(name.startsWith('/kinetic-media/'))return proxy(request,{authenticated:false});
  if(request.method==='GET'&&name==='/api/catalog'){const {base,manifest}=await assets(event),response=await publication(new URL(manifest.catalogIndex??manifest.catalog,base),event);if(!response.ok)return response;const catalog=await response.json();catalog.staticPreview={manifest:new URL('manifest.json',base).href};return json(catalog);}
  if(request.method==='GET'&&(name.startsWith('/api/')||name.startsWith('/images/'))){

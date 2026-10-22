@@ -61,3 +61,21 @@ test('different baked merge bodies cannot silently duplicate or discard geometry
  const recipes={items:{a:{slot:'head',complexMerge:true,parts:[{role:'hero',key:'a'}]},b:{slot:'arms',complexMerge:true,parts:[{role:'hero',key:'b'}]}}};
  await assert.rejects(assembleStaticPreview({selections:[{heroId:'morphling',itemId:'a'},{heroId:'morphling',itemId:'b'}]},{heroes:[{id:'morphling'}]},{heroes:{morphling:'r'}},async()=>recipes),/baked body/);
 });
+test('legacy Morphling publications discard folder-scan reference bodies without re-export',async()=>{
+ const hero={id:'morphling',defaultSlotModels:{},embeddedWearableSlots:['head','arms']},body={role:'hero',key:'hero'},junk={role:'default',slot:'unknown',id:'models/heroes/morphling/prowreference.vmdl_c',key:'reference'};
+ const recipes={items:{a:{slot:'head',complexMerge:true,parts:[body,junk,{role:'item',key:'head'}]},b:{slot:'arms',complexMerge:true,parts:[body,junk,{role:'item',key:'arms'}]}}};
+ const result=await assembleStaticPreview({selections:[{heroId:hero.id,itemId:'a'},{heroId:hero.id,itemId:'b'}]},{heroes:[hero]},{heroes:{morphling:'r'}},async()=>recipes);
+ assert.deepEqual(result.parts.map(p=>p.key),['hero','head','arms']);
+});
+test('published arcana body and RGB load from static recipes while selected gear replaces its default slot',async()=>{
+ const hero={id:'terrorblade',items:[]},seed={parts:[{role:'hero',key:'arcana-body'},{role:'default',slot:'head',key:'horns'},{role:'default',slot:'weapon',key:'weapon'}],native:'arcana-fx',referenceColor:[0,255,0]},recipes={items:{w:{slot:'weapon',parts:[{role:'hero',key:'ordinary'},{role:'item',key:'new-weapon'}]}}};
+ const manifest={heroes:{terrorblade:'r'},arcanas:{terrorblade:{'base:normal':'arcana'}}},load=async ref=>({r:recipes,arcana:seed,'arcana-fx':{effects:[{effectId:'ambient',packet:{definitions:{}}}]}}[ref]);
+ const selections=[{heroId:hero.id,slot:'arcana',arcana:{mode:'base',color:[255,60,40]}},{heroId:hero.id,itemId:'w'}];
+ const result=await assembleStaticPreview({selections},{heroes:[hero]},manifest,load);assert.deepEqual(result.parts.map(p=>p.key),['arcana-body','horns','new-weapon']);assert.deepEqual(result.arcanaTint.color,[1,60/255,40/255]);assert.equal(result.effects[0].packet.arcanaRgb,true);assert.equal(seed.parts[0].key,'arcana-body');
+ selections[0].arcana.color=[40,80,255];assert.deepEqual((await assembleStaticPreview({selections},{heroes:[hero]},manifest,load)).effects[0].color,[40/255,80/255,1]);
+});
+test('Techies original particle colors are preserved until custom RGB is enabled',async()=>{
+ const manifest={heroes:{techies:'r'},arcanas:{techies:{'base:normal':'a'}}},load=async ref=>ref==='r'?{items:{}}:ref==='a'?{parts:[{role:'hero',key:'fixed-techies'},{role:'default',slot:'mount',key:'arcana-cart'}],native:'fx'}:{effects:[{packet:{definitions:{}}}]};
+ const arcana={mode:'base',color:[255,0,128],customColor:false},catalog={heroes:[{id:'techies'}]};const make=()=>assembleStaticPreview({selections:[{heroId:'techies',arcana}]},catalog,manifest,load);
+ assert.equal((await make()).effects[0].color,null);arcana.customColor=true;assert.deepEqual((await make()).effects[0].color,[1,0,128/255]);
+});
