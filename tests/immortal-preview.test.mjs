@@ -36,7 +36,7 @@ test('snapshot skinning follows the selected item bone through animation',()=>{
 });
 test('snapshot rope layers reach the GPU as connected segments instead of square sprites',()=>{
  let uploads,draws=0;const gl=new Proxy({createShader:()=>({}),getShaderParameter:()=>true,getProgramParameter:()=>true,bufferSubData(_a,_b,data){uploads=data;},drawArraysInstanced(){draws++;}},{get(t,k){if(k in t)return t[k];return k===k.toUpperCase()?k:()=>({});}}),r=new ParticleRenderer(gl);r.textures.set('rope.vtex_c',{});
- const particle=(i)=>({snapshotIndex:i,position:[i,2,0],alpha:1,radius:1,angle:0,color:[1,0,1]});r.draw({systems:[{definition:{m_Renderers:[{_class:'C_OP_RenderRopes',m_hTexture:'rope.vtex'}]},particles:[particle(0),particle(1),particle(2)]}]},new Float32Array(16),[1,0,0],[0,1,0]);assert.equal(draws,1);assert.equal(uploads.length,34);assert.deepEqual([...uploads.subarray(13,17)],[1,2,0,1]);r.dispose();
+ const particle=(i)=>({snapshotIndex:i,position:[i,2,0],alpha:1,radius:1,angle:0,color:[1,0,1]});r.draw({systems:[{definition:{m_Renderers:[{_class:'C_OP_RenderRopes',m_hTexture:'rope.vtex'}]},particles:[particle(0),particle(1),particle(2)]}]},new Float32Array(16),[1,0,0],[0,1,0]);assert.equal(draws,1);assert.equal(uploads.length,44);assert.deepEqual([...uploads.subarray(13,17)],[1,2,0,1]);assert.deepEqual([...uploads.subarray(35,39)],[2,2,0,1]);r.dispose();
 });
 
 test('Bane shared child definitions create independent instances for all six tentacles',()=>{
