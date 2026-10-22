@@ -25,3 +25,7 @@ test('bundled hero portraits are served locally without a manifest lookup',async
  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);
  let result;events.fetch({request:new Request('https://site.test/images/heroes/muerta.png'),respondWith:value=>result=value});assert.equal(await(await result).text(),'image');assert.equal(calls.some(url=>url.endsWith('manifest.json')),false);
 });
+test('published persona portraits are loaded from R2 without an API session',async()=>{
+ const events={},calls=[],context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async input=>{const url=String(input);calls.push(url);if(url.endsWith('site-config.json'))return new Response(JSON.stringify({assetsUrl:'https://assets.test/'}));if(url.endsWith('manifest.json'))return new Response(JSON.stringify({icons:{'/images/personas/invoker_persona1.png?':'assets/persona.png'}}));if(url==='https://assets.test/assets/persona.png')return new Response('persona image');throw Error('Unexpected network request: '+url);},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
+ vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);let result;events.fetch({request:new Request('https://site.test/images/personas/invoker_persona1.png'),respondWith:value=>result=value});assert.equal(await(await result).text(),'persona image');assert.equal(calls.some(url=>url.includes('/widget/session')),false);
+});

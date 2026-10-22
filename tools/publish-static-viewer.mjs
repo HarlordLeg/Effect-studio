@@ -16,6 +16,7 @@ export async function publishStaticViewer(root,config,{heroId=null,missingOnly=f
  try{
  for(const hero of builder.catalog.heroes.filter(h=>!heroId||h.id===heroId)){
   if(stop())break;let recipes={items:{}};if(manifest.heroes[hero.id])try{recipes=JSON.parse(fs.readFileSync(path.join(directory,manifest.heroes[hero.id]),'utf8'));}catch{}
+  if(hero.isPersona){const url='/images/personas/'+hero.id+'.png?';if(!(missingOnly&&manifest.icons[url]&&fs.existsSync(path.join(directory,manifest.icons[url])))){try{const texture='panorama/images/heroes/'+hero.personaNpcName+'_png.vtex_c';let file;try{file=await icons.getTexture(texture,{model:hero.model});}catch{file=await icons.get({model:hero.model,imageInventory:hero.personaInventoryImage});}manifest.icons[url]=blob(file,'png');}catch(error){errors.push({url,error:error.message});}}}
   let completed=0;const choices=[...hero.items];for(const slot of Object.keys(hero.defaultSlotModels??{}))if(!choices.some(i=>i.id==='default:'+slot))choices.push({id:'default:'+slot,slot,isDefault:true});
   for(const item of choices){if(stop())break;if(missingOnly&&recipes.items[item.id]?.parts?.every(p=>fs.existsSync(path.join(directory,p.url)))){completed++;continue;}const job={id:crypto.randomBytes(16).toString('hex'),owner:'static-publish'};try{
    let choice;try{choice=builder.cosmeticChoice(hero.id,item.id.startsWith('default:')?null:item.id,item.slot);}catch(error){if(item.isDefault)throw error;choice={hero,item,effect:{id:'native-only',particle:null},effects:[],cosmeticsOnly:true};}
