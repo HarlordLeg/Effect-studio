@@ -1,0 +1,27 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import vm from'node:vm';
+test('static site loads its catalog only from CDN and sends build work to the API',async()=>{const events={},calls=[];const reply=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});const context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async(url,options)=>{url=String(url);calls.push({url,options});if(url.endsWith('site-config.json'))return reply({serverUrl:'https://api.test/',siteKey:'public',assetsUrl:'https://assets.test/'});if(url==='https://assets.test/manifest.json')return reply({catalog:'assets/catalog.json'});if(url==='https://assets.test/assets/catalog.json')return reply({heroes:[]});if(url==='https://api.test/api/widget/session')return reply({token:'test-token',expiresIn:3600});if(url==='https://api.test/api/build'){assert.equal(options.headers.get('Authorization'),'Bearer test-token');return reply({id:'built'});}throw Error('Unexpected network request: '+url);},self:{registration:{scope:'https://site.test/Effect-studio/'},addEventListener:(name,fn)=>events[name]=fn}};vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);async function request(route,options){let result;events.fetch({request:new Request('https://site.test'+route,options),respondWith:value=>result=value});return await result;}
+ const catalog=await(await request('/api/catalog')).json();assert.equal(catalog.staticPreview.manifest,'https://assets.test/manifest.json');assert.equal(calls.some(c=>c.url.startsWith('https://api.test')),false);
+ const preview=await request('/api/preview',{method:'POST',body:'{}'});assert.equal(preview.status,409);assert.equal(calls.some(c=>c.url.includes('/api/preview')),false);
+ const build=await(await request('/api/build',{method:'POST',body:'{}'})).json();assert.equal(build.id,'built');});
+test('a missing icon is a 404 and cannot become an invalid image with status 200',async()=>{
+ const events={},context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async url=>new Response(JSON.stringify(String(url).endsWith('site-config.json')?{assetsUrl:'https://assets.test/'}:{icons:{}})),self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
+ vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);let response;events.fetch({request:new Request('https://site.test/api/item-icon?itemId=missing'),respondWith:value=>response=value});assert.equal((await response).status,404);
+});
+test('expired session retries once before build work starts',async()=>{
+ const events={};let issues=0,builds=0;
+ const reply=(value,status=200)=>new Response(JSON.stringify(value),{status});
+ const context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async(url,options)=>{
+  url=String(url);if(url.endsWith('site-config.json'))return reply({serverUrl:'https://api.test/',siteKey:'public'});
+  if(url.endsWith('/api/widget/session'))return reply({token:'token-'+(++issues),expiresIn:1800});
+  if(url.endsWith('/api/build')){builds++;assert.equal(options.headers.get('Authorization'),'Bearer token-'+builds);return builds===1?reply({error:'expired'},401):reply({id:'ready'});}
+  throw Error('Unexpected request '+url);
+ },self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
+ vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);
+ let result;events.fetch({request:new Request('https://site.test/api/build',{method:'POST',body:'{}'}),respondWith:value=>result=value});
+ assert.equal((await(await result).json()).id,'ready');assert.equal(issues,2);assert.equal(builds,2);
+});
+test('bundled hero portraits are served locally without a manifest lookup',async()=>{
+ const events={},calls=[],context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async url=>{calls.push(String(url?.url??url));return String(url).endsWith('site-config.json')?new Response('{}'):new Response('image');},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
+ vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);
+ let result;events.fetch({request:new Request('https://site.test/images/heroes/muerta.png'),respondWith:value=>result=value});assert.equal(await(await result).text(),'image');assert.equal(calls.some(url=>url.endsWith('manifest.json')),false);
+});

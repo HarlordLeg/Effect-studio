@@ -16,6 +16,7 @@ fs.mkdirSync(path.join(destination,'runtime'),{recursive:true});const nodeLicens
 copy('tools');
 copy('docs');
 const bat=(name,command)=>fs.writeFileSync(path.join(destination,name),'@echo off\r\ncd /d "%~dp0"\r\n'+command+'\r\npause\r\n');
+bat('publish-static-viewer.bat','runtime\\node.exe tools\\publish-static-viewer.mjs %*');
 bat('preexport-assets.bat','runtime\\node.exe tools\\preexport-assets.mjs %*');
 bat('preexport-models.bat','runtime\\node.exe tools\\preexport-models.mjs %*');
 bat('configure-dota.bat','runtime\\node.exe tools\\configure-dota.mjs');

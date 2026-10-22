@@ -6,11 +6,12 @@ function composeHero(hero,item){
  for(const v of src.bufferViews??[]){if(v.buffer!==0)throw new Error('Only one buffer is supported');v.byteOffset=(v.byteOffset??0)+byteOffset;v.buffer=0;}
  for(const a of src.accessors??[]){if(a.bufferView!==undefined)a.bufferView+=offset.bufferViews;if(a.sparse){a.sparse.indices.bufferView+=offset.bufferViews;a.sparse.values.bufferView+=offset.bufferViews;}}
  for(const i of src.images??[]){if(i.bufferView!==undefined)i.bufferView+=offset.bufferViews;}
- for(const t of src.textures??[]){if(t.source!==undefined)t.source+=offset.images;if(t.sampler!==undefined)t.sampler+=offset.samplers;}
+ for(const t of src.textures??[]){if(t.source!==undefined)t.source+=offset.images;if(t.extensions?.EXT_texture_webp?.source!==undefined)t.extensions.EXT_texture_webp.source+=offset.images;if(t.sampler!==undefined)t.sampler+=offset.samplers;}
  function textureRefs(value){if(!value||typeof value!=='object')return;for(const [key,v]of Object.entries(value)){if(v&&typeof v==='object'){if(/texture$/i.test(key)&&Number.isInteger(v.index))v.index+=offset.textures;textureRefs(v);}}}
  for(const m of src.materials??[])textureRefs(m);
  for(const m of src.meshes??[])for(const p of m.primitives){for(const key of Object.keys(p.attributes))p.attributes[key]+=offset.accessors;if(p.indices!==undefined)p.indices+=offset.accessors;if(p.material!==undefined)p.material+=offset.materials;for(const t of p.targets??[])for(const key of Object.keys(t))t[key]+=offset.accessors;}
  for(const n of src.nodes??[]){if(n.mesh!==undefined)n.mesh+=offset.meshes;if(n.skin!==undefined)n.skin+=offset.skins;if(n.camera!==undefined)n.camera+=offset.cameras;if(n.children)n.children=n.children.map(i=>i+offset.nodes);}
+ for(const key of ['extensionsUsed','extensionsRequired'])if(src[key]?.length)out[key]=[...new Set([...(out[key]??[]),...src[key]])];
  const heroIndices=out.extras?.effectStudioHeroJoints??[...new Set([...(out.skins??[]).flatMap(s=>s.joints??[]),...(out.nodes??[]).flatMap((n,i)=>n.mesh===undefined?[i]:[])])];out.extras={...out.extras,effectStudioHeroJoints:heroIndices,effectStudioItemNodes:(src.nodes??[]).flatMap((n,i)=>n.mesh!==undefined?[i+offset.nodes]:[])};const heroJoints=new Map();for(const i of heroIndices){const name=out.nodes[i]?.name;if(name&&!heroJoints.has(name.toLowerCase()))heroJoints.set(name.toLowerCase(),i);}
  // These heroes' equipment is authored in a different bind pose. Merge matching
  // bones onto the animated hero instead of retaining the item's rest offset.
@@ -52,7 +53,7 @@ export class SceneParts {
   const signature=JSON.stringify(manifest.parts.map(p=>[p.key,p.role,p.id]));
   if(signature===this.signature)return null;
   const parts=new Array(manifest.parts.length);let next=0;
-  const worker=async()=>{for(;;){const i=next++;if(i>=parts.length)return;const p=manifest.parts[i];let bytes=this.cache.get(p.key);if(!bytes){const response=await fetcher(base+'/parts/'+p.index+query);if(!response.ok)throw new Error('Scene part download failed');bytes=await response.arrayBuffer();if(bytes.byteLength!==p.bytes||bytes.byteLength>512*1024*1024)throw new Error('Invalid scene part size');}parts[i]={...p,bytes};}};
+  const worker=async()=>{for(;;){const i=next++;if(i>=parts.length)return;const p=manifest.parts[i];let bytes=this.cache.get(p.key);if(!bytes){const response=await fetcher(p.url??(base+'/parts/'+p.index+query));if(!response.ok)throw new Error('Scene part download failed');bytes=await response.arrayBuffer();if(bytes.byteLength!==p.bytes||bytes.byteLength>512*1024*1024)throw new Error('Invalid scene part size');}parts[i]={...p,bytes};}};
   const results=await Promise.allSettled(Array.from({length:Math.min(4,parts.length)},worker));const failure=results.find(r=>r.status==='rejected');if(failure)throw failure.reason;
   if(parts.reduce((n,p)=>n+p.bytes.byteLength,0)>512*1024*1024)throw new Error('Scene exceeds 512 MiB');
   const asset=composeParts(parts);for(const p of parts){this.cache.delete(p.key);this.cache.set(p.key,p.bytes);}let total=[...this.cache.values()].reduce((n,b)=>n+b.byteLength,0);const active=new Set(parts.map(p=>p.key));for(const [key,bytes] of this.cache){if(total<=512*1024*1024)break;if(!active.has(key)){this.cache.delete(key);total-=bytes.byteLength;}}this.signature=signature;return asset;

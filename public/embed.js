@@ -10,24 +10,24 @@
    try{return await this.refreshing;}finally{this.refreshing=null;}
   }
   async request(route,data,{signal}={}){await this.session();const response=await fetch(this.base+route,{method:data===undefined?'GET':'POST',headers:{Authorization:'Bearer '+this.token,'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data),signal});const value=await response.json();if(!response.ok){const error=new Error(value.error??'API failed');error.status=response.status;throw error;}return value;}
-  catalog(){return this.request('/api/catalog');}
+  async catalog(){this.catalogData??=await this.request('/api/catalog');return this.catalogData;}
   stances(heroId){return this.request('/api/stances?heroId='+encodeURIComponent(heroId));}
   async immortalEffects(heroId){const {options,abilities=[]}=await this.stances(heroId);return {options:options.filter(o=>o.category==='immortal'),abilities};}
   async abilityIconUrl(heroId,abilityId){await this.session();return this.base+'/api/ability-icon?'+new URLSearchParams({heroId,abilityId,token:this.token});}
   async immortalIconUrl(heroId,optionId,index=0,variant='immortal'){await this.session();return this.base+'/api/immortal-icon?'+new URLSearchParams({heroId,optionId,index:String(index),variant,token:this.token});}
   inspect(selection){return this.request('/api/inspect',selection);}
-  preview(selection){return this.request('/api/preview',selection);}
+  async preview(selection){const catalog=await this.catalog();if(!catalog.staticPreview)return this.request('/api/preview',selection);if(!this.staticClient){this.staticPending??=import(this.base+'/static-preview.mjs').then(({StaticPreviewClient})=>new StaticPreviewClient(catalog,{onView:data=>this.request('/api/preview-view',data)}));this.staticClient=await this.staticPending;}return this.staticClient.preview(selection);}
   build(selection){return this.request('/api/build',selection);}
   job(id){return this.request('/api/jobs/'+this.id(id));}
-  previewJob(id){return this.request('/api/previews/'+this.id(id));}
-  effect(id){return this.request('/api/previews/'+this.id(id)+'/effect');}
+  previewJob(id){return this.staticClient?.jobs.has(id)?Promise.resolve(this.staticClient.get(id)):this.request('/api/previews/'+this.id(id));}
+  effect(id){return this.staticClient?.jobs.has(id)?Promise.resolve({effects:this.staticClient.get(id).effects}):this.request('/api/previews/'+this.id(id)+'/effect');}
   id(id){if(!/^[a-f0-9]{32}$/.test(id))throw new Error('Invalid job ID');return id;}
   async url(route){await this.session();return this.base+route+'?token='+encodeURIComponent(this.token);}
   downloadUrl(id){return this.url('/api/jobs/'+this.id(id)+'/download');}
-  modelUrl(id){return this.url('/api/previews/'+this.id(id)+'/model');}
+  modelUrl(id){if(this.staticClient?.jobs.has(id))throw new Error('Static previews contain separate parts; use mountViewer or previewJob(id).parts');return this.url('/api/previews/'+this.id(id)+'/model');}
   async wait(id,{preview=false,interval=800,timeout=240000,signal,onProgress}={}){
    const end=Date.now()+timeout;
-   while(Date.now()<end){signal?.throwIfAborted();const job=await this.request((preview?'/api/previews/':'/api/jobs/')+this.id(id),undefined,{signal});onProgress?.(job);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')return job;await new Promise((resolve,reject)=>{const finish=()=>{signal?.removeEventListener('abort',abort);resolve();};const timer=setTimeout(finish,interval);const abort=()=>{clearTimeout(timer);signal.removeEventListener('abort',abort);reject(signal.reason??new Error('Aborted'));};signal?.addEventListener('abort',abort,{once:true});});}
+   while(Date.now()<end){signal?.throwIfAborted();const job=preview?await this.previewJob(id):await this.request('/api/jobs/'+this.id(id),undefined,{signal});onProgress?.(job);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')return job;await new Promise((resolve,reject)=>{const finish=()=>{signal?.removeEventListener('abort',abort);resolve();};const timer=setTimeout(finish,interval);const abort=()=>{clearTimeout(timer);signal.removeEventListener('abort',abort);reject(signal.reason??new Error('Aborted'));};signal?.addEventListener('abort',abort,{once:true});});}
    throw new Error('Timeout waiting for job');
   }
  }
@@ -51,11 +51,11 @@
   };window.addEventListener('message',listener);frame.src=await client.url('/viewer');element.replaceChildren(frame);
   async function command(type,data={}){if(destroyed)throw new Error('Viewer destroyed');await ready;await client.session();const id=++serial;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Viewer command timeout'));},240000);pending.set(id,{resolve,reject,timer});frame.contentWindow.postMessage({channel:'des-viewer',id,type,token:client.token,...data},client.base);});}
   return {client,frame,ready,
-   async show(selection,{signal,onProgress,...waitOptions}={}){if(showing)throw new Error('Viewer is loading');showing=true;try{await ready;const catalog=await client.catalog(),job=await client.preview({...selection,partsOnly:true});const state=await client.wait(job.id,{...waitOptions,preview:true,signal,onProgress});signal?.throwIfAborted();const result=await command('load',{previewId:state.id,selection,effect:catalog.effects.find(e=>e.id===selection.effectId),batch:!!state.selectedItems});return {...state,...result};}finally{showing=false;}},
+   async show(selection,{signal,onProgress,...waitOptions}={}){if(showing)throw new Error('Viewer is loading');showing=true;try{await ready;const catalog=await client.catalog(),job=await client.preview({...selection,partsOnly:true});const state=await client.wait(job.id,{...waitOptions,preview:true,signal,onProgress});signal?.throwIfAborted();const result=await command('load',{previewId:state.id,staticPreview:state.static?state:undefined,selection,effect:catalog.effects.find(e=>e.id===selection.effectId),batch:!!state.selectedItems});return {...state,...result};}finally{showing=false;}},
    setAnimation(index){return command('animation',{index});},setEffectsEnabled(enabled){return command('effects',{enabled});},replay(){return command('replay');},clear(){return command('clear');},
    destroy(){destroyed=true;clearTimeout(readyTimer);readyReject(new Error('Viewer destroyed'));window.removeEventListener('message',listener);for(const task of pending.values()){clearTimeout(task.timer);task.reject(new Error('Viewer destroyed'));}pending.clear();frame.remove();}
   };
  }
- window.DotaEffectStudio={version:'1.0.0',connect,mount,mountViewer};
+ window.DotaEffectStudio={version:'1.1.0',connect,mount,mountViewer};
  if(script?.dataset.key&&script.dataset.target){mount({siteKey:script.dataset.key,target:document.getElementById(script.dataset.target),height:script.dataset.height??1050}).catch(error=>{const target=document.getElementById(script.dataset.target);if(target)target.textContent='Не удалось загрузить виджет: '+error.message;});}
 })();

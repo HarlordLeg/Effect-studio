@@ -1,4 +1,6 @@
-import {createHash} from 'node:crypto';
+import {assembleStaticPreview} from './public/static-preview.mjs';
+import {createStaticViewer} from './lib/static-viewer.mjs';
+import {createHash,randomBytes} from 'node:crypto';
 import {cosmeticCatalog,browserCosmeticCatalog,cosmeticChoices} from './lib/global-cosmetics.mjs';
 import {techiesArcanaNative} from './lib/techies-icons.mjs';
 import {hasTechiesArcana} from './lib/techies-arcana.mjs';
@@ -33,6 +35,8 @@ export function startServer({port:overridePort,adminAuth}={}) {
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
   const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons),techiesIconPreviews=new TechiesIconPreviews(builder,itemIcons);
   const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root);
+  const staticViewer=createStaticViewer(root,config),staticJobs=new Map(),staticData=new Map();
+  const staticRead=ref=>{if(!/^assets\/[a-f0-9]{64}\.json$/.test(ref))throw Error('Invalid static reference');if(!staticData.has(ref))staticData.set(ref,JSON.parse(fs.readFileSync(path.join(staticViewer.directory,ref),'utf8')));while(staticData.size>96)staticData.delete(staticData.keys().next().value);return staticData.get(ref);};
   const tracking=new WeakMap();
   const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
   builder.onReady=job=>count('vpks',tracking.get(job));
@@ -46,12 +50,14 @@ export function startServer({port:overridePort,adminAuth}={}) {
       const expectedPort=server.address()?.port;
       const {allowedHost,localAdmin}=requestAccess(req,config,expectedPort);
       if(!allowedHost)return json(res,403,{error:'Host не разрешён. Укажи publicBaseUrl для серверного режима.'});
+      if(staticViewer.route(req,res,url))return;
       if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
-      const integrationRoute=/^\/api\/(catalog|item-icon|set-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
+      const integrationRoute=/^\/api\/(catalog|cosmetics|cosmetic-icon|item-icon|set-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
-        res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');
+        res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
       }
       if(url.pathname.startsWith('/api/admin/')){
@@ -83,7 +89,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
       }
       if(url.pathname==='/api/widget/session'&&req.method==='POST') {
         const data=await body(req);const token=auth.issue(data.key,origin,data.previousToken);
-        res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');return json(res,200,{token,expiresIn:1800});
+        res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');return json(res,200,{token,expiresIn:1800});
       }
       if(url.pathname==='/api/widget/session'&&req.method==='OPTIONS') {
         if(!auth.sites().some(s=>!s.disabled&&s.origins.includes(origin)))return json(res,403,{error:'Origin не разрешён'});
@@ -96,6 +102,9 @@ export function startServer({port:overridePort,adminAuth}={}) {
       const allowed=localAdmin||session;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=session?session.id+':'+session.nonce:'local';previews.touch(owner);
+      if(req.method==='GET'&&staticViewer.api(req,res,url))return;
+      if(staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
+      if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
       if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits',{source:session?.origin??'local'});return json(res,200,{ok:true});}
       if(url.pathname==='/api/techies-icon'&&req.method==='GET'){
         let options;try{options=techiesIconRequest(url.searchParams);}catch(error){return json(res,400,{error:error.message});}
@@ -145,6 +154,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
+        if(staticViewer.enabled()){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);const data=await body(req);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
         const data=await body(req);let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
         const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
         if(stance&&setRows)setRows=kineticBuildChoices(setRows,[stance]);
@@ -161,6 +171,7 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
         if(session)auth.consume(session,'preview');
         const job=previews.create(choice,owner,buildJob);tracking.set(job,{selections:selectionStatistics(choice.selections??[choice]),source:session?.origin??'local'});return json(res,202,publicPreview(job));
       }
+      const staticMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);if(staticMatch&&staticJobs.has(staticMatch[1])){const job=staticJobs.get(staticMatch[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});if(!staticMatch[2])countModel(job);return json(res,200,staticMatch[2]?{effects:job.effects}:Object.fromEntries(Object.entries(publicPreview(job)).filter(([key])=>key!=='effects')));}
       const previewMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/);
       if(previewMatch){
         const job=previews.jobs.get(previewMatch[1]);if(!job||job.owner!==owner)return json(res,404,{error:'Предпросмотр не найден'});
@@ -196,8 +207,9 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
       const isSection=/^\/(effects|sets|cosmetics|weather)\.html$/.test(url.pathname);
       const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin';
       if(isWidget&&!session)return json(res,401,{error:'Нужна сессия виджета'});
-      const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
-      res.setHeader('Content-Security-Policy',csp);
+      const assetOrigin=config.staticViewerBaseUrl?.startsWith('https://')?new URL(config.staticViewerBaseUrl).origin:'';
+      const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net "+assetOrigin+"; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self' "+assetOrigin+"; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
+      res.setHeader('Content-Security-Policy',csp);if(/\.(mjs|js)$/.test(url.pathname))res.setHeader('Access-Control-Allow-Origin','*');
       let file;
       {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}
       if(!fs.existsSync(file)||!fs.statSync(file).isFile())return json(res,404,{error:'Файл не найден'});

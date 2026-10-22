@@ -20,7 +20,7 @@ try {
  fs.mkdirSync(path.dirname(keysFile),{recursive:true});fs.writeFileSync(keysFile,JSON.stringify(sites,null,2),{mode:0o600});
  fs.copyFileSync(fs.existsSync(configFile)?configFile:path.join(root,'config.example.json'),configFile+'.before-pages.bak');
  config.host='127.0.0.1';config.publicBaseUrl=server.origin;fs.writeFileSync(configFile,JSON.stringify(config,null,2));
- fs.mkdirSync(path.join(root,'docs'),{recursive:true});fs.writeFileSync(path.join(root,'docs/site-config.json'),JSON.stringify({serverUrl:server.origin,siteKey:site.key},null,2));
+ fs.mkdirSync(path.join(root,'docs'),{recursive:true});fs.writeFileSync(path.join(root,'docs/site-config.json'),JSON.stringify({...((fs.existsSync(path.join(root,'docs/site-config.json'))?JSON.parse(fs.readFileSync(path.join(root,'docs/site-config.json'),'utf8')):{})),serverUrl:server.origin,siteKey:site.key},null,2));
  console.log('Ready. Restart start-local.bat. Upload docs/ to GitHub.');
  console.log('Pages: Settings > Pages > Deploy from a branch > main > /docs.');
  console.log('Only docs/site-config.json is public. Do not upload config.json or data/site-keys.json.');

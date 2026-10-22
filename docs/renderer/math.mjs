@@ -1,0 +1,10 @@
+export const identity=()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
+export function multiply(a,b){const out=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)for(let k=0;k<4;k++)out[c*4+r]+=a[k*4+r]*b[c*4+k];return out;}
+export function inverse(m){const rows=Array.from({length:4},(_,r)=>Array.from({length:8},(_,c)=>c<4?m[c*4+r]:+(c-4===r)));for(let c=0;c<4;c++){let pivot=c;for(let r=c+1;r<4;r++)if(Math.abs(rows[r][c])>Math.abs(rows[pivot][c]))pivot=r;if(Math.abs(rows[pivot][c])<1e-10)throw new Error('Singular transform');[rows[c],rows[pivot]]=[rows[pivot],rows[c]];const divisor=rows[c][c];for(let j=0;j<8;j++)rows[c][j]/=divisor;for(let r=0;r<4;r++){if(r===c)continue;const factor=rows[r][c];for(let j=0;j<8;j++)rows[r][j]-=factor*rows[c][j];}}return new Float32Array(Array.from({length:16},(_,i)=>rows[i%4][4+Math.floor(i/4)]));}
+export function trs(t=[0,0,0],q=[0,0,0,1],s=[1,1,1]){const[x,y,z,w]=q,x2=x+x,y2=y+y,z2=z+z;return new Float32Array([(1-y*y2-z*z2)*s[0],(x*y2+w*z2)*s[0],(x*z2-w*y2)*s[0],0,(x*y2-w*z2)*s[1],(1-x*x2-z*z2)*s[1],(y*z2+w*x2)*s[1],0,(x*z2+w*y2)*s[2],(y*z2-w*x2)*s[2],(1-x*x2-y*y2)*s[2],0,...t,1]);}
+const normalize=v=>{const d=Math.hypot(...v)||1;return v.map(x=>x/d);};
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+export function lookAt(eye,target){const z=normalize(eye.map((x,i)=>x-target[i])),x=normalize(cross([0,1,0],z)),y=cross(z,x),dot=a=>a.reduce((v,k,i)=>v+k*eye[i],0);return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x),-dot(y),-dot(z),1]);}
+export function perspective(fov,aspect,near,far){const f=1/Math.tan(fov/2),d=near-far;return new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)/d,-1,0,0,2*far*near/d,0]);}
+export function point(m,p){return [0,1,2].map(r=>m[r]*p[0]+m[4+r]*p[1]+m[8+r]*p[2]+m[12+r]);}
+export function slerp(a,b,t){let dot=a.reduce((v,x,i)=>v+x*b[i],0);if(dot<0){b=b.map(x=>-x);dot=-dot;}if(dot>.9995)return normalize(a.map((x,i)=>x+(b[i]-x)*t));const theta=Math.acos(Math.max(-1,Math.min(1,dot))),den=Math.sin(theta);return a.map((x,i)=>(x*Math.sin((1-t)*theta)+b[i]*Math.sin(t*theta))/den);}
