@@ -21,22 +21,22 @@ test('widget previews do not consume VPK build quota; both site limits remain en
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
 
-test('legacy site keys upgrade to 500 builds and 50000 previews without changing credentials or custom quotas',async()=>{
+test('legacy site keys upgrade to 3000 builds and 50000 previews without changing credentials or custom quotas',async()=>{
  const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');const {WidgetAuth}=await import('../lib/auth.mjs');
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-limit-upgrade-'));try{
   fs.mkdirSync(path.join(root,'data'));const file=path.join(root,'data','site-keys.json'),sites=[{id:'legacy',key:'keep-key',origins:['https://dota-studio.lol'],buildsPerHour:300,previewsPerHour:3000},{id:'custom',key:'custom-key',origins:['https://custom.example'],buildsPerHour:5,previewsPerHour:20,disabled:true}];fs.writeFileSync(file,JSON.stringify(sites));
-  const auth=new WidgetAuth(root),session=auth.verify(auth.issue('keep-key','https://dota-studio.lol'));assert.equal(session.limit,500);assert.equal(session.previewLimit,50000);
-  for(let i=0;i<500;i++)auth.consume(session);assert.throws(()=>auth.consume(session),/лимит сборок/);
+  const auth=new WidgetAuth(root),session=auth.verify(auth.issue('keep-key','https://dota-studio.lol'));assert.equal(session.limit,3000);assert.equal(session.previewLimit,50000);
+  for(let i=0;i<3000;i++)auth.consume(session);assert.throws(()=>auth.consume(session),/лимит сборок/);
   for(let i=0;i<50000;i++)auth.consume(session,'preview');assert.throws(()=>auth.consume(session,'preview'),/3D-предпросмотров/);
   const updated=JSON.parse(fs.readFileSync(file));assert.equal(updated[0].key,'keep-key');assert.deepEqual(updated[0].origins,sites[0].origins);assert.deepEqual(updated[1],sites[1]);
   const saved=fs.readFileSync(file,'utf8');new WidgetAuth(root);assert.equal(fs.readFileSync(file,'utf8'),saved);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 
-test('partner keys receive 3000 VPK builds per hour while primary-site defaults stay at 500',async()=>{
+test('partner keys receive 3000 VPK builds per hour while primary-site defaults are 3000',async()=>{
  const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');const {WidgetAuth,defaultBuildLimit}=await import('../lib/auth.mjs');const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-partner-limits-'));try{
   const origin='https://partner.example';fs.mkdirSync(path.join(root,'data'));fs.writeFileSync(path.join(root,'data','site-keys.json'),JSON.stringify([{id:'partner',key:'partner-key',origins:[origin],buildsPerHour:500}]));const auth=new WidgetAuth(root),session=auth.verify(auth.issue('partner-key',origin));assert.equal(session.limit,3000);assert.equal(session.previewLimit,50000);
   for(let i=0;i<3000;i++)auth.consume(session);assert.throws(()=>auth.consume(session),/лимит сборок/);
-  assert.equal(defaultBuildLimit({origins:['https://dota-studio.lol']}),500);assert.equal(defaultBuildLimit({origins:['https://harlordleg.github.io']}),500);assert.equal(defaultBuildLimit({origins:['https://custom-main.example'],role:'primary'}),500);assert.equal(defaultBuildLimit({origins:['https://dota-studio.lol.evil.example']}),3000);
+  assert.equal(defaultBuildLimit({origins:['https://dota-studio.lol']}),3000);assert.equal(defaultBuildLimit({origins:['https://harlordleg.github.io']}),3000);assert.equal(defaultBuildLimit({origins:['https://custom-main.example'],role:'primary'}),3000);assert.equal(defaultBuildLimit({origins:['https://dota-studio.lol.evil.example']}),3000);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
