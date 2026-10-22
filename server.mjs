@@ -1,3 +1,4 @@
+import {adminArcanaCatalog,adminArcanaChoices} from './lib/admin-arcanas.mjs';
 import {Notifications} from './lib/notifications.mjs';
 import {drowArcanaChoices,drowArcanaCatalog} from './lib/drow-arcana.mjs';
 import {assembleStaticPreview} from './public/static-preview.mjs';
@@ -73,6 +74,13 @@ export function startServer({port:overridePort,adminAuth}={}) {
         if(url.pathname==='/api/admin/notifications'&&req.method==='GET')return json(res,200,notifications.feed());
         if(url.pathname==='/api/admin/notifications'&&req.method==='POST')return json(res,201,{item:notifications.publish(await body(req))});
         if(url.pathname==='/api/admin/notifications/delete'&&req.method==='POST'){notifications.remove((await body(req)).id);return json(res,200,{ok:true});}
+        const testArcana=url.pathname.match(/^\/api\/admin\/(build-)?test-arcana\/(lina|monkey_king)$/);
+        if(testArcana&&!testArcana[1]&&req.method==='GET')return json(res,200,adminArcanaCatalog(builder,testArcana[2]));
+        if(testArcana&&testArcana[1]&&req.method==='POST'){
+          const data=await body(req);vpkFilename(data.vpkNumber??1);
+          const choices=adminArcanaChoices(builder,testArcana[2],data),job=builder.create(choices,adminOwner,{vpkNumber:data.vpkNumber??1});
+          tracking.set(job,{selections:selectionStatistics(choices),source:'admin'});return json(res,202,publicJob(job));
+        }
         if(url.pathname==='/api/admin/drow-arcana'&&req.method==='GET')return json(res,200,drowArcanaCatalog(builder));
         if(url.pathname==='/api/admin/build-drow-arcana'&&req.method==='POST'){
           const data=await body(req);vpkFilename(data.vpkNumber??1);
