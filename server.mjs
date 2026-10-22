@@ -1,3 +1,4 @@
+import {Notifications} from './lib/notifications.mjs';
 import {drowArcanaChoices,drowArcanaCatalog} from './lib/drow-arcana.mjs';
 import {assembleStaticPreview} from './public/static-preview.mjs';
 import {createStaticViewer} from './lib/static-viewer.mjs';
@@ -27,7 +28,7 @@ import {WidgetAuth} from './lib/auth.mjs';
 import {requestAccess} from './lib/request-access.mjs';
 import {AdminAuth,Statistics,selectionStatistics,vpkFilename} from './lib/admin.mjs';
 export const root=path.dirname(fileURLToPath(import.meta.url));
-const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
+const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':res.getHeader('Cache-Control')??'no-store'});res.end(JSON.stringify(data));};
 const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
 async function body(req){let b='';for await(const chunk of req){b+=chunk;if(b.length>16384)throw new Error('Слишком большой запрос');}return JSON.parse(b||'{}');}
 function publicJob(job){const {file,owner,_terrain,_attackVpk,...result}=job;return result;}
@@ -35,7 +36,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
   const configPath=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'));
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
   const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons),techiesIconPreviews=new TechiesIconPreviews(builder,itemIcons);
-  const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root);
+  const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
   const staticViewer=createStaticViewer(root,config),staticJobs=new Map(),staticData=new Map();
   const staticRead=ref=>{if(!/^assets\/[a-f0-9]{64}\.json$/.test(ref))throw Error('Invalid static reference');if(!staticData.has(ref))staticData.set(ref,JSON.parse(fs.readFileSync(path.join(staticViewer.directory,ref),'utf8')));while(staticData.size>96)staticData.delete(staticData.keys().next().value);return staticData.get(ref);};
   const tracking=new WeakMap();
@@ -54,6 +55,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
       if(staticViewer.route(req,res,url))return;
       if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
+      if(url.pathname==='/api/notifications'&&req.method==='GET'){res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Cache-Control','public, max-age=60');return json(res,200,notifications.feed());}
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
       const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
@@ -68,6 +70,9 @@ export function startServer({port:overridePort,adminAuth}={}) {
         const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
         const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
+        if(url.pathname==='/api/admin/notifications'&&req.method==='GET')return json(res,200,notifications.feed());
+        if(url.pathname==='/api/admin/notifications'&&req.method==='POST')return json(res,201,{item:notifications.publish(await body(req))});
+        if(url.pathname==='/api/admin/notifications/delete'&&req.method==='POST'){notifications.remove((await body(req)).id);return json(res,200,{ok:true});}
         if(url.pathname==='/api/admin/drow-arcana'&&req.method==='GET')return json(res,200,drowArcanaCatalog(builder));
         if(url.pathname==='/api/admin/build-drow-arcana'&&req.method==='POST'){
           const data=await body(req);vpkFilename(data.vpkNumber??1);
@@ -152,7 +157,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
         const item=cosmeticCatalog(builder).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
         try{const style=item.styles?.find(s=>s.id===url.searchParams.get('styleId'));const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:style?.imageInventory??item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
       }
-      if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),terrorbladeArcana:hasTerrorbladeArcana(root),techiesArcana:hasTechiesArcana(root),webParticles:false});
+      if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),drowArcana:true,terrorbladeArcana:hasTerrorbladeArcana(root),techiesArcana:hasTechiesArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
         const data=await body(req);for(const heroId of new Set((data.selections??[]).filter(row=>row.stanceId!=null).map(row=>row.heroId)))await heroStances(builder,heroId);const cosmetics=cosmeticChoices(builder,data.cosmetics??[]);const choices=Array.isArray(data.selections)&&!data.selections.length&&cosmetics.length?[]:normalizeSelections(builder,data),choice=choices[0];if(!cosmetics.length&&data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');

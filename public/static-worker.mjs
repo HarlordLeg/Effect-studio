@@ -52,6 +52,7 @@ async function route(request,event){const url=new URL(request.url),name=url.path
   if(/^\/api\/(techies-icon|terrorblade-icon|immortal-icon|ability-icon|techies-cart-icon)$/.test(name))return proxy(request);
   if(!name.startsWith('/api/jobs/'))return json({error:'Resource not prepublished'},404);
  }
+ if(name==='/api/notifications')return proxy(request,{authenticated:false});
  if(name.startsWith('/api/')){
   if(!/^\/api\/(build$|jobs\/|visit$|preview-view$)/.test(name))return json({error:'Runtime preview export disabled'},409);
   return proxy(request);

@@ -11,3 +11,20 @@ test('Drow weapon changes and invalid slots/styles are rejected server-side',()=
 });
 
 test('both approved crossbows can be selected',()=>{for(const weaponId of ['37144','34594'])assert.equal(drowArcanaChoices(builder(),{weaponId}).find(r=>r.item.slot==='weapon').item.id,'drow-crossbow:'+weaponId);});
+
+import {drowArcanaChoice,completeDrowArcanaChoices} from '../lib/drow-arcana.mjs';
+import {setPayload} from '../public/set-studio.mjs';
+import {assembleStaticPreview} from '../public/static-preview.mjs';
+test('public Drow arcana expands to eight parts and rejects a forged ordinary weapon',()=>{
+ const b=builder(),arcana=drowArcanaChoice(b,{heroId:'drow_ranger',arcana:{style:0,weaponId:'34594'}});
+ assert.equal(completeDrowArcanaChoices(b,[arcana]).length,8);
+ assert.throws(()=>completeDrowArcanaChoices(b,[arcana,{hero:arcana.hero,item:{slot:'weapon',id:'forged'}}]),/crossbow/);
+ const payload=setPayload(arcana.hero,new Map([['weapon','ordinary']]),{arcana:arcana.arcana});
+ assert.equal(payload.selections.length,1);assert.ok(payload.selections[0].arcana);
+});
+test('Drow static arcana uses its selected style and crossbow without requiring or applying RGB',async()=>{
+ const catalog={heroes:[{id:'drow_ranger',items:[]}]},manifest={heroes:{drow_ranger:'normal'},arcanas:{drow_ranger:{'1:34594':'drow'}}};
+ const values={normal:{items:{}},drow:{parts:[{role:'hero',key:'arcana-body'},{role:'default',slot:'weapon',key:'monster-crossbow',id:'bow'}],native:'native'},native:{effects:[{itemId:'bow',slot:'weapon',scope:'item',packet:{systems:[]}}]}};
+ const job=await assembleStaticPreview({selections:[{heroId:'drow_ranger',slot:'arcana',arcana:{style:1,weaponId:'34594'}}]},catalog,manifest,async key=>values[key]);
+ assert.deepEqual(job.parts.map(p=>p.key),['arcana-body','monster-crossbow']);assert.equal(job.arcanaTint,undefined);assert.equal(job.effects[0].scope,'item');assert.equal(job.effects[0].itemId,'bow');
+});

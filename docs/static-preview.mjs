@@ -7,7 +7,7 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  if(!heroId||inputRows.some(r=>r.heroId!==heroId))throw Error('Preview supports one hero at a time');
  const entitySlot=data.previewForm?.startsWith('entity:')?data.previewForm.slice(7):null;
  const arcanaRow=inputRows.find(r=>r.arcana);if(arcanaRow&&entitySlot)throw Error('Arcana summon previews have not been prepublished. VPK building remains available.');if(data.previewForm&&data.previewForm!=='normal'&&!entitySlot&&!(arcanaRow&&data.previewForm==='demon'&&heroId==='terrorblade'))throw Error('This custom arcana/form preview has not been prepublished. VPK building remains available.');
- let rows=inputRows.filter(r=>!r.stanceId&&!r.arcana);const stanceRow=inputRows.find(r=>r.stanceId),preferredAnimations=[];
+ let rows=inputRows.filter(r=>!r.stanceId&&!r.arcana&&!(heroId==='drow_ranger'&&arcanaRow&&r.slot==='weapon'));const stanceRow=inputRows.find(r=>r.stanceId),preferredAnimations=[];
  if(stanceRow){
   if(!manifest.stances?.[heroId])throw Error('Kinetic preview metadata has not been prepublished');
   const options=(await load(manifest.stances[heroId])).options??[],selection=stanceRow.stanceId;
@@ -17,9 +17,9 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
   const option=options.find(o=>o.id===selected);if(option?.available===false)throw Error('This kinetic is unavailable');preferredAnimations.push(...(option?.animations??[]));
  }
  let arcanaRecipe=null,arcanaColor=null;
- if(arcanaRow){const a=arcanaRow.arcana,ref=manifest.arcanas?.[heroId]?.[(a.mode??'base')+':'+(data.previewForm==='demon'?'demon':'normal')];if(!ref)throw Error('This arcana preview has not been prepublished. Run publish-static-viewer --arcana-only and upload to R2.');
-  if(!Array.isArray(a.color)||a.color.length!==3||a.color.some(n=>!Number.isInteger(n)||n<0||n>255))throw Error('Invalid arcana RGB');
-  arcanaRecipe=await load(ref);arcanaColor=heroId==='techies'&&!a.customColor?null:a.color.map(n=>n/255);
+ if(arcanaRow){const a=arcanaRow.arcana,ref=manifest.arcanas?.[heroId]?.[heroId==='drow_ranger'?a.style+':'+a.weaponId:(a.mode??'base')+':'+(data.previewForm==='demon'?'demon':'normal')];if(!ref)throw Error(heroId==='drow_ranger'?'Drow arcana 3D has not been published yet. Run tools/publish-drow-arcana.mjs and upload to R2.':'This arcana preview has not been prepublished. Run publish-static-viewer --arcana-only and upload to R2.');
+  if(heroId!=='drow_ranger'&&(!Array.isArray(a.color)||a.color.length!==3||a.color.some(n=>!Number.isInteger(n)||n<0||n>255)))throw Error('Invalid arcana RGB');
+  arcanaRecipe=await load(ref);arcanaColor=heroId==='drow_ranger'||heroId==='techies'&&!a.customColor?null:a.color.map(n=>n/255);
  }
  const hero=catalog.heroes.find(h=>h.id===heroId);if(!hero)throw Error('Unknown hero');const reference=manifest.heroes[heroId];if(!reference)throw Error('This hero has not been prepublished yet.');const recipes=await load(reference),selected=[];if(!rows.length&&!arcanaRecipe){const id=Object.keys(recipes.items).find(id=>id.startsWith('default:'));if(!id)throw Error('Base hero preview has not been prepublished');rows=[{heroId,itemId:id}];}
  if(arcanaRow&&data.previewForm==='demon'){if(rows.some(row=>row.slot==='demon'&&row.itemId))throw Error('This custom arcana demon model has not been prepublished. VPK building remains available.');rows=[];}
@@ -47,7 +47,7 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  const parts=[body],defaultKeys=new Set();
  for(const part of baseSelection.recipe.parts){const p=classify(part,baseSelection);if(embeddedBodyOnly&&!p.slot?.startsWith('merge-base:')||p.role!=='default'||slots.has(p.slot)||replaced.has(p.id)||defaultKeys.has(p.key))continue;defaultKeys.add(p.key);parts.push(p);}
  const effects=[],seen=new Set();
- if(arcanaRecipe?.native){const packet=await load(arcanaRecipe.native);for(const [index,entry]of(packet.effects??[]).entries())effects.push({...entry,itemId:'arcana:'+heroId,effectId:'arcana-native-'+index,scope:'hero',color:arcanaColor,...(arcanaColor?{packet:{...entry.packet,arcanaRgb:true}}:{})});}
+ if(arcanaRecipe?.native){const packet=await load(arcanaRecipe.native);for(const [index,entry]of(packet.effects??[]).entries()){if(heroId==='drow_ranger'&&slots.has(entry.slot))continue;effects.push({...entry,itemId:heroId==='drow_ranger'?entry.itemId:'arcana:'+heroId,effectId:'arcana-native-'+index,scope:heroId==='drow_ranger'?entry.scope:'hero',color:arcanaColor,...(arcanaColor?{packet:{...entry.packet,arcanaRgb:true}}:{})});}}
 
  for(const {row,recipe}of selected){const groupId=row.itemId??'default:'+recipe.slot;for(const part of recipe.parts){const p=classify(part,{row,recipe});if(p.role==='item')parts.push({...p,id:groupId});}if(recipe.native){const packet=await load(recipe.native);for(const entry of packet.effects??[]){const owner=hero.items?.find(item=>item.id===entry.itemId);if(owner?.isDefault&&owner.slot!==recipe.slot)continue;const nativeKey=groupId+':'+entry.effectId;if(seen.has(nativeKey))continue;seen.add(nativeKey);effects.push({...entry,itemId:groupId,...(arcanaColor?{color:arcanaColor,packet:{...entry.packet,arcanaRgb:true}}:{})});}}
  for(const id of row.effectIds??[]){if(!id)continue;const e=catalog.effects.find(e=>e.id===id);if(!e)continue;const key=e.scope==='hero'?id:groupId+':'+id;if(seen.has(key))continue;seen.add(key);if(!manifest.effects[id])throw Error('Effect has not been prepublished: '+id);effects.push({itemId:groupId,effectId:id,scope:e.scope??'item',ghost:!!e.ghost,color:previewColor(e,row.courierColor??null),defaultColor:previewColor(e),packet:await load(manifest.effects[id])});}}
