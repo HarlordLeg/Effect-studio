@@ -1,8 +1,8 @@
 import {parseGlb,GlbAsset} from './glb.mjs';
 const keys=['bufferViews','accessors','images','samplers','textures','materials','meshes','nodes','skins','animations','cameras'];
-function composeHero(hero,item){
- const out=structuredClone(hero.json),src=structuredClone(item.json),offset=Object.fromEntries(keys.map(k=>[k,(out[k]??[]).length]));for(const key of keys)out[key]??=[];
- const byteOffset=(hero.bin.byteLength+3)&~3,bin=new Uint8Array(byteOffset+item.bin.byteLength);bin.set(new Uint8Array(hero.bin));bin.set(new Uint8Array(item.bin),byteOffset);
+function composeHero(hero,item,packed){
+ const out=hero.json,src=structuredClone(item.json),offset=Object.fromEntries(keys.map(k=>[k,(out[k]??[]).length]));for(const key of keys)out[key]??=[];
+ const byteOffset=packed.offsets[packed.index++],bin=packed.bin;
  for(const v of src.bufferViews??[]){if(v.buffer!==0)throw new Error('Only one buffer is supported');v.byteOffset=(v.byteOffset??0)+byteOffset;v.buffer=0;}
  for(const a of src.accessors??[]){if(a.bufferView!==undefined)a.bufferView+=offset.bufferViews;if(a.sparse){a.sparse.indices.bufferView+=offset.bufferViews;a.sparse.values.bufferView+=offset.bufferViews;}}
  for(const i of src.images??[]){if(i.bufferView!==undefined)i.bufferView+=offset.bufferViews;}
@@ -43,8 +43,12 @@ function composeHero(hero,item){
 export function composeParts(parts){
  if(!parts.length||parts[0].role!=='hero')throw new Error('Hero part required');
  const prepared=parts.map(p=>{const a=parseGlb(p.bytes),json=structuredClone(a.json);for(const [i,n] of (json.nodes??[]).entries())n.extras={...n.extras,studioPart:p.key,studioNode:i};return new GlbAsset(json,a.bin);});
- let asset=prepared[0];const groups={};
- for(let i=1;i<parts.length;i++){asset=composeHero(asset,prepared[i]).asset;if(parts[i].role==='item')groups[parts[i].id]=asset.json.extras.effectStudioItemNodes;}
+ // Copy each binary payload once. Repeatedly concatenating the growing hero
+ // buffer made a many-slot loadout allocate several times its final size.
+ const offsets=[];let size=0;for(const a of prepared){size=(size+3)&~3;offsets.push(size);size+=a.bin.byteLength;}
+ const bin=new Uint8Array(size);for(let i=0;i<prepared.length;i++)bin.set(new Uint8Array(prepared[i].bin),offsets[i]);
+ const packed={bin,offsets,index:1};let asset=prepared[0];const groups={};
+ for(let i=1;i<parts.length;i++){asset=composeHero(asset,prepared[i],packed).asset;if(parts[i].role==='item')groups[parts[i].id]=asset.json.extras.effectStudioItemNodes;}
  asset.json.extras={...asset.json.extras,effectStudioItemGroups:groups,effectStudioItemNodes:Object.values(groups).flat()};return asset;
 }
 export class SceneParts {

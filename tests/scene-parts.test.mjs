@@ -13,3 +13,15 @@ test('internal GPU cleanup preserves downloaded scene cache; explicit clear inva
 test('a cached manifest with no active GPU scene rebuilds the scene instead of reading null.json',async()=>{let reads=0;const asset={json:{animations:[]}},preview=Object.create(ModelPreview.prototype);Object.assign(preview,{asset:null,sceneParts:{signature:'stale',cache:new Map(),async load(){return ++reads===1?null:asset;}},async load(_url,prepared){assert.equal(prepared,asset);this.asset=prepared;return [];}});await preview.loadScene({heroId:'hero',parts:[]},'/preview');assert.equal(reads,2);assert.equal(preview.asset,asset);});
 test('effects requested before geometry is ready cancel safely instead of reading null.json',async()=>{await assert.rejects(ModelPreview.prototype.setEffects.call({asset:null},[]),e=>e.name==='AbortError');});
 test('static CDN part URLs avoid preview API downloads',async()=>{const cache=new SceneParts(),calls=[];const manifest={parts:parts.map(p=>({...p,url:'https://assets.test/'+p.key+'.glb',bytes:p.bytes.byteLength}))};await cache.load(manifest,'/api/previews/unused','',async url=>{calls.push(url);const p=parts.find(p=>url.endsWith('/'+p.key+'.glb'));return {ok:true,arrayBuffer:async()=>p.bytes};});assert.deepEqual(calls.sort(),['https://assets.test/d.glb','https://assets.test/h.glb','https://assets.test/i.glb']);});
+
+test('initial scene decodes independent textures in parallel and shares repeated material textures',async()=>{
+ const asset=composeParts(parts),j=asset.json;
+ j.images=[{bufferView:0,mimeType:'image/png'},{bufferView:0,mimeType:'image/png'}];j.textures=[{source:0},{source:1}];
+ j.materials=[{pbrMetallicRoughness:{baseColorTexture:{index:0}}},{pbrMetallicRoughness:{baseColorTexture:{index:1}}}];
+ j.meshes.forEach((m,i)=>m.primitives[0].material=i%2);
+ let active=0,peak=0,decoded=0,closed=0,id=0;const saved=globalThis.createImageBitmap;
+ globalThis.createImageBitmap=async()=>{decoded++;active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,5));active--;return {close(){closed++;}};};
+ const gl=new Proxy({createVertexArray:()=>++id,createBuffer:()=>++id,createTexture:()=>++id},{get:(o,k)=>k in o?o[k]:()=>{}});
+ const preview=Object.create(ModelPreview.prototype);Object.assign(preview,{gl,draws:[],textures:[],loadingVersion:0});
+ try{await preview.load(null,asset);assert.equal(peak,2);assert.equal(decoded,2);assert.equal(closed,2);assert.equal(preview.textures.length,2);assert.equal(preview.draws[0].texture,preview.draws[2].texture);assert.notEqual(preview.draws[0].texture,preview.draws[1].texture);}finally{globalThis.createImageBitmap=saved;}
+});
