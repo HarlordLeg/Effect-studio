@@ -218,7 +218,7 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
       fs.createReadStream(file).pipe(res);
     } catch(error){json(res,400,{error:error.message});}
   });
-  server.once('close',()=>previews.dispose());
+  server.once('close',()=>{previews.dispose();builder.dispose();});
   return new Promise((resolve,reject)=>{server.once('error',reject);server.listen(overridePort??config.port,config.host,()=>{const url=`http://${config.host}:${server.address().port}`;console.log(`Dota Effect Studio: ${url}`);resolve({server,builder,auth,previews,url});});});
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer().then(({server,previews})=>{for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{previews.dispose();server.close();});}).catch(error=>{console.error(error.message);process.exitCode=1;});

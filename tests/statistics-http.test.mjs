@@ -7,6 +7,7 @@ test('successful builds and served scenes record selections once; failures and r
  const post=async(route,data,headers={})=>{const r=await fetch(url+'/api/'+route,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(data)});assert.equal(r.status,202);return r.json();};
  const wait=async(route,id)=>{for(let i=0;i<50;i++){const j=await(await fetch(url+'/api/'+route+'/'+id)).json();if(['ready','error'].includes(j.status))return j;await new Promise(r=>setTimeout(r,5));}throw new Error('Timeout');};
  try{
+  builder.pool={hasCapacity:true,busy:false,async submit({selection,job,cosmetics}){await builder.build(selection,job,cosmetics);return job;},close(){}};
   const before=await snapshot(),choice={heroId:'kunkka',itemId:'kunkka-sword',effectId:'frostbloom'};
   builder.build=async(_choices,job)=>{job.status='ready';};
   const build=await post('build',choice);assert.equal((await wait('jobs',build.id)).status,'ready');
