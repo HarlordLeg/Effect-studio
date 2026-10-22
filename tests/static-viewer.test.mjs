@@ -21,3 +21,14 @@ test('kinetic-only preview uses a base recipe and publishes preferred existing c
 test('custom arcana cannot silently become an ordinary hero preview',async()=>{
  await assert.rejects(assembleStaticPreview({selections:[{heroId:'terrorblade',slot:'arcana',arcana:{enabled:true}}]},{heroes:[]},{},async()=>{throw Error('must not export')}),/not been prepublished/);
 });
+test('cached API catalog is invalidated when a new manifest is published',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-catalog-cache-')),dir=path.join(root,'cache/static-viewer');
+ const one=writeStaticFile(dir,JSON.stringify({heroes:[{id:'axe'}]}),'json');atomicJson(path.join(dir,'manifest.json'),{version:1,catalog:one.url});
+ const service=createStaticViewer(root,{staticViewerEnabled:true,staticViewerBaseUrl:'https://dota-studio.lol/'}),server=http.createServer((req,res)=>service.api(req,res,new URL(req.url,'http://localhost')));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{const url='http://127.0.0.1:'+server.address().port+'/api/catalog';
+  assert.equal((await(await fetch(url)).json()).staticPreview.manifest,'https://dota-studio.lol/manifest.json');
+  const two=writeStaticFile(dir,JSON.stringify({heroes:[{id:'kunkka'},{id:'axe'}]}),'json');atomicJson(path.join(dir,'manifest.json'),{version:1,catalog:two.url,revision:2});
+  const result=await(await fetch(url)).json();assert.equal(result.heroes.length,2);assert.equal(result.heroes[0].id,'kunkka');
+ }finally{await new Promise(resolve=>server.close(resolve));fs.rmSync(root,{recursive:true,force:true});}
+});

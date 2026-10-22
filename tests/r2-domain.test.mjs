@@ -19,9 +19,9 @@ test('same-domain model maps directly to the existing R2 key and is cached',asyn
  const head=await f.request(model,{method:'HEAD'});assert.equal(await head.text(),'');assert.equal(head.headers.get('Content-Length'),String(model.length));
  const unchanged=await f.request(model,{headers:{'If-None-Match':'W/"test-etag"'}});assert.equal(unchanged.status,304);
 });
-test('manifest is read freshly from R2, with short browser caching',async()=>{
- const f=fixture();for(let i=0;i<2;i++){const result=await f.request('manifest.json');assert.equal(result.status,200);assert.match(result.headers.get('Cache-Control'),/max-age=60/);}
- await f.finish();assert.equal(f.stored.size,0);assert.equal(f.calls.length,2);
+test('manifest is cached briefly instead of rereading R2 on every request',async()=>{
+ const f=fixture();for(let i=0;i<2;i++){const result=await f.request('manifest.json');assert.equal(result.status,200);assert.match(result.headers.get('Cache-Control'),/max-age=60/);assert.doesNotMatch(result.headers.get('Cache-Control'),/immutable/);await f.finish();}
+ assert.equal(f.stored.size,1);assert.equal(f.calls.length,1);
 });
 test('worker never exposes other bucket keys or allows writes',async()=>{
  const f=fixture();for(const key of ['config.json','data/site-keys.json','assets/not-a-hash.json','../config.json'])assert.equal((await f.request(key)).status,404);
@@ -38,5 +38,12 @@ test('application and Worker use the same base domain and prefix',()=>{
  assert.equal(site.assetsUrl,'https://dota-studio.lol/');
  const config=JSON.parse(fs.readFileSync(new URL('../deploy/r2-domain/wrangler.jsonc',import.meta.url),'utf8'));
  assert.deepEqual(config.routes,[{pattern:'dota-studio.lol/manifest.json*',zone_name:'dota-studio.lol'},{pattern:'dota-studio.lol/assets/*',zone_name:'dota-studio.lol'}]);
- assert.equal(config.r2_buckets[0].bucket_name,'dota-studio-assets');assert.equal(config.r2_buckets[0].binding,'ASSETS');
+ assert.equal(config.cache.enabled,true);assert.equal(config.r2_buckets[0].bucket_name,'dota-studio-assets');assert.equal(config.r2_buckets[0].binding,'ASSETS');
+});
+test('known missing hashed assets get a short negative cache, storage errors never do',async()=>{
+ let reads=0;const cache=new Map(),pending=[],ctx={waitUntil:p=>pending.push(p)},adapter={match:async r=>cache.get(r.url)?.clone(),put:async(r,value)=>cache.set(r.url,value)};
+ const env={ASSETS:{get:async()=>{reads++;return null;}}},url=new Request('https://dota-studio.lol/'+model);
+ const first=await serveAssets(url,env,ctx,adapter);assert.equal(first.status,404);assert.match(first.headers.get('Cache-Control'),/max-age=5/);await Promise.all(pending);
+ assert.equal((await serveAssets(new Request(url,{headers:{'If-None-Match':'*'}}),env,ctx,adapter)).status,404);assert.equal(reads,1);
+ const error=await serveAssets(url,{ASSETS:{get:async()=>{throw Error('storage failure');}}},ctx);assert.equal(error.headers.get('Cache-Control'),'no-store');
 });

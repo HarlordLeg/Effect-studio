@@ -1,11 +1,25 @@
 {
   "name": "dota-studio-static",
   "main": "worker.mjs",
-  "compatibility_date": "2026-10-01",
+  "compatibility_date": "2026-10-22",
   "workers_dev": false,
   "routes": [
-    { "pattern": "dota-studio.lol/manifest.json*", "zone_name": "dota-studio.lol" },
-    { "pattern": "dota-studio.lol/assets/*", "zone_name": "dota-studio.lol" }
+    {
+      "pattern": "dota-studio.lol/manifest.json*",
+      "zone_name": "dota-studio.lol"
+    },
+    {
+      "pattern": "dota-studio.lol/assets/*",
+      "zone_name": "dota-studio.lol"
+    }
   ],
-  "r2_buckets": [{ "binding": "ASSETS", "bucket_name": "dota-studio-assets" }]
+  "r2_buckets": [
+    {
+      "binding": "ASSETS",
+      "bucket_name": "dota-studio-assets"
+    }
+  ],
+  "cache": {
+    "enabled": true
+  }
 }

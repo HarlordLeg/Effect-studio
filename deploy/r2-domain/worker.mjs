@@ -4,14 +4,14 @@ function cors(headers=new Headers()){
  headers.set('Access-Control-Allow-Origin','*');
  headers.set('Access-Control-Allow-Methods','GET, HEAD, OPTIONS');
  headers.set('Access-Control-Allow-Headers','Range, If-None-Match');
- headers.set('Access-Control-Expose-Headers','ETag, Content-Length, Content-Type');
+ headers.set('Access-Control-Expose-Headers','ETag, Content-Length, Content-Type, Cache-Control');
  headers.set('X-Content-Type-Options','nosniff');
  return headers;
 }
 function failure(message,status){return new Response(message,{status,headers:cors(new Headers({'Cache-Control':'no-store'}))});}
 function matches(header,etag){return header?.split(',').some(value=>value.trim()==='*'||value.trim().replace(/^W\//,'')===etag);}
 function reply(response,request){
- if(matches(request.headers.get('If-None-Match'),response.headers.get('ETag')))return new Response(null,{status:304,headers:response.headers});
+ if(response.status===200&&matches(request.headers.get('If-None-Match'),response.headers.get('ETag')))return new Response(null,{status:304,headers:response.headers});
  return request.method==='HEAD'?new Response(null,{status:response.status,headers:response.headers}):response;
 }
 export async function serveAssets(request,env,ctx,cache){
@@ -20,13 +20,13 @@ export async function serveAssets(request,env,ctx,cache){
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors()});
  if(!['GET','HEAD'].includes(request.method)){const response=failure('Method not allowed',405);response.headers.set('Allow','GET, HEAD, OPTIONS');return response;}
  if(!env.ASSETS)return failure('R2 binding ASSETS is not configured',503);
- // Immutable content hashes need no invalidation; the manifest is always read fresh.
+ // Hash-addressed files live for one year; the publication manifest expires after 60 seconds.
  const immutable=key!=='manifest.json';url.search='';
  const cacheKey=new Request(url.href,{method:'GET'});
- if(immutable&&cache){const hit=await cache.match(cacheKey);if(hit)return reply(hit,request);}
+ if(cache){const hit=await cache.match(cacheKey);if(hit)return reply(hit,request);}
  try{
   const object=request.method==='HEAD'?await env.ASSETS.head(key):await env.ASSETS.get(key);
-  if(!object)return failure('Not found',404);
+  if(!object){const response=failure('Not found',404);if(immutable){response.headers.set('Cache-Control','public, max-age=5, must-revalidate');if(cache&&request.method==='GET')ctx.waitUntil(cache.put(cacheKey,response.clone()).catch(()=>{}));}return response;}
   const headers=cors();object.writeHttpMetadata(headers);
   headers.set('ETag',object.httpEtag);
   headers.set('Content-Type',key.endsWith('.glb')?'model/gltf-binary':key.endsWith('.png')?'image/png':'application/json; charset=utf-8');
@@ -34,7 +34,7 @@ export async function serveAssets(request,env,ctx,cache){
   headers.set('Cache-Control',immutable?'public, max-age=31536000, immutable':'public, max-age=60, must-revalidate');
   if(matches(request.headers.get('If-None-Match'),object.httpEtag))return new Response(null,{status:304,headers});
   const response=new Response(request.method==='HEAD'?null:object.body,{headers});
-  if(immutable&&cache&&request.method==='GET')ctx.waitUntil(cache.put(cacheKey,response.clone()).catch(()=>{}));
+  if(cache&&request.method==='GET')ctx.waitUntil(cache.put(cacheKey,response.clone()).catch(()=>{}));
   return response;
  }catch{return failure('Asset storage unavailable',503);}
 }
