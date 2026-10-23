@@ -51,6 +51,6 @@ export function drawImmortalControls(container,{hero,options=[],abilities=[],sel
    apply.addEventListener('click',()=>{if(draftArcana)arcana.iconStyles=draftArcana.iconStyles;dialog.close();onApply(ids.size?{ids:[...ids],priorities}:null);});footer.append(conflicts,apply);refresh();show();
   }});
  }
- if(arcanaIcons?.heroIcons?.length){const holder=doc.createElement('div');holder.className='ability-hero-icons';for(const icon of arcanaIcons.heroIcons){const row=doc.createElement('div');row.className='ability-icon-row';row.append(iconImage(doc,icon.url,icon.name),doc.createTextNode(icon.name));holder.append(row);}container.append(holder);}
+ if(arcanaIcons?.heroIcons?.length){const holder=doc.createElement('div');holder.className='ability-hero-icons';for(const icon of arcanaIcons.heroIcons){const row=doc.createElement('div');row.className='ability-icon-row';const caption=doc.createElement('span'),name=doc.createElement('b');name.textContent=icon.name;caption.append(name);row.append(iconImage(doc,icon.url,icon.name),caption);holder.append(row);}container.append(holder);}
  if(arcana){const holder=doc.createElement('div');holder.className='ability-hero-icons';container.append(holder);drawTerrorbladeIconControls(holder,arcana,{hasSet,disabled,heroOnly:true,previewUrl,onChange:()=>onApply(selection)});}
 }

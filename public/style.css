@@ -332,3 +332,25 @@ html[data-shared-basket=true] #stage,html[data-shared-basket=true] #set-stage{fl
 @media(max-width:1179px){html[data-shared-basket=true] main{grid-template-columns:minmax(0,1fr)}html[data-shared-basket=true] .shared-basket{max-height:none}html[data-shared-basket=true] main>.workspace{grid-template-columns:280px minmax(0,1fr)}}
 @media(max-width:700px){body>header{padding-inline:16px;gap:10px}.brand small{display:none}.header-actions{gap:8px}.header-actions .header-telegram span{display:none}html[data-shared-basket=true] main>.workspace{grid-template-columns:minmax(0,1fr)}html[data-shared-basket=true] main>.workspace>.controls,html[data-shared-basket=true] .set-workspace:not(.choosing-hero)>.controls{max-height:none}html[data-shared-basket=true] main>.workspace>.preview,html[data-shared-basket=true] .set-workspace>.preview{height:60dvh;min-height:360px}.set-preset-dialog>.set-preset-options{grid-template-columns:minmax(0,1fr)}}
 #set-animation{width:auto;max-width:min(340px,100%);min-width:140px;font-size:12px;padding:7px;flex:0 1 auto}
+
+/* Stable browsing: navigation and cart do not follow category control heights. */
+html{scrollbar-gutter:stable}
+html[data-shared-basket=true] main>#set-studio,html[data-shared-basket=true] main>#cosmetics-studio{min-width:0;max-width:100%}
+html[data-shared-basket=true] .set-workspace.choosing-hero{grid-template-columns:minmax(0,1fr)!important}
+.set-workspace.choosing-hero>#set-arcana-icons{display:none!important}
+#set-arcana-icons.set-icon-sidebar{overflow-x:hidden}
+.ability-hero-icons .ability-icon-row{grid-template-columns:minmax(0,1fr);position:relative;max-width:100%;row-gap:8px}
+.ability-hero-icons .ability-icon-row>.ability-image{grid-column:1;grid-row:1}
+.ability-hero-icons .ability-icon-row>span:nth-child(2){grid-column:1;grid-row:2;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.ability-hero-icons .ability-icon-row>.ability-row-arrow{position:absolute;right:8px;top:18px;grid-column:1;grid-row:1}
+.cosmetics-layout,.has-shared-basket .cosmetics-layout{grid-template-rows:auto;align-items:start;min-height:var(--studio-workspace-height);padding-top:0}
+.cosmetics-categories{grid-column:1;grid-row:1;position:sticky;top:20px;max-height:calc(100dvh - 40px)}
+.cosmetics-browser{display:flex;flex-direction:column;gap:14px;grid-column:2;grid-row:1;min-width:0;overflow-anchor:none}
+.cosmetics-browser>h2,.cosmetics-browser>input,.cosmetics-courier-effects{margin:0;grid-column:auto;grid-row:auto}
+.cosmetics-browser>h2{min-height:30px}
+.cosmetics-grid{grid-column:auto;grid-row:auto;min-width:0}
+.cosmetics-basket{grid-column:3;grid-row:1}
+main:has(>#cosmetics-studio:not([hidden]))>.shared-basket{margin-top:0}
+.cosmetic-card img{flex:none;min-height:120px}
+@media(max-width:1179px){.cosmetics-basket{grid-column:2;grid-row:2}}
+@media(max-width:700px){.cosmetics-layout,.has-shared-basket .cosmetics-layout{grid-template-columns:minmax(0,1fr)}.cosmetics-categories{grid-column:1;grid-row:1;position:static;max-height:none}.cosmetics-browser{grid-column:1;grid-row:2}.cosmetics-basket{grid-column:1;grid-row:3}}
