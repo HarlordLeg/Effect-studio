@@ -53,3 +53,9 @@ test('contradictory hero body skins fail explicitly before patching',async()=>{
  const hero={id:'test',model:'models/heroes/test/body.vmdl_c'},choices=[1,2].map(bodySkin=>({hero,item:{name:'item '+bodySkin,nativeOverrides:{bodySkin}}}));
  await assert.rejects(applyEquippedBodySkins({},choices,new Map(),[],new Set(),'unused','unused'),/Конфликт стилей/);
 });
+
+test('Skywrath weapon, wings and all four other arcana companions lock the matching geometry style',()=>{
+ const items=JSON.parse(fs.readFileSync(new URL('./fixtures/expanded-arcana-economy.json',import.meta.url))),hero={id:'skywrath_mage',model:'models/heroes/skywrath_mage/body.vmdl_c',defaultSlotModels:Object.fromEntries(['back','weapon','head','belt','shoulder','arms'].map(slot=>[slot,'models/heroes/skywrath_mage/'+slot+'.vmdl_c'])),items:[]};
+ const builder={catalog:{heroes:[hero]},expandedArcanaEconomy:{items},store:{has:()=>true}};
+ for(const style of [0,1]){const rows=expandedArcanaChoices(builder,hero.id,{style}),parts=rows.filter(r=>r.item.slot!=='hero_base');assert.equal(parts.length,6);for(const row of parts)assert.match(row.item.meshGroupName,new RegExp('^arcana_@'+(style+1)+'_#&skywrath_mage_arcana_.*'+(style===1?'_style1':'')+'_lod0$'));assert.match(parts.find(r=>r.item.slot==='weapon').item.meshGroupName,/weapon/);}
+});
