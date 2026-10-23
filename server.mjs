@@ -1,3 +1,4 @@
+import {DownloadTickets,serveDownload} from './lib/downloads.mjs';
 import {liveDrowWardrobe} from './lib/drow-wardrobe.mjs';
 import {publicArcanaIcons} from './lib/public-arcanas.mjs';
 import {adminArcanaCatalog,adminArcanaChoices} from './lib/admin-arcanas.mjs';
@@ -43,7 +44,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
   const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
   const staticViewer=createStaticViewer(root,config),staticJobs=new Map(),staticData=new Map();
   const staticRead=ref=>{if(!/^assets\/[a-f0-9]{64}\.json$/.test(ref))throw Error('Invalid static reference');if(!staticData.has(ref))staticData.set(ref,JSON.parse(fs.readFileSync(path.join(staticViewer.directory,ref),'utf8')));while(staticData.size>96)staticData.delete(staticData.keys().next().value);return staticData.get(ref);};
-  const tracking=new WeakMap();
+  const tracking=new WeakMap(),downloadTickets=new DownloadTickets();
   const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
   builder.onReady=job=>count('vpks',tracking.get(job));
   const countModel=job=>{if(!job.modelServed){job.modelServed=true;count('models',tracking.get(job));}};
@@ -117,6 +118,11 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       if(url.pathname==='/api/widget/session'&&req.method==='OPTIONS') {
         if(!auth.sites().some(s=>!s.disabled&&s.origins.includes(origin)))return json(res,403,{error:'Origin не разрешён'});
         res.writeHead(204,{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'content-type','Vary':'Origin'});return res.end();
+      }
+      const ticketDownload=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})\/download$/);
+      if(ticketDownload&&url.searchParams.has('download_ticket')&&['GET','HEAD'].includes(req.method)){
+        let ticket;try{ticket=downloadTickets.verify(url.searchParams.get('download_ticket'),ticketDownload[1],auth.sites());}catch(error){return json(res,401,{error:error.message});}
+        const job=builder.jobs.get(ticketDownload[1]);if(!job||job.owner!==ticket.owner)return json(res,404,{error:'Build not found or expired'});if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});return serveDownload(req,res,job);
       }
       let session=null;
       const token=req.headers.authorization?.replace(/^Bearer /,'')??url.searchParams.get('token');
@@ -212,12 +218,14 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
         if(previewMatch[3]==='effect'){const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Данные эффекта не экспортированы'});res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
         const modelFile=previews.ensureModel(job);res.once('finish',()=>countModel(job));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(modelFile).pipe(res);
       }
-      const match=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})(\/download)?$/);
+      const match=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})(\/download(?:-ticket)?)?$/);
       if(match) {
         const job=builder.jobs.get(match[1]);if(!job||job.owner!==owner)return json(res,404,{error:'Сборка не найдена'});
         if(!match[2])return json(res,200,publicJob(job));
         if(job.status!=='ready')return json(res,409,{error:'Сборка ещё не готова'});
-        res.writeHead(200,{'Content-Type':job.packageType?.endsWith('-zip')?'application/zip':'application/octet-stream','Content-Disposition':`attachment; filename="${job.filename??vpkFilename()}"`});return fs.createReadStream(job.file).pipe(res);
+        if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET or HEAD'});
+        if(match[2]==='/download-ticket'){if(req.method!=='GET')return json(res,405,{error:'Use GET'});if(!fs.existsSync(job.file))return json(res,410,{error:'Build file expired. Build the package again.'});const ticket=downloadTickets.issue(job,session);return json(res,200,{downloadPath:'/api/jobs/'+job.id+'/download?download_ticket='+encodeURIComponent(ticket),filename:job.filename??vpkFilename(),expiresIn:600});}
+        return serveDownload(req,res,job);
       }
       if(url.pathname==='/api/repack'&&req.method==='POST') {
         if(!localAdmin)return json(res,403,{error:'Только для локального приложения'});

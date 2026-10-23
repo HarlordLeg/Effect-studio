@@ -34,7 +34,14 @@ async function proxy(request,{authenticated=true}={}){
   if(response.status!==401||!authenticated||attempt)return response;session=null;
  }
 }
-async function route(request,event){const url=new URL(request.url),name=url.pathname;if((await config()).staticViewerEnabled===false)return proxy(request,{authenticated:!name.startsWith('/kinetic-media/')});
+async function nativeDownloadNavigation(request){
+ const url=new URL(request.url),ticket=new URL(url);ticket.pathname+='-ticket';ticket.search='';
+ const response=await proxy(new Request(ticket,{method:'GET'}));if(!response.ok)return response;
+ const data=await response.json(),c=await config(),base=new URL(c.serverUrl),target=new URL(data.downloadPath,base);
+ if(typeof data.downloadPath!=='string'||target.origin!==base.origin||target.pathname!==url.pathname||!target.searchParams.get('download_ticket')||target.username||target.password)throw Error('Invalid download link');
+ return Response.redirect(target.href,302);
+}
+async function route(request,event){const url=new URL(request.url),name=url.pathname;if(/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name)&&url.searchParams.has('download_ticket'))return fetch(request);if(request.mode==='navigate'&&request.method==='GET'&&/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name))return nativeDownloadNavigation(request);if((await config()).staticViewerEnabled===false)return proxy(request,{authenticated:!name.startsWith('/kinetic-media/')});
  if(name==='/manifest.json')return publication(request.url,event,{manifest:true});
  if(/^\/assets\/[a-f0-9]{64}\.json$/.test(name))return publication(request.url,event);
  if(name.startsWith('/images/')&&!name.startsWith('/images/personas/'))return fetch(request);
