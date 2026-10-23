@@ -27,7 +27,8 @@ async function proxy(request,{authenticated=true}={}){
  const c=await config(),url=new URL(request.url),target=new URL(url.pathname+url.search,c.serverUrl);target.searchParams.delete('token');
  const bytes=['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer();
  for(let attempt=0;attempt<2;attempt++){
-  const headers=new Headers(request.headers);headers.delete('host');if(authenticated)headers.set('Authorization','Bearer '+await token());
+  // Forward application headers only; navigation headers can fail the API CORS preflight.
+  const headers=new Headers();for(const name of ['content-type']){const value=request.headers.get(name);if(value!==null)headers.set(name,value);}if(authenticated)headers.set('Authorization','Bearer '+await token());
   const response=await fetch(target,{method:request.method,headers,body:bytes});
   // Authentication is rejected before build work starts, so this retry cannot duplicate a job.
   if(response.status!==401||!authenticated||attempt)return response;session=null;
