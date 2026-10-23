@@ -59,3 +59,13 @@ test('Skywrath weapon, wings and all four other arcana companions lock the match
  const builder={catalog:{heroes:[hero]},expandedArcanaEconomy:{items},store:{has:()=>true}};
  for(const style of [0,1]){const rows=expandedArcanaChoices(builder,hero.id,{style}),parts=rows.filter(r=>r.item.slot!=='hero_base');assert.equal(parts.length,6);for(const row of parts)assert.match(row.item.meshGroupName,new RegExp('^arcana_@'+(style+1)+'_#&skywrath_mage_arcana_.*'+(style===1?'_style1':'')+'_lod0$'));assert.match(parts.find(r=>r.item.slot==='weapon').item.meshGroupName,/weapon/);}
 });
+
+test('Skywrath arcana spear suppresses both stock staff ambients without removing either authored arcana style effect',()=>{
+ const items=JSON.parse(fs.readFileSync(new URL('./fixtures/expanded-arcana-economy.json',import.meta.url))),hero={id:'skywrath_mage',model:'models/heroes/skywrath_mage/body.vmdl_c',defaultSlotModels:Object.fromEntries(['back','weapon','head','belt','shoulder','arms'].map(slot=>[slot,'models/heroes/skywrath_mage/'+slot+'.vmdl_c'])),items:[{id:'custom-weapon',name:'Other weapon',slot:'weapon',model:'models/items/skywrath_mage/custom.vmdl_c'}]};
+ const builder={catalog:{heroes:[hero]},expandedArcanaEconomy:{items},store:{has:()=>true}};
+ for(const style of [0,1]){const rows=expandedArcanaChoices(builder,hero.id,{style}),body=rows.find(r=>r.item.slot==='hero_base'),weapon=rows.find(r=>r.item.slot==='weapon');
+  for(const name of ['skywrath_mage_staff_ambient','skywrath_mage_staff_ambient_generic'])assert.ok(body.item.nativeOverrides.entries.some(e=>e.target==='particles/units/heroes/hero_skywrath_mage/'+name+'.vpcf_c'&&e.source==='particles/error/null.vpcf_c'));
+  assert.ok(weapon.item.nativeOverrides.particles.some(p=>p.includes('skywrath_arcana_weapon_ambient')));
+ }
+ const custom=expandedArcanaChoices(builder,hero.id,{items:{weapon:'custom-weapon'}});assert.ok(!custom[0].item.nativeOverrides.entries.some(e=>e.target.includes('skywrath_mage_staff_ambient')));
+});
