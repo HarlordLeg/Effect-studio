@@ -1,0 +1,1955 @@
+{
+  "5810": {
+    "name": "Blades of Voth Domosh",
+    "item_slot": "hero_base",
+    "visuals": {
+      "asset_modifier": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "dualwield"
+      },
+      "asset_modifier__repeat1": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "arcana"
+      },
+      "asset_modifier__repeat2": {
+        "type": "response_criteria",
+        "asset": "voth_domosh"
+      },
+      "asset_modifier__repeat3": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_legion_commander/legion_duel_ring.vpcf",
+        "modifier": "particles/econ/items/legion/legion_weapon_voth_domosh/legion_duel_ring_arcana.vpcf"
+      },
+      "asset_modifier__repeat5": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_legion_commander",
+        "modifier": "npc_dota_hero_legion_commander_alt1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat6": {
+        "type": "ability_icon",
+        "asset": "legion_commander_duel",
+        "modifier": "legion_commander_duel_alt1"
+      },
+      "asset_modifier__repeat7": {
+        "type": "particle",
+        "asset": "particles/econ/items/legion/legion_stonehall/legion_head_stonehall.vpcf",
+        "modifier": "particles/econ/items/legion/legion_stonehall/legion_head_stonehall_voth.vpcf"
+      },
+      "asset_modifier__repeat8": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/legion/legion_weapon_voth_domosh/legion_ambient_arcana.vpcf"
+      },
+      "asset_modifier12": {
+        "type": "model_skin",
+        "skin": "1"
+      },
+      "asset_modifier__repeat10": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_legion_commander",
+        "modifier": "npc_dota_hero_legion_commander_alt1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat20": {
+        "type": "particle",
+        "asset": "particles/econ/items/legion/legion_weapon_voth_domosh/legion_arcana_polearm_ambient.vpcf",
+        "modifier": "particles/econ/items/legion/legion_weapon_voth_domosh/legion_arcana_sword_ambient.vpcf"
+      },
+      "asset_modifier__repeat21": {
+        "type": "particle",
+        "asset": "particles/econ/items/legion/dragons_soul/default/dragons_soul_weapon_ambient.vpcf",
+        "modifier": "particles/econ/items/legion/dragons_soul/arcana/dragons_soul_arcana_weapon_ambient.vpcf"
+      },
+      "asset_modifier__repeat22": {
+        "type": "model",
+        "asset": "models/heroes/legion_commander/legion_commander_weapon.vmdl",
+        "modifier": "models/heroes/legion_commander/legion_commander_sword_weapon.vmdl"
+      },
+      "asset_modifier__repeat23": {
+        "type": "model",
+        "asset": "models/items/legion_commander/voth_domosh/voth_domosh_polearm.vmdl",
+        "modifier": "models/items/legion_commander/voth_domosh/voth_domosh_sword.vmdl"
+      },
+      "asset_modifier__repeat24": {
+        "type": "model",
+        "asset": "models/items/legion_commander/dragons_soul/dragons_soul_weapon.vmdl",
+        "modifier": "models/items/legion_commander/dragons_soul/dragons_soul_arcana_weapon.vmdl"
+      }
+    }
+  },
+  "6914": {
+    "name": "Tempest Helm of the Thundergod",
+    "item_slot": "head",
+    "model_player": "models/heroes/zeus/zeus_hair_arcana.vmdl",
+    "visuals": {
+      "asset_modifier0": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "arcana"
+      },
+      "asset_modifier1": {
+        "type": "response_criteria",
+        "asset": "arcana",
+        "style": "0"
+      },
+      "asset_modifier2": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_zuus",
+        "modifier": "models/heroes/zeus/zeus_arcana.vmdl"
+      },
+      "asset_modifier3": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_zeus/zeus_ambient_eyes.vpcf",
+        "modifier": "particles/econ/items/zeus/arcana_chariot/zeus_ambient_arcana_eyes.vpcf",
+        "style": "0"
+      },
+      "asset_modifier4": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/zeus/arcana_chariot/zeus_arcana_chariot.vpcf"
+      },
+      "asset_modifier5": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_zeus/zues_kill_empty.vpcf",
+        "modifier": "particles/econ/items/zeus/arcana_chariot/zeus_arcana_kill_remnant.vpcf"
+      },
+      "asset_modifier6": {
+        "type": "model",
+        "asset": "models/heroes/zeus/zeus_vest.vmdl",
+        "modifier": "models/development/invisiblebox.vmdl"
+      },
+      "asset_modifier7": {
+        "type": "model",
+        "asset": "models/heroes/zeus/zeus_bracers.vmdl",
+        "modifier": "models/development/invisiblebox.vmdl"
+      },
+      "asset_modifier8": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_zuus/zuus_thundergods_wrath_start.vpcf",
+        "modifier": "particles/econ/items/zeus/arcana_chariot/zeus_arcana_thundergods_wrath_start.vpcf",
+        "style": "0"
+      },
+      "asset_modifier10": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_zuus/zuus_thundergods_wrath.vpcf",
+        "modifier": "particles/econ/items/zeus/arcana_chariot/zeus_arcana_thundergods_wrath.vpcf"
+      },
+      "asset_modifier11": {
+        "type": "particle",
+        "asset": "particles/items_fx/blink_dagger_end.vpcf",
+        "modifier": "particles/econ/items/zeus/arcana_chariot/zeus_arcana_blink_end.vpcf"
+      },
+      "asset_modifier12": {
+        "type": "particle",
+        "asset": "particles/items_fx/blink_dagger_start.vpcf",
+        "modifier": "particles/econ/items/zeus/arcana_chariot/zeus_arcana_blink_start.vpcf"
+      },
+      "asset_modifier16": {
+        "type": "ability_icon",
+        "asset": "zuus_thundergods_wrath",
+        "modifier": "zuus_thundergods_wrath_alt1"
+      },
+      "asset_modifier17": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_zuus",
+        "modifier": "npc_dota_hero_zuus_alt1",
+        "force_display": "1"
+      },
+      "asset_modifier18": {
+        "type": "ability_icon",
+        "asset": "zuus_static_field",
+        "modifier": "zuus_static_field_alt1"
+      },
+      "asset_modifier19": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_zuus",
+        "modifier": "npc_dota_hero_zuus_alt1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat9": {
+        "type": "model",
+        "asset": "models/items/zeus/zeus_cosmic/zeus_cosmic_arms.vmdl",
+        "modifier": "models/items/zeus/zeus_cosmic/zeus_cosmic_arms_refit.vmdl"
+      }
+    }
+  },
+  "7385": {
+    "name": "Frost Avalanche",
+    "item_slot": "back",
+    "model_player": "models/heroes/crystal_maiden/crystal_maiden_arcana_back.vmdl",
+    "visuals": {
+      "styles": {
+        "0": {
+          "model_player": "models/heroes/crystal_maiden/crystal_maiden_arcana_back.vmdl",
+          "name": "#DOTA_Item_Maiden_of_Icewrack",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "model_player": "models/heroes/crystal_maiden/crystal_maiden_arcana_back.vmdl",
+          "name": "#DOTA_Item_Maiden_of_Icewrack_NoPet",
+          "alternate_icon": "1"
+        },
+        "2": {
+          "model_player": "models/heroes/crystal_maiden/crystal_maiden_arcana_back.vmdl",
+          "name": "#DOTA_Item_Maiden_of_Icewrack_Pet2",
+          "alternate_icon": "2",
+          "unlock": {
+            "gem": {
+              "def_index": "3015",
+              "type_field": "strange_type",
+              "type_value": "221",
+              "unlock_field": "strange_value",
+              "unlock_value": "50"
+            }
+          }
+        },
+        "3": {
+          "model_player": "models/heroes/crystal_maiden/crystal_maiden_arcana_back.vmdl",
+          "name": "#DOTA_Item_Maiden_of_Icewrack_Pet3",
+          "alternate_icon": "3"
+        }
+      },
+      "asset_modifier": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "arcana"
+      },
+      "asset_modifier__repeat1": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_crystalmaiden/maiden_freezing_field_explosion.vpcf",
+        "modifier": "particles/econ/items/crystal_maiden/crystal_maiden_maiden_of_icewrack/maiden_freezing_field_explosion_arcana1.vpcf"
+      },
+      "asset_modifier__repeat2": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_crystalmaiden/maiden_freezing_field_snow.vpcf",
+        "modifier": "particles/econ/items/crystal_maiden/crystal_maiden_maiden_of_icewrack/maiden_freezing_field_snow_arcana1.vpcf"
+      },
+      "asset_modifier__repeat5": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_crystal_maiden",
+        "modifier": "models/heroes/crystal_maiden/crystal_maiden_arcana.vmdl"
+      },
+      "asset_modifier__repeat6": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_crystal_maiden",
+        "modifier": "npc_dota_hero_crystal_maiden_alt1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat7": {
+        "type": "ability_icon",
+        "asset": "crystal_maiden_freezing_field",
+        "modifier": "crystal_maiden_freezing_field_alt1"
+      },
+      "asset_modifier__repeat9": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_crystalmaiden/maiden_death.vpcf",
+        "modifier": "particles/econ/items/crystal_maiden/crystal_maiden_maiden_of_icewrack/maiden_death_arcana.vpcf"
+      },
+      "asset_modifier__repeat13": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/crystal_maiden/crystal_maiden_maiden_of_icewrack/maiden_arcana_body_ambient.vpcf"
+      },
+      "asset_modifier__repeat14": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_crystal_maiden",
+        "modifier": "npc_dota_hero_crystal_maiden_alt1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat16": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_crystalmaiden/maiden_freezing_field_snow_shard.vpcf",
+        "modifier": "particles/econ/items/crystal_maiden/crystal_maiden_maiden_of_icewrack/maiden_freezing_field_snow_arcana1_shard.vpcf"
+      },
+      "asset_modifier__repeat17": {
+        "type": "model",
+        "asset": "models/items/crystal_maiden/cm_screeauk/cm_screeauk_shoulder.vmdl",
+        "modifier": "models/items/crystal_maiden/cm_screeauk/cm_screeauk_shoulder_refit.vmdl"
+      },
+      "asset_modifier__repeat18": {
+        "type": "model",
+        "asset": "models/items/crystal_maiden/cm_screeauk/cm_screeauk_head.vmdl",
+        "modifier": "models/items/crystal_maiden/cm_screeauk/cm_screeauk_head_refit.vmdl"
+      }
+    }
+  },
+  "7756": {
+    "name": "Feast of Abscession",
+    "item_slot": "hero_base",
+    "visuals": {
+      "styles": {
+        "0": {
+          "name": "#DOTA_Item_Desc_Pudge_Arcana_Base",
+          "skin": "0",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "name": "#DOTA_Item_Desc_Pudge_Arcana_Style1",
+          "skin": "1",
+          "alternate_icon": "1",
+          "unlock": {
+            "gem": {
+              "def_index": "3020",
+              "type_field": "strange_type",
+              "type_value": "257",
+              "unlock_field": "strange_value",
+              "unlock_value": "12"
+            }
+          }
+        }
+      },
+      "asset_modifier": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_pudge",
+        "modifier": "models/items/pudge/arcana/pudge_arcana_base.vmdl"
+      },
+      "asset_modifier__repeat2": {
+        "type": "model_skin",
+        "style": "0",
+        "skin": "1"
+      },
+      "asset_modifier__repeat3": {
+        "type": "model_skin",
+        "style": "1",
+        "skin": "2"
+      },
+      "asset_modifier__repeat9": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "arcana"
+      },
+      "asset_modifier__repeat10": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "green",
+        "style": "1"
+      },
+      "asset_modifier__repeat12": {
+        "type": "response_criteria",
+        "asset": "pudarc_chains"
+      },
+      "asset_modifier__repeat13": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_red_base_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat14": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_base_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat15": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_red_back_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_back_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat16": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/aberrant/red/aberrant_red_back_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/aberrant/red_arcana/aberrant_red_arcana_back_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat17": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/aberrant/red/aberrant_red_back_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/aberrant/green_arcana/aberrant_green_arcana_back_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat18": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/aberrant/default/aberrant_default_hook_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/aberrant/red_arcana/aberrant_red_arcana_hook_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat19": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/aberrant/default/aberrant_default_hook_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/aberrant/green_arcana/aberrant_green_arcana_hook_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat26": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/horrorfest_butcher/horrorfest_butcher_back_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/horrorfest_butcher/arcana/horrorfest_butcher_red_arcana_back_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat27": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/horrorfest_butcher/horrorfest_butcher_back_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/horrorfest_butcher/arcana_style1/horrorfest_butcher_green_arcana_back_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat28": {
+        "type": "particle",
+        "asset": "particles/econ/items/pudge/horrorfest_butcher/horrorfest_butcher_head_ambient.vpcf",
+        "modifier": "particles/econ/items/pudge/horrorfest_butcher/arcana_style1/horrorfest_butcher_green_arcana_head_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat47": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_ambient_flies.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_red_ambient_flies.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat48": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_ambient_flies.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_ambient_flies.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat49": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_hook_streak.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_red_hook_streak.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat50": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_hook_streak.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_hook_streak.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat51": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_null.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_default.vpcf"
+      },
+      "asset_modifier__repeat52": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_null.vpcf",
+        "modifier": "particles/status_fx/status_effect_pudge_dismember_default.vpcf"
+      },
+      "asset_modifier__repeat53": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_ethereal.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_ethereal.vpcf"
+      },
+      "asset_modifier__repeat54": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_ethereal.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat55": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_goo.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_goo.vpcf"
+      },
+      "asset_modifier__repeat56": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_goo.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat57": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_motor.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_motor.vpcf"
+      },
+      "asset_modifier__repeat58": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_motor.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat59": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_ice.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_ice.vpcf"
+      },
+      "asset_modifier__repeat60": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_ice.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat61": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_fire.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_fire.vpcf"
+      },
+      "asset_modifier__repeat62": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_fire.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat63": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_electric.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_electric.vpcf"
+      },
+      "asset_modifier__repeat64": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_electric.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat65": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_wood.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_wood.vpcf"
+      },
+      "asset_modifier__repeat66": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_wood.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat67": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_pudge/pudge_dismember_stone.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_dismember_stone.vpcf"
+      },
+      "asset_modifier__repeat68": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_pudge_dismember_stone.vpcf",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/status_effect_pudge_arcana_dismember_null.vpcf"
+      },
+      "asset_modifier__repeat105": {
+        "type": "ability_icon",
+        "asset": "pudge_dismember",
+        "modifier": "pudge/arcana/pudge_dismember_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat106": {
+        "type": "ability_icon",
+        "asset": "pudge_dismember",
+        "modifier": "pudge/arcana/pudge_dismember_arcana_style1",
+        "style": "1"
+      },
+      "asset_modifier__repeat107": {
+        "type": "ability_icon",
+        "asset": "pudge_flesh_heap",
+        "modifier": "pudge/arcana/pudge_flesh_heap_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat108": {
+        "type": "ability_icon",
+        "asset": "pudge_flesh_heap",
+        "modifier": "pudge/arcana/pudge_flesh_heap_arcana_style1",
+        "style": "1"
+      },
+      "asset_modifier__repeat109": {
+        "type": "ability_icon",
+        "asset": "pudge_meat_hook",
+        "modifier": "pudge/arcana/pudge_meat_hook_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat110": {
+        "type": "ability_icon",
+        "asset": "pudge_meat_hook",
+        "modifier": "pudge/arcana/pudge_meat_hook_arcana_style1",
+        "style": "1"
+      },
+      "asset_modifier__repeat111": {
+        "type": "ability_icon",
+        "asset": "pudge_rot",
+        "modifier": "pudge/arcana/pudge_rot_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat112": {
+        "type": "ability_icon",
+        "asset": "pudge_rot",
+        "modifier": "pudge/arcana/pudge_rot_arcana_style1",
+        "style": "1"
+      },
+      "asset_modifier__repeat113": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_pudge",
+        "modifier": "npc_dota_hero_pudge_alt1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat114": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_pudge",
+        "modifier": "npc_dota_hero_pudge_alt1",
+        "force_display": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat115": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_pudge",
+        "modifier": "npc_dota_hero_pudge_alt2",
+        "force_display": "1",
+        "style": "1"
+      },
+      "asset_modifier__repeat125": {
+        "type": "model",
+        "asset": "models/heroes/pudge/back.vmdl",
+        "modifier": "models/heroes/pudge/back_refit.vmdl"
+      },
+      "asset_modifier__repeat126": {
+        "type": "model",
+        "asset": "models/items/pudge/arlekino_back/arlekino_back.vmdl",
+        "modifier": "models/items/pudge/arlekino_back/arlekino_back_refit.vmdl"
+      },
+      "asset_modifier__repeat127": {
+        "type": "model",
+        "asset": "models/items/pudge/blackdeath_back/blackdeath_back.vmdl",
+        "modifier": "models/items/pudge/blackdeath_back/blackdeath_back_refit.vmdl"
+      },
+      "asset_modifier__repeat128": {
+        "type": "model",
+        "asset": "models/items/pudge/bogatyr_pudge_back_lv/bogatyr_pudge_back_lv.vmdl",
+        "modifier": "models/items/pudge/bogatyr_pudge_back_lv/bogatyr_pudge_back_lv_refit.vmdl"
+      },
+      "asset_modifier__repeat129": {
+        "type": "model",
+        "asset": "models/items/pudge/candy_cat_back/candy_cat_back.vmdl",
+        "modifier": "models/items/pudge/candy_cat_back/candy_cat_back_refit.vmdl"
+      },
+      "asset_modifier__repeat130": {
+        "type": "model",
+        "asset": "models/items/pudge/delicacies_back/delicacies_back.vmdl",
+        "modifier": "models/items/pudge/delicacies_back/delicacies_back_refit.vmdl"
+      },
+      "asset_modifier__repeat131": {
+        "type": "model",
+        "asset": "models/items/pudge/demon_queller_back/demon_queller_back.vmdl",
+        "modifier": "models/items/pudge/demon_queller_back/demon_queller_back_refit.vmdl"
+      },
+      "asset_modifier__repeat132": {
+        "type": "model",
+        "asset": "models/items/pudge/doomsday_ripper_back/doomsday_ripper_back.vmdl",
+        "modifier": "models/items/pudge/doomsday_ripper_back/doomsday_ripper_back_refit.vmdl"
+      },
+      "asset_modifier__repeat133": {
+        "type": "model",
+        "asset": "models/items/pudge/frostivus2018_pudge_walrus_slaughterer_back/frostivus2018_pudge_walrus_slaughterer_back.vmdl",
+        "modifier": "models/items/pudge/frostivus2018_pudge_walrus_slaughterer_back/frostivus2018_pudge_walrus_slaughterer_back_refit.vmdl"
+      },
+      "asset_modifier__repeat134": {
+        "type": "model",
+        "asset": "models/items/pudge/ftp_dendi_back/ftp_dendi_back.vmdl",
+        "modifier": "models/items/pudge/ftp_dendi_back/ftp_dendi_back_refit.vmdl"
+      },
+      "asset_modifier__repeat135": {
+        "type": "model",
+        "asset": "models/items/pudge/gladiators_revenge_chain/gladiators_revenge_chain.vmdl",
+        "modifier": "models/items/pudge/gladiators_revenge_chain/gladiators_revenge_chain_refit.vmdl"
+      },
+      "asset_modifier__repeat136": {
+        "type": "model",
+        "asset": "models/items/pudge/aberrant_observer_head/aberrant_observer_head.vmdl",
+        "modifier": "models/items/pudge/aberrant_observer_arcana/aberrant_observer_arcana_head.vmdl"
+      },
+      "asset_modifier__repeat137": {
+        "type": "model",
+        "asset": "models/items/pudge/aberrant_observer_back/aberrant_observer_back.vmdl",
+        "modifier": "models/items/pudge/aberrant_observer_arcana/aberrant_observer_arcana_back.vmdl"
+      },
+      "asset_modifier__repeat138": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_hungry_clown_head/pudge_hungry_clown_head.vmdl",
+        "modifier": "models/items/pudge/pudge_hungry_clown_arcana/pudge_hungry_clown_arcana_head.vmdl"
+      },
+      "asset_modifier__repeat139": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_hungry_clown_back/pudge_hungry_clown_back.vmdl",
+        "modifier": "models/items/pudge/pudge_hungry_clown_arcana/pudge_hungry_clown_arcana_back.vmdl"
+      },
+      "asset_modifier__repeat140": {
+        "type": "model",
+        "asset": "models/items/pudge/aberrant_observer_hook/aberrant_observer_hook.vmdl",
+        "modifier": "models/items/pudge/aberrant_observer_arcana/aberrant_observer_arcana_hook.vmdl"
+      },
+      "asset_modifier__repeat141": {
+        "type": "model",
+        "asset": "models/items/pudge/the_devarque_fugitive_back/the_devarque_fugitive_back.vmdl",
+        "modifier": "models/items/pudge/the_devarque_fugitive_back/the_devarque_fugitive_back_refit.vmdl"
+      },
+      "asset_modifier__repeat142": {
+        "type": "model",
+        "asset": "models/items/pudge/the_ol_choppers_back/the_ol_choppers_back.vmdl",
+        "modifier": "models/items/pudge/the_ol_choppers_back/the_ol_choppers_back_refit.vmdl"
+      },
+      "asset_modifier__repeat143": {
+        "type": "model",
+        "asset": "models/items/pudge/trapper_back/trapper_back.vmdl",
+        "modifier": "models/items/pudge/trapper_back/trapper_back_refit.vmdl"
+      },
+      "asset_modifier__repeat144": {
+        "type": "model",
+        "asset": "models/items/pudge/promo_trapper_back/promo_trapper_back.vmdl",
+        "modifier": "models/items/pudge/promo_trapper_back/promo_trapper_back_refit.vmdl"
+      },
+      "asset_modifier__repeat145": {
+        "type": "model",
+        "asset": "models/items/pudge/war_path_back/war_path_back.vmdl",
+        "modifier": "models/items/pudge/war_path_back/war_path_back_refit.vmdl"
+      },
+      "asset_modifier__repeat146": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_insanity_intestines/pudge_insanity_intestines.vmdl",
+        "modifier": "models/items/pudge/pudge_insanity_intestines/pudge_insanity_intestines_refit.vmdl"
+      },
+      "asset_modifier__repeat147": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_lord_of_decay_back/pudge_lord_of_decay_back.vmdl",
+        "modifier": "models/items/pudge/pudge_lord_of_decay_back/pudge_lord_of_decay_back_refit.vmdl"
+      },
+      "asset_modifier__repeat148": {
+        "type": "model",
+        "asset": "models/items/pudge/scavenger_dragons_hook/scavenger_dragons_hook.vmdl",
+        "modifier": "models/items/pudge/scavenger_dragons_hook/scavenger_dragons_hook_refit.vmdl"
+      },
+      "asset_modifier__repeat149": {
+        "type": "model",
+        "asset": "models/items/pudge/skedaddlebritches4/skedaddlebritches4.vmdl",
+        "modifier": "models/items/pudge/skedaddlebritches4/skedaddlebritches4_refit.vmdl"
+      },
+      "asset_modifier__repeat150": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_forbidden_regrowth_back/pudge_forbidden_regrowth_back.vmdl",
+        "modifier": "models/items/pudge/pudge_forbidden_regrowth_back/pudge_forbidden_regrowth_back_refit.vmdl"
+      },
+      "asset_modifier__repeat151": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_frozen_pig_face_back/pudge_frozen_pig_face_back.vmdl",
+        "modifier": "models/items/pudge/pudge_frozen_pig_face_back/pudge_frozen_pig_face_back_refit.vmdl"
+      },
+      "asset_modifier__repeat152": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_deep_sea_abomination_back/pudge_deep_sea_abomination_back.vmdl",
+        "modifier": "models/items/pudge/pudge_deep_sea_abomination_back/pudge_deep_sea_abomination_back_refit.vmdl"
+      },
+      "asset_modifier__repeat153": {
+        "type": "model",
+        "asset": "models/items/pudge/nightmare_scarecrow_back/nightmare_scarecrow_back.vmdl",
+        "modifier": "models/items/pudge/nightmare_scarecrow_back/nightmare_scarecrow_back_refit.vmdl"
+      },
+      "asset_modifier__repeat154": {
+        "type": "model",
+        "asset": "models/items/pudge/plague_doctor_back/plague_doctor_back.vmdl",
+        "modifier": "models/items/pudge/plague_doctor_back/plague_doctor_back_refit.vmdl"
+      },
+      "asset_modifier__repeat155": {
+        "type": "model",
+        "asset": "models/items/pudge/pudge_dapper_disguise_back/pudge_dapper_disguise_back.vmdl",
+        "modifier": "models/items/pudge/pudge_dapper_disguise_back/pudge_dapper_disguise_back_refit.vmdl"
+      },
+      "asset_modifier__repeat156": {
+        "type": "model",
+        "asset": "models/items/pudge/horrorfest_butcher/horrorfest_butcher_head.vmdl",
+        "modifier": "models/items/pudge/horrorfest_butcher_arcana/horrorfest_butcher_arcana_head.vmdl"
+      },
+      "asset_modifier__repeat157": {
+        "type": "model",
+        "asset": "models/items/pudge/horrorfest_butcher/horrorfest_butcher_back.vmdl",
+        "modifier": "models/items/pudge/horrorfest_butcher_arcana/horrorfest_butcher_arcana_back.vmdl"
+      },
+      "asset_modifier__repeat158": {
+        "type": "model",
+        "asset": "models/items/pudge/horrorfest_butcher/horrorfest_butcher_arm.vmdl",
+        "modifier": "models/items/pudge/horrorfest_butcher_arcana/horrorfest_butcher_arcana_arm.vmdl"
+      },
+      "asset_modifier__repeat159": {
+        "type": "model",
+        "asset": "models/items/pudge/horrorfest_butcher/horrorfest_butcher_shoulder.vmdl",
+        "modifier": "models/items/pudge/horrorfest_butcher_arcana/horrorfest_butcher_arcana_shoulder.vmdl"
+      },
+      "asset_modifier__repeat160": {
+        "type": "model",
+        "asset": "models/items/pudge/horrorfest_butcher/horrorfest_butcher_weapon_flags.vmdl",
+        "modifier": "models/items/pudge/horrorfest_butcher_arcana/horrorfest_butcher_arcana_weapon_flags.vmdl"
+      },
+      "asset_modifier__repeat161": {
+        "type": "model",
+        "asset": "models/items/pudge/horrorfest_butcher/horrorfest_butcher_offhand.vmdl",
+        "modifier": "models/items/pudge/horrorfest_butcher_arcana/horrorfest_butcher_arcana_offhand.vmdl"
+      }
+    }
+  },
+  "18539": {
+    "name": "The Devotions of Dragonus - Wings",
+    "item_slot": "back",
+    "model_player": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_wings.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_skywrath_mage",
+        "modifier": "models/items/skywrath_mage/skywrath_arcana/skywrath_arcana.vmdl"
+      },
+      "asset_modifier__repeat1": {
+        "type": "model_skin",
+        "style": "0",
+        "skin": "0"
+      },
+      "asset_modifier__repeat2": {
+        "type": "model_skin",
+        "style": "1",
+        "skin": "1"
+      },
+      "asset_modifier__repeat9": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_arcane_bolt.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_bolt.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat10": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_mystic_flare_ambient.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_mystic_flare_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat11": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_mystic_flare_hit_ambient.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_mystic_flare_hit_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat12": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat13": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_ancient_seal_debuff.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ancient_seal_debuff.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat14": {
+        "type": "particle",
+        "asset": "particles/items2_fx/rod_of_atos.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_rod_of_atos.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat15": {
+        "type": "particle",
+        "asset": "particles/items2_fx/rod_of_atos_attack.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_rod_of_atos_projectile.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat16": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot_cast.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot_cast.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat17": {
+        "type": "particle",
+        "asset": "particles/items3_fx/octarine_core_lifesteal.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_spell_lifesteal.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat18": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_base_attack.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_base_attack.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat19": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_deny.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat20": {
+        "type": "particle",
+        "asset": "particles/items_fx/phylactery.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_phylactery.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat21": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_arcane_bolt",
+        "modifier": "skywrath_mage_arcane_bolt_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat22": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_arcane_bolt",
+        "modifier": "skywrath_mage_arcane_bolt_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat23": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_concussive_shot",
+        "modifier": "skywrath_mage_concussive_shot_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat24": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_concussive_shot",
+        "modifier": "skywrath_mage_concussive_shot_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat25": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_ancient_seal",
+        "modifier": "skywrath_mage_ancient_seal_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat26": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_ancient_seal",
+        "modifier": "skywrath_mage_ancient_seal_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat27": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_mystic_flare",
+        "modifier": "skywrath_mage_mystic_flare_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat28": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_mystic_flare",
+        "modifier": "skywrath_mage_mystic_flare_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat29": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_shield_of_the_scion",
+        "modifier": "skywrath_mage_shield_of_the_scion_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat30": {
+        "type": "ability_icon",
+        "asset": "skywrath_mage_shield_of_the_scion",
+        "modifier": "skywrath_mage_shield_of_the_scion_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat31": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_skywrath_mage",
+        "modifier": "npc_dota_hero_skywrath_mage_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat32": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_skywrath_mage",
+        "modifier": "npc_dota_hero_skywrath_mage_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat33": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_skywrath_mage",
+        "modifier": "npc_dota_hero_skywrath_mage_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat34": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_skywrath_mage",
+        "modifier": "npc_dota_hero_skywrath_mage_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat35": {
+        "type": "inventory_icon",
+        "asset": "rod_of_atos",
+        "modifier": "rod_of_atos_skywrath_mage_arcana_alt1",
+        "style": "0"
+      },
+      "asset_modifier__repeat36": {
+        "type": "inventory_icon",
+        "asset": "rod_of_atos",
+        "modifier": "rod_of_atos_skywrath_mage_arcana_alt2",
+        "style": "1"
+      },
+      "asset_modifier__repeat37": {
+        "type": "inventory_icon",
+        "asset": "phylactery",
+        "modifier": "phylactery_skywrath_mage_arcana_alt1",
+        "style": "0"
+      },
+      "asset_modifier__repeat38": {
+        "type": "inventory_icon",
+        "asset": "phylactery",
+        "modifier": "phylactery_skywrath_mage_arcana_alt2",
+        "style": "1"
+      },
+      "asset_modifier__repeat39": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot_slow_debuff.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot_slow_debuff.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat40": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot_failure.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot_failure.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat41": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_mystic_flare_ambient.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_mystic_flare_v2_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat42": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ambient_wings.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat43": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ambient_wings_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat44": {
+        "type": "particle",
+        "asset": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_weapon_ambient.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_weapon_ambient_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat45": {
+        "type": "particle",
+        "asset": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ambient_head.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ambient_v2_head.vpcf",
+        "style": "1"
+      },
+      "styles": {
+        "0": {
+          "name": "#DOTA_Style_Skywrath_Mage_Arcana_Style0",
+          "skin": "0",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "name": "#DOTA_Style_Skywrath_Mage_Arcana_Style1",
+          "skin": "1",
+          "alternate_icon": "1",
+          "unlock": {
+            "item_def": "27601",
+            "price": "1"
+          }
+        }
+      },
+      "asset_modifier__repeat46": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_arcane_bolt.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_bolt_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat47": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat48": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot_cast.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot_cast_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat49": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot_failure.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot_failure_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat50": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_ancient_seal_debuff.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ancient_seal_v2_debuff.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat51": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot_slow_debuff.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_concussive_shot_slow_debuff_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat52": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_base_attack.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_base_attack_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat53": {
+        "type": "particle",
+        "asset": "particles/items_fx/phylactery.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_phylactery_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat54": {
+        "type": "particle",
+        "asset": "particles/items2_fx/rod_of_atos.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_rod_of_atos_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat55": {
+        "type": "particle",
+        "asset": "particles/items2_fx/rod_of_atos_attack.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_rod_of_atos_projectile_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat56": {
+        "type": "particle",
+        "asset": "particles/items3_fx/octarine_core_lifesteal.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_spell_lifesteal_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat57": {
+        "type": "particle",
+        "asset": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_loadout.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_loadout_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat58": {
+        "type": "particle",
+        "asset": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_alt_run.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_alt_run_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat59": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_deny_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat60": {
+        "type": "particle",
+        "asset": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_death.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_death_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat61": {
+        "type": "particle",
+        "asset": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_kill_target.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_kill_target_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat62": {
+        "type": "particle",
+        "asset": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_kill_caster.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_kill_caster_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat63": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_skywrath_mage/skywrath_mage_mystic_flare_hit_ambient.vpcf",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_mystic_flare_hit_ambient_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat64": {
+        "type": "response_criteria",
+        "asset": "skywrath_crownfall"
+      },
+      "asset_modifier__repeat65": {
+        "type": "model",
+        "asset": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_belt.vmdl",
+        "modifier": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_belt_refit.vmdl"
+      },
+      "asset_modifier__repeat67": {
+        "type": "model",
+        "asset": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_belt_refit.vmdl",
+        "modifier": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_belt.vmdl"
+      }
+    }
+  },
+  "18540": {
+    "name": "The Devotions of Dragonus - Weapon",
+    "model_player": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_weapon.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_weapon_ambient.vpcf"
+      }
+    }
+  },
+  "18541": {
+    "name": "The Devotions of Dragonus - Head",
+    "item_slot": "head",
+    "model_player": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_head.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ambient_head.vpcf"
+      }
+    }
+  },
+  "18542": {
+    "name": "The Devotions of Dragonus - Belt",
+    "item_slot": "belt",
+    "model_player": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_belt_refit.vmdl",
+    "visuals": {}
+  },
+  "18543": {
+    "name": "The Devotions of Dragonus - Shoulder",
+    "item_slot": "shoulder",
+    "model_player": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_shoulder.vmdl",
+    "visuals": {}
+  },
+  "18544": {
+    "name": "The Devotions of Dragonus - Arms",
+    "item_slot": "arms",
+    "model_player": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_arms.vmdl",
+    "visuals": {}
+  },
+  "22718": {
+    "name": "The Resurrection of Shen - Wings",
+    "item_slot": "shoulder",
+    "model_player": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_shoulders.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana.vmdl",
+        "style": "0"
+      },
+      "asset_modifier__repeat1": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana.vmdl",
+        "style": "1"
+      },
+      "asset_modifier__repeat2": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "models/items/vengefulspirit/imperia/imperia.vmdl",
+        "style": "2"
+      },
+      "asset_modifier__repeat3": {
+        "type": "model_skin",
+        "style": "0",
+        "skin": "0"
+      },
+      "asset_modifier__repeat4": {
+        "type": "model_skin",
+        "style": "1",
+        "skin": "1"
+      },
+      "asset_modifier__repeat5": {
+        "type": "model_skin",
+        "style": "2",
+        "skin": "0"
+      },
+      "asset_modifier__repeat14": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_ambient.vpcf",
+        "modifier": "particles/error/null.vpcf"
+      },
+      "asset_modifier__repeat18": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_magic_missle.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_magic_missile.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat19": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_magic_missle.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_magic_missile_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat20": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_magic_missle.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_magic_missile_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat21": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_nether_swap.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_nether_swap.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat22": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_nether_swap.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_nether_swap_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat23": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_nether_swap.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_nether_swap_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat24": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_nether_swap_target.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_nether_swap_target.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat25": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_nether_swap_target.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_nether_swap_target_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat26": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_nether_swap_target.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_nether_swap_v3_target.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat27": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_swap_buff_overhead.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_buff_overhead.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat28": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_swap_buff_overhead.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_v2_buff_overhead.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat29": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_swap_buff_overhead.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_buff_overhead_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat30": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_base_attack.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_base_attack.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat31": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_base_attack.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_base_attack_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat32": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_base_attack.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_base_attack_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat33": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_wave_of_terror.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_wave_of_terror.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat34": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_wave_of_terror.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_wave_of_terror_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat35": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_wave_of_terror.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_wave_of_terror_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat36": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_wave_of_terror_recipient.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_wave_of_terror_buff_recipient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat37": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_wave_of_terror_recipient.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_wave_of_terror_buff_recipient_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat38": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_wave_of_terror_recipient.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_wave_of_terror_buff_recipient_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat39": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_venge_aura_cast.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_aura_cast.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat40": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_venge_aura_cast.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_aura_cast_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat41": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_vengeful/vengeful_venge_aura_cast.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_aura_cast.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat42": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_dark_seer_illusion.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/status_effect_vengeful_arcana_illusion.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat43": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_dark_seer_illusion.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/status_effect_vengeful_arcana_illusion_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat44": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_dark_seer_illusion.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/status_effect_vengeful_arcana_illusion.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat45": {
+        "type": "particle",
+        "asset": "particles/items_fx/force_staff.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_forcestaff.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat46": {
+        "type": "particle",
+        "asset": "particles/items_fx/force_staff.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_forcestaff_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat47": {
+        "type": "particle",
+        "asset": "particles/items_fx/force_staff.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_forcestaff_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat48": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_deny.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat49": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_deny_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat50": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_deny.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat51": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_magic_missile",
+        "modifier": "vengefulspirit_magic_missile_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat52": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_magic_missile",
+        "modifier": "vengefulspirit_magic_missile_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat53": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_magic_missile",
+        "modifier": "vengefulspirit/arcana/imperia/vengefulspirit_magic_missile_alt3",
+        "minimum_priority": "1",
+        "style": "2"
+      },
+      "asset_modifier__repeat54": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_wave_of_terror",
+        "modifier": "vengefulspirit_wave_of_terror_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat55": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_wave_of_terror",
+        "modifier": "vengefulspirit_wave_of_terror_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat56": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_wave_of_terror",
+        "modifier": "vengefulspirit/arcana/imperia/vengefulspirit_wave_of_terror_alt3",
+        "minimum_priority": "1",
+        "style": "2"
+      },
+      "asset_modifier__repeat57": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_command_aura",
+        "modifier": "vengefulspirit_command_aura_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat58": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_command_aura",
+        "modifier": "vengefulspirit_command_aura_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat59": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_command_aura",
+        "modifier": "vengefulspirit/arcana/imperia/vengefulspirit_command_aura_alt3",
+        "minimum_priority": "1",
+        "style": "2"
+      },
+      "asset_modifier__repeat60": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_nether_swap",
+        "modifier": "vengefulspirit_nether_swap_alt1",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat61": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_nether_swap",
+        "modifier": "vengefulspirit_nether_swap_alt2",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat62": {
+        "type": "ability_icon",
+        "asset": "vengefulspirit_nether_swap",
+        "modifier": "vengefulspirit/arcana/imperia/vengefulspirit_nether_swap_alt3",
+        "minimum_priority": "1",
+        "style": "2"
+      },
+      "asset_modifier__repeat63": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "npc_dota_hero_vengefulspirit_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat64": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "npc_dota_hero_vengefulspirit_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat65": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "npc_dota_hero_vengefulspirit_alt3",
+        "style": "2",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat66": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "npc_dota_hero_vengefulspirit_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat67": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "npc_dota_hero_vengefulspirit_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat68": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_vengefulspirit",
+        "modifier": "npc_dota_hero_vengefulspirit_alt3",
+        "style": "2",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat69": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_head.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat70": {
+        "type": "particle_create",
+        "modifier": "particles/error/null.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat71": {
+        "type": "particle_create",
+        "modifier": "particles/error/null.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat72": {
+        "type": "particle",
+        "asset": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_weapon_ambient.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_weapon_ambient_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat73": {
+        "type": "particle",
+        "asset": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_weapon_ambient.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_imperia_weapon_ambient.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat74": {
+        "type": "particle",
+        "asset": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_head_crown.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_head_v2_crown.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat75": {
+        "type": "particle",
+        "asset": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_head_crown.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_imperia_ambient_head_crown.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat76": {
+        "type": "inventory_icon",
+        "asset": "force_staff",
+        "modifier": "force_staff_vengeful_spirit_arcana_alt1",
+        "style": "0"
+      },
+      "asset_modifier__repeat77": {
+        "type": "inventory_icon",
+        "asset": "force_staff",
+        "modifier": "force_staff_vengeful_spirit_arcana_alt2",
+        "style": "1"
+      },
+      "asset_modifier__repeat78": {
+        "type": "inventory_icon",
+        "asset": "force_staff",
+        "modifier": "force_staff_vengeful_spirit_arcana_alt3",
+        "style": "2"
+      },
+      "asset_modifier__repeat79": {
+        "type": "inventory_icon",
+        "asset": "ultimate_scepter",
+        "modifier": "ultimate_scepter_vengeful_spirit_arcana_alt1",
+        "style": "0"
+      },
+      "asset_modifier__repeat80": {
+        "type": "inventory_icon",
+        "asset": "ultimate_scepter",
+        "modifier": "ultimate_scepter_vengeful_spirit_arcana_alt2",
+        "style": "1"
+      },
+      "asset_modifier__repeat81": {
+        "type": "inventory_icon",
+        "asset": "ultimate_scepter",
+        "modifier": "ultimate_scepter_vengeful_spirit_arcana_alt3",
+        "style": "2"
+      },
+      "asset_modifier__repeat82": {
+        "type": "response_criteria",
+        "asset": "venge_crownfall",
+        "style": "0"
+      },
+      "asset_modifier__repeat83": {
+        "type": "response_criteria",
+        "asset": "venge_crownfall",
+        "style": "1"
+      },
+      "asset_modifier__repeat84": {
+        "type": "response_criteria",
+        "asset": "imperia_crownfall",
+        "style": "2"
+      },
+      "styles": {
+        "0": {
+          "name": "#DOTA_Style_Vengeful_Spirit_Arcana_Style0",
+          "skin": "0",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "name": "#DOTA_Style_Vengeful_Spirit_Arcana_Style1",
+          "skin": "1",
+          "alternate_icon": "1",
+          "unlock": {
+            "item_def": "29466",
+            "price": "1"
+          }
+        },
+        "2": {
+          "name": "#DOTA_Style_Vengeful_Spirit_Arcana_Style2",
+          "skin": "2",
+          "alternate_icon": "2",
+          "unlock": {
+            "item_def": "29467",
+            "price": "1"
+          }
+        }
+      },
+      "asset_modifier__repeat85": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_v2_head.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat86": {
+        "type": "particle",
+        "asset": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_kill_caster.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_kill_caster_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat87": {
+        "type": "particle",
+        "asset": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_kill_target.vpcf",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_kill_target_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat89": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_wings.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat90": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_wings_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat91": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_wings_v3.vpcf",
+        "style": "2"
+      },
+      "asset_modifier__repeat92": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_spirit_head/dark_spirit_head.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_spirit_head/dark_spirit_head_refit.vmdl"
+      },
+      "asset_modifier__repeat93": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/banished_princess_head/banished_princess_head.vmdl",
+        "modifier": "models/items/vengefulspirit/banished_princess_head/banished_princess_head_refit.vmdl"
+      },
+      "asset_modifier__repeat94": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/crownmerciless_head/crownmerciless_head.vmdl",
+        "modifier": "models/items/vengefulspirit/crownmerciless_head/crownmerciless_head_refit.vmdl"
+      },
+      "asset_modifier__repeat95": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_arts_countess_head/dark_arts_countess_head.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_arts_countess_head/dark_arts_countess_head_refit.vmdl"
+      },
+      "asset_modifier__repeat96": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_throne_head/dark_throne_head.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_throne_head/dark_throne_head_refit.vmdl"
+      },
+      "asset_modifier__repeat97": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_valkyrie_head/dark_valkyrie_head.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_valkyrie_head/dark_valkyrie_head_refit.vmdl"
+      },
+      "asset_modifier__repeat98": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dreadhawk_head/dreadhawk_head.vmdl",
+        "modifier": "models/items/vengefulspirit/dreadhawk_head/dreadhawk_head_refit.vmdl"
+      },
+      "asset_modifier__repeat99": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/echoes_eyrie_head/echoes_eyrie_head.vmdl",
+        "modifier": "models/items/vengefulspirit/echoes_eyrie_head/echoes_eyrie_head_refit.vmdl"
+      },
+      "asset_modifier__repeat100": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/fallen_valkyrie_head/fallen_valkyrie_head.vmdl",
+        "modifier": "models/items/vengefulspirit/fallen_valkyrie_head/fallen_valkyrie_head_refit.vmdl"
+      },
+      "asset_modifier__repeat101": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/fallenprincess_head/fallenprincess_head.vmdl",
+        "modifier": "models/items/vengefulspirit/fallenprincess_head/fallenprincess_head_refit.vmdl"
+      },
+      "asset_modifier__repeat102": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/flightless_fury_head/flightless_fury_head.vmdl",
+        "modifier": "models/items/vengefulspirit/flightless_fury_head/flightless_fury_head_refit.vmdl"
+      },
+      "asset_modifier__repeat103": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/forsaken_wings_head/forsaken_wings_head.vmdl",
+        "modifier": "models/items/vengefulspirit/forsaken_wings_head/forsaken_wings_head_refit.vmdl"
+      },
+      "asset_modifier__repeat104": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/huangs_umbra_head/huangs_umbra_head.vmdl",
+        "modifier": "models/items/vengefulspirit/huangs_umbra_head/huangs_umbra_head_refit.vmdl"
+      },
+      "asset_modifier__repeat105": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/regal_ruin_head/regal_ruin_head.vmdl",
+        "modifier": "models/items/vengefulspirit/regal_ruin_head/regal_ruin_head_refit.vmdl"
+      },
+      "asset_modifier__repeat106": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/venge_lost_seraph_head/venge_lost_seraph_head.vmdl",
+        "modifier": "models/items/vengefulspirit/venge_lost_seraph_head/venge_lost_seraph_head_refit.vmdl"
+      },
+      "asset_modifier__repeat107": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/vengeful_valkyrie_head/vengeful_valkyrie_head.vmdl",
+        "modifier": "models/items/vengefulspirit/vengeful_valkyrie_head/vengeful_valkyrie_head_refit.vmdl"
+      },
+      "asset_modifier__repeat108": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/vengeful_valkyrie_head_alternate/vengeful_valkyrie_head_alternate.vmdl",
+        "modifier": "models/items/vengefulspirit/vengeful_valkyrie_head_alternate/vengeful_valkyrie_head_alternate_refit.vmdl"
+      },
+      "asset_modifier__repeat109": {
+        "type": "model",
+        "asset": "models/heroes/vengeful/vengeful_hair.vmdl",
+        "modifier": "models/heroes/vengeful/vengeful_hair_refit.vmdl"
+      },
+      "asset_modifier__repeat110": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/fallenprincess_head_s1/fallenprincess_head_s1.vmdl",
+        "modifier": "models/items/vengefulspirit/fallenprincess_head_s1/fallenprincess_head_s1_refit.vmdl"
+      },
+      "asset_modifier__repeat111": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/fallenprincess_head_s2/fallenprincess_head_s2.vmdl",
+        "modifier": "models/items/vengefulspirit/fallenprincess_head_s2/fallenprincess_head_s2_refit.vmdl"
+      },
+      "asset_modifier__repeat112": {
+        "type": "model",
+        "asset": "models/heroes/vengeful/vengeful_lowerbody.vmdl",
+        "modifier": "models/heroes/vengeful/vengeful_lowerbody_refit.vmdl"
+      },
+      "asset_modifier__repeat113": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_spirit_legs/dark_spirit_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_spirit_legs/dark_spirit_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat114": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_arts_countess_legs/dark_arts_countess_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_arts_countess_legs/dark_arts_countess_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat115": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_throne_legs/dark_throne_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_throne_legs/dark_throne_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat116": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/vengeful_valkyrie_legs/vengeful_valkyrie_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/vengeful_valkyrie_legs/vengeful_valkyrie_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat117": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dreadhawk_legs/dreadhawk_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/dreadhawk_legs/dreadhawk_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat118": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/echoes_eyrie_legs/echoes_eyrie_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/echoes_eyrie_legs/echoes_eyrie_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat119": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/flightless_fury_legs/flightless_fury_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/flightless_fury_legs/flightless_fury_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat120": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/banished_princess_legs/banished_princess_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/banished_princess_legs/banished_princess_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat121": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/fallenprincess_legs/fallenprincess_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/fallenprincess_legs/fallenprincess_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat122": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/regal_ruin_legs/regal_ruin_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/regal_ruin_legs/regal_ruin_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat123": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/dark_valkyrie_legs/dark_valkyrie_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/dark_valkyrie_legs/dark_valkyrie_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat124": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/forsaken_wings_legs/forsaken_wings_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/forsaken_wings_legs/forsaken_wings_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat125": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/huangs_umbra_skirt/huangs_umbra_skirt.vmdl",
+        "modifier": "models/items/vengefulspirit/huangs_umbra_skirt/huangs_umbra_skirt_refit.vmdl"
+      },
+      "asset_modifier__repeat126": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/fallen_valkyrie_legs/fallen_valkyrie_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/fallen_valkyrie_legs/fallen_valkyrie_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat127": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/venge_lost_seraph_legs/venge_lost_seraph_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/venge_lost_seraph_legs/venge_lost_seraph_legs_refit.vmdl"
+      },
+      "asset_modifier__repeat128": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_head_refit.vmdl",
+        "modifier": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_head.vmdl"
+      },
+      "asset_modifier__repeat129": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_legs_refit.vmdl",
+        "modifier": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_legs.vmdl"
+      },
+      "asset_modifier__repeat130": {
+        "type": "model",
+        "asset": "models/items/vengefulspirit/titanias_fury_legs/titanias_fury_legs.vmdl",
+        "modifier": "models/items/vengefulspirit/titanias_fury_legs/titanias_fury_legs_refit.vmdl"
+      }
+    }
+  },
+  "22719": {
+    "name": "The Resurrection of Shen - Weapon",
+    "model_player": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_weapon.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_weapon_ambient.vpcf"
+      }
+    }
+  },
+  "22720": {
+    "name": "The Resurrection of Shen - Head",
+    "item_slot": "head",
+    "model_player": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_head_refit.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_head_crown.vpcf"
+      }
+    }
+  },
+  "22721": {
+    "name": "The Resurrection of Shen - Legs",
+    "item_slot": "legs",
+    "model_player": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_legs_refit.vmdl",
+    "visuals": {}
+  },
+  "29687": {
+    "name": "Feast of Abscession - Back",
+    "item_slot": "back",
+    "model_player": "models/items/pudge/arcana/pudge_arcana_back.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_red_back_ambient.vpcf"
+      },
+      "asset_modifier__repeat1": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "arcana_back"
+      }
+    }
+  },
+  "37140": {
+    "name": "Blades of Voth Domosh - Swords",
+    "model_player": "models/items/legion_commander/voth_domosh/voth_domosh_polearm.vmdl",
+    "visuals": {
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/legion/legion_weapon_voth_domosh/legion_arcana_polearm_ambient.vpcf"
+      }
+    }
+  }
+}

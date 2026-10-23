@@ -1,3 +1,4 @@
+import {arcanaOccupiedSlots} from './expanded-arcana-definitions.mjs';
 import {publicArcanaDefinitions} from './public-arcana-controls.mjs';
 import {previewColor} from './particles/style.mjs';
 const readCache=new Map();let catalogData=null;
@@ -8,7 +9,7 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  if(!heroId||inputRows.some(r=>r.heroId!==heroId))throw Error('Preview supports one hero at a time');
  const entitySlot=data.previewForm?.startsWith('entity:')?data.previewForm.slice(7):null;
  const arcanaRow=inputRows.find(r=>r.arcana);if(arcanaRow&&entitySlot)throw Error('Arcana summon previews have not been prepublished. VPK building remains available.');if(data.previewForm&&data.previewForm!=='normal'&&!entitySlot&&!(arcanaRow&&data.previewForm==='demon'&&heroId==='terrorblade'))throw Error('This custom arcana/form preview has not been prepublished. VPK building remains available.');
- let rows=inputRows.filter(r=>!r.stanceId&&!r.arcana&&!(heroId==='drow_ranger'&&arcanaRow&&r.slot==='weapon')&&!(publicArcanaDefinitions[heroId]&&arcanaRow&&r.slot===(publicArcanaDefinitions[heroId].occupiedSlot??'head')));const stanceRow=inputRows.find(r=>r.stanceId),preferredAnimations=[];
+ let rows=inputRows.filter(r=>!r.stanceId&&!r.arcana&&!(heroId==='drow_ranger'&&arcanaRow&&r.slot==='weapon')&&!(publicArcanaDefinitions[heroId]&&arcanaRow&&arcanaOccupiedSlots(publicArcanaDefinitions[heroId]).includes(r.slot)));const stanceRow=inputRows.find(r=>r.stanceId),preferredAnimations=[];
  if(stanceRow){
   if(!manifest.stances?.[heroId])throw Error('Kinetic preview metadata has not been prepublished');
   const options=(await load(manifest.stances[heroId])).options??[],selection=stanceRow.stanceId;
