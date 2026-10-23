@@ -13,5 +13,18 @@ try{
   var block=result.Blocks.Single(b=>b.Type.ToString()=="ANIM");if(!File.ReadAllBytes(output).AsSpan((int)block.Offset,(int)block.Size).SequenceEqual(runtime))throw new Exception("Compiled animation changed");
  }
  var bad=Path.Combine(folder,"bad.vmdl_c");var manifest=Path.Combine(folder,"bad.json");File.WriteAllText(manifest,JsonSerializer.Serialize(new{input,output=bad,model,group="missing"}));try{patcher.GetMethod("Run")!.Invoke(null,new object[]{manifest});throw new Exception("Missing group accepted");}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException){}if(File.Exists(bad))throw new Exception("Invalid selection wrote output");
- Console.WriteLine("Mesh-group tests passed: both styles, dummy hidden, animation payload preserved, invalid group rejected.");
+ // Pisces Gemini hides the original mount/head branches while retaining
+ // the unrelated body mesh. Empty authored states are meaningful here.
+ data["m_meshGroups"]=KVObject.Array();foreach(var name in new[]{"mount_@0_#&0","mount_@1_#&1","heads_@0_#&0","heads_@1_#&1","autodefault"})data["m_meshGroups"].Add(new KVObject(name));
+ data["m_refMeshGroupMasks"]=KVObject.Array();foreach(var mask in new ulong[]{16,1,4})data["m_refMeshGroupMasks"].Add(new KVObject(mask));data["m_nDefaultMeshGroupMask"]=new KVObject(21UL);encoded=Payload(data);
+ using(var stream=File.Create(input))using(var writer=new BinaryWriter(stream)){writer.Write((uint)(40+encoded.Length+runtime.Length));writer.Write((ushort)12);writer.Write((ushort)1);writer.Write(8u);writer.Write(2u);writer.Write(System.Text.Encoding.ASCII.GetBytes("DATA"));writer.Write(20u);writer.Write((uint)encoded.Length);writer.Write(System.Text.Encoding.ASCII.GetBytes("ANIM"));writer.Write((uint)(8+encoded.Length));writer.Write((uint)runtime.Length);writer.Write(encoded);writer.Write(runtime);}
+ foreach(var state in new[]{0,1}){
+  var output=Path.Combine(folder,"bodygroups-"+state+".vmdl_c");var request=Path.Combine(folder,"bodygroups.json");File.WriteAllText(request,JsonSerializer.Serialize(new{input,output,model,bodygroups=new Dictionary<string,int>{{"mount",state},{"heads",state}}}));patcher.GetMethod("Run")!.Invoke(null,new object[]{request});
+  using var result=new Resource{FileName=output};result.Read(output);var root=((Model)result.DataBlock!).Data;var masks=root["m_refMeshGroupMasks"].Values.Select(v=>v.ToUInt64(null)).ToArray();
+  if(!masks.SequenceEqual(state==1?new ulong[]{ulong.MaxValue,0,0}:new ulong[]{ulong.MaxValue,ulong.MaxValue,ulong.MaxValue}))throw new Exception("Bodygroup visibility mismatch");
+  if(root["m_nDefaultMeshGroupMask"].ToUInt64(null)!=(state==1?26UL:21UL))throw new Exception("Bodygroup selection reset unrelated bits");
+  var block=result.Blocks.Single(b=>b.Type.ToString()=="ANIM");if(!File.ReadAllBytes(output).AsSpan((int)block.Offset,(int)block.Size).SequenceEqual(runtime))throw new Exception("Bodygroup patch changed animation");
+ }
+ File.WriteAllText(manifest,JsonSerializer.Serialize(new{input,output=bad,model,bodygroups=new Dictionary<string,int>{{"mount",42}}}));try{patcher.GetMethod("Run")!.Invoke(null,new object[]{manifest});throw new Exception("Invalid bodygroup accepted");}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException){}if(File.Exists(bad))throw new Exception("Invalid bodygroup wrote output");
+ Console.WriteLine("Mesh-group tests passed: both styles, bodygroup visibility, animation payload preserved, invalid selections rejected.");
 }finally{Directory.Delete(folder,true);}

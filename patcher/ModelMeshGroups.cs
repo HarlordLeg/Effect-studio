@@ -9,7 +9,7 @@ using ValveResourceFormat.ResourceTypes;
 // in game, so leaving a dummy default and relying on that attribute hides it.
 internal static class ModelMeshGroups
 {
-    private sealed record Request(string Input,string Output,string Model,string Group);
+    private sealed record Request(string Input,string Output,string Model,string? Group=null,Dictionary<string,int>? Bodygroups=null);
     public static void Run(string manifest)
     {
         var q=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty mesh-group request");
@@ -21,13 +21,26 @@ internal static class ModelMeshGroups
         using(var reader=new BinaryReader(new MemoryStream(original)))binary.Read(reader);
         var data=binary.Data.Root;
         var groups=data["m_meshGroups"].Values.Select(v=>v.ToString(CultureInfo.InvariantCulture)).ToArray();
-        var index=Array.IndexOf(groups,q.Group);
-        if(index<0||index>=64)throw new InvalidDataException("Authored mesh group not found: "+q.Group);
-        var bit=1UL<<index;var masks=data["m_refMeshGroupMasks"].Values.ToArray();
-        var selected=masks.Select(v=>(v.ToUInt64(CultureInfo.InvariantCulture)&bit)!=0).ToArray();
-        if(!selected.Any(v=>v))throw new InvalidDataException("Authored mesh group has no geometry: "+q.Group);
+        var bit=data["m_nDefaultMeshGroupMask"].ToUInt64(CultureInfo.InvariantCulture);
+        if(q.Group is not null){
+            var index=Array.IndexOf(groups,q.Group);
+            if(index<0||index>=64)throw new InvalidDataException("Authored mesh group not found: "+q.Group);
+            bit=1UL<<index;
+        }
+        foreach(var (name,value) in q.Bodygroups??[]){
+            if(value<0)throw new InvalidDataException("Invalid bodygroup value");
+            var prefix=name+"_@";var matched=groups.Select((group,index)=>(group,index)).Where(x=>x.group.StartsWith(prefix,StringComparison.Ordinal)).ToArray();
+            var selected=matched.Where(x=>x.group.StartsWith(prefix+value+"_#&",StringComparison.Ordinal)).ToArray();
+            if(matched.Length==0||selected.Length!=1||matched.Any(x=>x.index>=64))throw new InvalidDataException("Authored bodygroup state not found: "+name+"="+value);
+            foreach(var row in matched)bit&=~(1UL<<row.index);
+            bit|=1UL<<selected[0].index;
+        }
+        if(q.Group is null&&!(q.Bodygroups?.Count>0))throw new InvalidDataException("No mesh group selection requested");
+        var masks=data["m_refMeshGroupMasks"].Values.ToArray();
+        var visible=masks.Select(v=>(v.ToUInt64(CultureInfo.InvariantCulture)&bit)!=0).ToArray();
+        if(q.Group is not null&&!visible.Any(v=>v))throw new InvalidDataException("Authored mesh group has no geometry: "+q.Group);
         // Runtime economy bodygroup changes must not restore the other style.
-        var locked=KVObject.Array();foreach(var visible in selected)locked.Add(new KVObject(visible?ulong.MaxValue:0UL));
+        var locked=KVObject.Array();foreach(var show in visible)locked.Add(new KVObject(show?ulong.MaxValue:0UL));
         data["m_refMeshGroupMasks"]=locked;data["m_nDefaultMeshGroupMask"]=new KVObject(bit);
         var payload=HeroActivityRules.SerializeActivity(binary,original[(int)block.Offset]);
         using(var output=File.Create(q.Output)){
@@ -38,6 +51,6 @@ internal static class ModelMeshGroups
         }
         using var check=new Resource{FileName=q.Output};check.Read(q.Output);var written=File.ReadAllBytes(q.Output);
         for(var i=0;i<resource.Blocks.Count;i++)if(resource.Blocks[i]!=block){var a=resource.Blocks[i];var b=check.Blocks[i];if(!original.AsSpan((int)a.Offset,(int)a.Size).SequenceEqual(written.AsSpan((int)b.Offset,(int)b.Size)))throw new InvalidDataException("Mesh-group operation changed runtime block: "+a.Type);}
-        Console.WriteLine("Selected mesh group: "+q.Group);
+        Console.WriteLine(q.Group is not null?"Selected mesh group: "+q.Group:"Selected bodygroups: "+string.Join(", ",q.Bodygroups!.Select(pair=>pair.Key+"="+pair.Value)));
     }
 }

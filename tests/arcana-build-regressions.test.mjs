@@ -6,3 +6,18 @@ test('conflicting explicit items still require their existing priority selection
 test('sound index resolves case differences, skips absent old targets with a warning, but never accepts a missing replacement',()=>{const index=[{name:'sounds.vsndevts_c',events:['Hero_Razor.Attack','Hero_Razor.ArcAttack']}],a=resolveIndexedSoundEvents([{target:'hero_razor.attack',source:'hero_razor.arcattack'},{target:'Hero_Razor.Obsolete',source:'Missing'}],index);assert.equal(a.events[0].target,'Hero_Razor.Attack');assert.equal(a.events[0].source,'Hero_Razor.ArcAttack');assert.equal(a.warnings.length,1);assert.throws(()=>resolveIndexedSoundEvents([{target:'Hero_Razor.Attack',source:'Missing'}],index),/Missing/);});
 test('Juggernaut arcana preserves an independently selected healing ward',()=>{const items=JSON.parse(fs.readFileSync(new URL('./fixtures/new-arcana-economy.json',import.meta.url))),hero={id:'juggernaut',model:'models/base.vmdl_c',defaultSlotModels:{head:'models/head.vmdl_c'},items:[]},b={catalog:{heroes:[hero]},expandedArcanaEconomy:{items},store:{has:()=>true}},ward={hero,item:{id:'game-ward',slot:'summon',setEntity:true},effects:[]},arc=publicArcanaChoice(b,{heroId:hero.id,arcana:{style:0}}),result=completePublicArcanas(b,[arc,ward]);assert.equal(result.filter(r=>r.item.setEntity).length,1);assert.ok(result.includes(ward));});
 test('selected Immortal icons take precedence over a Drow arcana default without changing unrelated entries',()=>{const rows=[make('drow-arcana:hero_base','hero_base','arcana'),make('game-back','back','immortal')];for(const row of rows)row.item.nativeOverrides.entries[0].type='ability_icon';const result=preferEquippedArcanaParticles(rows);assert.equal(result[0].item.nativeOverrides.entries[0].source,'immortal');assert.deepEqual(result[0].item.nativeOverrides.particleReplacements,{});});
+test('selected Healing Ward icon takes priority over Juggernaut arcana without overriding unit particle ownership',()=>{
+ const target='panorama/images/spellicons/juggernaut_healing_ward_png.vtex_c';
+ const arc=make('arcana:juggernaut:body','hero_base','particles/arc.vpcf_c','juggernaut');
+ arc.item.nativeOverrides.entries.push({type:'ability_icon',target,source:'panorama/images/spellicons/juggernaut_healing_ward_alt_png.vtex_c'},{type:'ability_icon',target:'other_icon',source:'arc_other'});
+ const ward=make('game-18369','summon','particles/ward.vpcf_c','juggernaut');ward.item.setEntity=true;
+ ward.item.nativeOverrides.entries.push({type:'ability_icon',target,source:'panorama/images/spellicons/juggernaut_fall20_healingward_png.vtex_c'});
+ const before=JSON.stringify([arc,ward]);
+ for(const choices of [[arc,ward],[ward,arc]]){
+  const fixed=preferEquippedArcanaParticles(choices),body=fixed.find(c=>c.item.slot==='hero_base');
+  assert.deepEqual(body.item.nativeOverrides.entries.find(e=>e.target===target),ward.item.nativeOverrides.entries[1]);
+  assert.equal(body.item.nativeOverrides.entries.find(e=>e.target==='other_icon').source,'arc_other');
+  assert.equal(particleOverridePlan(fixed).get('particles/ability.vpcf_c').source,'particles/arc.vpcf_c');
+ }
+ assert.equal(JSON.stringify([arc,ward]),before);
+});
