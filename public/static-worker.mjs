@@ -49,7 +49,7 @@ async function route(request,event){const url=new URL(request.url),name=url.path
   else{url.searchParams.delete('token');const key=name+'?'+[...url.searchParams].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');ref=manifest.icons?.[key];}
   if(ref)return /\.json$/.test(ref)?publication(new URL(ref,base),event):fetch(new URL(ref,base));if(name.startsWith('/images/personas/'))return proxy(request);
   // RGB icon variants are small generated images, not model exports.
-  if(/^\/api\/(drow-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|techies-cart-icon)$/.test(name))return proxy(request);
+  if(/^\/api\/(arcana-icon|drow-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|techies-cart-icon)$/.test(name))return proxy(request);
   if(!name.startsWith('/api/jobs/'))return json({error:'Resource not prepublished'},404);
  }
  if(name==='/api/notifications')return proxy(request,{authenticated:false});

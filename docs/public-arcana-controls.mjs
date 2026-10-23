@@ -1,0 +1,6 @@
+export const publicArcanaDefinitions={lina:{name:'Fiery Soul of the Slayer',styles:['Fiery Soul of the Slayer']},monkey_king:{name:"Great Sage's Reckoning",styles:['Base','Water','Underworld','Fire']}};
+export function drawPublicArcanaControls(box,hero,state,{disabled=false,onChange}={}){
+ box.replaceChildren();const d=publicArcanaDefinitions[hero.id];if(!d)return;const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=!!state.arcana;toggle.disabled=disabled;label.append(toggle,document.createTextNode(d.name));box.append(label);
+ toggle.onchange=()=>{state.arcana=toggle.checked?{style:0}:null;if(toggle.checked){state.selected.delete('head');state.effects?.delete('head');}onChange?.();};
+ if(state.arcana&&d.styles.length>1){const label=document.createElement('label');label.textContent=document.documentElement.lang==='ru'?'Форма':'Form';const select=document.createElement('select');for(const [id,name]of d.styles.entries())select.append(new Option(name,id));select.value=state.arcana.style;select.disabled=disabled;select.onchange=()=>{state.arcana.style=Number(select.value);onChange?.();};label.append(select);box.append(label);}
+}

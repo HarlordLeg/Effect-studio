@@ -15,7 +15,7 @@ test('admin arcana rejects forged slots, unsupported heroes/styles, missing asse
 });
 test('new arcana endpoints reject unauthenticated public and widget callers before reading assets',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-admin-arcanas-'));fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify({heroes:[],effects:[]}));fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({archives:[],catalog:'catalog.json',autoCatalog:false,patcher:'none'}));const {server,url,previews}=await startServer({root,port:0,adminAuth:{verify(t){if(t!=='admin')throw Error('Unauthorized');}}});
- try{for(const id of ['lina','monkey_king']){assert.equal((await fetch(url+'/api/admin/test-arcana/'+id)).status,401);assert.equal((await fetch(url+'/api/admin/build-test-arcana/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);}const catalog=await (await fetch(url+'/api/catalog')).json();assert.equal(catalog.linaArcana,undefined);assert.equal(catalog.monkeyKingArcana,undefined);}finally{previews.dispose();await new Promise(r=>server.close(r));fs.rmSync(root,{recursive:true,force:true});}
+ try{for(const id of ['lina','monkey_king']){assert.equal((await fetch(url+'/api/admin/test-arcana/'+id)).status,401);assert.equal((await fetch(url+'/api/admin/build-test-arcana/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);}const catalog=await (await fetch(url+'/api/catalog')).json();assert.equal(catalog.linaArcana,true);assert.equal(catalog.monkeyKingArcana,true);}finally{previews.dispose();await new Promise(r=>server.close(r));fs.rmSync(root,{recursive:true,force:true});}
 });
 
 import {Builder} from '../lib/build.mjs';import {packVpk,Vpk} from '../lib/vpk.mjs';
