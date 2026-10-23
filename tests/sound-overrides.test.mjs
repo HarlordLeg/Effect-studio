@@ -35,3 +35,17 @@ test('sound index is reused, only changed banks enter VPK and failed lookup leav
  assert.equal(indexed,1);assert.equal(patched,2);choice.item.nativeOverrides.soundEvents[0].source='Missing.Event';await assert.rejects(applyItemSounds(builder,[choice],new Map(),dir,'patcher',{}),/Missing.Event/);assert.deepEqual(fs.readdirSync(dir).sort(),['assets','cache']);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('Pudge arcana retains its voice family when Valve keeps a chatwheel line in the base voice',()=>{
+ const native={responseCriteria:['pudarc_chains'],soundEvents:[
+  {type:'chatwheel',target:'pudge_pud_laugh_05',source:'pudge_pud_arc_laugh_05'},
+  {type:'chatwheel',target:'pudge_pud_thanks_02',source:'pudge_pud_arc_thanks_02'},
+  {type:'chatwheel',target:'pudge_pud_rare_05',source:'pudge_pud_purch_04'}
+ ]};
+ assert.deepEqual(itemVoiceProfiles(native),[{basePrefix:'pudge_pud_',personaPrefix:'pudge_pud_arc_'}]);
+ const plan=soundOverridePlan([{hero:{id:'pudge'},item:{id:'arcana:pudge:body',name:'Feast of Abscession',nativeOverrides:native}}]);
+ assert.equal(plan.profiles.length,1);assert.equal(plan.profiles[0].events.pudge_pud_rare_05,'pudge_pud_purch_04');
+ assert.equal(plan.events.find(e=>e.target==='pudge_pud_rare_05').source,'pudge_pud_purch_04');
+ assert.deepEqual(itemVoiceProfiles({responseCriteria:['pudarc_chains']}),[{basePrefix:'pudge_pud_',personaPrefix:'pudge_pud_arc_'}]);
+ assert.throws(()=>soundOverridePlan([{hero:{id:'pudge'},item:{name:'Unknown',nativeOverrides:{responseCriteria:['unrecognized_voice']}}}]),/вариант озвучки/);
+});

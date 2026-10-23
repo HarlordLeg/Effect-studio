@@ -20,7 +20,8 @@ test('expanded arcana activity patches use the packed replacement body, includin
    const run=async(_,args)=>{
     if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,materialSkin:true,activityRulesV1:true,activityRulesV9:true,heroActivitiesV4:true});
     if(args[0]==='--input'){fs.writeFileSync(args[args.indexOf('--output')+1],Buffer.concat([fs.readFileSync(args[1]),Buffer.from(':PACKED_BODY')]));return '';}
-    if(args[0]==='--activity-rules'){calls++;const m=JSON.parse(fs.readFileSync(args[1]));assert.ok(!fs.readFileSync(m.input).toString().includes('UNPATCHED_BASE'));fs.writeFileSync(m.output,Buffer.concat([fs.readFileSync(m.input),Buffer.from(':ACTIVITIES')]));return '';}
+    if(args[0]==='--model-mesh-groups'){const m=JSON.parse(fs.readFileSync(args[1]));assert.equal(id,'skywrath_mage');assert.match(m.group,style===0?/_@1_/:/_@2_/);fs.copyFileSync(m.input,m.output);return '';}
+    if(args[0]==='--activity-rules'){calls++;const m=JSON.parse(fs.readFileSync(args[1]));assert.equal(m.model,rows[0].item.model,'activity request must name the arcana source model, not its replacement path');assert.ok(!fs.readFileSync(m.input).toString().includes('UNPATCHED_BASE'));fs.writeFileSync(m.output,Buffer.concat([fs.readFileSync(m.input),Buffer.from(':ACTIVITIES')]));return '';}
     if(args[0]==='--relocate'){for(const f of JSON.parse(fs.readFileSync(args[1])).files)fs.copyFileSync(f.input,f.output);return '';}
     throw Error('Unexpected patch step: '+args[0]);
    };
@@ -28,4 +29,24 @@ test('expanded arcana activity patches use the packed replacement body, includin
    try{await engine.build(rows,job);assert.equal(job.status,'ready');assert.equal(calls,heroActivityPlans(rows).length,id+' activity plan');if(calls)assert.match(new Vpk(job.file).read(rows[0].hero.model).toString(),/ACTIVITIES/);else assert.ok(new Vpk(job.file).read(rows[0].hero.model));}finally{await engine.dispose();}
   }finally{fs.rmSync(root,{recursive:true,force:true});}
  }
+});
+
+test('equipped Pudge refits replace only their own ability icons, leaving other arcana icons and catalog intact',()=>{
+ const b=fixture('pudge'),hero=b.catalog.heroes[0],target='panorama/images/spellicons/pudge_flesh_heap_png.vtex_c',source='panorama/images/spellicons/pudge/horrorfest_butcher/horrorfest_butcher_flesh_heap_png.vtex_c';
+ const ordinary=hero.items.find(i=>i.id==='custom-back');ordinary.nativeOverrides={...((expandedArcanaChoices(b,'pudge')[0]).item.nativeOverrides),entries:[{type:'ability_icon',target,source}],particles:[],particleBindings:[],activities:[],soundEvents:[],responseCriteria:[]};
+ const before=JSON.stringify(b.catalog),baseline=expandedArcanaChoices(b,'pudge'),rows=expandedArcanaChoices(b,'pudge',{items:{back:'custom-back'}}),entries=rows.flatMap(r=>r.item.nativeOverrides.entries);
+ assert.deepEqual(entries.filter(e=>e.target===target),[{type:'ability_icon',target,source}]);
+ assert.ok(baseline[0].item.nativeOverrides.entries.some(e=>e.target===target&&e.source!==source));
+ for(const entry of baseline[0].item.nativeOverrides.entries.filter(e=>e.type==='ability_icon'&&e.target!==target))assert.ok(entries.some(e=>e.target===entry.target&&e.source===entry.source));
+ assert.equal(JSON.stringify(b.catalog),before);
+ assert.deepEqual(expandedArcanaChoices(b,'pudge',{items:{back:'custom-back'}}).flatMap(r=>r.item.nativeOverrides.entries),entries);
+});
+
+test('refitted Venge hat retains its attached systems without restoring arcana-suppressed base ambient',()=>{
+ const b=fixture('vengefulspirit'),hero=b.catalog.heroes[0],base=expandedArcanaChoices(b,'vengefulspirit'),entry=base[0].item.nativeOverrides.entries.find(e=>e.type==='particle'&&e.source==='particles/error/null.vpcf_c');assert.ok(entry);
+ const item=hero.items.find(i=>i.id==='custom-head');item.nativeOverrides={...base[0].item.nativeOverrides,entries:[{...entry,source:'particles/econ/hat_ambient_alt.vpcf_c'}],particles:['particles/econ/hat_attached.vpcf_c'],particleBindings:[{path:'particles/econ/hat_attached.vpcf_c'}],soundEvents:[],responseCriteria:[],activities:[]};
+ const rows=expandedArcanaChoices(b,'vengefulspirit',{items:{head:item.id}}),hat=rows.find(r=>r.item.id===item.id);
+ assert.deepEqual(rows.flatMap(r=>r.item.nativeOverrides.entries).filter(e=>e.target===entry.target),[entry]);
+ assert.deepEqual(hat.item.nativeOverrides.particles,['particles/econ/hat_attached.vpcf_c']);assert.deepEqual(hat.item.nativeOverrides.particleBindings,[{path:'particles/econ/hat_attached.vpcf_c'}]);
+ assert.equal(item.nativeOverrides.entries[0].source,'particles/econ/hat_ambient_alt.vpcf_c');
 });

@@ -28,19 +28,19 @@ export function skullbasherActivityRules(item){
  return (match[2]?['ACT_DOTA_LOADOUT','ACT_DOTA_SPAWN']:['ACT_DOTA_DIE','ACT_DOTA_ATTACK_EVENT_BASH','ACT_DOTA_CAST_ABILITY_4']).map(asset=>({asset,modifier}));
 }
 export function kineticChoiceGroups(options,items=[]){
- const groups=kineticGroups(options);
+ const groups=kineticGroups(options),explicitResources=new Set([...groups.keys()].filter(k=>k.startsWith('resource:')));
  for(const item of items){const native=item.nativeOverrides??{entries:[]};const option={id:'item:'+item.id,name:'Предмет: '+item.name,native,rules:skullbasherActivityRules(item).length?skullbasherActivityRules(item):(native.activities??[])};
   for(const [action] of kineticGroups([option])){if(!groups.has(action)||action.startsWith('resource:'))continue;if(!groups.get(action).some(o=>o.id===option.id))groups.get(action).push(option);}
-  for(const entry of native.entries??[]){const key='resource:'+entry.target;if(!groups.has(key)||!['particle','ability_icon','inventory_icon'].includes(entry.type))continue;if(!groups.get(key).some(o=>o.id===option.id))groups.get(key).push(option);}
+  for(const entry of native.entries??[]){const key='resource:'+entry.target;if(!['particle','ability_icon','inventory_icon'].includes(entry.type))continue;if(!groups.has(key))groups.set(key,[]);if(!groups.get(key).some(o=>o.id===option.id))groups.get(key).push(option);}
  }
- for(const [key,candidates] of groups){if(!key.startsWith('resource:'))continue;const target=key.slice(9),sources=new Set(candidates.map(o=>o.native.entries.find(e=>e.target===target)?.source));if(sources.size===1)groups.set(key,[candidates[0]]);}
+ for(const [key,candidates] of groups){if(!key.startsWith('resource:'))continue;const target=key.slice(9),sources=new Set(candidates.map(o=>o.native.entries.find(e=>e.target===target)?.source));if(sources.size===1){if(explicitResources.has(key))groups.set(key,[candidates[0]]);else groups.delete(key);}}
  return groups;
 }
 export function kineticPriorityLabel(action){
  if(!action.startsWith('resource:'))return kineticActionLabel(action);
  const path=action.slice(9),kind=/\/spellicons\//.test(path)?'Иконка способности':/\/images\/items\//.test(path)?'Иконка предмета':'Эффект способности';
  const file=path.split('/').pop().replace(/\.(?:vpcf|vtex|vmat)(?:_c)?$/,'').replace(/_png$/,'');
- const known=[['sun_strike','Sun Strike'],['sunstrike','Sun Strike'],['cold_snap','Cold Snap'],['coldsnap','Cold Snap'],['ghost_walk','Ghost Walk'],['ghostwalk','Ghost Walk'],['ice_wall','Ice Wall'],['icewall','Ice Wall'],['deafening_blast','Deafening Blast'],['deafeningblast','Deafening Blast'],['chaos_meteor','Chaos Meteor'],['meteor','Chaos Meteor'],['forge_spirit','Forge Spirit'],['forged_spirit','Forge Spirit'],['alacrity','Alacrity'],['tornado','Tornado'],['emp','EMP'],['quas','Quas'],['wex','Wex'],['exort','Exort']];
+ const known=[['pudge_rot','Rot'],['pudge_dismember','Dismember'],['pudge_meat_hook','Meat Hook'],['sun_strike','Sun Strike'],['sunstrike','Sun Strike'],['cold_snap','Cold Snap'],['coldsnap','Cold Snap'],['ghost_walk','Ghost Walk'],['ghostwalk','Ghost Walk'],['ice_wall','Ice Wall'],['icewall','Ice Wall'],['deafening_blast','Deafening Blast'],['deafeningblast','Deafening Blast'],['chaos_meteor','Chaos Meteor'],['meteor','Chaos Meteor'],['forge_spirit','Forge Spirit'],['forged_spirit','Forge Spirit'],['alacrity','Alacrity'],['tornado','Tornado'],['emp','EMP'],['quas','Quas'],['wex','Wex'],['exort','Exort']];
  const match=known.find(([key])=>new RegExp('(?:^|_)'+key+'(?:_|$)').test(file));
  const detail=match?match[1]:file.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
  return kind+' · '+detail;

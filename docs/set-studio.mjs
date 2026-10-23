@@ -75,7 +75,7 @@ const back=document.createElement('button');back.type='button';back.className='s
  }
  function pendingPriorities(){for(const h of catalog.heroes){try{validatePriorities(h,heroStates.get(h.id));}catch{return true;}}return false;}
  function drawPriorities(){
- const h=hero(),state=heroStates.get(h?.id),box=$('set-kinetic-priorities');box.replaceChildren();box.hidden=true;if(!state?.stanceId||!state.stanceOptions)return;
+ const h=hero(),state=heroStates.get(h?.id),box=$('set-kinetic-priorities');box.replaceChildren();box.hidden=true;if(!state)return;const equipmentConflicts=[...kineticChoiceGroups([],selectedEquipment(h,state))].some(([,list])=>list.length>1);if(!state.stanceId&&equipmentConflicts)state.stanceId={ids:[],priorities:{}};if(state.stanceId?.ids?.length===0&&!equipmentConflicts){state.stanceId=null;return;}if(!state.stanceId||!state.stanceOptions)return;
  const selection=typeof state.stanceId==='string'?{ids:[state.stanceId],priorities:{}}:state.stanceId,options=state.stanceOptions.filter(o=>selection.ids.includes(o.id));
  for(const [action,candidates] of kineticChoiceGroups(options,selectedEquipment(h,state))){if(candidates.length<2)continue;box.hidden=false;const label=document.createElement('label');label.textContent='Приоритет · '+kineticPriorityLabel(action);const select=document.createElement('select'),empty=document.createElement('option');empty.value='';empty.textContent='Выберите источник';select.append(empty);for(const candidate of candidates){const option=document.createElement('option');option.value=candidate.id;option.textContent=candidate.name;select.append(option);}select.value=selection.priorities?.[action]??'';select.disabled=working;select.onchange=()=>{state.stanceId={ids:selection.ids,priorities:{...selection.priorities,[action]:select.value}};$('set-download').hidden=true;draw();schedulePreview();};label.append(select);box.append(label);}
  }
@@ -83,14 +83,14 @@ const back=document.createElement('button');back.type='button';back.className='s
  if(!h||!state)return;
  const selection=typeof state.stanceId==='string'?{ids:[state.stanceId],priorities:{}}:state.stanceId;
  if(!selection||!state.stanceOptions)return;
- const groups=[...kineticChoiceGroups(state.stanceOptions.filter(o=>selection.ids.includes(o.id)),selectedEquipment(h,state))].filter(([action,list])=>!action.startsWith('resource:')&&list.length>1&&list.some(o=>o.id.startsWith('item:')));
+ const groups=[...kineticChoiceGroups(state.stanceOptions.filter(o=>selection.ids.includes(o.id)),selectedEquipment(h,state))].filter(([action,list])=>list.length>1&&list.some(o=>o.id.startsWith('item:')));
  const missing=groups.filter(([action,list])=>!list.some(o=>o.id===selection.priorities?.[action]));
  const key=JSON.stringify(missing.map(([action,list])=>[action,list.map(o=>o.id)]));
  if(!missing.length){state.priorityPromptKey=null;return;}if(state.priorityPromptKey===key||working)return;
  queueMicrotask(()=>{
   if(hero()?.id!==h.id||document.querySelector('dialog[open]')||root.hidden)return;
-  state.priorityPromptKey=key;const dialog=document.createElement('dialog');dialog.className='kinetic-picker';const title=document.createElement('h3');title.textContent='Приоритет анимаций';
-  const note=document.createElement('p');note.textContent='Самоцвет и Skullbasher меняют одни и те же анимации. Выбери, какой вариант использовать.';
+  state.priorityPromptKey=key;const dialog=document.createElement('dialog');dialog.className='kinetic-picker';const title=document.createElement('h3');title.textContent='Приоритет эффектов и анимаций';
+  const note=document.createElement('p');note.textContent='Выбранные предметы или самоцветы меняют один и тот же эффект, иконку или анимацию. Выберите источник для каждого изменения.';
   const close=document.createElement('button');close.className='secondary kinetic-close';close.textContent='×';close.setAttribute('aria-label','Закрыть');close.onclick=()=>dialog.close();
   const body=document.createElement('div');body.className='kinetic-controls';const draft={...selection.priorities},apply=document.createElement('button');apply.className='primary kinetic-apply';apply.textContent='Применить';apply.disabled=true;
   const refresh=()=>{apply.disabled=missing.some(([action,list])=>!list.some(o=>o.id===draft[action]));};

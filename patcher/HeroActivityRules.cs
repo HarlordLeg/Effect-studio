@@ -25,7 +25,13 @@ internal static class HeroActivityRules
         // Keep activity metadata and binary animation blobs in the documented raw layout.
         // v4 Zstd readers expect one stream covering both metadata and blob lanes.
         binary.SerializationCompressionMethod=KV3BinaryCompressionMethod.Uncompressed;
-        using var stream=new MemoryStream();binary.Serialize(stream);var bytes=stream.ToArray();
+        using var stream=new MemoryStream();byte[] bytes;
+        try{binary.Serialize(stream);bytes=stream.ToArray();}
+        catch(OverflowException) when(sourceVersion==5){
+            // VRF 20.0 casts expanded v5 object/array counts to ushort.
+            // Preserve v5 with saturated hints and full 32-bit counts.
+            bytes=ActivityKv3V5.Serialize(binary);
+        }
         RepairAllocationCounts(bytes,binary.Data.Root);
         if(sourceVersion>=4)return bytes;
         return LegacyActivityBuffer(bytes,sourceVersion);
@@ -164,7 +170,7 @@ internal static class HeroActivityRules
                 audit.Add(new{id=option.Id,name=option.Name,matchedRules=matches,missingRules=option.Rules.Except(matches).ToArray()});
                 var genuine=(option.Id.StartsWith("kinetic-",StringComparison.Ordinal)||option.Id.StartsWith("animation-",StringComparison.Ordinal));
                 var actions=rows.SelectMany(row=>row["m_activityArray"].Values.Select(a=>Text(a,"m_name"))).Where(a=>a.StartsWith("ACT_",StringComparison.Ordinal)).Distinct().ToArray();
-                var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?(genuine?actions:StanceActivities.ToArray()).Select(a=>r with{Asset=a}):genuine||StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).Where(r=>!genuine||rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return Matches(r,r.Asset)&&labels.Contains(r.Modifier)&&labels.Contains(r.Asset)&&!labels.Where(known.Contains).Any(tag=>tag!=r.Modifier&&!option.Rules.Any(other=>other.Modifier==tag&&Matches(other,r.Asset)));})).Distinct().ToArray();
+                var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?(genuine?actions:StanceActivities.ToArray()).Select(a=>r with{Asset=a}):genuine||StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).Where(r=>!genuine||rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return Matches(r,r.Asset)&&labels.Contains(r.Modifier)&&labels.Contains(r.Asset);})).Distinct().ToArray();
                 var selected=rules.Select(r=>r.Modifier).ToHashSet();
                 var eligible=rows.Where(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Where(n=>n.StartsWith("ACT_",StringComparison.Ordinal)).Any(a=>rules.Any(r=>Matches(r,a)&&labels.Contains(r.Modifier)))&&!labels.Where(known.Contains).Any(t=>!selected.Contains(t));}).ToArray();
                 if(eligible.Length>0)options.Add(new{id=option.Id,name=option.Name,rules,animations=eligible.OrderBy(r=>r["m_activityArray"].Values.Count(a=>!Text(a,"m_name").StartsWith("ACT_",StringComparison.Ordinal))).ThenBy(r=>r["m_activityArray"].Values.Any(a=>Text(a,"m_name")=="ACT_DOTA_IDLE")?0:1).Select(r=>Text(r,"m_sName")).ToArray()});
@@ -180,10 +186,12 @@ internal static class HeroActivityRules
             var binary=new BinaryKV3(block.Type){Offset=block.Offset,Size=block.Size,Resource=resource};
             using(var reader=new BinaryReader(new MemoryStream(bytes))){reader.BaseStream.Position=block.Offset;binary.Read(reader);}
             binary.SerializationCompressionMethod=(KV3BinaryCompressionMethod)(BitConverter.ToUInt32(bytes,(int)block.Offset+20)&0xff);
-            snapshots[type]=Payload(binary,key);var report=Bake(binary.Data.Root,key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
+            var originalActivity=binary.ToString();snapshots[type]=Payload(binary,key);var report=Bake(binary.Data.Root,key,request.Rules,known);reports.Add(new{block=type,selected=report.Count,animations=report.Names,missing=report.Missing});
             if(type=="ASEQ"&&request.RequireActivity&&report.MissingRequired.Length>0)throw new InvalidDataException("Kinetic changes could not all be applied: "+string.Join(", ",report.MissingRequired));
             if(type=="ASEQ"&&request.RequireActivity&&report.Count==0)throw new InvalidDataException("This kinetic gem has no compatible animations in the installed hero model");
             if(type=="ASEQ"&&request.RequireStance&&report.StanceCount==0)throw new InvalidDataException("This stance has no compatible animations in the installed hero model");
+            // Leave untouched animation blocks byte-for-byte intact, including typed arrays.
+            if(binary.ToString()==originalActivity){snapshots.Remove(type);continue;}
             rawBlocks[block]=SerializeActivity(binary,bytes[(int)block.Offset]);
             changed.Add(block);expected[type]=binary.ToString()!;
         }

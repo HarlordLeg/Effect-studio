@@ -81,6 +81,9 @@ export const translations = {"Личность уже есть":"I already own t
 
 "Стадия роста · ":"Growth stage · ",
 "Приоритет анимаций":"Animation priority",
+"Приоритет эффектов и анимаций":"Effect and animation priority",
+"Приоритеты предметов":"Item priorities",
+"Выбранные предметы или самоцветы меняют один и тот же эффект, иконку или анимацию. Выберите источник для каждого изменения.":"The selected items or gems change the same effect, icon or animation. Choose a source for each change.",
 "Самоцвет и Skullbasher меняют одни и те же анимации. Выбери, какой вариант использовать.":"The gem and Skullbasher change the same animations. Choose which version to use.",
 
 "Меняет начало и завершение телепортации. Эффекты и модель Mechanical Boots of Travel принадлежат предмету и не добавляются самоцветом.":"Changes teleport start and end animations. Mechanical Boots of Travel effects and model belong to the item and are not added by the gem.",

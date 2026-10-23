@@ -5,8 +5,41 @@ internal static class HeroActivitiesTests
  static KVObject Sequence(string name,params string[] activities){var row=KVObject.Collection();row["m_sName"]=new KVObject(name);row["m_name"]=new KVObject(name);row["m_fetch"]=new KVObject(123);row["m_activityArray"]=Array(activities.Select(a=>{var v=KVObject.Collection();v["m_name"]=new KVObject(a);return v;}).ToArray());return row;}
  static string[] Names(KVObject row)=>row["m_activityArray"].Values.Select(v=>v["m_name"].ToString(null)).ToArray();
  static void Check(bool condition){if(!condition)throw new Exception("Hero activity regression");}
+ private sealed class ActivityDocument : ValveResourceFormat.ResourceTypes.BinaryKV3{
+  internal ActivityDocument(KVObject root):base(ValveResourceFormat.BlockType.ANIM){Data=new KVDocument(new KVHeader(),"",root);}
+ }
+ static void EqualTree(KVObject expected,KVObject actual){
+  Check(expected.ValueType==actual.ValueType&&expected.Flag==actual.Flag);
+  if(expected.ValueType==KVValueType.Collection){Check(expected.Select(p=>p.Key).SequenceEqual(actual.Select(p=>p.Key)));foreach(var(key,value)in expected)EqualTree(value,actual[key]);}
+  else if(expected.ValueType==KVValueType.Array){Check(expected.Count==actual.Count);foreach(var pair in expected.Values.Zip(actual.Values))EqualTree(pair.First,pair.Second);}
+  else if(expected.ValueType==KVValueType.BinaryBlob)Check(expected.AsBlob().AsSpan().SequenceEqual(actual.AsBlob()));
+  else if(expected.ValueType==KVValueType.FloatingPoint)Check(BitConverter.SingleToInt32Bits((float)expected)==BitConverter.SingleToInt32Bits((float)actual));
+  else if(expected.ValueType==KVValueType.FloatingPoint64)Check(BitConverter.DoubleToInt64Bits((double)expected)==BitConverter.DoubleToInt64Bits((double)actual));
+  else Check(expected.ToString(System.Globalization.CultureInfo.InvariantCulture)==actual.ToString(System.Globalization.CultureInfo.InvariantCulture));
+ }
+ static ValveResourceFormat.ResourceTypes.BinaryKV3 ReadActivity(byte[] bytes){
+  var result=new ValveResourceFormat.ResourceTypes.BinaryKV3(ValveResourceFormat.BlockType.ANIM){Offset=0,Size=(uint)bytes.Length,Resource=null!};
+  using var reader=new BinaryReader(new MemoryStream(bytes));result.Read(reader);return result;
+ }
  public static int Main(string[] args)
  {
+  // Exercise the actual serializer, not a mocked patch process. Both compact
+  // allocation hints overflow while full v5 counters and all scalar types survive.
+  {
+   var root=KVObject.Collection();var arrays=KVObject.Array();var objects=KVObject.Array();
+   for(var i=0;i<65536;i++){arrays.Add(KVObject.Array());var item=KVObject.Collection();item["i"]=new KVObject(i);objects.Add(item);}
+   root["arrays"]=arrays;root["objects"]=objects;
+   root["values"]=Array(new KVObject(),new KVObject(true),new KVObject(false),new KVObject((short)-123),new KVObject((ushort)54321),new KVObject(int.MinValue),new KVObject(uint.MaxValue),new KVObject(long.MinValue),new KVObject(ulong.MaxValue),new KVObject(-0.0f),new KVObject(-0.0d),new KVObject(0.25f),new KVObject(1.25d),new KVObject(""),new KVObject("Unicode: Ж λ"),KVObject.Blob(new byte[]{0,255,1}),KVObject.Blob(System.Array.Empty<byte>()));
+   var flagged=new KVObject("particles/test.vpcf"){Flag=KVFlag.Resource};root["resource"]=flagged;
+   var binary=new ActivityDocument(root){Resource=null!};binary.SerializationVersion=5;
+   try{using var stream=new MemoryStream();binary.Serialize(stream);throw new Exception("Expected old VRF allocation overflow");}catch(OverflowException){}
+   var bytes=HeroActivityRules.SerializeActivity(binary,5);Check(bytes[0]==5);
+   Check(BitConverter.ToUInt16(bytes,44)==65535&&BitConverter.ToUInt16(bytes,46)==65535);
+   Check(BitConverter.ToInt32(bytes,108)>65535&&BitConverter.ToInt32(bytes,112)>65535);
+   var read=ReadActivity(bytes);EqualTree(root,read.Data.Root);
+   var second=ReadActivity(ActivityKv3V5.Serialize(read));EqualTree(root,second.Data.Root);
+   Console.WriteLine("[OK] Large KV3 v5: saturated hints, full counts, typed lanes, flags and blobs round-trip");
+  }
   foreach(byte source in new byte[]{2,3,4,5})Check(HeroActivityRules.WritableVersion(source)==(source<4?4:source));
   try{HeroActivityRules.WritableVersion(6);throw new Exception("Future KV3 must be rejected");}catch(System.IO.InvalidDataException){}
 
@@ -81,6 +114,36 @@ internal static class HeroActivitiesTests
   }
   var skeleton=KVObject.Collection();skeleton["m_boneName"]=Array(new KVObject("root"));skeleton["m_nParent"]=Array(new KVObject(-1));foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})skeleton[key]=Array(new KVObject(1d));HeroActivities.ValidateSkeleton(skeleton,skeleton);
   var mismatched=KVObject.Collection();mismatched["m_boneName"]=Array(new KVObject("wrong"));mismatched["m_nParent"]=Array(new KVObject(-1));var rejected=false;try{HeroActivities.ValidateSkeleton(skeleton,mismatched);}catch(InvalidDataException){rejected=true;}Check(rejected);
+  // Optional real Pudge arcana regression: its large v5 ANIM overflows VRF
+  // when unnecessarily reserialized although the arcana rule changes nothing.
+  if(args.Length==2&&args[0]=="--pudge"){
+   var source=File.ReadAllBytes(args[1]);var manifest=Path.GetTempFileName();var output=manifest+".vmdl_c";
+   try{
+    File.WriteAllText(manifest,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[1]),output,model="models/items/pudge/arcana/pudge_arcana_base.vmdl_c",rules=new[]{new HeroActivityRules.Rule("ALL","arcana")},knownModifiers=System.Array.Empty<string>(),requireActivity=false}));
+    HeroActivityRules.Run(manifest);Check(source.AsSpan().SequenceEqual(File.ReadAllBytes(output)));
+    Console.WriteLine("[OK] Pudge arcana: unchanged large KV3 v5 stays byte-for-byte exact");
+    using var resource=new ValveResourceFormat.Resource{FileName=args[1]};resource.Read(args[1]);
+    var anim=resource.Blocks.Single(b=>b.Type.ToString()=="ANIM");
+    var binary=new ValveResourceFormat.ResourceTypes.BinaryKV3(anim.Type){Offset=anim.Offset,Size=anim.Size,Resource=resource};
+    using(var reader=new BinaryReader(new MemoryStream(source))){reader.BaseStream.Position=anim.Offset;binary.Read(reader);}
+    // Force a real metadata edit within the large block while retaining tracks.
+    var labels=binary.Data.Root["m_animArray"].Values.First()["m_activityArray"];
+    var activity=KVObject.Collection();activity["m_name"]=new KVObject("ACT_DOTA_IDLE");activity["m_nActivity"]=new KVObject(1);activity["m_nFlags"]=new KVObject(0);activity["m_nWeight"]=new KVObject(1);
+    labels.Add(activity);var modifier=KVObject.Collection();modifier["m_name"]=new KVObject("regression_arcana");modifier["m_nActivity"]=new KVObject(0);modifier["m_nFlags"]=new KVObject(0);modifier["m_nWeight"]=new KVObject(1);labels.Add(modifier);
+    var serialized=HeroActivityRules.SerializeActivity(binary,5);EqualTree(binary.Data.Root,ReadActivity(serialized).Data.Root);
+    using(var modified=File.Create(output))HeroActivityRules.WriteActivityBlocks(resource,source,modified,new Dictionary<object,byte[]>{{anim,serialized}});
+    var editedInput=output+".edited.vmdl_c";File.Move(output,editedInput);
+    try{
+     File.WriteAllText(manifest,System.Text.Json.JsonSerializer.Serialize(new{input=editedInput,output,model="models/items/pudge/arcana/pudge_arcana_base.vmdl_c",rules=new[]{new HeroActivityRules.Rule("ALL","regression_arcana")},knownModifiers=new[]{"regression_arcana"},requireActivity=false}));
+     HeroActivityRules.Run(manifest);
+     using var check=System.Text.Json.JsonDocument.Parse(File.ReadAllText(output+".activities.json"));
+     Check(check.RootElement.GetProperty("reports").EnumerateArray().Any(r=>r.GetProperty("block").GetString()=="ANIM"&&r.GetProperty("selected").GetInt32()>0));
+     Console.WriteLine("[OK] Pudge arcana: actual changed large ANIM serializes and animation payload is verified");
+    }finally{File.Delete(editedInput);}
+
+   }finally{File.Delete(manifest);File.Delete(output);File.Delete(output+".activities.json");}
+   args=System.Array.Empty<string>();
+  }
   // Original modern fixtures: both activity tables change, other blocks stay exact.
   if(args.Length==2&&(args[0]=="--tinker"||args[0]=="--mage-slayer")){
    var mageSlayer=args[0]=="--mage-slayer";var modelName=mageSlayer?"models/heroes/antimage/antimage.vmdl_c":"models/heroes/tinker/tinker.vmdl_c";
