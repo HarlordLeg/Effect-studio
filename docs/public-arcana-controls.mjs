@@ -1,5 +1,6 @@
+import {newArcanaDefinitions} from './new-arcana-definitions.mjs';
 import {expandedArcanaDefinitions,arcanaStyleIds,arcanaOccupiedSlots} from './expanded-arcana-definitions.mjs';
-export const publicArcanaDefinitions={...expandedArcanaDefinitions,rubick:{name:'The Magus Cypher',styles:['The Magus Cypher'],occupiedSlot:'back'},lina:{name:'Fiery Soul of the Slayer',styles:['Fiery Soul of the Slayer']},monkey_king:{name:"Great Sage's Reckoning",styles:['Base','Water','Underworld','Fire']}};
+export const publicArcanaDefinitions={...expandedArcanaDefinitions,...newArcanaDefinitions,rubick:{name:'The Magus Cypher',styles:['The Magus Cypher'],occupiedSlot:'back'},lina:{name:'Fiery Soul of the Slayer',styles:['Fiery Soul of the Slayer']},monkey_king:{name:"Great Sage's Reckoning",styles:['Base','Water','Underworld','Fire']}};
 export function drawPublicArcanaControls(box,hero,state,{disabled=false,onChange}={}){
  box.replaceChildren();const d=publicArcanaDefinitions[hero.id];if(!d)return;const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=!!state.arcana;toggle.disabled=disabled;label.append(toggle,document.createTextNode(d.name));box.append(label);
  toggle.onchange=()=>{state.arcana=toggle.checked?{style:arcanaStyleIds(d)[0],...(hero.id==='rubick'?{stolenEffects:false}:{})}:null;if(toggle.checked){for(const slot of arcanaOccupiedSlots(d)){state.selected.delete(slot);state.effects?.delete(slot);}}onChange?.();};
