@@ -56,9 +56,9 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  return {heroId,...(arcanaColor&&arcanaRecipe?.referenceColor?{arcanaTint:{source:arcanaRecipe.referenceColor.map(n=>n/255),color:arcanaColor,keys:arcanaRecipe.parts.map(p=>p.key)}}:{}),parts:parts.map((p,index)=>({...p,index})),character:true,partsOnly:true,status:'ready',selectedItems:selected.map(({row,recipe})=>({id:row.itemId,name:recipe.name,slot:recipe.slot})),preferredAnimations,effects};
 }
 export class StaticPreviewClient {
- constructor(catalog,{onView=()=>{}}={}){this.catalog=catalog;this.onView=onView;this.jobs=new Map();this.manifest=null;this.base=new URL(catalog.staticPreview.manifest);}
+ constructor(catalog,{onView=()=>{}}={}){this.catalog=catalog;this.onView=onView;this.jobs=new Map();this.manifest=null;this.lastManifestRefresh=0;this.base=new URL(catalog.staticPreview.manifest);}
  async preview(data){
-  this.manifest??=await read(this.base.href);const directory=new URL('./',this.base);
+  this.manifest??=await read(this.base.href);const arcana=(data.selections??[]).find(r=>r.arcana),now=Date.now();if(arcana&&publicArcanaDefinitions[arcana.heroId]&&!this.manifest.arcanas?.[arcana.heroId]?.[String(arcana.arcana.style)]&&now-this.lastManifestRefresh>30000){this.lastManifestRefresh=now;this.manifest=await read(this.base.href+(this.base.search?'&':'?')+'refresh='+now);}const directory=new URL('./',this.base);
   const job=await assembleStaticPreview(data,this.catalog,this.manifest,ref=>read(new URL(ref,directory).href));
   job.parts=job.parts.map(p=>({...p,url:new URL(p.url,directory).href}));
   job.id=crypto.randomUUID().replaceAll('-','');job.static=true;this.jobs.set(job.id,job);

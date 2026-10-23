@@ -40,7 +40,7 @@ internal static class HeroActivitiesTests
    var second=ReadActivity(ActivityKv3V5.Serialize(read));EqualTree(root,second.Data.Root);
    Console.WriteLine("[OK] Large KV3 v5: saturated hints, full counts, typed lanes, flags and blobs round-trip");
   }
-  foreach(byte source in new byte[]{2,3,4,5})Check(HeroActivityRules.WritableVersion(source)==(source<4?4:source));
+  foreach(byte source in new byte[]{1,2,3,4,5})Check(HeroActivityRules.WritableVersion(source)==(source<4?4:source));
   try{HeroActivityRules.WritableVersion(6);throw new Exception("Future KV3 must be rejected");}catch(System.IO.InvalidDataException){}
 
   {

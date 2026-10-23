@@ -14,7 +14,7 @@ internal static class HeroActivityRules
     // v4/v5, so use its lossless v4 lanes as an intermediate for v2/v3.
     internal static byte WritableVersion(byte source)=>source switch
     {
-        2 or 3=>4,
+        1 or 2 or 3=>4,
         4 or 5=>source,
         _=>throw new InvalidDataException("Unsupported activity KV3 version: "+source)
     };
@@ -33,7 +33,7 @@ internal static class HeroActivityRules
             bytes=ActivityKv3V5.Serialize(binary);
         }
         RepairAllocationCounts(bytes,binary.Data.Root);
-        if(sourceVersion>=4)return bytes;
+        if(sourceVersion==1||sourceVersion>=4)return bytes;
         return LegacyActivityBuffer(bytes,sourceVersion);
     }
     // FLOAT (node 19) and 16-bit numeric lanes were introduced after KV3 v3.

@@ -25,3 +25,9 @@ test('initial scene decodes independent textures in parallel and shares repeated
  const preview=Object.create(ModelPreview.prototype);Object.assign(preview,{gl,draws:[],textures:[],loadingVersion:0});
  try{await preview.load(null,asset);assert.equal(peak,2);assert.equal(decoded,2);assert.equal(closed,2);assert.equal(preview.textures.length,2);assert.equal(preview.draws[0].texture,preview.draws[2].texture);assert.notEqual(preview.draws[0].texture,preview.draws[1].texture);}finally{globalThis.createImageBitmap=saved;}
 });
+
+test('connected arcana byte metadata reaches the real scene downloader for hero, defaults and selected items',async()=>{
+ const {hydrateArcanaPartSizes}=await import('../lib/connect-prepared-arcanas.mjs');const payloads=new Map(),rows=parts.map((p,i)=>{const key=String(i+1).repeat(64),url='assets/'+key+'.glb';payloads.set(url,p.bytes);return {...p,key,url,bytes:undefined};}),recipe={parts:rows.slice(0,2),items:{weapon:{parts:[rows[2]]}}};
+ hydrateArcanaPartSizes(recipe,url=>payloads.get(url).byteLength);assert.ok(rows.every(p=>Number.isSafeInteger(p.bytes)));const asset=await new SceneParts().load({parts:rows},'/unused','',async url=>({ok:true,arrayBuffer:async()=>payloads.get(url)}));assert.equal(asset.json.nodes.length,3);
+ assert.throws(()=>hydrateArcanaPartSizes({parts:[{url:'assets/'+ 'a'.repeat(64)+'.glb'}]},()=>0),/Invalid local GLB size/);
+});
