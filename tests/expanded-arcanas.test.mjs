@@ -7,3 +7,25 @@ test('six arcana ports use authored models, occupied slots, skins and isolated s
 test('authored styles validate on API; CM offers only official no-pet style, no silent fake pet',()=>{for(const[id,def]of Object.entries(expandedArcanaDefinitions)){const b=fixture(id);for(const style of arcanaStyleIds(def)){const arc=publicArcanaChoice(b,{heroId:id,arcana:{style}});assert.ok(completePublicArcanas(b,[arc]).length>=1);}for(const style of [-1,99,'0'])assert.throws(()=>publicArcanaChoice(b,{heroId:id,arcana:{style}}));}const b=fixture('crystal_maiden');assert.throws(()=>expandedArcanaChoices(b,'crystal_maiden',{style:0}));assert.doesNotThrow(()=>expandedArcanaChoices(b,'crystal_maiden',{style:1}));});
 test('occupied slots disappear from set payloads, ordinary compatible equipment stays selectable',()=>{for(const[id,def]of Object.entries(expandedArcanaDefinitions)){const b=fixture(id),hero=b.catalog.heroes[0],selected=new Map([['head','custom-head'],['back','custom-back']]),payload=setPayload(hero,selected,{arcana:{style:arcanaStyleIds(def)[0]}});for(const slot of arcanaOccupiedSlots(def))assert.ok(!payload.selections.some(r=>r.slot===slot));const compatible=hero.items.filter(i=>!arcanaOccupiedSlots(def).includes(i.slot)),arc=publicArcanaChoice(b,{heroId:id,arcana:{style:arcanaStyleIds(def)[0]}});const rows=completePublicArcanas(b,[arc,...compatible.map(item=>({hero,item,effects:[]}))]);for(const item of compatible)assert.ok(rows.some(r=>r.item.id===item.id));for(const slot of arcanaOccupiedSlots(def))assert.throws(()=>completePublicArcanas(b,[arc,{hero,item:{slot},effects:[]}]),/occupies/);}});
 test('static preview understands CM authored style 1 and preserves ordinary head selection',async()=>{const id='crystal_maiden',hero=fixture(id).catalog.heroes[0],catalog={heroes:[hero]},manifest={heroes:{[id]:'base'},arcanas:{[id]:{'1':'arcana'}}},data={base:{items:{'custom-head':{slot:'head',parts:[{id:'hat',key:'hat',role:'item',slot:'head'}]}}},arcana:{parts:[{key:'body',role:'hero'},{id:'cape',key:'cape',role:'default',slot:'back'},{id:'head',key:'head',role:'default',slot:'head'}]}};const job=await assembleStaticPreview({selections:[{heroId:id,arcana:{style:1}},{heroId:id,itemId:'custom-head',slot:'head'}]},catalog,manifest,async k=>data[k]);assert.deepEqual(job.parts.map(p=>p.key).sort(),['body','cape','hat']);});
+
+import {heroActivityPlans} from '../lib/hero-activities.mjs';import os from 'node:os';import path from 'node:path';import {Builder} from '../lib/build.mjs';import {packVpk,Vpk} from '../lib/vpk.mjs';
+test('expanded arcana activity patches use the packed replacement body, including different source model paths',async()=>{
+ for(const [id,def] of Object.entries(expandedArcanaDefinitions))for(const style of arcanaStyleIds(def)){
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-expanded-pack-'));
+  try{
+   const b=fixture(id),rows=expandedArcanaChoices(b,id,{style}),original=Buffer.alloc(16);original.writeUInt32LE(16);original.writeUInt32LE(8,8);
+   for(const row of rows){const n=row.item.nativeOverrides;n.particles=[];n.particleBindings=[];n.entries=[];n.particleReplacements={};n.soundEvents=[];n.responseCriteria=[];}
+   const assets=new Map(rows.map(r=>[r.item.model,original]));if(rows[0].item.model!==rows[0].hero.model)assets.set(rows[0].hero.model,Buffer.concat([original,Buffer.from(':UNPATCHED_BASE')]));
+   fs.writeFileSync(path.join(root,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(root,'patcher'),'stub');fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify(b.catalog));let calls=0;
+   const run=async(_,args)=>{
+    if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,materialSkin:true,activityRulesV1:true,activityRulesV9:true,heroActivitiesV4:true});
+    if(args[0]==='--input'){fs.writeFileSync(args[args.indexOf('--output')+1],Buffer.concat([fs.readFileSync(args[1]),Buffer.from(':PACKED_BODY')]));return '';}
+    if(args[0]==='--activity-rules'){calls++;const m=JSON.parse(fs.readFileSync(args[1]));assert.ok(!fs.readFileSync(m.input).toString().includes('UNPATCHED_BASE'));fs.writeFileSync(m.output,Buffer.concat([fs.readFileSync(m.input),Buffer.from(':ACTIVITIES')]));return '';}
+    if(args[0]==='--relocate'){for(const f of JSON.parse(fs.readFileSync(args[1])).files)fs.copyFileSync(f.input,f.output);return '';}
+    throw Error('Unexpected patch step: '+args[0]);
+   };
+   const engine=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),job={id:'arcana'};
+   try{await engine.build(rows,job);assert.equal(job.status,'ready');assert.equal(calls,heroActivityPlans(rows).length,id+' activity plan');if(calls)assert.match(new Vpk(job.file).read(rows[0].hero.model).toString(),/ACTIVITIES/);else assert.ok(new Vpk(job.file).read(rows[0].hero.model));}finally{await engine.dispose();}
+  }finally{fs.rmSync(root,{recursive:true,force:true});}
+ }
+});
