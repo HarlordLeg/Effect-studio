@@ -1,3 +1,4 @@
+import {liveDrowWardrobe} from './lib/drow-wardrobe.mjs';
 import {publicArcanaIcons} from './lib/public-arcanas.mjs';
 import {adminArcanaCatalog,adminArcanaChoices} from './lib/admin-arcanas.mjs';
 import {Notifications} from './lib/notifications.mjs';
@@ -34,8 +35,9 @@ const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/jso
 const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
 async function body(req){let b='';for await(const chunk of req){b+=chunk;if(b.length>16384)throw new Error('Слишком большой запрос');}return JSON.parse(b||'{}');}
 function publicJob(job){const {file,owner,_terrain,_attackVpk,...result}=job;return result;}
-export function startServer({port:overridePort,adminAuth}={}) {
-  const configPath=path.join(root,'config.json'),config=JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'));
+export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={}) {
+  const root=serverRoot;
+  const configPath=path.join(root,'config.json'),config={host:'127.0.0.1',port:8787,...JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'))};
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
   const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons),techiesIconPreviews=new TechiesIconPreviews(builder,itemIcons);
   const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
@@ -60,7 +62,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
       if(url.pathname==='/api/notifications'&&req.method==='GET'){res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Cache-Control','public, max-age=60');return json(res,200,notifications.feed());}
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
-      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
@@ -151,6 +153,7 @@ export function startServer({port:overridePort,adminAuth}={}) {
         if(!hero)return json(res,404,{error:'Persona not found'});
         try{const texture='panorama/images/heroes/'+hero.personaNpcName+'_png.vtex_c';const file=builder.store.read(texture)?await itemIcons.getTexture(texture,{model:hero.model}):await itemIcons.get({model:hero.model,imageInventory:hero.personaInventoryImage});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Persona portrait unavailable'});}
       }
+      if(url.pathname==='/api/drow-wardrobe'&&req.method==='GET'){res.setHeader('Cache-Control','private, max-age=300');return json(res,200,liveDrowWardrobe(builder));}
       if(url.pathname==='/api/arcana-icon'&&req.method==='GET'){
         try{const id=url.searchParams.get('heroId'),raw=url.searchParams.get('style');if(!/^[0-3]$/.test(raw??''))throw Error('Invalid style');const texture=publicArcanaIcons(builder,id,Number(raw))[url.searchParams.get('icon')];if(!texture)throw Error('Unknown arcana icon');const file=await itemIcons.getTexture(texture,{model:builder.catalog.heroes.find(h=>h.id===id).model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Arcana icon unavailable'});}
       }

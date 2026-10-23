@@ -40,6 +40,7 @@ async function route(request,event){const url=new URL(request.url),name=url.path
  if(name==='/kinetic-media/manifest.json'){const {base,manifest}=await assets(event);if(manifest.kineticMedia){const response=await publication(new URL(manifest.kineticMedia,base),event);if(!response.ok)return response;const data=await response.json();for(const item of Object.values(data.items??{}))for(const clip of item.clips??[])if(/^assets\/[a-f0-9]{64}\.(gif|webp|webm|mp4)$/.test(clip.url??''))clip.url=new URL(clip.url,base).href;return json(data);}}
  if(name.startsWith('/kinetic-media/'))return proxy(request,{authenticated:false});
  if(request.method==='GET'&&name==='/api/catalog'){const {base,manifest}=await assets(event),response=await publication(new URL(manifest.catalogIndex??manifest.catalog,base),event);if(!response.ok)return response;const catalog=await response.json();catalog.staticPreview={manifest:new URL('manifest.json',base).href};return json(catalog);}
+ if(request.method==='GET'&&name==='/api/drow-wardrobe')return proxy(request);
  if(request.method==='GET'&&(name.startsWith('/api/')||name.startsWith('/images/'))){
   const {base,manifest}=await assets(event);let ref;
   if(name==='/api/hero-catalog')ref=manifest.heroCatalogs?.[url.searchParams.get('heroId')];
@@ -47,7 +48,7 @@ async function route(request,event){const url=new URL(request.url),name=url.path
   else if(name==='/api/cosmetics')ref=manifest.cosmetics;
   else if(name==='/api/stances')ref=manifest.stances?.[url.searchParams.get('heroId')];
   else{url.searchParams.delete('token');const key=name+'?'+[...url.searchParams].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');ref=manifest.icons?.[key];}
-  if(ref)return /\.json$/.test(ref)?publication(new URL(ref,base),event):fetch(new URL(ref,base));if(name.startsWith('/images/personas/'))return proxy(request);
+  if(ref)return /\.json$/.test(ref)?publication(new URL(ref,base),event):fetch(new URL(ref,base));if(name.startsWith('/images/personas/')||['/api/item-icon','/api/set-icon'].includes(name)&&url.searchParams.get('heroId')==='drow_ranger')return proxy(request);
   // RGB icon variants are small generated images, not model exports.
   if(/^\/api\/(arcana-icon|drow-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|techies-cart-icon)$/.test(name))return proxy(request);
   if(!name.startsWith('/api/jobs/'))return json({error:'Resource not prepublished'},404);
