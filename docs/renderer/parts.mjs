@@ -51,13 +51,22 @@ export function composeParts(parts){
  for(let i=1;i<parts.length;i++){asset=composeHero(asset,prepared[i],packed).asset;if(parts[i].role==='item')groups[parts[i].id]=asset.json.extras.effectStudioItemNodes;}
  asset.json.extras={...asset.json.extras,effectStudioItemGroups:groups,effectStudioItemNodes:Object.values(groups).flat()};return asset;
 }
+function validatePartBytes(part,bytes){
+ const size=bytes.byteLength,label=part.slot??part.id??part.index??part.key;
+ // Older published recipes omit byte metadata. Their GLB header still carries
+ // an exact length; never treat a missing optional field as a size mismatch.
+ if(size<20||size>512*1024*1024)throw new Error('Invalid scene part size: '+label);
+ if(part.bytes!=null&&(!Number.isSafeInteger(part.bytes)||part.bytes<20||part.bytes!==size))throw new Error('Scene part size mismatch: '+label+' (expected '+part.bytes+', received '+size+')');
+ const header=new DataView(bytes);
+ if(header.getUint32(0,true)!==0x46546c67||header.getUint32(4,true)!==2||header.getUint32(8,true)!==size)throw new Error('Invalid GLB 2.0 scene part: '+label);
+}
 export class SceneParts {
  constructor(){this.cache=new Map();this.signature=null;}
  async load(manifest,base,query='',fetcher=fetch){
   const signature=JSON.stringify(manifest.parts.map(p=>[p.key,p.role,p.id]));
   if(signature===this.signature)return null;
   const parts=new Array(manifest.parts.length);let next=0;
-  const worker=async()=>{for(;;){const i=next++;if(i>=parts.length)return;const p=manifest.parts[i];let bytes=this.cache.get(p.key);if(!bytes){const response=await fetcher(p.url??(base+'/parts/'+p.index+query));if(!response.ok)throw new Error('Scene part download failed');bytes=await response.arrayBuffer();if(bytes.byteLength!==p.bytes||bytes.byteLength>512*1024*1024)throw new Error('Invalid scene part size');}parts[i]={...p,bytes};}};
+  const worker=async()=>{for(;;){const i=next++;if(i>=parts.length)return;const p=manifest.parts[i];let bytes=this.cache.get(p.key);if(!bytes){const response=await fetcher(p.url??(base+'/parts/'+p.index+query));if(!response.ok)throw new Error('Scene part download failed');bytes=await response.arrayBuffer();}validatePartBytes(p,bytes);parts[i]={...p,bytes};}};
   const results=await Promise.allSettled(Array.from({length:Math.min(4,parts.length)},worker));const failure=results.find(r=>r.status==='rejected');if(failure)throw failure.reason;
   if(parts.reduce((n,p)=>n+p.bytes.byteLength,0)>512*1024*1024)throw new Error('Scene exceeds 512 MiB');
   const asset=composeParts(parts);for(const p of parts){this.cache.delete(p.key);this.cache.set(p.key,p.bytes);}let total=[...this.cache.values()].reduce((n,b)=>n+b.byteLength,0);const active=new Set(parts.map(p=>p.key));for(const [key,bytes] of this.cache){if(total<=512*1024*1024)break;if(!active.has(key)){this.cache.delete(key);total-=bytes.byteLength;}}this.signature=signature;return asset;

@@ -31,3 +31,17 @@ test('connected arcana byte metadata reaches the real scene downloader for hero,
  hydrateArcanaPartSizes(recipe,url=>payloads.get(url).byteLength);assert.ok(rows.every(p=>Number.isSafeInteger(p.bytes)));const asset=await new SceneParts().load({parts:rows},'/unused','',async url=>({ok:true,arrayBuffer:async()=>payloads.get(url)}));assert.equal(asset.json.nodes.length,3);
  assert.throws(()=>hydrateArcanaPartSizes({parts:[{url:'assets/'+ 'a'.repeat(64)+'.glb'}]},()=>0),/Invalid local GLB size/);
 });
+
+test('legacy CDN recipes without byte metadata load and cache valid GLBs without API fallback',async()=>{
+ const scene=new SceneParts(),calls=[],manifest={parts:parts.map(({bytes,...p})=>({...p,url:'https://assets.test/'+p.key+'.glb'}))};
+ const fetcher=async url=>{calls.push(url);const part=parts.find(p=>url.endsWith('/'+p.key+'.glb'));return {ok:true,headers:new Headers({'Content-Length':'10','Content-Encoding':'br'}),arrayBuffer:async()=>part.bytes};};
+ const asset=await scene.load(manifest,'/unused','',fetcher);assert.equal(asset.json.nodes.length,3);assert.equal(calls.length,3);
+ scene.signature=null;await scene.load(manifest,'/unused','',fetcher);assert.equal(calls.length,3);
+});
+test('missing recipe sizes never permit HTML, truncated GLB or corrupt declared lengths into the cache',async()=>{
+ const rows=[new TextEncoder().encode('<html>Not a model, despite HTTP 200</html>').buffer,parts[0].bytes.slice(0,-4),parts[0].bytes.slice(0)];new DataView(rows[2]).setUint32(8,20,true);
+ for(const bytes of rows){const scene=new SceneParts();await assert.rejects(scene.load({parts:[{role:'hero',key:'bad',url:'/bad.glb'}]},'/unused','',async()=>({ok:true,arrayBuffer:async()=>bytes})),/Invalid GLB/);assert.equal(scene.cache.size,0);assert.equal(scene.signature,null);}
+});
+test('explicit published sizes still reject mismatches and malformed metadata',async()=>{
+ for(const bytes of [parts[0].bytes.byteLength+4,0,'123',-1])await assert.rejects(new SceneParts().load({parts:[{role:'hero',key:'h',url:'/h.glb',bytes}]},'/unused','',async()=>({ok:true,arrayBuffer:async()=>parts[0].bytes})),/size mismatch/);
+});
