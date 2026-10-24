@@ -354,3 +354,8 @@ main:has(>#cosmetics-studio:not([hidden]))>.shared-basket{margin-top:0}
 .cosmetic-card img{flex:none;min-height:120px}
 @media(max-width:1179px){.cosmetics-basket{grid-column:2;grid-row:2}}
 @media(max-width:700px){.cosmetics-layout,.has-shared-basket .cosmetics-layout{grid-template-columns:minmax(0,1fr)}.cosmetics-categories{grid-column:1;grid-row:1;position:static;max-height:none}.cosmetics-browser{grid-column:1;grid-row:2}.cosmetics-basket{grid-column:1;grid-row:3}}
+
+.arcana-special-thanks{display:block;margin:6px 0 0;font-size:11px;line-height:1.5;color:var(--muted,#9aa7b5);letter-spacing:normal;text-transform:none}
+.arcana-special-thanks a{color:#e7b77d;text-decoration:none}
+.arcana-special-thanks a:hover{text-decoration:underline}
+.arcana-special-thanks a:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:2px}
