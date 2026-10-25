@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
+import {AssetStore,references} from '../lib/vpk.mjs';
+import {scopeSpectreTemplate,finishSpectreTemplate} from '../lib/spectre-template.mjs';
+import {localArcanaTest} from './helpers/local-arcana-template.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const target='particles/units/heroes/hero_spectre/spectre_desolate.vpcf_c';
+const icon='panorama/images/spellicons/spectre_desolate_png.vtex_c';
+for(const style of [0,1])localArcanaTest(`Spectre style ${style}: Arcana Desolate wins over selected Soul Diffuser, other selected assets remain`,['spectre-style-'+style+'.vpk'],()=>{
+ const builder=scopeSpectreTemplate({root,store:new AssetStore()},style);
+ const family=[...builder.spectreTemplate.files.keys()].filter(n=>n.endsWith('.vpcf_c')&&n.includes('desolate'));
+ assert.ok(family.includes(target));assert.ok(family.length>1);
+ const chosen=Buffer.from('selected-soul-diffuser'),other='particles/custom/weapon_ambient.vpcf_c';
+ const files=new Map([...family.map(n=>[n,chosen]),[icon,chosen],[other,chosen]]),targets=new Set([...family,icon,other]),roots=[];
+ finishSpectreTemplate(builder,files,targets,roots);
+ for(const n of family)assert.ok(files.get(n).equals(builder.spectreTemplate.files.get(n)),n);
+ const expected=`particles/econ/items/spectre/spectre_arcana/spectre_arcana_${style?'v2_':''}desolate.vpcf_c`;
+ assert.ok(files.get(target).equals(builder.spectreTemplate.files.get(expected)));
+ assert.ok(references(files.get(target)).some(n=>n.includes('desolate_daggers_thrust')));
+ assert.equal(files.get(icon),chosen);assert.equal(files.get(other),chosen);
+ assert.ok(roots.includes(target));
+ const stable=new Map(files);assert.equal(finishSpectreTemplate(builder,files,targets,roots),0);
+ for(const[n,b]of stable)assert.equal(files.get(n),b);
+});
+test('without Spectre Arcana the selected Desolate stays untouched',()=>{
+ const chosen=Buffer.from('soul-diffuser'),files=new Map([[target,chosen]]),roots=[];
+ assert.equal(finishSpectreTemplate({},files,new Set([target]),roots),0);
+ assert.equal(files.get(target),chosen);assert.deepEqual(roots,[]);
+});
