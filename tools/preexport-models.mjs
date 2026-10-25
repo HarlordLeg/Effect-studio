@@ -6,7 +6,7 @@ import {Builder} from '../lib/build.mjs';
 import {PreviewService} from '../lib/preview.mjs';
 export function preexportChoices(catalog,heroId=null){
  if(heroId&&!catalog.heroes.some(h=>h.id===heroId))throw new Error('Unknown hero: '+heroId);
- return catalog.heroes.filter(h=>!heroId||h.id===heroId).flatMap(hero=>hero.items.filter(item=>!item.specialKind&&!item.previewUnsupported&&!/arcana|persona/i.test(item.slot+' '+item.model)).map(item=>({hero,item,effect:{id:'preexport',particle:null},partsOnly:true,modelsOnly:true})));
+ return catalog.heroes.filter(h=>!heroId||h.id===heroId).flatMap(hero=>hero.items.filter(item=>!item.specialKind&&!item.previewUnsupported&&(item.arcanaCompanion||!/arcana|persona/i.test(item.slot+' '+item.model))).map(item=>({hero,item,effect:{id:'preexport',particle:null},partsOnly:true,modelsOnly:true})));
 }
 export async function preexportModels(service,choices,{progressFile,onProgress=()=>{},shouldStop=()=>false}={}){
  let records={};try{records=JSON.parse(fs.readFileSync(progressFile,'utf8')).records??{};}catch{}

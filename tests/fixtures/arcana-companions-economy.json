@@ -1,0 +1,2182 @@
+{
+  "9662": {
+    "name": "Phantom Advent",
+    "item_name": "#DOTA_Item_Phantom_Advent",
+    "item_slot": "head",
+    "item_rarity": "arcana",
+    "model_player": "models/items/spectre/spectre_arcana/spectre_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_spectre": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "styles": {
+        "0": {
+          "name": "#DOTA_Style_Spectre_Arcana_Style0",
+          "skin": "0",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "name": "#DOTA_Style_Spectre_Arcana_Style1",
+          "skin": "1",
+          "alternate_icon": "1",
+          "unlock": {
+            "gem": {
+              "def_index": "3036",
+              "type_field": "strange_type",
+              "type_value": "273",
+              "unlock_field": "strange_value",
+              "unlock_value": "100"
+            }
+          }
+        }
+      },
+      "asset_modifier": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "red",
+        "style": "1"
+      },
+      "asset_modifier__repeat1": {
+        "type": "custom_kill_effect",
+        "asset": "kill",
+        "modifier": "modifier_spectre_arcana_kill_effect"
+      },
+      "asset_modifier__repeat2": {
+        "type": "model_skin",
+        "style": "0",
+        "skin": "0"
+      },
+      "asset_modifier__repeat3": {
+        "type": "model_skin",
+        "style": "1",
+        "skin": "1"
+      },
+      "asset_modifier__repeat4": {
+        "type": "arcana_level",
+        "level": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat5": {
+        "type": "arcana_level",
+        "level": "2",
+        "style": "1"
+      },
+      "asset_modifier__repeat6": {
+        "type": "buff_modifier",
+        "modifier": "modifier_spectre_arcana"
+      },
+      "asset_modifier__repeat7": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_ambient.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat8": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_spectre",
+        "modifier": "models/items/spectre/spectre_arcana/spectre_arcana_base.vmdl"
+      },
+      "asset_modifier__repeat9": {
+        "type": "default_idle_expression",
+        "asset": "scenes/spectre/spectre_exp_idle_01.vcd",
+        "modifier": "scenes/spectre/spectre_arc_exp_idle_01.vcd"
+      },
+      "asset_modifier__repeat10": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_head.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat11": {
+        "type": "particle",
+        "asset": "particles/items_fx/blademail.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_blademail.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat12": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_desolate.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_desolate.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat13": {
+        "type": "particle",
+        "asset": "particles/items2_fx/radiance_owner.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_radiance_owner_body.vpcf"
+      },
+      "asset_modifier__repeat14": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_death.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_death.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat15": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_tgt_death.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_minigame_death_target.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat16": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_caster_death.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_minigame_caster.vpcf",
+        "style": "0"
+      },
+      "asset_modifier8": {
+        "type": "healthbar_offset",
+        "offset": "250"
+      },
+      "asset_modifier__repeat17": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_msg_deny.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat18": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_illusion.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_status_effect_illusion.vpcf"
+      },
+      "asset_modifier__repeat19": {
+        "type": "particle",
+        "asset": "particles/generic_gameplay/illusion_killed.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_illusion_killed.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat20": {
+        "type": "particle",
+        "asset": "particles/generic_gameplay/illusion_created.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_illusion_created.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat21": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_dispersion.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_dispersion.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat22": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_v2_head.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat23": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_shoulder.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_v2_shoulder.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat24": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_bracers.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_v2_bracers.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat25": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_weapon_ambient.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_v2_weapon_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat26": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_floating_blade.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_v2_floating_blade.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat27": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_ambient.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat28": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_skirt.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_skirt_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat29": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_loadout_spawn_dagger.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_loadout_v2_spawn_dagger.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat30": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_loadout_spawn_dagger_start.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_loadout_spawn_dagger_v2_start.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat31": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_loadout_spawn.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_loadout_spawn_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat32": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_desolate.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_v2_desolate.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat33": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_dispersion.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_v2_dispersion.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat34": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_spectral_dagger.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_v2_spectral_dagger.vpcf",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat35": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_spectral_dagger.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_spectral_dagger.vpcf",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat36": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_spectral_dagger_tracking.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_spectral_dagger_tracking.vpcf",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat37": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_shadow_path_owner.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_shadow_path_owner.vpcf",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat38": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_spectral_dagger_tracking.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_v2_spectral_dagger_tracking.vpcf",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat39": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_shadow_path_owner.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_v2_shadow_path_owner.vpcf",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat40": {
+        "type": "particle",
+        "asset": "particles/items_fx/blademail.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_blademail_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat41": {
+        "type": "particle",
+        "asset": "particles/generic_gameplay/illusion_created.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_illusion_created_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat42": {
+        "type": "particle",
+        "asset": "particles/generic_gameplay/illusion_killed.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_illusion_killed_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat43": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_spectre/spectre_death.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_death_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat44": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_msg_deny_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat45": {
+        "type": "portrait_background_model",
+        "asset": "models/items/spectre/spectre_arcana/spectre_arcana_pedestal.vmdl",
+        "style": "0"
+      },
+      "asset_modifier__repeat46": {
+        "type": "portrait_background_model",
+        "asset": "models/items/spectre/spectre_arcana/spectre_arcana_pedestal.vmdl",
+        "style": "1",
+        "skin": "1"
+      },
+      "alternate_icons": {
+        "0": {
+          "icon_path": "econ/items/spectre/spectre_arcana/spectre_arcana_head"
+        },
+        "1": {
+          "icon_path": "econ/items/spectre/spectre_arcana/spectre_arcana_head_style1"
+        }
+      },
+      "asset_modifier__repeat47": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_pedestal.vpcf",
+        "style": "0",
+        "spawn_in_loadout_only": "1"
+      },
+      "asset_modifier__repeat48": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_pedestal_v2.vpcf",
+        "style": "1",
+        "spawn_in_loadout_only": "1"
+      },
+      "asset_modifier__repeat49": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_minigame_death_target.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_minigame_v2_death_target.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat50": {
+        "type": "particle",
+        "asset": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_minigame_caster.vpcf",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_minigame_v2_caster.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat51": {
+        "type": "ability_icon",
+        "asset": "spectre_desolate",
+        "modifier": "spectre/spectre_arcana/spectre_desolate_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat52": {
+        "type": "ability_icon",
+        "asset": "spectre_dispersion",
+        "modifier": "spectre/spectre_arcana/spectre_dispersion_arcana",
+        "minimum_priority": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat53": {
+        "type": "ability_icon",
+        "asset": "spectre_haunt",
+        "modifier": "spectre/spectre_arcana/spectre_haunt_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat54": {
+        "type": "ability_icon",
+        "asset": "spectre_reality",
+        "modifier": "spectre/spectre_arcana/spectre_reality_arcana",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat55": {
+        "type": "ability_icon",
+        "asset": "spectre_spectral_dagger",
+        "modifier": "spectre/spectre_arcana/spectre_spectral_dagger_arcana",
+        "minimum_priority": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat56": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_spectre",
+        "modifier": "npc_dota_hero_spectre_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat57": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_spectre",
+        "modifier": "npc_dota_hero_spectre_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat58": {
+        "type": "inventory_icon",
+        "asset": "radiance",
+        "modifier": "radiance_spectre_arcana_alt1",
+        "style": "0"
+      },
+      "asset_modifier__repeat59": {
+        "type": "inventory_icon",
+        "asset": "radiance_inactive",
+        "modifier": "radiance_spectre_arcana_alt1_inactive",
+        "style": "0"
+      },
+      "asset_modifier__repeat60": {
+        "type": "inventory_icon",
+        "asset": "blade_mail",
+        "modifier": "blade_mail_spectre_arcana_alt1",
+        "style": "0"
+      },
+      "asset_modifier__repeat61": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_spectre",
+        "modifier": "npc_dota_hero_spectre_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat62": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_spectre",
+        "modifier": "npc_dota_hero_spectre_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat63": {
+        "type": "ability_icon",
+        "asset": "spectre_desolate",
+        "modifier": "spectre/spectre_arcana/spectre_desolate_arcana_alt",
+        "style": "1"
+      },
+      "asset_modifier__repeat64": {
+        "type": "ability_icon",
+        "asset": "spectre_dispersion",
+        "modifier": "spectre/spectre_arcana/spectre_dispersion_arcana_alt",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat65": {
+        "type": "ability_icon",
+        "asset": "spectre_haunt",
+        "modifier": "spectre/spectre_arcana/spectre_haunt_arcana_alt",
+        "style": "1"
+      },
+      "asset_modifier__repeat66": {
+        "type": "ability_icon",
+        "asset": "spectre_reality",
+        "modifier": "spectre/spectre_arcana/spectre_reality_arcana_alt",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat67": {
+        "type": "ability_icon",
+        "asset": "spectre_spectral_dagger",
+        "modifier": "spectre/spectre_arcana/spectre_spectral_dagger_arcana_alt",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat68": {
+        "type": "inventory_icon",
+        "asset": "blade_mail",
+        "modifier": "blade_mail_spectre_arcana_alt2",
+        "style": "1"
+      },
+      "asset_modifier__repeat69": {
+        "type": "inventory_icon",
+        "asset": "radiance",
+        "modifier": "radiance_spectre_arcana_alt2",
+        "style": "1"
+      },
+      "asset_modifier__repeat70": {
+        "type": "inventory_icon",
+        "asset": "radiance_inactive",
+        "modifier": "radiance_spectre_arcana_alt2_inactive",
+        "style": "1"
+      },
+      "asset_modifier__repeat71": {
+        "type": "ability_icon",
+        "asset": "spectre_shadow_step",
+        "modifier": "spectre/spectre_arcana/spectre_haunt_single",
+        "minimum_priority": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat72": {
+        "type": "ability_icon",
+        "asset": "spectre_shadow_step",
+        "modifier": "spectre/spectre_arcana/spectre_haunt_single_alt",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat73": {
+        "type": "mvp_map_override",
+        "modifier": "maps/scenes/mvp/mvp_spectre_arcana.vmap"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/spectre/spectre_arcana/spectre_arcana_head"
+  },
+  "9663": {
+    "name": "Phantom Advent - Shoulders",
+    "item_name": "#DOTA_Item_Phantom_Advent__Shoulders",
+    "item_slot": "shoulder",
+    "item_rarity": "legendary",
+    "model_player": "models/items/spectre/spectre_arcana/spectre_arcana_shoulder.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_spectre": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_shoulder.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/spectre/spectre_arcana/spectre_arcana_shoulder"
+  },
+  "12312": {
+    "name": "Phantom Advent - Weapon",
+    "item_name": "#DOTA_Item_Phantom_Advent__Weapon",
+    "item_slot": "weapon",
+    "item_rarity": "legendary",
+    "model_player": "models/items/spectre/spectre_arcana/spectre_arcana_weapon.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_spectre": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_weapon_ambient.vpcf"
+      },
+      "asset_modifier__repeat1": {
+        "type": "sound",
+        "asset": "Hero_Spectre.Attack",
+        "modifier": "Hero_Spectre.Attack.Arcana"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/spectre/spectre_arcana/spectre_arcana_weapon"
+  },
+  "12313": {
+    "name": "Phantom Advent - Bracers",
+    "item_name": "#DOTA_Item_Phantom_Advent__Bracers",
+    "item_slot": "misc",
+    "item_rarity": "legendary",
+    "model_player": "models/items/spectre/spectre_arcana/spectre_arcana_misc.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_spectre": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_bracers.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/spectre/spectre_arcana/spectre_arcana_misc"
+  },
+  "12314": {
+    "name": "Phantom Advent - Belt",
+    "item_name": "#DOTA_Item_Phantom_Advent__Belt",
+    "item_slot": "belt",
+    "item_rarity": "legendary",
+    "model_player": "models/items/spectre/spectre_arcana/spectre_arcana_skirt.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_spectre": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/spectre/spectre_arcana/spectre_arcana_ambient_skirt.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/spectre/spectre_arcana/spectre_arcana_skirt"
+  },
+  "13760": {
+    "name": "Sword of the One True King",
+    "item_name": "#DOTA_Item_Sword_of_the_One_True_King",
+    "item_slot": "weapon",
+    "item_rarity": "legendary",
+    "model_player": "models/items/wraith_king/arcana/wraith_king_arcana_weapon.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_skeleton_king": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "hide_styles_from_ui": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/wraith_king/wraith_king_arcana/wk_arc_weapon.vpcf"
+      },
+      "asset_modifier__repeat1": {
+        "type": "entity_model",
+        "asset": "npc_dota_wraith_king_skeleton_warrior",
+        "modifier": "models/items/wraith_king/arcana/wk_arcana_skeleton.vmdl",
+        "apply_when_equipped_in_ability_effects_slot": "2"
+      },
+      "asset_modifier__repeat2": {
+        "type": "particle",
+        "asset": "particles/neutral_fx/skeleton_spawn.vpcf",
+        "modifier": "particles/wk_arc_minion_ambient.vpcf",
+        "apply_when_equipped_in_ability_effects_slot": "2"
+      },
+      "asset_modifier__repeat3": {
+        "type": "ability_icon",
+        "asset": "skeleton_king_mortal_strike",
+        "modifier": "skeleton_king/arcana/skeleton_king_mortal_strike_arcana",
+        "style": "0",
+        "apply_when_equipped_in_ability_effects_slot": "3"
+      },
+      "styles": {
+        "0": {
+          "name": "#DOTA_Style_Wraith_King_Arcana_Sword_0",
+          "skin": "0"
+        },
+        "1": {
+          "name": "#DOTA_Style_Wraith_King_Arcana_Sword_1",
+          "skin": "1"
+        }
+      },
+      "alternate_icons": {
+        "0": {
+          "icon_path": "econ/items/wraith_king/arcana/wraith_king_arcana_weapon"
+        },
+        "1": {
+          "icon_path": "econ/items/wraith_king/arcana/wraith_king_arcana_weapon"
+        }
+      },
+      "asset_modifier__repeat4": {
+        "type": "ability_icon",
+        "asset": "skeleton_king_mortal_strike",
+        "modifier": "skeleton_king/arcana/skeleton_king_mortal_strike_arcana_alt",
+        "style": "1",
+        "apply_when_equipped_in_ability_effects_slot": "3"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/wraith_king/arcana/wraith_king_arcana_weapon"
+  },
+  "18541": {
+    "name": "The Devotions of Dragonus - Head",
+    "item_name": "#DOTA_Item_The_Devotions_of_Dragonus__Head",
+    "item_slot": "head",
+    "item_rarity": "legendary",
+    "model_player": "models/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_skywrath_mage": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/skywrath_mage/skywrath_arcana/skywrath_arcana_ambient_head.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/skywrath_mage/skywrath_arcana/skywrath_mage_arcana_head"
+  },
+  "19088": {
+    "name": "Dread Retribution - Bracers",
+    "item_name": "#DOTA_Item_Dread_Retribution__Bracers",
+    "item_slot": "arms",
+    "item_rarity": "legendary",
+    "model_player": "models/items/drow/drow_arcana/drow_arcana_arms.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_arm_ambient.vpcf",
+        "style": "0"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_arms"
+  },
+  "19089": {
+    "name": "Dread Retribution - Cape",
+    "item_name": "#DOTA_Item_Dread_Retribution__Cape",
+    "item_slot": "back",
+    "item_rarity": "legendary",
+    "model_player": "models/items/drow/drow_arcana/drow_arcana_back.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1"
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_back"
+  },
+  "19090": {
+    "name": "Dread Retribution",
+    "item_name": "#DOTA_Item_Dread_Retribution",
+    "item_slot": "hero_base",
+    "item_rarity": "arcana",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "entity_model",
+        "asset": "npc_dota_hero_drow_ranger",
+        "modifier": "models/items/drow/drow_arcana/drow_arcana.vmdl"
+      },
+      "styles": {
+        "0": {
+          "name": "#DOTA_Style_DrowRanger_Arcana_Style0",
+          "skin": "0",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "name": "#DOTA_Style_DrowRanger_Arcana_Style1",
+          "skin": "1",
+          "alternate_icon": "1",
+          "unlock": {
+            "gem": {
+              "def_index": "3039",
+              "type_field": "strange_type",
+              "type_value": "275",
+              "unlock_field": "strange_value",
+              "unlock_value": "100"
+            }
+          }
+        }
+      },
+      "asset_modifier__repeat1": {
+        "type": "custom_kill_effect",
+        "asset": "kill",
+        "modifier": "modifier_spectre_arcana_kill_effect"
+      },
+      "asset_modifier__repeat2": {
+        "type": "model_skin",
+        "style": "0",
+        "skin": "0"
+      },
+      "asset_modifier__repeat3": {
+        "type": "model_skin",
+        "style": "1",
+        "skin": "1"
+      },
+      "asset_modifier__repeat4": {
+        "type": "arcana_level",
+        "level": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat5": {
+        "type": "arcana_level",
+        "level": "2",
+        "style": "1"
+      },
+      "asset_modifier__repeat6": {
+        "type": "buff_modifier",
+        "modifier": "modifier_drow_ranger_arcana"
+      },
+      "asset_modifier__repeat7": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_drow_ranger",
+        "modifier": "npc_dota_hero_drow_ranger_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat8": {
+        "type": "icon_replacement_hero",
+        "asset": "npc_dota_hero_drow_ranger",
+        "modifier": "npc_dota_hero_drow_ranger_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat9": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_drow_ranger",
+        "modifier": "npc_dota_hero_drow_ranger_alt1",
+        "style": "0",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat10": {
+        "type": "icon_replacement_hero_minimap",
+        "asset": "npc_dota_hero_drow_ranger",
+        "modifier": "npc_dota_hero_drow_ranger_alt2",
+        "style": "1",
+        "force_display": "1"
+      },
+      "asset_modifier__repeat11": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_base_attack.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_base_attack.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat12": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_frost_arrow.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_frost_arrow.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat13": {
+        "type": "particle",
+        "asset": "particles/status_fx/status_effect_drow_frost_arrow.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_status_effect_frost_arrow.vpcf"
+      },
+      "asset_modifier__repeat14": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_frost_arrow_debuff.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_frost_arrow_debuff.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat15": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship_attack.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_attack.vpcf"
+      },
+      "asset_modifier__repeat16": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship_frost_arrow.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_frost_arrow.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat17": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_base_attack_linear_proj.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_multishot_linear_proj_base.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat18": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_multishot_proj_linear_proj.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_multishot_linear_proj_frost.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat19": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_silence_wave.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_silence_wave.vpcf",
+        "minimum_priority": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat20": {
+        "type": "particle",
+        "asset": "particles/items_fx/force_staff.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_item_force_staff.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat21": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_buff.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat22": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_silence_wave_wide.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_silence_wave_wide.vpcf",
+        "minimum_priority": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat23": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_hero_silence.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_silence_impact_dust.vpcf",
+        "minimum_priority": "1",
+        "style": "0"
+      },
+      "asset_modifier__repeat24": {
+        "type": "particle",
+        "asset": "particles/generic_gameplay/generic_lifesteal.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_lifesteal.vpcf",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat25": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_loadout.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_null.vpcf"
+      },
+      "asset_modifier__repeat26": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship_start.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_crossbow_start.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat27": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_msg_deny.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat28": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_wave_of_silence",
+        "modifier": "drow_ranger_silence_arcana",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat29": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_multishot",
+        "modifier": "drow_ranger_multishot_arcana",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat30": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_frost_arrows",
+        "modifier": "drow_ranger_frost_arrow_arcana",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat31": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_marksmanship",
+        "modifier": "drow_ranger_marksmanship_arcana",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat32": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_wave_of_silence",
+        "modifier": "drow_ranger_silence_arcana_alt1",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat33": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_multishot",
+        "modifier": "drow_ranger_multishot_arcana_alt1",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat34": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_frost_arrows",
+        "modifier": "drow_ranger_frost_arrow_arcana_alt1",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat35": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_marksmanship",
+        "modifier": "drow_ranger_marksmanship_arcana_alt1",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat36": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_shard_hypothermia_projectile.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_shard_hypothermia_projectile.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat37": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_shard_hypothermia_death.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_shard_hypothermia_death.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat38": {
+        "type": "additional_wearable",
+        "asset": "models/items/drow/drow_arcana/drow_arcana_frost.vmdl"
+      },
+      "asset_modifier__repeat39": {
+        "type": "default_idle_expression",
+        "asset": "scenes/drowranger/drowranger_exp_idle_01.vcd",
+        "modifier": "scenes/drowranger/drowranger_arcana_capture.vcd"
+      },
+      "asset_modifier__repeat40": {
+        "type": "sound",
+        "asset": "Hero_DrowRanger.Attack",
+        "modifier": "Hero_DrowRanger.Attack.Arcana"
+      },
+      "asset_modifier__repeat41": {
+        "type": "response_criteria",
+        "asset": "drow_arcana"
+      },
+      "alternate_icons": {
+        "0": {
+          "icon_path": "econ/items/drow/dread_retribution/drow_arcana_weapon"
+        },
+        "1": {
+          "icon_path": "econ/items/drow/dread_retribution/drow_arcana_weapon_style1"
+        }
+      },
+      "asset_modifier__repeat42": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_buff_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat43": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_null.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat44": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_ambient.vpcf",
+        "style": "0",
+        "spawn_in_loadout_only": "2"
+      },
+      "asset_modifier__repeat45": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_footsteps.vpcf",
+        "style": "0",
+        "spawn_in_loadout_only": "2"
+      },
+      "asset_modifier__repeat46": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_frost_arrow.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_frost_arrow_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat47": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_base_attack.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_base_attack_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat48": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship_frost_arrow.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_v2_marksmanship_frost_arrow.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat49": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_frost_arrow_debuff.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_frost_arrow_debuff_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat50": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_base_attack_linear_proj.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_v2_multishot_linear_proj_base.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat51": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_multishot_proj_linear_proj.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_multishot_linear_proj_frost_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat52": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_silence_wave.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_silence_wave_v2.vpcf",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat53": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_silence_wave_wide.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_silence_wave_v2_wide.vpcf",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat54": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "red",
+        "style": "1"
+      },
+      "asset_modifier__repeat55": {
+        "type": "particle",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_v2_arm_ambient.vpcf",
+        "asset": "particles/econ/items/drow/drow_arcana/drow_arcana_arm_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat56": {
+        "type": "particle",
+        "asset": "particles/items_fx/force_staff.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_item_force_staff_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat57": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_v2_footsteps.vpcf",
+        "style": "1",
+        "spawn_in_loadout_only": "2"
+      },
+      "asset_modifier__repeat58": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_ambient_v2.vpcf",
+        "style": "1",
+        "spawn_in_loadout_only": "2"
+      },
+      "asset_modifier__repeat59": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_arcana/drow_arcana_silenced.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_silenced_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat60": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_hero_silence.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_silence_impact_v2_dust.vpcf",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat61": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_arcana/drow_arcana_revenge_kill_effect_target.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_v2_arcana_revenge_kill_effect_target.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat62": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_arcana/drow_arcana_revenge_kill_effect_caster.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_v2_arcana_revenge_kill_effect_caster.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat63": {
+        "type": "model",
+        "asset": "models/heroes/drow/drow_quiver.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/drow_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat64": {
+        "type": "inventory_icon",
+        "asset": "hurricane_pike",
+        "modifier": "hurricane_pike_drow_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat65": {
+        "type": "inventory_icon",
+        "asset": "satanic",
+        "modifier": "satanic_drow_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat66": {
+        "type": "inventory_icon",
+        "asset": "greater_crit",
+        "modifier": "greater_crit_drow_arcana",
+        "style": "0"
+      },
+      "asset_modifier__repeat67": {
+        "type": "inventory_icon",
+        "asset": "hurricane_pike",
+        "modifier": "hurricane_pike_drow_arcana_alt1",
+        "style": "1"
+      },
+      "asset_modifier__repeat68": {
+        "type": "inventory_icon",
+        "asset": "satanic",
+        "modifier": "satanic_drow_arcana_alt1",
+        "style": "1"
+      },
+      "asset_modifier__repeat69": {
+        "type": "inventory_icon",
+        "asset": "greater_crit",
+        "modifier": "greater_crit_drow_arcana_alt1",
+        "style": "1"
+      },
+      "asset_modifier__repeat70": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_bowstring.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_weapon_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat71": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_bowstring.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_weapon_v2_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat72": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_arcana/drow_arcana_bow_ambient.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_weapon_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat73": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_arcana/drow_arcana_bow_ambient.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_weapon_v2_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat74": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_monster/default/weapon/drow_monster_weapon_ambient.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_weapon_ambient.vpcf",
+        "style": "0"
+      },
+      "asset_modifier__repeat75": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_monster/default/weapon/drow_monster_weapon_ambient.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_weapon_v2_ambient.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat76": {
+        "type": "particle",
+        "asset": "particles/msg_fx/msg_deny.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_msg_deny_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat77": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_shard_hypothermia_death.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_shard_hypothermia_death_v2.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat78": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_shard_hypothermia_projectile.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_shard_v2_hypothermia_projectile.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat79": {
+        "type": "model",
+        "asset": "models/items/drow/royalguard_misc/royalguard_misc.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/royalguard_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat80": {
+        "type": "model",
+        "asset": "models/items/drow/quiver_of_the_boreal_watch/quiver_of_the_boreal_watch.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/quiver_of_the_boreal_watch_refit.vmdl"
+      },
+      "asset_modifier__repeat81": {
+        "type": "model",
+        "asset": "models/items/drow/quiver_of_the_shadowcat/quiver_of_the_shadowcat.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/quiver_of_the_shadowcat_refit.vmdl"
+      },
+      "asset_modifier__repeat82": {
+        "type": "model",
+        "asset": "models/items/drow/death_shadow_quiver/death_shadow_quiver.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/death_shadow_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat83": {
+        "type": "model",
+        "asset": "models/items/drow/thief_quiver/thief_quiver.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/thief_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat84": {
+        "type": "model",
+        "asset": "models/items/drow/black_wind_quiver/black_wind_quiver.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/black_wind_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat85": {
+        "type": "model",
+        "asset": "models/items/drow/dragonstouch_quiver/dragonstouch_quiver.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/dragonstouch_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat86": {
+        "type": "model",
+        "asset": "models/items/drow/quiver_of_the_envious_archer/quiver_of_the_envious_archer.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/quiver_of_the_envious_archer_refit.vmdl"
+      },
+      "asset_modifier__repeat87": {
+        "type": "model",
+        "asset": "models/items/drow/anuxi_wurm_quiver/anuxi_wurm_quiver.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/anuxi_wurm_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat88": {
+        "type": "model",
+        "asset": "models/items/drow/misty_huntress_misc/misty_huntress_misc.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/misty_huntress_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat89": {
+        "type": "model",
+        "asset": "models/items/drow/frostfeather_huntress_misc/frostfeather_huntress_misc.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/frostfeather_huntress_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat90": {
+        "type": "model",
+        "asset": "models/items/drow/arvalias_legacy_misc/arvalias_legacy_misc.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/arvalias_legacy_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat91": {
+        "type": "model",
+        "asset": "models/items/drow/vestment_of_the_dragonborn_maiden_quiver/vestment_of_the_dragonborn_maiden_quiver.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/vestment_of_the_dragonborn_maiden_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat92": {
+        "type": "model",
+        "asset": "models/items/drow/drow_runic_archer_misc/drow_runic_archer_misc.vmdl",
+        "modifier": "models/items/drow/drow_runic_archer_misc/drow_runic_archer_misc_arcana_refit.vmdl"
+      },
+      "asset_modifier__repeat93": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_runic/drow_runic_misc.vpcf",
+        "modifier": "particles/econ/items/drow/drow_runic/drow_runic_misc_refit.vpcf"
+      },
+      "asset_modifier__repeat94": {
+        "type": "model",
+        "asset": "models/items/drow/drow_sentinel_quiver/drow_sentinel_quiver.vmdl",
+        "modifier": "models/items/drow/drow_sentinel_quiver/drow_sentinel_quiver_refit.vmdl"
+      },
+      "asset_modifier__repeat95": {
+        "type": "model",
+        "asset": "models/items/drow/frostivus2018_drow_gaze_of_the_zebulon_misc/frostivus2018_drow_gaze_of_the_zebulon_misc.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/frostivus2018_drow_gaze_of_the_zebulon_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat96": {
+        "type": "model",
+        "asset": "models/items/drow/dplus_teardrop_of_winterwood_misc/dplus_teardrop_of_winterwood_misc.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/dplus_teardrop_of_winterwood_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat97": {
+        "type": "model",
+        "asset": "models/items/drow/snowstorm_ranger_misc/snowstorm_ranger_misc.vmdl",
+        "modifier": "models/items/drow/drow_arcana/refit/snowstorm_ranger_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat98": {
+        "type": "model",
+        "asset": "models/items/drow/aghsbp_2021_drow_misc/aghsbp_2021_drow_misc.vmdl",
+        "modifier": "models/items/drow/aghsbp_2021_drow_misc/aghsbp_2021_drow_misc_refit.vmdl"
+      },
+      "asset_modifier__repeat99": {
+        "type": "model",
+        "asset": "models/items/drow/ti6_immortal_cape/mesh/drow_ti6_immortal_cape.vmdl",
+        "modifier": "models/items/drow/ti6_immortal_cape/drow_ti6_immortal_arcana_refit.vmdl"
+      },
+      "asset_modifier__repeat100": {
+        "type": "model",
+        "asset": "models/items/drow/wandering_ranger_shoulder/wandering_ranger_shoulder.vmdl",
+        "modifier": "models/items/drow/wandering_ranger_shoulder/wandering_ranger_shoulder_refit.vmdl"
+      },
+      "asset_modifier__repeat101": {
+        "type": "model",
+        "asset": "models/items/drow/wandering_ranger_arms/wandering_ranger_arms.vmdl",
+        "modifier": "models/items/drow/wandering_ranger_arms/wandering_ranger_arms_refit.vmdl"
+      },
+      "asset_modifier__repeat102": {
+        "type": "model",
+        "asset": "models/heroes/drow/drow_weapon.vmdl",
+        "modifier": "models/heroes/drow/drow_crossbow.vmdl"
+      },
+      "asset_modifier__repeat103": {
+        "type": "model",
+        "asset": "models/items/drow/drow_monster/drow_monster_weapon.vmdl",
+        "modifier": "models/items/drow/drow_monster_arcana/drow_monster_arcana_weapon.vmdl"
+      },
+      "asset_modifier__repeat104": {
+        "type": "model",
+        "asset": "models/items/drow/drow_arcana/drow_arcana_bow.vmdl",
+        "modifier": "models/items/drow/drow_arcana/drow_arcana_weapon.vmdl"
+      },
+      "asset_modifier__repeat105": {
+        "type": "portrait_background_model",
+        "asset": "models/items/drow/drow_arcana/drow_arcana_pedestal.vmdl",
+        "style": "0",
+        "skin": "0"
+      },
+      "asset_modifier__repeat106": {
+        "type": "portrait_background_model",
+        "asset": "models/items/drow/drow_arcana/drow_arcana_pedestal.vmdl",
+        "style": "1",
+        "skin": "1"
+      },
+      "asset_modifier__repeat107": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_loadout.vpcf",
+        "style": "0",
+        "spawn_in_loadout_only": "1"
+      },
+      "asset_modifier__repeat108": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_loadout_v2.vpcf",
+        "style": "1",
+        "spawn_in_loadout_only": "1"
+      },
+      "asset_modifier__repeat109": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_drow/drow_marksmanship_start.vpcf",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_marksmanship_v2_crossbow_start.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat110": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_ambient_head.vpcf",
+        "style": "1"
+      },
+      "asset_modifier__repeat111": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_ti6/drow_ti6_ambient.vpcf",
+        "modifier": "particles/econ/items/drow/drow_ti6/drow_ti6_ambient_refit.vpcf"
+      },
+      "asset_modifier__repeat112": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_ti6/drow_ti6_tyrian_ambient.vpcf",
+        "modifier": "particles/econ/items/drow/drow_ti6/drow_ti6_tyrian_ambient_refit.vpcf"
+      },
+      "asset_modifier__repeat113": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_ti6/drow_ti6_witness_ambient.vpcf",
+        "modifier": "particles/econ/items/drow/drow_ti6/drow_ti6_refit_witness_ambient.vpcf"
+      },
+      "asset_modifier__repeat114": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_ti6_gold/drow_ti6_ambient_gold.vpcf",
+        "modifier": "particles/econ/items/drow/drow_ti6_gold/drow_ti6_ambient_gold_refit.vpcf"
+      },
+      "asset_modifier__repeat115": {
+        "type": "particle",
+        "asset": "particles/econ/items/drow/drow_2022_cc/drow_2022_cc_arms.vpcf",
+        "modifier": "particles/econ/items/drow/drow_2022_cc/drow_2022_cc_arms_refit.vpcf"
+      },
+      "asset_modifier__repeat116": {
+        "type": "chatwheel",
+        "asset": "drowranger_dro_laugh_04",
+        "modifier": "drowranger_drow_arc_laugh_04",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_laugh",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_laugh"
+      },
+      "asset_modifier__repeat117": {
+        "type": "chatwheel",
+        "asset": "drowranger_dro_win_04",
+        "modifier": "drowranger_drow_arc_thanks_04",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_thank",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_thank"
+      },
+      "asset_modifier__repeat118": {
+        "type": "chatwheel",
+        "asset": "drowranger_dro_deny_02",
+        "modifier": "drowranger_drow_arc_deny_02",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_deny",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_deny"
+      },
+      "asset_modifier__repeat119": {
+        "type": "chatwheel",
+        "asset": "drowranger_drow_kill_13",
+        "modifier": "drowranger_drow_arc_wheel_all_02",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_1",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_1"
+      },
+      "asset_modifier__repeat120": {
+        "type": "chatwheel",
+        "asset": "drowranger_drow_rival_13",
+        "modifier": "drowranger_drow_arc_wheel_all_04_02",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_2",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_2"
+      },
+      "asset_modifier__repeat121": {
+        "type": "chatwheel",
+        "asset": "drowranger_dro_kill_05",
+        "modifier": "drowranger_drow_arc_wheel_all_07",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_3",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_3"
+      },
+      "asset_modifier__repeat122": {
+        "type": "chatwheel",
+        "asset": "drowranger_dro_win_03",
+        "modifier": "drowranger_drow_arc_wheel_all_12_02",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_4",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_4"
+      },
+      "asset_modifier__repeat123": {
+        "type": "chatwheel",
+        "asset": "drowranger_drow_kill_17",
+        "modifier": "drowranger_drow_arc_wheel_all_14",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_5",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_5"
+      },
+      "asset_modifier__repeat124": {
+        "type": "chatwheel",
+        "asset": "drowranger_drow_kill_08",
+        "modifier": "drowranger_drow_arc_wheel_all_08",
+        "label": "#dota_chatwheel_label_drow_ranger_arcana_6",
+        "message": "#dota_chatwheel_message_drow_ranger_arcana_6"
+      },
+      "asset_modifier__repeat125": {
+        "type": "model",
+        "asset": "models/items/drow/2023_crownfall_arms/drow_scree_arms.vmdl",
+        "modifier": "models/items/drow/2023_crownfall_arms/drow_scree_arms_arcana_refit.vmdl"
+      },
+      "asset_modifier__repeat126": {
+        "type": "model",
+        "asset": "models/items/drow/2023_crownfall_legs/drow_scree_legs.vmdl",
+        "modifier": "models/items/drow/2023_crownfall_legs/drow_scree_legs_arcana_refit.vmdl"
+      },
+      "asset_modifier__repeat127": {
+        "type": "model",
+        "asset": "models/items/drow/2023_crownfall_shoulders/drow_scree_shoulders.vmdl",
+        "modifier": "models/items/drow/2023_crownfall_shoulders/drow_scree_shoulders_arcana_refit.vmdl"
+      },
+      "asset_modifier__repeat128": {
+        "type": "mvp_map_override",
+        "modifier": "maps/scenes/mvp/mvp_drow_ranger_arcana.vmap"
+      },
+      "asset_modifier__repeat129": {
+        "type": "model",
+        "asset": "models/items/drow/drow_dark_carnival/drow_dark_carnival_shoulders.vmdl",
+        "modifier": "models/items/drow/drow_dark_carnival/drow_dark_carnival_shoulders_arcana_refit.vmdl"
+      },
+      "asset_modifier__repeat130": {
+        "type": "named_value",
+        "asset": "force_default_item_into_slot_index_when_equipped",
+        "value": "0"
+      },
+      "asset_modifier__repeat131": {
+        "type": "named_value",
+        "asset": "force_default_item_into_slot_index_when_equipped_exception_itemdef",
+        "value": "37144"
+      },
+      "asset_modifier__repeat132": {
+        "type": "named_value",
+        "asset": "force_default_item_into_slot_index_when_equipped_exception_itemdef",
+        "value": "34594"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_weapon"
+  },
+  "19091": {
+    "name": "Dread Retribution - Leg Armor",
+    "item_name": "#DOTA_Item_Dread_Retribution__Leg_Armor",
+    "item_slot": "legs",
+    "item_rarity": "legendary",
+    "model_player": "models/items/drow/drow_arcana/drow_arcana_legs.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1"
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_legs"
+  },
+  "19092": {
+    "name": "Dread Retribution - Quiver",
+    "item_name": "#DOTA_Item_Dread_Retribution__Quiver",
+    "item_slot": "misc",
+    "item_rarity": "legendary",
+    "model_player": "models/items/drow/drow_arcana/drow_arcana_quiver.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1"
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_quiver"
+  },
+  "19093": {
+    "name": "Dread Retribution - Shoulder Armor",
+    "item_name": "#DOTA_Item_Dread_Retribution__Shoulder_Armor",
+    "item_slot": "shoulder",
+    "item_rarity": "legendary",
+    "model_player": "models/items/drow/drow_arcana/drow_arcana_shoulder.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "model",
+        "asset": "models/items/drow/drow_jeweloftheforest_scarf/drow_jeweloftheforest_scarf.vmdl",
+        "modifier": "models/items/drow/drow_jeweloftheforest_scarf/drow_jeweloftheforest_scarf_refit.vmdl"
+      },
+      "asset_modifier__repeat1": {
+        "type": "model",
+        "asset": "models/items/drow/drow_traveler_head/drow_traveler_head.vmdl",
+        "modifier": "models/items/drow/drow_traveler_head/drow_traveler_head_refit.vmdl"
+      },
+      "asset_modifier__repeat2": {
+        "type": "model",
+        "asset": "models/items/drow/trophy_of_the_shadowcat/trophy_of_the_shadowcat.vmdl",
+        "modifier": "models/items/drow/trophy_of_the_shadowcat/trophy_of_the_shadowcat_refit.vmdl"
+      },
+      "asset_modifier__repeat3": {
+        "type": "model",
+        "asset": "models/items/drow/death_shadow_cowl/death_shadow_cowl.vmdl",
+        "modifier": "models/items/drow/death_shadow_cowl/death_shadow_cowl_refit.vmdl"
+      },
+      "asset_modifier__repeat4": {
+        "type": "model",
+        "asset": "models/items/drow/drowranger_headdress/drowranger_headdress.vmdl",
+        "modifier": "models/items/drow/drowranger_headdress/drowranger_headdress_refit.vmdl"
+      },
+      "asset_modifier__repeat5": {
+        "type": "model",
+        "asset": "models/items/drow/drow_sentinel_helm/drow_sentinel_helm.vmdl",
+        "modifier": "models/items/drow/drow_sentinel_helm/drow_sentinel_helm_refit.vmdl"
+      },
+      "asset_modifier__repeat6": {
+        "type": "model",
+        "asset": "models/items/drow/thief_hood/thief_hood.vmdl",
+        "modifier": "models/items/drow/thief_hood/thief_hood_refit.vmdl"
+      },
+      "asset_modifier__repeat7": {
+        "type": "model",
+        "asset": "models/items/drow/black_wind_head/black_wind_head.vmdl",
+        "modifier": "models/items/drow/black_wind_head/black_wind_head_refit.vmdl"
+      },
+      "asset_modifier__repeat8": {
+        "type": "model",
+        "asset": "models/items/drow/mask_of_madness/mask_of_madness.vmdl",
+        "modifier": "models/items/drow/mask_of_madness/mask_of_madness_refit.vmdl"
+      },
+      "asset_modifier__repeat9": {
+        "type": "model",
+        "asset": "models/items/drow/dragonstouch_head/dragonstouch_head.vmdl",
+        "modifier": "models/items/drow/dragonstouch_head/dragonstouch_head_refit.vmdl"
+      },
+      "asset_modifier__repeat10": {
+        "type": "model",
+        "asset": "models/items/drow/mask_of_the_envious_archer/mask_of_the_envious_archer.vmdl",
+        "modifier": "models/items/drow/mask_of_the_envious_archer/mask_of_the_envious_archer_refit.vmdl"
+      },
+      "asset_modifier__repeat11": {
+        "type": "model",
+        "asset": "models/items/drow/anuxi_wurm_head/anuxi_wurm_head.vmdl",
+        "modifier": "models/items/drow/anuxi_wurm_head/anuxi_wurm_head_refit.vmdl"
+      },
+      "asset_modifier__repeat12": {
+        "type": "model",
+        "asset": "models/items/drow/gaze_of_the_zebulon_set_head/gaze_of_the_zebulon_set_head.vmdl",
+        "modifier": "models/items/drow/gaze_of_the_zebulon_set_head/gaze_of_the_zebulon_set_head_refit.vmdl"
+      },
+      "asset_modifier__repeat13": {
+        "type": "model",
+        "asset": "models/items/drow/frostivus2018_drow_gaze_of_the_zebulon_head/frostivus2018_drow_gaze_of_the_zebulon_head.vmdl",
+        "modifier": "models/items/drow/frostivus2018_drow_gaze_of_the_zebulon_head/frostivus2018_drow_gaze_of_the_zebulon_head_refit.vmdl"
+      },
+      "asset_modifier__repeat14": {
+        "type": "model",
+        "asset": "models/items/drow/frostfeather_huntress_head/frostfeather_huntress_head.vmdl",
+        "modifier": "models/items/drow/frostfeather_huntress_head/frostfeather_huntress_head_refit.vmdl"
+      },
+      "asset_modifier__repeat15": {
+        "type": "model",
+        "asset": "models/items/drow/vestment_of_the_dragonborn_maiden_head_01/vestment_of_the_dragonborn_maiden_head_01.vmdl",
+        "modifier": "models/items/drow/vestment_of_the_dragonborn_maiden_head_01/vestment_of_the_dragonborn_maiden_head_01_refit.vmdl"
+      },
+      "asset_modifier__repeat16": {
+        "type": "model",
+        "asset": "models/items/drow/ti9_cache_drow_goddess_of_woods_head/ti9_cache_drow_goddess_of_woods_head.vmdl",
+        "modifier": "models/items/drow/ti9_cache_drow_goddess_of_woods_head/ti9_cache_drow_goddess_of_woods_head_refit.vmdl"
+      },
+      "asset_modifier__repeat17": {
+        "type": "model",
+        "asset": "models/items/drow/deathblossom_drow_ranger_head/deathblossom_drow_ranger_head.vmdl",
+        "modifier": "models/items/drow/deathblossom_drow_ranger_head/deathblossom_drow_ranger_head_refit.vmdl"
+      },
+      "asset_modifier__repeat18": {
+        "type": "model",
+        "asset": "models/items/drow/dplus_teardrop_of_winterwood_head/dplus_teardrop_of_winterwood_head.vmdl",
+        "modifier": "models/items/drow/dplus_teardrop_of_winterwood_head/dplus_teardrop_of_winterwood_head_refit.vmdl"
+      },
+      "asset_modifier__repeat19": {
+        "type": "model",
+        "asset": "models/items/drow/secret_witch_head/secret_witch_head.vmdl",
+        "modifier": "models/items/drow/secret_witch_head/secret_witch_head_refit.vmdl"
+      },
+      "asset_modifier__repeat20": {
+        "type": "model",
+        "asset": "models/items/drow/snowstorm_ranger_head/snowstorm_ranger_head.vmdl",
+        "modifier": "models/items/drow/snowstorm_ranger_head/snowstorm_ranger_head_refit.vmdl"
+      },
+      "asset_modifier__repeat21": {
+        "type": "model",
+        "asset": "models/items/drow/fangs_of_the_shadowcat/fangs_of_the_shadowcat.vmdl",
+        "modifier": "models/items/drow/fangs_of_the_shadowcat/fangs_of_the_shadowcat_refit.vmdl"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_shoulder"
+  },
+  "19094": {
+    "name": "Dread Retribution - Headwear",
+    "item_name": "#DOTA_Item_Dread_Retribution__Headwear",
+    "item_slot": "head",
+    "item_rarity": "legendary",
+    "model_player": "models/items/drow/drow_arcana/drow_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1"
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_head"
+  },
+  "22720": {
+    "name": "The Resurrection of Shen - Head",
+    "item_name": "#DOTA_Item_The_Resurrection_of_Shen__Head",
+    "item_slot": "head",
+    "item_rarity": "legendary",
+    "model_player": "models/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_head_refit.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_vengefulspirit": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/vengeful/vengeful_arcana/vengeful_arcana_ambient_head_crown.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/vengefulspirit/vengeful_spirit_arcana/vengeful_spirit_arcana_head"
+  },
+  "22823": {
+    "name": "Claszian Apostasy Shoulder",
+    "item_name": "#DOTA_Item_Claszian_Apostasy_Shoulder",
+    "item_slot": "shoulder",
+    "item_rarity": "legendary",
+    "model_player": "models/items/faceless_void/faceless_void_arcana/faceless_void_arcana_shoulder.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_faceless_void": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/faceless_void/faceless_void_arcana/faceless_void_arcana_ambient_shoulder.vpcf",
+        "style": "0"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/faceless_void/faceless_void_arcana/faceless_void_arcana_shoulder"
+  },
+  "23096": {
+    "name": "Voidstorm Asylum Helm",
+    "item_name": "#DOTA_Item_Voidstorm_Asylum_Helm",
+    "item_slot": "head",
+    "item_rarity": "legendary",
+    "model_player": "models/items/razor/razor_arcana/razor_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_razor": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/razor/razor_arcana/razor_arcana_head_ambient.vpcf",
+        "style": "0"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/razor/razor_arcana/razor_arcana_head"
+  },
+  "29687": {
+    "name": "Feast of Abscession - Back",
+    "item_name": "#DOTA_Item_Feast_of_Abscession__Back",
+    "item_slot": "back",
+    "item_rarity": "legendary",
+    "model_player": "models/items/pudge/arcana/pudge_arcana_back.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_pudge": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/pudge/pudge_arcana/pudge_arcana_red_back_ambient.vpcf"
+      },
+      "asset_modifier__repeat1": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "arcana_back"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/pudge/arcana/pudge_arcana_back"
+  },
+  "30261": {
+    "name": "Bladeform Legacy - Mask",
+    "item_name": "#DOTA_Item_Bladeform_Legacy__Mask",
+    "item_slot": "head",
+    "item_rarity": "legendary",
+    "model_player": "models/items/juggernaut/arcana/juggernaut_arcana_mask.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_juggernaut": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/juggernaut/jugg_arcana/juggernaut_arcana_ambient.vpcf",
+        "style": "0"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/juggernaut/arcana/juggernaut_arcana_mask"
+  },
+  "32650": {
+    "name": "Hair of the Rising Gale",
+    "item_name": "#DOTA_Item_Hair_of_the_Rising_Gale",
+    "item_slot": "head",
+    "item_rarity": "legendary",
+    "model_player": "models/items/windrunner/windrunner_arcana/wr_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_windrunner": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/windrunner/windranger_arcana/windranger_arcana_ambient_head.vpcf",
+        "style": "0"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/windrunner/windrunner_arcana/wr_arcana_head"
+  },
+  "34183": {
+    "name": "Great Sage's Reckoning - Head",
+    "item_name": "#DOTA_Item_Great_Sages_Reckoning__Head",
+    "item_slot": "head",
+    "item_rarity": "mythical",
+    "model_player": "models/items/monkey_king/monkey_king_arcana_head/mesh/monkey_king_arcana.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_monkey_king": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/monkey_king/arcana/monkey_king_arcana_crown.vpcf"
+      },
+      "asset_modifier__repeat1": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/monkey_king/arcana/monkey_king_arcana_eyes.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/monkey_king/monkey_king_arcana_head/mesh/monkey_king_arcana"
+  },
+  "34184": {
+    "name": "Demon Eater - Head",
+    "item_name": "#DOTA_Item_Demon_Eater__Head",
+    "item_slot": "head",
+    "item_rarity": "mythical",
+    "model_player": "models/heroes/shadow_fiend/shadow_fiend_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_nevermore": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "0",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/shadow_fiend/sf_fire_arcana/sf_fire_arcana_ambient_eyes.vpcf"
+      },
+      "asset_modifier__repeat1": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/shadow_fiend/sf_fire_arcana/sf_fire_arcana_ambient_head_parent.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/heroes/shadow_fiend/shadow_fiend_arcana_head"
+  },
+  "34382": {
+    "name": "Planetfall - Head",
+    "item_name": "#DOTA_Item_Planetfall__Head",
+    "item_slot": "head",
+    "item_rarity": "mythical",
+    "model_player": "models/items/earthshaker/earthshaker_arcana/earthshaker_arcana_head_refit.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_earthshaker": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/earthshaker/earthshaker_arcana/earthshaker_arcana_head_ambient.vpcf",
+        "style": "0"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/earthshaker/earthshaker_arcana/earthshaker_arcana_head"
+  },
+  "34485": {
+    "name": "Maw of the Megalodon - Offhand Weapon",
+    "item_name": "#DOTA_Item_Maw_of_the_Megalodon__Offhand_Weapon",
+    "item_slot": "offhand_weapon",
+    "item_rarity": "legendary",
+    "model_player": "models/items/tidehunter/tidehunter_arcana/tidehunter_arcana_offhand_weapon.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_tidehunter": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "activity",
+        "asset": "ALL",
+        "modifier": "offhand_kunkka"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/tidehunter/tidehunter_arcana/tidehunter_arcana_offhand_weapon"
+  },
+  "34588": {
+    "name": "Sepulchral Stalker - Arms",
+    "item_name": "#DOTA_Item_Sepulchral_Stalker__Arms",
+    "item_slot": "arms",
+    "item_rarity": "mythical",
+    "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_arms.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1"
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/drow_monster_arcana/drow_monster_arcana_arms"
+  },
+  "34589": {
+    "name": "Sepulchral Stalker - Back",
+    "item_name": "#DOTA_Item_Sepulchral_Stalker__Back",
+    "item_slot": "back",
+    "item_rarity": "mythical",
+    "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_back.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "styles": {
+        "0": {
+          "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_back.vmdl",
+          "name": "#DOTA_Style_Drow_Monster_Back_Style_0",
+          "skin": "0",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_back_alt.vmdl",
+          "name": "#DOTA_Style_Drow_Monster_Back_Style_1",
+          "skin": "1",
+          "alternate_icon": "1"
+        }
+      },
+      "asset_modifier": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_wave_of_silence",
+        "modifier": "drow_ranger/drow_monster/drow_monster_gust",
+        "style": "0",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat1": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_wave_of_silence",
+        "modifier": "drow_ranger/drow_monster/arcana_style1/drow_monster_arcana_style1_gust_red",
+        "style": "1",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat2": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_wave_of_silence",
+        "modifier": "drow_ranger/drow_monster/drow_monster_gust",
+        "style": "0",
+        "apply_when_equipped_in_ability_effects_slot": "2",
+        "minimum_priority": "1"
+      },
+      "asset_modifier__repeat3": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_wave_of_silence",
+        "modifier": "drow_ranger/drow_monster/arcana_style1/drow_monster_arcana_style1_gust_red",
+        "style": "1",
+        "apply_when_equipped_in_ability_effects_slot": "2",
+        "minimum_priority": "1"
+      },
+      "alternate_icons": {
+        "0": {
+          "icon_path": "econ/items/drow/drow_monster/arcana/back/drow_monster_arcana_back"
+        },
+        "1": {
+          "icon_path": "econ/items/drow/drow_monster/arcana/back/drow_monster_arcana_back_style1"
+        }
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/drow_monster/arcana/back/drow_monster_arcana_back"
+  },
+  "34590": {
+    "name": "Sepulchral Stalker - Head",
+    "item_name": "#DOTA_Item_Sepulchral_Stalker__Head",
+    "item_slot": "head",
+    "item_rarity": "mythical",
+    "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "styles": {
+        "0": {
+          "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_head.vmdl",
+          "name": "#DOTA_Style_Drow_Monster_Head_Style_0",
+          "skin": "0",
+          "alternate_icon": "0"
+        },
+        "1": {
+          "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_head_alt.vmdl",
+          "name": "#DOTA_Style_Drow_Monster_Head_Style_1",
+          "skin": "1",
+          "alternate_icon": "1"
+        }
+      },
+      "asset_modifier": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_glacier",
+        "modifier": "drow_ranger/drow_monster/drow_monster_glacier"
+      },
+      "asset_modifier__repeat1": {
+        "type": "model",
+        "asset": "models/items/drow/drow_monster_arcana/drow_monster_arcana_shoulder.vmdl",
+        "modifier": "models/items/drow/drow_monster_arcana/drow_monster_arcana_shoulder.vmdl",
+        "style": "0"
+      },
+      "asset_modifier__repeat2": {
+        "type": "model",
+        "asset": "models/items/drow/drow_monster_arcana/drow_monster_arcana_shoulder.vmdl",
+        "modifier": "models/items/drow/drow_monster_arcana/drow_monster_arcana_shoulder_refit.vmdl",
+        "style": "1"
+      },
+      "alternate_icons": {
+        "0": {
+          "icon_path": "econ/items/drow/drow_monster/arcana/head/drow_monster_arcana_head"
+        },
+        "1": {
+          "icon_path": "econ/items/drow/drow_monster/arcana/head/drow_monster_arcana_head_style1"
+        }
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/drow_monster/arcana/head/drow_monster_arcana_head"
+  },
+  "34591": {
+    "name": "Sepulchral Stalker - Legs",
+    "item_name": "#DOTA_Item_Sepulchral_Stalker__Legs",
+    "item_slot": "legs",
+    "item_rarity": "mythical",
+    "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_legs.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "bodygroup_visibility",
+        "asset": "models/items/drow/drow_arcana/drow_arcana.vmdl",
+        "modifier": "lower_body",
+        "value": "1"
+      },
+      "asset_modifier__repeat1": {
+        "type": "bodygroup_visibility",
+        "asset": "models/heroes/drow/drow_base.vmdl",
+        "modifier": "lower_body",
+        "value": "1"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/drow_monster_arcana/drow_monster_arcana_legs"
+  },
+  "34592": {
+    "name": "Sepulchral Stalker - Misc",
+    "item_name": "#DOTA_Item_Sepulchral_Stalker__Misc",
+    "item_slot": "misc",
+    "item_rarity": "mythical",
+    "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_quiver.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1"
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/drow_monster_arcana/drow_monster_arcana_quiver"
+  },
+  "34593": {
+    "name": "Sepulchral Stalker - Shoulder",
+    "item_name": "#DOTA_Item_Sepulchral_Stalker__Shoulder",
+    "item_slot": "shoulder",
+    "item_rarity": "mythical",
+    "model_player": "models/items/drow/drow_monster_arcana/drow_monster_arcana_shoulder.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "bodygroup_visibility",
+        "asset": "models/items/drow/drow_arcana/drow_arcana.vmdl",
+        "modifier": "chest",
+        "value": "1"
+      },
+      "asset_modifier__repeat1": {
+        "type": "bodygroup_visibility",
+        "asset": "models/heroes/drow/drow_base.vmdl",
+        "modifier": "chest",
+        "value": "1"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/drow_monster_arcana/drow_monster_arcana_shoulder"
+  },
+  "34594": {
+    "name": "Sepulchral Stalker - Weapon",
+    "item_name": "#DOTA_Item_Sepulchral_Stalker__Weapon",
+    "item_slot": "weapon",
+    "item_rarity": "mythical",
+    "model_player": "models/items/drow/drow_monster/drow_monster_weapon.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_monster/default/weapon/drow_monster_weapon_ambient.vpcf"
+      },
+      "asset_modifier__repeat1": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_marksmanship",
+        "modifier": "drow_ranger/drow_monster/drow_monster_marksmanship",
+        "apply_when_equipped_in_ability_effects_slot": "4"
+      },
+      "asset_modifier__repeat2": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_frost_arrows",
+        "modifier": "drow_ranger/drow_monster/drow_monster_frost_arrows"
+      },
+      "asset_modifier__repeat3": {
+        "type": "ability_icon",
+        "asset": "drow_ranger_multishot",
+        "modifier": "drow_ranger/drow_monster/drow_monster_multishot"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/drow_monster/drow_monster_weapon"
+  },
+  "35553": {
+    "name": "Flockheart's Gamble - Head",
+    "item_name": "#DOTA_Item_Flockhearts_Gamble__Head",
+    "item_slot": "head",
+    "item_rarity": "mythical",
+    "model_player": "models/items/ogre_magi/ogre_arcana/ogre_magi_arcana_head.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_ogre_magi": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_horns_ambient.vpcf",
+        "style": "0"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/ogre_magi/ogre_arcana/ogre_magi_arcana_head"
+  },
+  "37144": {
+    "name": "Dread Retribution - Weapon",
+    "item_name": "#DOTA_Item_Dread_Retribution__Weapon",
+    "item_slot": "weapon",
+    "item_rarity": "legendary",
+    "model_player": "models/items/drow/drow_arcana/drow_arcana_bow.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_drow_ranger": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "1",
+      "asset_modifier": {
+        "type": "particle_create",
+        "modifier": "particles/econ/items/drow/drow_arcana/drow_arcana_bow_ambient.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/items/drow/dread_retribution/drow_arcana_crossbow"
+  },
+  "37161": {
+    "name": "Fractal Horns of Inner Abysm - Horns",
+    "item_name": "#DOTA_Item_Fractal_Horns_of_Inner_Abysm__Horns",
+    "item_slot": "head",
+    "item_rarity": "legendary",
+    "model_player": "models/heroes/terrorblade/horns_arcana.vmdl",
+    "used_by_heroes": {
+      "npc_dota_hero_terrorblade": "1"
+    },
+    "visuals": {
+      "skip_model_combine": "0",
+      "asset_modifier": {
+        "type": "particle",
+        "asset": "particles/units/heroes/hero_terrorblade/terrorblade_ambient_eyes.vpcf",
+        "modifier": "particles/econ/items/terrorblade/terrorblade_horns_arcana/terrorblade_ambient_eyes_arcana_horns.vpcf"
+      }
+    },
+    "prefab": "wearable",
+    "image_inventory": "econ/heroes/terrorblade/horns_arcana"
+  }
+}

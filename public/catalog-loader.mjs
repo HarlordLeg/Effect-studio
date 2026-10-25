@@ -2,8 +2,8 @@ import {mergeDrowWardrobe} from './drow-catalog-sync.mjs';
 // Keep hero identities stable for pickers, saved builds and preview consumers.
 export function configureCatalogLoader(catalog,api){
  const pending=new Map();let searchPending;
- const ensureHero=async id=>{const hero=catalog.heroes.find(h=>h.id===id);if(!hero)throw Error('Unknown hero');if(!hero.lazy&&(id!=='drow_ranger'||hero.drowWardrobeVersion===2))return hero;
-  if(!pending.has(id))pending.set(id,(async()=>{if(hero.lazy){const data=await api('/api/hero-catalog?heroId='+encodeURIComponent(id));if(data.id!==id||!Array.isArray(data.items))throw Error('Invalid hero catalog');Object.assign(hero,data,{lazy:false});}if(id==='drow_ranger'&&hero.drowWardrobeVersion!==2){try{mergeDrowWardrobe(hero,await api('/api/drow-wardrobe'));}catch(error){console.warn('[Drow wardrobe]',error.message);}}return hero;})().finally(()=>pending.delete(id)));
+ const ensureHero=async id=>{const hero=catalog.heroes.find(h=>h.id===id);if(!hero)throw Error('Unknown hero');if(!hero.lazy&&(id!=='drow_ranger'||hero.drowWardrobeVersion>=3))return hero;
+  if(!pending.has(id))pending.set(id,(async()=>{if(hero.lazy){const data=await api('/api/hero-catalog?heroId='+encodeURIComponent(id));if(data.id!==id||!Array.isArray(data.items))throw Error('Invalid hero catalog');Object.assign(hero,data,{lazy:false});}if(id==='drow_ranger'&&!(hero.drowWardrobeVersion>=3)){try{mergeDrowWardrobe(hero,await api('/api/drow-wardrobe'));}catch(error){console.warn('[Drow wardrobe]',error.message);}}return hero;})().finally(()=>pending.delete(id)));
   return pending.get(id);
  };
  const ensureSearch=async()=>{if(!catalog.lazyCatalog)return;if(!searchPending)searchPending=api('/api/catalog-search').then(data=>{for(const hero of catalog.heroes)hero.searchItems=data[hero.id]??[];}).catch(error=>{searchPending=null;throw error;});return searchPending;};
