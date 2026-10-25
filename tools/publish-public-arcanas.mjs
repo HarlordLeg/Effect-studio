@@ -1,3 +1,4 @@
+import {arcanaPreviewCandidates,arcanaPreviewItemRecipe} from '../lib/arcana-preview-items.mjs';
 import {createArcanaRowExporter,parseArcanaPublishArgs} from '../lib/arcana-row-export.mjs';
 import {arcanaDefinition,publicArcanaChoices} from '../lib/public-arcanas.mjs';
 import {arcanaStyleIds,arcanaOccupiedSlots} from '../public/expanded-arcana-definitions.mjs';
@@ -5,7 +6,7 @@ import {rubickArcanaChoices} from '../lib/rubick-arcana.mjs';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {fileURLToPath} from 'node:url';import {spawnSync} from 'node:child_process';
 import {Builder} from '../lib/build.mjs';import {ItemIcons} from '../lib/item-icons.mjs';import {adminArcanaChoices} from '../lib/admin-arcanas.mjs';import {publicArcanaIcons,publicArcanaNames} from '../lib/public-arcanas.mjs';import {writeStaticFile,atomicJson,publishCatalogIndex} from '../lib/static-viewer.mjs';import {replacementTarget} from '../lib/replacement.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const {hero:selectedHero,style:selectedStyle}=parseArcanaPublishArgs(process.argv.slice(2),Object.fromEntries(Object.keys(publicArcanaNames).map(id=>[id,arcanaStyleIds(arcanaDefinition(id))])));
+const {hero:selectedHero,style:selectedStyle,allItems}=parseArcanaPublishArgs(process.argv.slice(2),Object.fromEntries(Object.keys(publicArcanaNames).map(id=>[id,arcanaStyleIds(arcanaDefinition(id))])));
 const spectreHelpers=selectedHero==='spectre'||!selectedHero?await import('../lib/spectre-template.mjs'):null;
 const drow=selectedHero?{status:0}:spawnSync(process.execPath,[path.join(root,'tools/publish-drow-arcana.mjs')],{cwd:root,stdio:'inherit'});if(drow.error)throw drow.error;if(drow.status!==0)throw Error('Drow export failed; nothing will be uploaded.');
 const config=JSON.parse(fs.readFileSync(path.join(root,'config.json'),'utf8').replace(/^\uFEFF/,'')),directory=path.resolve(root,config.staticViewerDirectory??'cache/static-viewer'),lock=path.join(root,'cache/static-publish.lock'),fd=fs.openSync(lock,'wx');fs.writeSync(fd,String(process.pid));let builder;
@@ -17,8 +18,19 @@ try{
  for(const id of (selectedHero?[selectedHero]:Object.keys(publicArcanaNames))){const hero=builder.catalog.heroes.find(h=>h.id===id);if(!hero)throw Error('Hero missing: '+id);manifest.arcanas[id]??={};for(const style of (selectedStyle===undefined?arcanaStyleIds(arcanaDefinition(id)):[selectedStyle])){
   const base=choices(id,{style}),parts=[],effects=[],items={};
   await baked(base,async overlay=>{for(const row of base){const result=await exportRow(row,overlay,row.item.slot==='hero_base'?'hero':'default');parts.push(result.part);effects.push(...result.effects);}for(const [slot,model]of Object.entries(hero.defaultSlotModels??{})){if(base.some(r=>r.item.slot===slot))continue;const item=hero.items.find(i=>i.isDefault&&i.slot===slot),row={hero,item:{...item,id:'default:'+slot,slot,model,replacesModel:model,nativeOverrides:item?.nativeOverrides??{entries:[],particles:[],skin:0}},effects:[],effect:{id:'native-only',particle:null},cosmeticsOnly:true},result=await exportRow(row,overlay,'default');parts.push(result.part);effects.push(...result.effects);}});
-  // Only refitted wearables require new GLBs; ordinary items retain their existing publication.
-  for(const item of hero.items.filter(i=>!i.isDefault&&!i.specialKind&&!i.previewUnsupported&&!i.setEntity&&Object.hasOwn(hero.defaultSlotModels??{},i.slot)&&![...arcanaOccupiedSlots(arcanaDefinition(id)),'hero_base'].includes(i.slot))){let rows;try{rows=choices(id,{style,items:{[item.slot]:item.id}});}catch(error){if(/^(Arcana adaptation unavailable for |This item has missing arcana materials)/.test(error.message)){console.warn('[REFIT UNAVAILABLE] '+item.id+': '+error.message);continue;}throw error;}const refit=rows.find(r=>r.item.id===item.id);if(!refit||refit.item.model===item.model)continue;await baked(rows,async overlay=>{const result=await exportRow(refit,overlay,'item');items[item.id]={slot:item.slot,name:item.name,parts:[result.part],native:blob(JSON.stringify({effects:result.effects}))};});}
+  // Publish every compatible catalog variant when requested. In particular,
+  // prepared SF heads must not be permanently blocked by unpublishedItems.
+  for(const item of arcanaPreviewCandidates(hero,arcanaOccupiedSlots(arcanaDefinition(id)))){
+   let rows;
+   try{rows=choices(id,{style,items:{[item.slot]:item.id}});}
+   catch(error){if(/^(Arcana adaptation unavailable for |This item has missing arcana materials)/.test(error.message)){console.warn('[REFIT UNAVAILABLE] '+item.id+': '+error.message);continue;}throw error;}
+   const refit=rows.find(r=>r.item.id===item.id);
+   if(!refit||(!allItems&&refit.item.model===item.model&&!refit.item.mergeTarget))continue;
+   await baked(rows,async overlay=>{
+    const result=await exportRow(refit,overlay,refit.item.mergeTarget&&refit.item.replacesModel===hero.model?'hero':'item');
+    items[item.id]=arcanaPreviewItemRecipe(hero,style,refit.item,result,blob(JSON.stringify({effects:result.effects})));
+   });
+  }
   manifest.arcanas[id][String(style)]=blob(JSON.stringify({name:publicArcanaNames[id],slot:'arcana',parts,items,native:blob(JSON.stringify({effects}))}));
   for(const [icon,texture]of Object.entries(publicArcanaIcons(builder,id,style))){if(!builder.store.has(texture)&&['portrait','top','minimap'].includes(icon)){console.log('Optional icon absent: '+texture);continue;}const png=await icons.getTexture(texture,{model:hero.model});manifest.icons[key('/api/arcana-icon',{heroId:id,style,icon})]=blob(fs.readFileSync(png),'png');}
   manifest.updated=new Date().toISOString();atomicJson(file,manifest);
