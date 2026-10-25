@@ -6,19 +6,38 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
-   var host=Skeleton(["fk_Pelvis","arm_R"],[-1,0]);
-   var map=ModelMerge.MergeSkeleton(host,Skeleton(["fk_pelvis","arm_R"],[-1,0]),matchBoneCase:true);
-   Check(map.SequenceEqual(new[]{0,1})&&host["m_boneName"].Count==2);
+   KVObject Pose(string name,float x){var s=Skeleton([name],[-1]);s["m_bonePosParent"]=Array(Array(new KVObject(x),new KVObject(0f),new KVObject(0f)));s["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return s;}
+   var profiles=new[]{
+    ("models/items/earthshaker/earthshaker_arcana/earthshaker_arcana.vmdl","models/items/earthshaker/siege_beast_head/siege_beast_head_refit.vmdl","root","earthshaker1"),
+    ("models/items/tidehunter/tidehunter_arcana/tidehunter_arcana.vmdl","models/items/tidehunter/executioner_ray_hood/executioner_ray_hood.vmdl","root1","group1"),
+    ("models/heroes/spectre/spectre.vmdl","models/items/spectre/malicious_bracers_misc/malicious_bracers_misc.vmdl","root","base"),
+    ("models/items/io/io_ti7/io_ti7.vmdl","models/items/io/io_calavera/io_calavera.vmdl","root_immortal","io_muerta_root"),
+    ("models/heroes/legion_commander/legion_commander.vmdl","models/items/legion_commander/conquests_of_golden_sun_head/conquests_of_golden_sun_head.vmdl","Root0_JNT","SMDImport001")
+   };
+   foreach(var(hostName,donorName,parent,bone) in profiles){
+    var attachments=ModelRootProfiles.Attachments(hostName,donorName);Check(attachments is not null&&attachments[bone]==parent);
+    var h=Pose(parent,2);var d=Pose(bone,10);ModelMerge.MergeSkeleton(h,d,rootAttachments:attachments);
+    Check(h["m_nParent"][1].ToInt32(null)==0);Check(Math.Abs(h["m_bonePosParent"][1][0].ToSingle(null)+2-10)<0.00001);
+    Check(ModelRootProfiles.Attachments("models/heroes/unrelated/body.vmdl",donorName) is null);
+    try{ModelMerge.MergeSkeleton(Pose(parent,2),Pose("unknown_importer_root",10),rootAttachments:attachments);throw new Exception("Unrecognized root accepted");}catch(InvalidDataException){}
+   }
+   Check(ModelRootProfiles.Attachments("models/heroes/spectre/spectre.vmdl","models/items/spectre/unrelated/unrelated.vmdl") is null);
+  }
+
+  {
+   var earlyRegressionHost=Skeleton(["fk_Pelvis","arm_R"],[-1,0]);
+   var earlyRegressionMap=ModelMerge.MergeSkeleton(earlyRegressionHost,Skeleton(["fk_pelvis","arm_R"],[-1,0]),matchBoneCase:true);
+   Check(earlyRegressionMap.SequenceEqual(new[]{0,1})&&earlyRegressionHost["m_boneName"].Count==2);
   }
 
   {
    KVObject Posed(string name,float x){var s=Skeleton([name],[-1]);s["m_bonePosParent"]=Array(Array(new KVObject(x),new KVObject(0f),new KVObject(0f)));s["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return s;}
    foreach(var side in new[]{"R","L"}){
-    var donor=Posed("shark_"+side+"_01_JNT",10f);
-    try{ModelMerge.MergeSkeleton(Posed("root",2f),donor);throw new Exception("Shark exception enabled globally");}catch(InvalidDataException){}
-    var host=Posed("root",2f);var map=ModelMerge.MergeSkeleton(host,donor,attachMorphlingSharkRoots:true);
-    Check(map.SequenceEqual(new[]{1})&&host["m_nParent"][1].ToInt32(null)==0);
-    Check(Math.Abs(host["m_bonePosParent"][1][0].ToSingle(null)-8f)<0.0001f);
+    var earlyRegressionDonor=Posed("shark_"+side+"_01_JNT",10f);
+    try{ModelMerge.MergeSkeleton(Posed("root",2f),earlyRegressionDonor);throw new Exception("Shark exception enabled globally");}catch(InvalidDataException){}
+    var earlyRegressionHost=Posed("root",2f);var earlyRegressionMap=ModelMerge.MergeSkeleton(earlyRegressionHost,earlyRegressionDonor,attachMorphlingSharkRoots:true);
+    Check(earlyRegressionMap.SequenceEqual(new[]{1})&&earlyRegressionHost["m_nParent"][1].ToInt32(null)==0);
+    Check(Math.Abs(earlyRegressionHost["m_bonePosParent"][1][0].ToSingle(null)-8f)<0.0001f);
    }
    try{ModelMerge.MergeSkeleton(Posed("root",0f),Posed("unknown_root",0f),attachMorphlingSharkRoots:true);throw new Exception("Unknown root accepted by shark exception");}catch(InvalidDataException){}
   }

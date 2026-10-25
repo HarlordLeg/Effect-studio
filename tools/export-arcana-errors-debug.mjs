@@ -17,7 +17,7 @@ try{
   const hero=builder.catalog.heroes.find(h=>h.id===id);if(!hero)throw Error('Hero absent from catalog: '+id);
   const errors=failures.filter(e=>e.hero===id),failedIds=new Set(errors.map(e=>e.item));
   const snapshots=id==='phantom_assassin'||id==='juggernaut';
-  const selected=hero.items.filter(i=>!i.isDefault&&!i.setEntity&&(failedIds.size?failedIds.has(i.id):snapshots?/weapon_ninja_katmui|disciple_of_the_skadi_weapon/.test(i.model):true));
+  const selected=hero.items.filter(i=>!i.isDefault&&!i.setEntity&&(failedIds.size?failedIds.has(i.id):snapshots?/weapon_ninja_katmui|disciple_of_the_skadi_weapon/.test([i.model,...(i.nativeOverrides?.entries??[]).map(e=>e.source)].join(' ')):true));
   const files=new Map(),missing=new Set(),choices=[],seen=new Set();let size=0;
   function add(name){if(!name||seen.has(name))return;seen.add(name);const bytes=builder.store.read(name);if(!bytes){missing.add(name);return;}size+=bytes.length;if(size>256*1024*1024)throw Error('Debug for '+id+' exceeds 256 MiB; run publisher with --continue-on-item-error first to identify exact failing items');files.set(name,bytes);}
   add(hero.model);for(const m of Object.values(hero.defaultSlotModels??{}))add(m);
