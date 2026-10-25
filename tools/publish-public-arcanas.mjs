@@ -6,7 +6,8 @@ import {rubickArcanaChoices} from '../lib/rubick-arcana.mjs';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {fileURLToPath} from 'node:url';import {spawnSync} from 'node:child_process';
 import {Builder} from '../lib/build.mjs';import {ItemIcons} from '../lib/item-icons.mjs';import {adminArcanaChoices} from '../lib/admin-arcanas.mjs';import {publicArcanaIcons,publicArcanaNames} from '../lib/public-arcanas.mjs';import {writeStaticFile,atomicJson,publishCatalogIndex} from '../lib/static-viewer.mjs';import {replacementTarget} from '../lib/replacement.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const {hero:selectedHero,style:selectedStyle,allItems}=parseArcanaPublishArgs(process.argv.slice(2),Object.fromEntries(Object.keys(publicArcanaNames).map(id=>[id,arcanaStyleIds(arcanaDefinition(id))])));
+const itemErrors=[];
+const {hero:selectedHero,style:selectedStyle,allItems,continueOnItemError}=parseArcanaPublishArgs(process.argv.slice(2),Object.fromEntries(Object.keys(publicArcanaNames).map(id=>[id,arcanaStyleIds(arcanaDefinition(id))])));
 const spectreHelpers=selectedHero==='spectre'||!selectedHero?await import('../lib/spectre-template.mjs'):null;
 const drow=selectedHero?{status:0}:spawnSync(process.execPath,[path.join(root,'tools/publish-drow-arcana.mjs')],{cwd:root,stdio:'inherit'});if(drow.error)throw drow.error;if(drow.status!==0)throw Error('Drow export failed; nothing will be uploaded.');
 const config=JSON.parse(fs.readFileSync(path.join(root,'config.json'),'utf8').replace(/^\uFEFF/,'')),directory=path.resolve(root,config.staticViewerDirectory??'cache/static-viewer'),lock=path.join(root,'cache/static-publish.lock'),fd=fs.openSync(lock,'wx');fs.writeSync(fd,String(process.pid));let builder;
@@ -26,15 +27,21 @@ try{
    catch(error){if(/^(Arcana adaptation unavailable for |This item has missing arcana materials)/.test(error.message)){console.warn('[REFIT UNAVAILABLE] '+item.id+': '+error.message);continue;}throw error;}
    const refit=rows.find(r=>r.item.id===item.id);
    if(!refit||(!allItems&&refit.item.model===item.model&&!refit.item.mergeTarget))continue;
-   await baked(rows,async overlay=>{
+   console.log('[BUILD ITEM] '+id+' / style '+style+' / '+item.id+' / '+item.name);
+   try{await baked(rows,async overlay=>{
     const result=await exportRow(refit,overlay,refit.item.mergeTarget&&refit.item.replacesModel===hero.model?'hero':'item');
     items[item.id]=arcanaPreviewItemRecipe(hero,style,refit.item,result,blob(JSON.stringify({effects:result.effects})));
-   });
+   });}catch(error){
+    itemErrors.push({hero:id,style,item:item.id,name:item.name,model:refit.item.model,error:error.message});
+    atomicJson(path.join(directory,'arcana-item-errors.json'),itemErrors);
+    if(!continueOnItemError)throw error;
+    console.error('[ITEM FAILED] '+id+' / '+item.id+': '+error.message);
+   }
   }
   manifest.arcanas[id][String(style)]=blob(JSON.stringify({name:publicArcanaNames[id],slot:'arcana',parts,items,native:blob(JSON.stringify({effects}))}));
   for(const [icon,texture]of Object.entries(publicArcanaIcons(builder,id,style))){if(!builder.store.has(texture)&&['portrait','top','minimap'].includes(icon)){console.log('Optional icon absent: '+texture);continue;}const png=await icons.getTexture(texture,{model:hero.model});manifest.icons[key('/api/arcana-icon',{heroId:id,style,icon})]=blob(fs.readFileSync(png),'png');}
   manifest.updated=new Date().toISOString();atomicJson(file,manifest);
-  console.log(id+' arcana style '+style+' exported and checkpoint saved');
+  console.log(id+' arcana style '+style+' exported and checkpoint saved; failed items: '+itemErrors.filter(e=>e.hero===id&&e.style===style).length);
  }}
- const old=JSON.parse(fs.readFileSync(path.join(directory,manifest.catalog),'utf8')),catalog={...old,linaArcana:true,monkeyKingArcana:true,rubickArcana:true};manifest.catalog=blob(JSON.stringify(catalog));Object.assign(manifest,publishCatalogIndex(directory,catalog));manifest.updated=new Date().toISOString();atomicJson(file,manifest);console.log('Selected arcana models/icons ready. Upload to R2 next.');
+ const old=JSON.parse(fs.readFileSync(path.join(directory,manifest.catalog),'utf8')),catalog={...old,linaArcana:true,monkeyKingArcana:true,rubickArcana:true};manifest.catalog=blob(JSON.stringify(catalog));Object.assign(manifest,publishCatalogIndex(directory,catalog));manifest.updated=new Date().toISOString();atomicJson(file,manifest);atomicJson(path.join(directory,'arcana-item-errors.json'),itemErrors);if(itemErrors.length)process.exitCode=2;console.log(itemErrors.length?'Arcana export is PARTIAL: '+itemErrors.length+' item variants failed. See arcana-item-errors.json before upload.':'Selected arcana models/icons ready. Upload to R2 next.');
 }finally{builder?.dispose();fs.closeSync(fd);fs.rmSync(lock,{force:true});}
