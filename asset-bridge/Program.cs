@@ -78,6 +78,7 @@ internal static class Program
         using var resource = loader.LoadFile(modelPath) ?? throw new FileNotFoundException("Model not found", modelPath);
         if (resource.DataBlock is not Model) throw new InvalidDataException("Resource is not a model: " + modelPath);
         ModelVariant.Apply(resource, skin);
+        var hidden=VisibleMeshExport.Prepare(resource);if(hidden>0)Console.WriteLine("Preview: skipped "+hidden+" disabled mesh(es)");
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         var modes = materials ? new[] { "adapted", "original", "geometry" } : new[] { "geometry" };
         string? warning = null;

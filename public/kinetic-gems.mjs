@@ -14,7 +14,7 @@ export function resolveKinetics(options,priorities={},items=[]){
   if(action.startsWith('resource:'))continue;
   const winner=candidates.length===1?candidates[0]:candidates.find(o=>o.id===priorities[action]);
   if(!winner)throw new Error('Choose kinetic gem priority: '+action);
-  for(const rule of winner.rules??[]){const asset=rule.asset??rule.Asset;if(!(rule.excludedActivities??rule.ExcludedActivities??[]).includes(action)&&(asset==='ALL'||asset===action))rules.push({...rule,asset:action,modifier:rule.modifier??rule.Modifier});}
+  for(const rule of winner.rules??[]){const asset=rule.asset??rule.Asset;if(!(rule.excludedActivities??rule.ExcludedActivities??[]).includes(action)&&(asset==='ALL'||asset===action))rules.push({...rule,asset:action,modifier:rule.modifier??rule.Modifier,...(winner.id.startsWith('item:')?{required:false}:{})});}
  }
  return rules;
 }

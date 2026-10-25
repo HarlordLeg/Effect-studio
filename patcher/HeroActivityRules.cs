@@ -102,7 +102,7 @@ internal static class HeroActivityRules
         }
         var result=new byte[bytes.Length-8];Buffer.BlockCopy(bytes,0,result,0,64);result[0]=sourceVersion;Buffer.BlockCopy(bytes,72,result,64,bytes.Length-72);return result;
     }
-    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null,string[]? ExcludedActivities=null,bool RetainBase=false);
+    internal sealed record Rule(string Asset,string Modifier,int Priority=0,bool ExcludeStance=false,string? Sequence=null,string[]? ExcludedActivities=null,bool RetainBase=false,bool? Required=null);
     private sealed record Option(string Id,string Name,Rule[] Rules);
     private sealed record Request(string Input,string Output,string Model,Rule[] Rules,string[] KnownModifiers,Option[]? Options=null,bool RequireStance=false,bool RequireActivity=false);
     private static readonly HashSet<string> StanceActivities=["ACT_DOTA_IDLE","ACT_DOTA_IDLE_RARE","ACT_DOTA_RUN","ACT_DOTA_LOADOUT"];
@@ -140,8 +140,14 @@ internal static class HeroActivityRules
             if(selected.Length>0){var keepActs=selected.Select(w=>w.Act).ToHashSet();keep.RemoveAll(l=>Text(l,"m_name").StartsWith("ACT_",StringComparison.Ordinal)&&!keepActs.Contains(Text(l,"m_name")));names.Add(Text(row,key=="m_animArray"?"m_name":"m_sName"));}
             row["m_activityArray"]=Array(keep);
         }
-        return (winners.Select(w=>w.Row).Distinct().Count(),names.Distinct().ToArray(),rules.Select(r=>r.Modifier).Distinct().Except(found).ToArray(),winners.Count(w=>w.Priority>=100&&StanceActivities.Contains(w.Act)),rules.Where(r=>r.Priority>=100&&!winners.Any(w=>Matches(r,w.Act)&&w.Strip.Contains(r.Modifier)&&(r.Sequence is null||r.Sequence==Text(w.Row,key=="m_animArray"?"m_name":"m_sName")))).Select(r=>r.Asset+" / "+r.Modifier).Distinct().ToArray());
+        return (winners.Select(w=>w.Row).Distinct().Count(),names.Distinct().ToArray(),rules.Select(r=>r.Modifier).Distinct().Except(found).ToArray(),winners.Count(w=>w.Priority>=100&&StanceActivities.Contains(w.Act)),rules.Where(r=>(r.Required??r.Priority>=100)&&!winners.Any(w=>Matches(r,w.Act)&&w.Strip.Contains(r.Modifier)&&(r.Sequence is null||r.Sequence==Text(w.Row,key=="m_animArray"?"m_name":"m_sName")))).Select(r=>r.Asset+" / "+r.Modifier).Distinct().ToArray());
     }
+    // A modifier may occur on a sequence that also requires another item.
+    // Only advertise actions belonging to the eligible rows, not every row
+    // sharing that modifier; otherwise ALL produces fictitious required rules.
+    internal static Rule[] RulesForEligibleRows(KVObject[] rows,Rule[] rules)=>rules.Where(rule=>rows.Any(row=>
+        (rule.Sequence is null||rule.Sequence==Text(row,"m_sName"))&&row["m_activityArray"].Values.Any(label=>Text(label,"m_name")==rule.Modifier)&&
+        row["m_activityArray"].Values.Select(label=>Text(label,"m_name")).Any(name=>name.StartsWith("ACT_",StringComparison.Ordinal)&&Matches(rule,name)))).ToArray();
     // Keep the original file layout and append the changed activity blocks.
     // No original payload, including padding/trailing data, is moved or removed.
     internal static void WriteActivityBlocks(Resource resource,byte[] original,Stream output,Dictionary<object,byte[]> rawBlocks)
@@ -173,7 +179,8 @@ internal static class HeroActivityRules
                 var rules=option.Rules.SelectMany(r=>r.Asset=="ALL"?(genuine?actions:StanceActivities.ToArray()).Select(a=>r with{Asset=a}):genuine||StanceActivities.Contains(r.Asset)?[r]:System.Array.Empty<Rule>()).Where(r=>!genuine||rows.Any(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return Matches(r,r.Asset)&&labels.Contains(r.Modifier)&&labels.Contains(r.Asset);})).Distinct().ToArray();
                 var selected=rules.Select(r=>r.Modifier).ToHashSet();
                 var eligible=rows.Where(row=>{var labels=row["m_activityArray"].Values.Select(a=>Text(a,"m_name")).ToArray();return labels.Where(n=>n.StartsWith("ACT_",StringComparison.Ordinal)).Any(a=>rules.Any(r=>Matches(r,a)&&labels.Contains(r.Modifier)))&&!labels.Where(known.Contains).Any(t=>!selected.Contains(t));}).ToArray();
-                if(eligible.Length>0)options.Add(new{id=option.Id,name=option.Name,rules,animations=eligible.OrderBy(r=>r["m_activityArray"].Values.Count(a=>!Text(a,"m_name").StartsWith("ACT_",StringComparison.Ordinal))).ThenBy(r=>r["m_activityArray"].Values.Any(a=>Text(a,"m_name")=="ACT_DOTA_IDLE")?0:1).Select(r=>Text(r,"m_sName")).ToArray()});
+                var supportedRules=RulesForEligibleRows(eligible,rules);
+                if(eligible.Length>0&&supportedRules.Length>0)options.Add(new{id=option.Id,name=option.Name,rules=supportedRules,animations=eligible.OrderBy(r=>r["m_activityArray"].Values.Count(a=>!Text(a,"m_name").StartsWith("ACT_",StringComparison.Ordinal))).ThenBy(r=>r["m_activityArray"].Values.Any(a=>Text(a,"m_name")=="ACT_DOTA_IDLE")?0:1).Select(r=>Text(r,"m_sName")).ToArray()});
             }
             File.WriteAllText(request.Output,JsonSerializer.Serialize(new{options,audit,sequenceLabels=rows.Select(row=>new{name=Text(row,"m_sName"),activities=row["m_activityArray"].Values.Select(label=>Text(label,"m_name")).ToArray()}).ToArray(),externalAnimations=resource.ExternalReferences?.ResourceRefInfoList.Where(r=>r.Name.EndsWith(".vanim",StringComparison.Ordinal)||r.Name.EndsWith(".vagrp",StringComparison.Ordinal)||r.Name.EndsWith(".vseq",StringComparison.Ordinal)).Select(r=>r.Name).ToArray()}));return;
         }

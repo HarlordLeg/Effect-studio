@@ -169,6 +169,16 @@ internal static class Program
             throw new InvalidDataException("Resource block directory is truncated.");
         }
 
+        if (resource.DataBlock is Model materialModel &&
+            !resource.ContainsBlockType(BlockType.NTRO) &&
+            ModelMaterialReferences.Repair(materialModel.Data) > 0)
+        {
+            // Imported templates may contain untyped material strings. Preserve
+            // all other blocks; only DATA needs serialization after this repair.
+            changedBlocks ??= new HashSet<object>();
+            changedBlocks.Add(resource.DataBlock);
+        }
+
         var payloads = new List<byte[]>(resource.Blocks.Count);
         foreach (var block in resource.Blocks)
         {

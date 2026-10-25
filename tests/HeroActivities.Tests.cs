@@ -173,6 +173,15 @@ internal static class HeroActivitiesTests
    File.WriteAllText(manifest,System.Text.Json.JsonSerializer.Serialize(new{input=Path.GetFullPath(args[0]),output,model="models/heroes/dazzle/dazzle.vmdl_c",rules=new[]{new{asset="ALL",modifier="darkclaw"}},knownModifiers=new[]{"darkclaw"}}));HeroActivityRules.Run(manifest);
    File.Delete(output+".activities.json");
   }finally{File.Delete(manifest);File.Delete(output);}}
+  {
+   var idle=Sequence("fear_idle","ACT_DOTA_IDLE","fear");
+   var rules=new[]{new HeroActivityRules.Rule("ACT_DOTA_IDLE","fear"),new HeroActivityRules.Rule("ACT_DOTA_RUN","fear"),new HeroActivityRules.Rule("ACT_DOTA_LOADOUT","fear",Sequence:"other")};
+   var supported=HeroActivityRules.RulesForEligibleRows(new[]{idle},rules);
+   Check(supported.Length==1&&supported[0].Asset=="ACT_DOTA_IDLE");
+   var running=Sequence("fear_run","ACT_DOTA_RUN","fear");
+   Check(HeroActivityRules.RulesForEligibleRows(new[]{idle,running},rules).Length==2);
+   Check(HeroActivityRules.RulesForEligibleRows(System.Array.Empty<KVObject>(),rules).Length==0);
+  }
   Console.WriteLine("[OK] Hero activity selection and compiled payload preservation");return 0;
  }
 }
