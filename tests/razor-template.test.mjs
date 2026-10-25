@@ -1,3 +1,4 @@
+import {localArcanaTest} from './helpers/local-arcana-template.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -13,7 +14,7 @@ test('Razor raw and expanded requests select one validated style; ordinary heroe
  assert.equal(razorTemplateStyle([{hero,arcana:{style:0}}]),0);assert.equal(razorTemplateStyle([body]),1);assert.equal(razorTemplateStyle([{hero,item:{slot:'head'}}]),undefined);
  assert.throws(()=>razorTemplateStyle([{hero,arcana:{style:2}}]),/Invalid/);assert.throws(()=>razorTemplateStyle([{hero,arcana:{style:0}},body]),/Invalid/);
 });
-test('both supplied templates expose matching model sources with isolated stores and distinct styles',()=>{
+localArcanaTest('both supplied templates expose matching model sources with isolated stores and distinct styles',['razor-style-0.vpk', 'razor-style-1.vpk'],()=>{
  const first=scopeRazorTemplate(builder,0),second=scopeRazorTemplate(builder,1);
  assert.equal(first.razorTemplate.files.size,93);assert.equal(second.razorTemplate.files.size,111);
  for(const [source,target]of Object.entries(razorTemplateModels)){
@@ -22,14 +23,14 @@ test('both supplied templates expose matching model sources with isolated stores
  assert.notDeepEqual(first.store.read(hero.model),second.store.read(hero.model));assert.equal(builder.store.read(hero.model),null);assert.equal(first.store.materialOmissionStore,builder.store);
 });
 test('prepared Razor rows retain custom gear and user effects without duplicating ambients or repatching skins/activities',()=>{
- const scoped=scopeRazorTemplate(builder,1),custom={hero,item:{id:'game-custom',model:'custom.vmdl_c'},effects:[{id:'frostbloom'}]},[prepared,retained]=prepareRazorTemplateChoices(scoped,[body,custom]);
+ const scoped={razorTemplate:{style:1,files:new Map(),overrides:new Map()}},custom={hero,item:{id:'game-custom',model:'custom.vmdl_c'},effects:[{id:'frostbloom'}]},[prepared,retained]=prepareRazorTemplateChoices(scoped,[body,custom]);
  assert.equal(prepared.item.model,hero.model);assert.equal(prepared.item.nativeOverrides.skin,0);assert.deepEqual(prepared.item.nativeOverrides.particles,[]);assert.deepEqual(prepared.item.nativeOverrides.activities,[]);
  assert.equal(prepared.item.meshGroupName,undefined);assert.equal(prepared.item.nativeOverrides.bodySkin,undefined);assert.deepEqual(heroActivityPlans([prepared]),[]);assert.equal(retained,custom);assert.equal(body.item.nativeOverrides.skin,2);
 });
-test('template materials remain in VPK while mounted material optimization remains enabled',()=>{
+localArcanaTest('template materials remain in VPK while mounted material optimization remains enabled',['razor-style-0.vpk', 'razor-style-1.vpk'],()=>{
  const scoped=scopeRazorTemplate(builder,0),materials=new Map([...scoped.razorTemplate.files].filter(([n])=>n.endsWith('.vmat_c')));assert.equal(omitMountedMaterials(materials,scoped.store).omittedMaterialFiles,0);assert.equal(materials.size,17);
 });
-test('finishing preserves selected models and icons and adds all remaining authored replacements',()=>{
+localArcanaTest('finishing preserves selected models and icons and adds all remaining authored replacements',['razor-style-0.vpk', 'razor-style-1.vpk'],()=>{
  const scoped=scopeRazorTemplate(builder,0),bodyBytes=Buffer.from('selected body'),icon='panorama/images/spellicons/razor_static_link_png.vtex_c',picked=Buffer.from('selected icon'),files=new Map([[hero.model,bodyBytes],[icon,picked]]),roots=[];
  finishRazorTemplate(scoped,files,new Set([icon]),roots);assert.equal(files.get(hero.model),bodyBytes);assert.equal(files.get(icon),picked);assert.ok(!files.has('models/heroes/razor/razor_head.vmdl_c'));
  for(const [name,bytes]of scoped.razorTemplate.files)if(!name.endsWith('.vmdl_c')&&name!==icon)assert.deepEqual(files.get(name),bytes);

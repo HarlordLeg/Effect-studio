@@ -1,3 +1,4 @@
+import {localArcanaTest} from './helpers/local-arcana-template.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -26,7 +27,7 @@ test('arcana merged item uses the published merged arcana body without attaching
  const result=await assembleStaticPreview({selections:[{heroId:'nevermore',arcana:{style:0}},{heroId:'nevermore',itemId:'merged-head',slot:'head'}]},{heroes:[hero],effects:[]},{arcanas:{nevermore:{0:'arcana'}},heroes:{nevermore:'hero'}},async ref=>data[ref]);
  assert.deepEqual(result.parts.map(p=>p.key),['merged-arcana']);
 });
-test('Razor source templates match the supplied first and second style archives exactly',()=>{
+localArcanaTest('Razor source templates match the supplied first and second style archives exactly',['razor-style-0.vpk', 'razor-style-1.vpk'],()=>{
  for(const [style,expected] of [[0,'7084e2864b86bba04c724b2e827fccf1a40b084e427bdae91e4cd8ce00010327'],[1,'0423dcb5c56fa43ead9003ebdccc62e1622b33f5ba1bf11494f1062ed2b65093']])assert.equal(crypto.createHash('sha256').update(fs.readFileSync(new URL('../lib/arcana-templates/razor-style-'+style+'.vpk',import.meta.url))).digest('hex'),expected);
 });
 class Element{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(){this.children=[];}}
