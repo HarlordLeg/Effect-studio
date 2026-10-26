@@ -6,7 +6,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class Program
 {
     private sealed record DefaultModel(string Model, string Output);
-    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null, string[]? MetadataModels = null, string[]? MetadataAnimationModels = null, string[]? MetadataPreferredAnimations = null);
+    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null, string[]? MetadataModels = null, string[]? MetadataAnimationModels = null, string[]? MetadataPreferredAnimations = null, string[]? MetadataActivityTags = null);
 
     public static int Main(string[] args)
     {
@@ -42,7 +42,7 @@ internal static class Program
                         if ((request.MetadataAnimationModels??[]).Contains(path)) {
                             try {
                                 var glb=Path.Combine(Path.GetDirectoryName(target)!,"animations-"+models.Count+".glb");
-                                ExportModel(loader,path,glb,false,animationFilter:PreviewMetadata.AnimationNames(models[path],request.MetadataPreferredAnimations??[]));
+                                ExportModel(loader,path,glb,false,animationFilter:PreviewMetadata.AnimationNames(models[path],request.MetadataPreferredAnimations??[],request.MetadataActivityTags??[]));
                                 models[path]["animationGlb"]=Convert.ToBase64String(File.ReadAllBytes(glb));
                             } catch(Exception error) {warnings.Add(path+": animation recovery failed: "+error.Message);}
                         } }

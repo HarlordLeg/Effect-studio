@@ -1,3 +1,4 @@
+import {normalizeSnapshot} from './snapshot-bindings.mjs';
 import {sceneAnimations,sourceModel} from './scene-animations.mjs';
 const enc=new TextEncoder(),dec=new TextDecoder();
 const compiled=p=>String(p??'').replace(/_c$/,'');
@@ -46,7 +47,8 @@ export class SceneSource {
   if(!register){this.effectResources??={urls:[],files:[],materials:[]};this.effectResources.urls.push(...[...this.urls].filter(u=>!oldUrls.has(u)));this.effectResources.files.push(...[...this.files.keys()].filter(k=>!oldFiles.has(k)));this.effectResources.materials.push(...Object.keys(this.manifest.materials).filter(k=>!oldMaterials.has(k)));}
   return file;
  }
- applyMetadata(results,preferred=[]){for(const [owner,info] of this.modelMetadata){const data=results?.models?.[info.model]??info.metadata;const attachments={};for(const [name,row] of Object.entries({...data.attachments,...info.metadata.attachments})){const a=normalizeAttachment(row);if(a)attachments[name]=a;}if(Object.keys(attachments).length)this.manifest.attachments[owner]=attachments;if(owner==='hero'){let clips=info.animations,composed=info.metadata.composedAdditiveAnimations===true;if(!clips.length&&data.animationGlb&&info.hasSkeleton){this.addGlb(bytes64(data.animationGlb),{key:'animation-source',owner:'animation-source'});const recovery=this.modelMetadata.get('animation-source');clips=recovery.animations;composed=recovery.metadata.composedAdditiveAnimations===true;}this.manifest.animations=sceneAnimations(clips,data.sequences??[],preferred,composed);}}this.warnings.push(...(results?.warnings??[]));}
+ applyMetadata(results,preferred=[]){for(const [owner,info] of this.modelMetadata){const data=results?.models?.[info.model]??info.metadata;const attachments={};for(const [name,row] of Object.entries({...data.attachments,...info.metadata.attachments})){const a=normalizeAttachment(row);if(a)attachments[name]=a;}if(Object.keys(attachments).length)this.manifest.attachments[owner]=attachments;this.applyMaterials(owner,{...data.materials,...info.metadata.materials});if(owner==='hero'){let clips=info.animations,composed=info.metadata.composedAdditiveAnimations===true;if(!clips.length&&data.animationGlb&&info.hasSkeleton){this.addGlb(bytes64(data.animationGlb),{key:'animation-source',owner:'animation-source'});const recovery=this.modelMetadata.get('animation-source');clips=recovery.animations;composed=recovery.metadata.composedAdditiveAnimations===true;}this.manifest.animations=sceneAnimations(clips,data.sequences??[],preferred,composed);}this.manifest.animations??={};(this.manifest.animations.defaults??={})[owner]=data.activities??[];}this.warnings.push(...(results?.warnings??[]));}
+ applyMaterials(owner,rows){for(const [id,info] of this.materialMetadata){if(info.owner!==owner)continue;const base=n=>String(n).split('/').at(-1).replace(/\.vmat(?:_c)?$/,'');const native=rows[info.name]??Object.entries(rows).find(([name])=>base(name)===base(info.name))?.[1];if(!native)continue;Object.assign(this.manifest.materials[id],native.descriptor??{});for(const [field,image]of Object.entries(native.images??{}))if(image?.data){const name=id+'-native-'+field;this.files.set('textures/'+name,'data:'+(image.mime??'image/png')+';base64,'+image.data);this.manifest.materials[id][field]=name;}}}
  clearEffects(){const r=this.effectResources;if(!r)return;for(const u of r.urls){this.revokeUrl(u);this.urls.delete(u);}for(const k of r.files)this.files.delete(k);for(const k of r.materials){delete this.manifest.materials[k];this.materialMetadata.delete(k);}this.effectResources=null;}
  dispose(){for(const u of this.urls)this.revokeUrl(u);this.urls.clear();this.files.clear();}
 }
@@ -64,10 +66,10 @@ export function effectSource(scene,entries,{glow=null}={}){
   for(const[path,t]of Object.entries(packet.textures??{})){
    const id=remap.get(compiled(path)),file=t.data?'data:'+(t.mime??'image/png')+';base64,'+t.data:t.url;if(!file)continue;
    textures[id]={file,sequences:(t.sequences??[]).map(seq=>({clamp:!!seq.clamp,frames:(seq.frames??[]).map(frame=>{
-    const im=frame.images?.[0];return{time:finite(frame.time??frame.duration,.033),uv:frame.uv??(im?[im.min[0],im.min[1],im.max[0],im.max[1]]:[0,0,1,1])};
+    const im=frame.images?.[0];return{time:finite(frame.time??frame.duration,.033),uv:frame.uv??(im?[im.min[0],im.min[1],im.max[0],im.max[1]]:[0,0,1,1]),...(frame.crop?{crop:frame.crop}:im?.cropMin?{crop:[...im.cropMin,...im.cropMax]}:{})};
    })}))};
   }
-  for(const[path,data]of Object.entries(packet.snapshots??{})){const id=remap.get(compiled(path));snapshots[id]={...data,...((data.skinning??data.skin)?.[0]?.joints?{skin:(data.skinning??data.skin).map(s=>s.joints.map((j,i)=>[j,s.weights[i]]))}:{})};}
+  for(const[path,data]of Object.entries(packet.snapshots??{})){const id=remap.get(compiled(path));snapshots[id]=normalizeSnapshot(data);}
   for(const[path,m]of Object.entries(packet.models??{}))if(m.data){const id=remap.get(compiled(path));const file=scene.addGlb(bytes64(m.data),{key:'fx-'+index+'-'+Object.keys(fxModels).length,owner:'fx',register:false});fxModels[id]={file};}
   const root=remap.get(compiled(packet.root));if(!root||!systems[root]){warnings.push((entry.effectId??index)+': корневой партикл отсутствует');continue;}
   const owner=entry.scope==='hero'?'hero':scene.owners.get(entry.itemId)??'hero',id='effect-'+index;

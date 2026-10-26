@@ -284,6 +284,7 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
         const {spawn}=await import('node:child_process');const child=spawn(path.resolve(root,config.viewer),[file],{detached:true,stdio:'ignore',shell:false});
         await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();return json(res,200,{opened:true});
       }
+      if(url.pathname==='/hero-pedestal.glb'&&['GET','HEAD'].includes(req.method)){res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'public, max-age=86400'});if(req.method==='HEAD')return res.end();return fs.createReadStream(path.join(root,'hero-pedestal.glb')).pipe(res);}
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:'Маршрут не найден'});
       if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET'});
       const isSection=/^\/(effects|sets|cosmetics|weather)\.html$/.test(url.pathname);

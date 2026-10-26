@@ -57,11 +57,14 @@ internal static class ParticleExport
                 using var png = bitmap.Encode(SKEncodedImageFormat.Png, 100);
                 var sheet = texture.GetSpriteSheetData();
                 var sequences = sheet?.Sequences.Select(sequence => new {
+                    clamp = sequence.Clamp,
                     frames = sequence.Frames.Select(frame => new {
                         duration = frame.DisplayTime,
                         images = frame.Images.Select(image => new {
-                            min = new[] { image.CroppedMin.X, image.CroppedMin.Y },
-                            max = new[] { image.CroppedMax.X, image.CroppedMax.Y }
+                            min = new[] { image.UncroppedMin.X, image.UncroppedMin.Y },
+                            max = new[] { image.UncroppedMax.X, image.UncroppedMax.Y },
+                            cropMin = new[] { image.CroppedMin.X, image.CroppedMin.Y },
+                            cropMax = new[] { image.CroppedMax.X, image.CroppedMax.Y }
                         }).ToArray()
                     }).ToArray()
                 }).ToArray();

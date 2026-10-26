@@ -39,10 +39,10 @@ internal static class PreviewMetadata
                     activity = activities.FirstOrDefault(), modifiers = activities.Skip(1).ToArray(), additive = animation.IsAdditive });
             }
         } catch (Exception error) { Console.WriteLine("[WARN] Animation metadata: " + error.Message); }
-        return JsonSerializer.SerializeToNode(new { version = 2, attachments, sequences })!;
+        var data=JsonSerializer.SerializeToNode(new { version = 2, attachments, sequences })!;if(loader is not null){data["materials"]=PreviewMaterials.Describe(resource,loader);data["materialVersion"]=1;}return data;
     }
 
-    internal static HashSet<string> AnimationNames(JsonNode metadata, string[] preferred)
+    internal static HashSet<string> AnimationNames(JsonNode metadata, string[] preferred, string[]? activityTags = null)
     {
         var rows=(metadata["sequences"] as JsonArray)?.OfType<JsonObject>().ToArray() ?? [];
         var keep=new System.Text.RegularExpressions.Regex(@"^ACT_DOTA_(LOADOUT|IDLE|IDLE_RARE|RUN|ATTACK|ATTACK2|CAST_ABILITY_[1-6]|RAZE_[1-3]|SPAWN|TELEPORT|DISABLED|VICTORY|TAUNT|DIE)$");
@@ -50,6 +50,8 @@ internal static class PreviewMetadata
         int Score(JsonObject row)=>((row["modifiers"] as JsonArray)?.Count??0)*1000+Name(row).Length+(Name(row).Contains("debut",StringComparison.OrdinalIgnoreCase)?5000:0);
         var names=rows.Where(r=>keep.IsMatch(r["activity"]?.GetValue<string>()??"")&&!Name(r).StartsWith('@')).GroupBy(r=>r["activity"]!.GetValue<string>()).Select(g=>Name(g.OrderBy(Score).First())).Take(24).ToHashSet(StringComparer.Ordinal);
         if(names.Count==0)foreach(var row in rows.Where(r=>!Name(r).StartsWith('@')&&System.Text.RegularExpressions.Regex.IsMatch(Name(r),"idle|loadout|run|walk|attack",System.Text.RegularExpressions.RegexOptions.IgnoreCase)).Take(24))names.Add(Name(row));
+        var tags=(activityTags??[]).Append("loadout").ToHashSet(StringComparer.Ordinal);
+        foreach(var row in rows.Where(r=>!Name(r).StartsWith('@')&&keep.IsMatch(r["activity"]?.GetValue<string>()??"")).Take(1000)){var modifiers=(row["modifiers"] as JsonArray)?.Select(v=>v?.GetValue<string>()??"").ToArray()??[];if(modifiers.Length>0&&modifiers.Any(m=>m!="loadout")&&modifiers.All(tags.Contains)&&names.Count<96)names.Add(Name(row));}
         foreach(var name in preferred)if(rows.Any(r=>Name(r)==name)&&!name.StartsWith('@'))names.Add(name);
         return names;
     }

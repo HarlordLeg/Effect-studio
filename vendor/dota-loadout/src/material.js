@@ -50,7 +50,7 @@ export function heroMaterial(m, texture, time, light, cube = null) {
   // as dark stars).
   if (m.additive) Object.assign(material, { blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.ZeroFactor, blendDstAlpha: THREE.OneFactor });
   const uniforms = {
-    ...light, tMasks: { value: m.masks ? texture(m.masks) : BLACK }, tSpec: { value: m.specular ? texture(m.specular) : BLACK },
+    ...light, tExponent: { value: m.exponent ? texture(m.exponent) : BLACK }, tMasks: { value: m.masks ? texture(m.masks) : BLACK }, tSpec: { value: m.specular ? texture(m.specular) : BLACK },
     tDetail: { value: m.detail ? texture(m.detail, true) : BLACK }, tFresnel: { value: m.fresnel ? texture(m.fresnel) : GREY }, uTime: time,
     uDetailScale: { value: new THREE.Vector2(...(m.detailScale?.length === 2 ? m.detailScale : [1, 1])) }, uDetailScroll: { value: new THREE.Vector2(...(m.detailScroll || [0, 0])) },
     uDetailBlend: { value: m.detailMode ? m.detailBlend ?? 1 : 0 }, uDetailTint: { value: srgb(m.detailTint || [1, 1, 1]) },
@@ -74,14 +74,14 @@ export function heroMaterial(m, texture, time, light, cube = null) {
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 #define USE_PACKED_NORMALMAP
-uniform sampler2D tMasks, tSpec, tDetail, tFresnel, tDiffuseWarp; uniform float uTime, uDetailBlend, uSpecExponent, uSpecScale, uDiffuseWarp, uCubeScale; uniform vec2 uDetailScale, uDetailScroll;
+uniform sampler2D tExponent, tMasks, tSpec, tDetail, tFresnel, tDiffuseWarp; uniform float uTime, uDetailBlend, uSpecExponent, uSpecScale, uDiffuseWarp, uCubeScale; uniform vec2 uDetailScale, uDetailScroll;
 uniform mat3 uToSource;${useCube ? '\nuniform samplerCube tCube;' : ''}
 uniform vec3 uRimColor, uSpecColor, uDetailTint, uLightDir, uLightColor, uAmbientDir, uAmbientColor, uAmbientTint, uShadowColor, uUp;`)
       .replace('#include <opaque_fragment>', `${m.color ? '' : 'vec2 vMapUv = vec2(0.0);'}
 vec4 heroMasks = texture2D(tMasks, vMapUv), heroSpec = texture2D(tSpec, vMapUv), heroDetailTex = texture2D(tDetail, vMapUv * uDetailScale + fract(uDetailScroll * uTime));
 vec3 heroBase = diffuseColor.rgb, heroV = normalize(vViewPosition), heroR = reflect(-heroV, normal);
 vec4 heroWarp = texture2D(tFresnel, vec2(clamp(dot(normal, heroV), 0.0, 1.0), 0.5));
-float heroDetail = heroMasks.r * uDetailBlend, heroNL = dot(normal, uLightDir), heroExponent = uSpecExponent * ${m.normal ? 'texture2D(normalMap, vNormalMapUv).b' : '1.0'};
+float heroDetail = heroMasks.r * uDetailBlend, heroNL = dot(normal, uLightDir), heroExponent = uSpecExponent * ${m.exponent ? 'texture2D(tExponent, vMapUv).r' : m.normal ? 'texture2D(normalMap, vNormalMapUv).b' : '1.0'};
 vec3 heroDetailColor = heroDetailTex.rgb * uDetailTint;
 ${DETAIL_ALBEDO[m.detailMode] ?? 'vec3 heroAlbedo = heroBase + heroDetailColor * heroDetail;'}
 float heroShadow = 1.0;

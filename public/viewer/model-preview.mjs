@@ -8,7 +8,7 @@ export class ModelPreview {
  constructor(canvas,stage,{fetcher=fetch,metadataProvider=null}={}){
   this.fetcher=fetcher;this.metadataProvider=metadataProvider;this.downloads=new SceneDownloads();
   this.canvas=canvas;this.stage=stage;this.animation=0;this.generation=0;this.loadingVersion=0;this.effectQueue=Promise.resolve();this.document=new SceneDocument();this.keys=new Set();this.lastEntries=[];
-  this.viewer=new HeroViewer(canvas,{assets:new URL('/',location.href).href,controls:true,wheel:'zoom',bloom:.35,softParticles:true,onFrame:dt=>this.moveCamera(dt)});
+  this.viewer=new HeroViewer(canvas,{assets:new URL('/',location.href).href,controls:true,wheel:'zoom',framing:'full',bloom:.35,softParticles:true,onFrame:dt=>this.moveCamera(dt)});
   this.document.subscribe(change=>{if(change.kind==='material')this.viewer.hero?.studioMaterial(change.id,this.document.materials[change.id]);else this.queueDocumentEffects();});
   canvas.tabIndex=0;this.down=e=>{if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ShiftLeft','ShiftRight'].includes(e.code)){this.keys.add(e.code);e.preventDefault();}};this.up=e=>this.keys.delete(e.code);this.blur=()=>this.keys.clear();
   canvas.addEventListener('keydown',this.down);canvas.addEventListener('keyup',this.up);canvas.addEventListener('blur',this.blur);this.focus=()=>canvas.focus({preventScroll:true});canvas.addEventListener('pointerdown',this.focus);
@@ -17,15 +17,16 @@ export class ModelPreview {
  async load(url){return this.loadScene({heroId:'single-model',parts:[{role:'hero',id:'hero',url,key:url}]},'');}
  async loadScene(manifest,base,query=''){
   const ticket=++this.generation;this.loadingVersion++;this.viewer.loading++;this.abort?.abort();this.abort=new AbortController();
-  const parts=manifest.parts??[];if(!parts.length||parts.length>128)throw Error('Некорректный состав сцены');
+  if(!manifest.parts?.length)throw Error('Некорректный состав сцены');
+  const parts=[...(manifest.parts??[]).filter(p=>p.role!=='pedestal'),{role:'pedestal',id:'studio-pedestal',key:'studio-pedestal-v1',url:'/hero-pedestal.glb'}];if(!parts.length||parts.length>128)throw Error('Некорректный состав сцены');
   const signature=sceneSignature(manifest);
   if(signature===this.signature&&this.viewer.hero){this.preservedScene=true;return this.asset.json.animations;}
   const source=new SceneSource();const started=performance.now();
   try{
    const {buffers,...stats}=await this.downloads.load(parts,base,query,{fetcher:this.fetcher,signal:this.abort.signal,onProgress:detail=>this.progress(detail)});this.lastLoadStats=stats;this.progress({phase:'prepare'});
    if(ticket!==this.generation)throw cancelled();
-   let heroSeen=false;for(let i=0;i<parts.length;i++){const p=parts[i],isHero=p.role==='hero'||(!heroSeen&&i===0);if(isHero)heroSeen=true;let owner=isHero?'hero':(p.slot??manifest.selectedItems?.find(it=>it.id===p.id)?.slot??'part-'+i);if(Object.hasOwn(source.manifest.models,owner))owner+='-'+i;source.addGlb(buffers[i],{key:'part-'+i,owner,itemId:p.id});}
-   source.manifest.id=manifest.heroId??'effect-studio';
+   let heroSeen=false;for(let i=0;i<parts.length;i++){const p=parts[i],isHero=p.role==='hero'||(!heroSeen&&i===0);if(isHero)heroSeen=true;let owner=p.role==='pedestal'?'pedestal':isHero?'hero':(p.slot??manifest.selectedItems?.find(it=>it.id===p.id)?.slot??'part-'+i);if(Object.hasOwn(source.manifest.models,owner))owner+='-'+i;source.addGlb(buffers[i],{key:'part-'+i,owner,itemId:p.id});}
+   source.manifest.studioPedestal=true;source.manifest.id=manifest.heroId??'effect-studio';
    let metadata;try{metadata=await this.metadataProvider?.({heroId:manifest.heroId,preferred:manifest.preferredAnimations??[],models:[...source.modelMetadata.values()],signal:this.abort.signal});}catch(e){if(e.name==='AbortError')throw e;source.warnings.push('Метаданные креплений: '+e.message);}if(ticket!==this.generation)throw cancelled();source.applyMetadata(metadata,manifest.preferredAnimations??[]);
    const playing=this.asset?.json.animations[this.animation]?.name;
    const camera=this.viewer.hero?{center:this.viewer.view.center.clone(),zoom:this.viewer.view.zoomTarget,angle:this.viewer.turn.target,pitch:this.viewer.view.pitch??0}:null;

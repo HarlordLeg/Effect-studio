@@ -1,3 +1,4 @@
+import {SnapshotFitter} from '../../../public/viewer/snapshot-bindings.mjs';
 // A Dota 2 hero in the browser: the hero, his items and pedestal from the files built by
 // tools/build-heroes.mjs, lit like the game's loadout page, animated, with his particle effects,
 // turned by dragging. One viewer keeps its WebGL context and swaps heroes with load().
@@ -266,6 +267,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   const names = Object.keys(manifest.models), loaded = Object.fromEntries(await Promise.all(names.map(async (k) => [k, await loader.loadAsync(url(manifest.models[k]))])));
   const propFiles = [...new Set([...(manifest.props || []).map((p) => p.file), ...Object.values(manifest.fxModels || {}).map((m) => m.file)])];
   const propModels = Object.fromEntries(await Promise.all(propFiles.map(async (f) => [f, await loader.loadAsync(url(f))])));
+  const snapshotFitter=new SnapshotFitter(Object.entries(loaded).filter(([name])=>name!=='pedestal'&&name!=='animation-source').map(([,model])=>model),SOURCE_TO_GLTF);
   const heroModel = loaded.hero, root = heroModel.scene, bones = {}, inverses = {};
 
   // Our VRF GLBs retain native names for attachment/snapshot lookup even when
@@ -332,7 +334,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     const key = skin?.[o.userData.material] ?? o.userData.material, m = mats[key]; o.visible = !!m; if (!m) return;
     if (!materials.has(base + key)) materials.set(base + key, heroMaterial(m, tex, time, light, cubeMap));
     if (!o.material.userData.hero) o.material.dispose(); // the loader's; ours are shared
-    o.material = materials.get(base + key);
+    o.material = materials.get(base + key);if(o.geometry.attributes.color)o.material.vertexColors=true;
   };
   const dress = (group, ...rest) => group.traverse((o) => { if (o.isMesh) dressMesh(o, ...rest); });
   dress(turntable);
@@ -396,6 +398,13 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   const isPedestal = (o) => { for (let p = o; p; p = p.parent) if (p === loaded.pedestal?.scene) return true; return false; };
   for (const [mesh, i] of samples) { mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld); box.expandByPoint(point); if (!isPedestal(mesh)) heroBox.expandByPoint(point); }
   if (heroBox.isEmpty()) heroBox.copy(box);
+  if (loaded.pedestal && manifest.studioPedestal) {
+    // The asset's top is y=0, matching the hero's native ground plane. Floating
+    // idle animations retain their authored height above it.
+    const pedestal=loaded.pedestal.scene,radius=THREE.MathUtils.clamp(heroBox.getSize(new THREE.Vector3()).y*.48,.65,3);
+    pedestal.scale.set(radius,radius,radius);turntable.updateMatrixWorld(true);
+    box.copy(heroBox).union(new THREE.Box3().setFromObject(pedestal));
+  }
   // Props (Pudge's clown car, Largo's frogs): one copy per event, at the hero, shown while their
   // animation plays from the event's frame on, their own clip kept in step with the hero's time.
   // Added after the bounds, which are the hero's alone. (No prop of the game uses an attachment.)
@@ -588,6 +597,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
       for (const e of effects) e.sim.dispose(); effects = [];
       for (const e of live) e.sim.dispose(); live.length = 0;
       for (const { texture } of lib.cache.values()) texture?.dispose(); lib.cache.clear();
+      snapshotFitter.fit(patch.snapshots);
       lib.systems = patch.systems || {}; lib.textures = patch.textures || {}; lib.snapshots = patch.snapshots || {};
       for (const [path, def] of Object.entries(lib.systems)) if (def && !def._path) Object.defineProperty(def, '_path', { value: path });
       for (const [path, info] of Object.entries(patch.fxModels || {})) {

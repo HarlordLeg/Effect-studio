@@ -1,0 +1,18 @@
+import fs from 'node:fs';import {sceneAnimations} from '../public/viewer/scene-animations.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
+import {SnapshotFitter,normalizeSnapshot} from '../public/viewer/snapshot-bindings.mjs';import {SceneSource,writeGlb,effectSource} from '../public/viewer/scene-source.mjs';
+test('native snapshot skinning reaches the renderer as joint-weight pairs, including legacy skin packets',()=>{
+ const raw={position:[[1,2,3]],skinning:[{joints:['totem_1','wrist_R'],weights:[.75,.25]}]};const source=new SceneSource();const packet={root:'a.vpcf_c',definitions:{'a.vpcf_c':{}},snapshots:{'weapon.vsnap_c':raw}};const data=effectSource(source,[{packet}]);assert.deepEqual(data.snapshots['studio/0/weapon.vsnap'].skinning,[[['totem_1',.75],['wrist_R',.25]]]);assert.deepEqual(normalizeSnapshot({skin:raw.skinning}).skinning,data.snapshots['studio/0/weapon.vsnap'].skinning);assert.equal(raw.skinning[0].joints[0],'totem_1');
+});
+test('rigid snapshots choose the bind-pose bone that fits the model, not the effect origin',()=>{
+ const scene=new THREE.Scene(),bone=new THREE.Bone();bone.name='totem_1';bone.position.set(.254,0,0);scene.add(bone);scene.updateMatrixWorld(true);const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute([.254,0,0,.255,0,0],3));const mesh=new THREE.SkinnedMesh(geometry,new THREE.MeshBasicMaterial());mesh.bind(new THREE.Skeleton([bone],[bone.matrixWorld.clone().invert()]));scene.add(mesh);
+ const rigid={position:[[0,0,0],[.02,0,0]]},weighted={position:[[0,0,0]],skinning:[[['totem_1',1]]]};const fitter=new SnapshotFitter([{scene}],new THREE.Matrix4().makeScale(.0254,.0254,.0254));fitter.fit({rigid,weighted});assert.equal(rigid.bone,'totem_1');assert.equal(weighted.bone,undefined);assert.equal(fitter.models,null);fitter.fit({again:{position:[[1000,1000,1000]]}});
+});
+test('native material sidecars apply masks, detail and alpha switches to the matching wearable only',()=>{
+ const source=new SceneSource();const bytes=writeGlb({json:{asset:{version:'2.0'},materials:[{name:'earthshaker_arcana_weapon'}]},bin:new Uint8Array()});source.addGlb(bytes,{key:'weapon',owner:'weapon'});source.addGlb(bytes,{key:'head',owner:'head'});source.applyMaterials('weapon',{'materials/items/earthshaker/earthshaker_arcana_weapon.vmat':{descriptor:{additive:true,alphaTest:.5,detailMode:2,detailScroll:[0,.05]},images:{masks:{mime:'image/png',data:'AAAA'}}}});assert.equal(source.manifest.materials['weapon::0'].additive,true);assert.equal(source.manifest.materials['head::0'].additive,undefined);assert.equal(source.manifest.materials['weapon::0'].masks,'weapon::0-native-masks');assert.equal(source.files.get('textures/weapon::0-native-masks'),'data:image/png;base64,AAAA');source.dispose();
+});
+test('sprite sheets preserve the full frame UV, content crop and sequence clamp independently',()=>{
+ const packet={root:'a.vpcf_c',definitions:{'a.vpcf_c':{}},textures:{'a.vtex_c':{data:'AAAA',sequences:[{clamp:true,frames:[{duration:.25,images:[{min:[0,0],max:[.5,.5],cropMin:[.1,.15],cropMax:[.4,.45]}]}]}]}}};const result=effectSource(new SceneSource(),[{packet}]);assert.deepEqual(result.textures['studio/0/a.vtex'].sequences[0],{clamp:true,frames:[{time:.25,uv:[0,0,.5,.5],crop:[.1,.15,.4,.45]}]});
+});
+
+test('real Earthshaker arcana sequence metadata selects the same idle as the reference loadout',()=>{const rows=JSON.parse(fs.readFileSync(new URL('./fixtures/earthshaker-arcana-viewer-sequences.json',import.meta.url)));assert.equal(sceneAnimations(rows,rows).idle,'es_arc_idle_v2_loadout');});

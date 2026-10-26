@@ -1,0 +1,377 @@
+[
+  {
+    "name": "es_arc_idle_v2",
+    "loop": true,
+    "activity": "ACT_DOTA_IDLE",
+    "modifiers": [],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack1_alt",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [],
+    "additive": false
+  },
+  {
+    "name": "es_arcana_attack2",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack3",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [],
+    "additive": false
+  },
+  {
+    "name": "es_arc_totem_attack",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_death",
+    "loop": false,
+    "activity": "ACT_DOTA_DIE",
+    "modifiers": [],
+    "additive": false
+  },
+  {
+    "name": "es_arc_idle_injured",
+    "loop": true,
+    "activity": "ACT_DOTA_IDLE",
+    "modifiers": [
+      "injured"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack1_alt_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arcana_attack2_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack3_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_totem_attack_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem",
+      "injured"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_debut_stillpose",
+    "loop": true,
+    "activity": "ACT_DOTA_LOADOUT",
+    "modifiers": [
+      "debut"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_idle_v2_loadout",
+    "loop": true,
+    "activity": "ACT_DOTA_LOADOUT",
+    "modifiers": [],
+    "additive": false
+  },
+  {
+    "name": "es_arc_loadout_post_game",
+    "loop": true,
+    "activity": "ACT_DOTA_LOADOUT",
+    "modifiers": [
+      "PostGameIdle"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_loadout_effigy",
+    "loop": true,
+    "activity": "ACT_DOTA_IDLE_STATUE",
+    "modifiers": [],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_totem_attack",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem",
+      "ti9_totem"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_totem_attack_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem",
+      "ti9_totem",
+      "injured"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_idle_injured",
+    "loop": true,
+    "activity": "ACT_DOTA_IDLE",
+    "modifiers": [
+      "injured",
+      "ti9_totem"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_attack1_alt_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "ti9_totem"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arcana_attack2_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "ti9_totem"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_attack3_injured",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "ti9_totem"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_idle_v2_loadout_beard_shrink",
+    "loop": true,
+    "activity": "ACT_DOTA_LOADOUT",
+    "modifiers": [
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_loadout_post_game_beard_shrink",
+    "loop": true,
+    "activity": "ACT_DOTA_LOADOUT",
+    "modifiers": [
+      "PostGameIdle",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_totem_attack_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem",
+      "ti9_totem",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_totem_attack_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem",
+      "ti9_totem",
+      "injured",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_idle_injured_beard_shrink",
+    "loop": true,
+    "activity": "ACT_DOTA_IDLE",
+    "modifiers": [
+      "injured",
+      "ti9_totem",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_attack1_alt_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "ti9_totem",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arcana_attack2_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "ti9_totem",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "ti9_es_arc_attack3_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "ti9_totem",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_idle_injured_beard_shrink",
+    "loop": true,
+    "activity": "ACT_DOTA_IDLE",
+    "modifiers": [
+      "injured",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack1_alt_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arcana_attack2_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack3_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "injured",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_totem_attack_injured_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem",
+      "injured",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_idle_v2_beard_shrink",
+    "loop": true,
+    "activity": "ACT_DOTA_IDLE",
+    "modifiers": [
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack1_alt_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arcana_attack2_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_attack3_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_totem_attack_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_ATTACK",
+    "modifiers": [
+      "enchant_totem",
+      "beard_shrink"
+    ],
+    "additive": false
+  },
+  {
+    "name": "es_arc_death_beard_shrink",
+    "loop": false,
+    "activity": "ACT_DOTA_DIE",
+    "modifiers": [
+      "beard_shrink"
+    ],
+    "additive": false
+  }
+]
