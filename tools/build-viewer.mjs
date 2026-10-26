@@ -6,3 +6,7 @@ fs.mkdirSync(path.join(root,'public/viewer/licenses'),{recursive:true});for(cons
 fs.copyFileSync(path.join(root,'node_modules/three/LICENSE'),path.join(root,'public/viewer/licenses/THREE-LICENSE'));
 
 fs.copyFileSync(path.join(root,'licenses/VRF-MIT.txt'),path.join(root,'public/viewer/licenses/VRF-MIT.txt'));
+
+// Keep geometry regressions runnable before dependency installation, like the
+// committed browser runtime. Rebuild from the same engine source on viewer builds.
+await build({absWorkingDir:root,entryPoints:['tests/helpers/viewer-test-runtime.mjs'],outfile:'tests/helpers/viewer-test-runtime.bundle.mjs',bundle:true,format:'esm',platform:'node',target:['node22'],minify:true,legalComments:'eof',logLevel:'info'});

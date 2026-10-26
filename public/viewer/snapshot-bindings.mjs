@@ -1,11 +1,8 @@
 // Rigid-snapshot fitting follows dota-loadout tools/lib/hero.mjs (MIT).
 // A KD tree bounds the nearest-vertex work instead of scanning every vertex.
 import * as THREE from 'three';
-export function normalizeSnapshot(data){
- const rows=data.skinning??data.skin;
- const skinning=Array.isArray(rows)?rows.map(row=>Array.isArray(row)?row:(row?.joints??[]).map((name,i)=>[name,row.weights?.[i]??0])):undefined;
- return {...data,...(skinning?{skinning,skin:skinning}:{})};
-}
+export {normalizeSnapshot} from './snapshot-data.mjs';
+
 function tree(points,depth=0){if(!points.length)return null;const axis=depth%3;points.sort((a,b)=>a[axis]-b[axis]);const mid=points.length>>1;return{p:points[mid],axis,left:tree(points.slice(0,mid),depth+1),right:tree(points.slice(mid+1),depth+1)};}
 function nearest(node,p,best=Infinity){if(!node)return best;const d=p.reduce((s,v,i)=>s+(v-node.p[i])**2,0);best=Math.min(best,d);const delta=p[node.axis]-node.p[node.axis],first=delta<0?'left':'right',second=delta<0?'right':'left';best=nearest(node[first],p,best);if(delta*delta<best)best=nearest(node[second],p,best);return best;}
 export class SnapshotFitter{

@@ -1,4 +1,4 @@
-import {normalizeSnapshot} from './snapshot-bindings.mjs';
+import {normalizeSnapshot} from './snapshot-data.mjs';
 import {sceneAnimations,sourceModel} from './scene-animations.mjs';
 const enc=new TextEncoder(),dec=new TextDecoder();
 const compiled=p=>String(p??'').replace(/_c$/,'');

@@ -1,6 +1,6 @@
 import fs from 'node:fs';import {sceneAnimations} from '../public/viewer/scene-animations.mjs';
-import test from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
-import {SnapshotFitter,normalizeSnapshot} from '../public/viewer/snapshot-bindings.mjs';import {SceneSource,writeGlb,effectSource} from '../public/viewer/scene-source.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {THREE,SnapshotFitter,normalizeSnapshot} from './helpers/viewer-test-runtime.bundle.mjs';
+import {SceneSource,writeGlb,effectSource} from '../public/viewer/scene-source.mjs';
 test('native snapshot skinning reaches the renderer as joint-weight pairs, including legacy skin packets',()=>{
  const raw={position:[[1,2,3]],skinning:[{joints:['totem_1','wrist_R'],weights:[.75,.25]}]};const source=new SceneSource();const packet={root:'a.vpcf_c',definitions:{'a.vpcf_c':{}},snapshots:{'weapon.vsnap_c':raw}};const data=effectSource(source,[{packet}]);assert.deepEqual(data.snapshots['studio/0/weapon.vsnap'].skinning,[[['totem_1',.75],['wrist_R',.25]]]);assert.deepEqual(normalizeSnapshot({skin:raw.skinning}).skinning,data.snapshots['studio/0/weapon.vsnap'].skinning);assert.equal(raw.skinning[0].joints[0],'totem_1');
 });
