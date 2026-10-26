@@ -1,3 +1,4 @@
+import {adminSetCatalog,adminSetPayload} from './lib/admin-set-preview.mjs';
 import {DownloadTickets,serveDownload} from './lib/downloads.mjs';
 import {liveDrowWardrobe} from './lib/drow-wardrobe.mjs';
 import {publicArcanaIcons} from './lib/public-arcanas.mjs';
@@ -75,6 +76,32 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
         const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
+        if(url.pathname==='/api/admin/set-catalog'&&req.method==='GET')return json(res,200,adminSetCatalog(builder.catalog));
+        if(url.pathname==='/api/admin/set-preview'&&req.method==='POST'){
+          const data=adminSetPayload(builder.catalog,await body(req));previews.touch(adminOwner);
+          if(staticViewer.enabled()){
+            const job=await assembleStaticPreview(data,builder.catalog,staticViewer.manifest(),staticRead),base=config.staticViewerBaseUrl??'/static-viewer/';
+            job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=adminOwner;job.created=Date.now();
+            for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);
+            staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);
+            const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);
+          }
+          const rows=normalizeSelections(builder,data);if(!rows.length)throw Error('Set has no previewable items');
+          const job=previews.create({...rows[0],selections:rows,partsOnly:true,previewForm:data.previewForm},adminOwner);return json(res,202,publicPreview(job));
+        }
+        const adminPreview=url.pathname.match(/^\/api\/admin\/set-previews\/([a-f0-9]{32})(\/(effect|parts\/\d+))?$/);
+        if(adminPreview&&req.method==='GET'){
+          const job=previews.jobs.get(adminPreview[1])??staticJobs.get(adminPreview[1]);if(!job||job.owner!==adminOwner)return json(res,404,{error:'Preview not found'});previews.touch(adminOwner);
+          if(!adminPreview[2]){const {effects,...metadata}=publicPreview(job);return json(res,200,metadata);}
+          if(job.status!=='ready')return json(res,409,{error:'Preview is not ready'});
+          if(adminPreview[3]==='effect'){
+            if(job.effects)return json(res,200,{effects:job.effects});
+            const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Effect unavailable'});
+            res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);
+          }
+          const index=Number(adminPreview[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part unavailable'});
+          res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);
+        }
         if(url.pathname==='/api/admin/notifications'&&req.method==='GET')return json(res,200,notifications.feed());
         if(url.pathname==='/api/admin/notifications'&&req.method==='POST')return json(res,201,{item:notifications.publish(await body(req))});
         if(url.pathname==='/api/admin/notifications/delete'&&req.method==='POST'){notifications.remove((await body(req)).id);return json(res,200,{ok:true});}

@@ -12,9 +12,15 @@
     "desktop": "electron desktop.cjs",
     "test": "node --test tests/*.test.mjs",
     "site-key": "node tools/site-key.mjs",
-    "doctor": "node tools/doctor.mjs"
+    "doctor": "node tools/doctor.mjs",
+    "build:viewer": "node tools/build-viewer.mjs"
   },
   "devDependencies": {
-    "electron": "^38.0.0"
+    "electron": "^38.0.0",
+    "esbuild": "0.28.2"
+  },
+  "dependencies": {
+    "dota-loadout": "0.1.0",
+    "three": "0.186.1"
   }
 }

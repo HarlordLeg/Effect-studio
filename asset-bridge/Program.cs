@@ -98,6 +98,7 @@ internal static class Program
             try
             {
                 exporter.Export(resource, target);
+                PreviewMetadata.Write(resource, target);
                 if (!File.Exists(target) || new FileInfo(target).Length < 20)
                     throw new InvalidDataException("GLB export is empty: " + modelPath);
                 File.WriteAllText(target + ".export.json", JsonSerializer.Serialize(new { model = modelPath, mode, warning, animations }));
