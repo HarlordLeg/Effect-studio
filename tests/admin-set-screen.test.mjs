@@ -16,7 +16,7 @@ test('cookie only authenticates normal image requests; public preview stays unch
 test('admin set namespace supports shared catalog, private preview parts and strict frame policy',async()=>{
  const{server,url,previews}=await startServer({port:0,adminAuth:admin});try{
   const base=url+'/api/admin/set-studio/',headers={Authorization:'Bearer valid'};
-  assert.equal((await fetch(base+'catalog')).status,401);
+  assert.equal((await fetch(base+'catalog')).status,401);assert.equal((await fetch(base+'model-metadata',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({models:[]})})).status,401);assert.equal((await fetch(base+'model-metadata',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({models:[]})})).status,200);
   const response=await fetch(base+'session',{method:'POST',headers});assert.equal(response.status,200);const cookie=response.headers.get('set-cookie');assert.match(cookie,/HttpOnly/);assert.match(cookie,/SameSite=Strict/);assert(!cookie.includes('Path=/;'));
   assert.equal((await fetch(base+'catalog',{headers})).status,200);assert.equal((await fetch(base+'catalog',{headers:{Cookie:cookie.split(';')[0]}})).status,200);
   assert.equal((await fetch(base+'widget/session',{method:'POST',headers})).status,404);

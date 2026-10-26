@@ -3,3 +3,5 @@ Upstream: https://github.com/justkiddingxd/dota-loadout
 The particle implementation includes MIT-licensed Source 2 Viewer work; see source comments.
 Local changes in src/viewer.js expose scene updates, effect visibility and host camera updates for Effect Studio; src/material.js retains GLB base color factors. No upstream asset hosting is used by the scene adapter.
 Game assets remain the property of Valve and are not supplied by this source package.
+
+The asset pipeline and animation activity ordering were reviewed against upstream commit 3c09d200391cf19db14705dbaca0d6c544dae670. Effect Studio additionally preserves native bone aliases, native attachment metadata and additive-clip flags; it supports vertical camera orbit and cancellable cached part downloads.

@@ -1,3 +1,4 @@
+import {ViewerMetadata} from './lib/viewer-metadata.mjs';
 import {adminSetAccess,ADMIN_SET_COOKIE} from './lib/admin-set-session.mjs';
 import {adminSetCatalog,adminSetPayload} from './lib/admin-set-preview.mjs';
 import {DownloadTickets,serveDownload} from './lib/downloads.mjs';
@@ -46,6 +47,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
   const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
   const staticViewer=createStaticViewer(root,config),staticJobs=new Map(),staticData=new Map();
   const staticRead=ref=>{if(!/^assets\/[a-f0-9]{64}\.json$/.test(ref))throw Error('Invalid static reference');if(!staticData.has(ref))staticData.set(ref,JSON.parse(fs.readFileSync(path.join(staticViewer.directory,ref),'utf8')));while(staticData.size>96)staticData.delete(staticData.keys().next().value);return staticData.get(ref);};
+  const viewerMetadata=new ViewerMetadata(root,previews.config,builder.store,(...args)=>previews.run(...args));
   const tracking=new WeakMap(),downloadTickets=new DownloadTickets();
   const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
   builder.onReady=job=>count('vpks',tracking.get(job));
@@ -165,6 +167,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       const allowed=localAdmin||session||adminStudioOwner;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=adminStudioOwner??(session?session.id+':'+session.nonce:'local');previews.touch(owner);
+      if(adminStudioOwner&&url.pathname==='/api/model-metadata'&&req.method==='POST'){const data=await body(req);return json(res,200,await viewerMetadata.get(data.models,data.animationModels??[],data.preferred??[]));}
       if(req.method==='GET'&&staticViewer.api(req,res,url))return;
       if(staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
       if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
@@ -224,7 +227,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
-        if(staticViewer.enabled()){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);const data=await body(req);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,url:'/api/admin/set-studio/previews/'+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
+        if(staticViewer.enabled()){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);const data=await body(req);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,key:p.key??path.basename(job.partFiles[i],'.glb'),url:'/api/admin/set-studio/previews/'+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
         const data=await body(req);let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
         const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
         if(stance&&setRows)setRows=kineticBuildChoices(setRows,[stance]);

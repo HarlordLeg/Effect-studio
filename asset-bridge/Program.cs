@@ -6,7 +6,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class Program
 {
     private sealed record DefaultModel(string Model, string Output);
-    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null);
+    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null, string[]? MetadataModels = null, string[]? MetadataAnimationModels = null, string[]? MetadataPreferredAnimations = null);
 
     public static int Main(string[] args)
     {
@@ -30,6 +30,27 @@ internal static class Program
                 if (File.Exists(core)) loader.AddPackageToSearch(core);
             }
 
+
+            if (request.MetadataModels is not null)
+            {
+                if (request.MetadataModels.Length > 32) throw new InvalidDataException("Too many metadata models");
+                var models = new Dictionary<string, System.Text.Json.Nodes.JsonNode>();
+                var warnings = new List<string>();
+                foreach (var path in request.MetadataModels.Distinct()) {
+                    if (!path.StartsWith("models/", StringComparison.Ordinal) || !path.EndsWith(".vmdl_c", StringComparison.Ordinal) || path.Split('/').Contains("..")) throw new InvalidDataException("Invalid model path");
+                    try { using var source = loader.LoadFile(path) ?? throw new FileNotFoundException(path); models[path] = PreviewMetadata.Describe(source, loader);
+                        if ((request.MetadataAnimationModels??[]).Contains(path)) {
+                            try {
+                                var glb=Path.Combine(Path.GetDirectoryName(target)!,"animations-"+models.Count+".glb");
+                                ExportModel(loader,path,glb,false,animationFilter:PreviewMetadata.AnimationNames(models[path],request.MetadataPreferredAnimations??[]));
+                                models[path]["animationGlb"]=Convert.ToBase64String(File.ReadAllBytes(glb));
+                            } catch(Exception error) {warnings.Add(path+": animation recovery failed: "+error.Message);}
+                        } }
+                    catch (Exception error) { warnings.Add(path + ": " + error.Message); }
+                }
+                File.WriteAllText(target, JsonSerializer.Serialize(new {models,warnings}));
+                return 0;
+            }
 
             if (request.ThumbnailTexture is not null)
             {
@@ -73,7 +94,7 @@ internal static class Program
             return 1;
         }
     }
-    private static void ExportModel(GameFileLoader loader, string modelPath, string target, bool materials, int skin = 0)
+    private static void ExportModel(GameFileLoader loader, string modelPath, string target, bool materials, int skin = 0, HashSet<string>? animationFilter = null)
     {
         using var resource = loader.LoadFile(modelPath) ?? throw new FileNotFoundException("Model not found", modelPath);
         if (resource.DataBlock is not Model) throw new InvalidDataException("Resource is not a model: " + modelPath);
@@ -92,13 +113,15 @@ internal static class Program
                 ProgressReporter = new Progress<string>(message => Console.WriteLine(message)),
                 ExportMaterials = mode != "geometry",
                 ExportAnimations = animations,
+                ComposeAdditiveAnimations = true,
                 AdaptTextures = mode == "adapted",
                 SatelliteImages = false,
             };
+            if(animationFilter is not null)foreach(var animation in animationFilter)exporter.AnimationFilter.Add(animation);
             try
             {
                 exporter.Export(resource, target);
-                PreviewMetadata.Write(resource, target);
+                PreviewMetadata.Write(resource, target, loader);
                 if (!File.Exists(target) || new FileInfo(target).Length < 20)
                     throw new InvalidDataException("GLB export is empty: " + modelPath);
                 File.WriteAllText(target + ".export.json", JsonSerializer.Serialize(new { model = modelPath, mode, warning, animations }));

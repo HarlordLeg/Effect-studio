@@ -1,3 +1,4 @@
+import {sceneAnimations,sourceModel} from './scene-animations.mjs';
 const enc=new TextEncoder(),dec=new TextDecoder();
 const compiled=p=>String(p??'').replace(/_c$/,'');
 const systemKey=p=>compiled(p).replace(/\.vpcf$/,'');
@@ -12,9 +13,9 @@ export function writeGlb({json,bin,extra=[]}){
 }
 const mimeOf=s=>/webp/i.test(s)?'image/webp':'image/png';
 const rgba=c=>Array.from(c??[1,1,1,1],v=>finite(v,1));
-export function normalizeAttachment(row){const v=row?.value??row,k=Math.max(1,Math.min(4,Number(v?.m_nInfluences??v?.bones?.length??1)));if(!v)return null;const bones=(v.bones??v.m_influenceNames??[]).slice(0,k);if(!bones.length)return null;return{bones,offsets:(v.offsets??v.m_vInfluenceOffsets??bones.map(()=>[0,0,0])).slice(0,k),rotations:(v.rotations??v.m_vInfluenceRotations??bones.map(()=>[0,0,0,1])).slice(0,k),weights:(v.weights??v.m_influenceWeights??bones.map((_,i)=>i?0:1)).slice(0,k)};}
+export function normalizeAttachment(row){const v=row?.value??row,k=Math.max(1,Math.min(4,Number(v?.m_nInfluences??v?.bones?.length??1)));if(!v)return null;const bones=(v.bones??v.m_influenceNames??[]).slice(0,k);if(!bones.length)return null;return{bones,offsets:(v.offsets??v.m_vInfluenceOffsets??bones.map(()=>[0,0,0])).slice(0,k),rotations:(v.rotations??v.m_vInfluenceRotations??bones.map(()=>[0,0,0,1])).slice(0,k),weights:(v.weights??v.m_influenceWeights??bones.map((_,i)=>i?0:1)).slice(0,k),ignoreRotation:!!(v.ignoreRotation??v.m_bIgnoreRotation)};}
 export class SceneSource {
- constructor({createUrl=b=>URL.createObjectURL(b),revokeUrl=u=>URL.revokeObjectURL(u)}={}){this.createUrl=createUrl;this.revokeUrl=revokeUrl;this.urls=new Set();this.files=new Map();this.owners=new Map();this.materialMetadata=new Map();this.warnings=[];this.manifest={id:'effect-studio',name:{en:'Effect Studio'},models:{},materials:{},attachments:{},systems:{},textures:{},snapshots:{},effects:[],fxModels:{}};}
+ constructor({createUrl=b=>URL.createObjectURL(b),revokeUrl=u=>URL.revokeObjectURL(u)}={}){this.createUrl=createUrl;this.revokeUrl=revokeUrl;this.urls=new Set();this.files=new Map();this.owners=new Map();this.materialMetadata=new Map();this.modelMetadata=new Map();this.warnings=[];this.manifest={id:'effect-studio',name:{en:'Effect Studio'},models:{},materials:{},attachments:{},systems:{},textures:{},snapshots:{},effects:[],fxModels:{}};}
  blob(bytes,mime){const url=this.createUrl(new Blob([bytes],{type:mime}));this.urls.add(url);return url;}
  url=(path)=>{if(this.files.has(path))return this.files.get(path);if(/^(?:blob:|data:|https?:)/.test(path))return path;throw Error('Unknown scene resource: '+path);};
  source(){return{manifest:this.manifest,url:this.url};}
@@ -29,17 +30,21 @@ export class SceneSource {
    const original=m.name??'material-'+i,id=prefix+'::'+i,base=m.pbrMetallicRoughness??{},native=materialByName[original]??materialByName[compiled(original)]??Object.entries(materialByName).find(([n])=>n.split('/').at(-1).replace(/\.vmat(?:_c)?$/,'')===original.replace(/\.vmat(?:_c)?$/,''))?.[1];
    const descriptor={color:texture(base.baseColorTexture),normal:texture(m.normalTexture),alphaTest:m.alphaMode==='MASK'?(m.alphaCutoff??.5):0,translucent:m.alphaMode==='BLEND',specScale:base.metallicFactor??.2,rimScale:.15,baseColor:rgba(base.baseColorFactor),...(native?.descriptor??{})};
    for(const[field,info]of Object.entries(native?.images??{})){if(info?.data){const name=id+'-'+field;this.files.set('textures/'+name,'data:'+(info.mime??'image/png')+';base64,'+info.data);descriptor[field]=name;}}
-   this.manifest.materials[id]=descriptor;this.materialMetadata.set(id,{name:original,owner,itemId});m.name=id;
+   this.manifest.materials[id]=descriptor;this.materialMetadata.set(id,{name:original,owner,itemId});
+   // The host shader loads these textures. GLTFLoader must not decode them a
+   // second time for its temporary PBR materials. Binary views stay untouched.
+   json.materials[i]={name:id,pbrMetallicRoughness:{baseColorFactor:base.baseColorFactor??[1,1,1,1]},doubleSided:!!m.doubleSided,alphaMode:m.alphaMode??'OPAQUE'};
   }
-  for(const node of json.nodes??[])node.extras={...(node.extras??{}),studioOwner:owner,studioPart:itemId??prefix};
+  for(const node of json.nodes??[]){const original=node.name;node.extras={...(node.extras??{}),studioOwner:owner,studioPart:itemId??prefix,...(original?{studioSourceName:original}:{})};if(original?.includes('/')||original?.includes('\\'))node.name=original.replaceAll('\\','/').split('/').at(-1).replace(/\.vmdl_c.*/,'');}
+  if(register)this.modelMetadata.set(owner,{owner,itemId,hasSkeleton:!!json.skins?.some(s=>s.joints?.length),model:sourceModel(glb.json),animations:(json.animations??[]).map(a=>({name:a.name})),metadata:meta});
   const attachments={};for(const[name,row]of Object.entries(meta.attachments??{})){const a=normalizeAttachment(row);if(a)attachments[name]=a;}if(register)this.manifest.attachments[owner]=attachments;
-  if(!Object.keys(attachments).length)this.warnings.push('Нет attachment-метаданных: '+(itemId??prefix));
   const file='models/'+prefix+'.glb';this.files.set(file,this.blob(writeGlb({json,bin:glb.bin,extra:glb.extra}),'model/gltf-binary'));
   if(register){this.manifest.models[owner]=file;if(itemId)this.owners.set(itemId,owner);}
-  if(owner==='hero')this.animations=(json.animations??[]).map(a=>({name:a.name??'Animation',loop:!/(?:attack|death|cast|spawn|victory)/i.test(a.name??'')}));
+  if(owner==='hero')this.manifest.animations=sceneAnimations(json.animations??[],meta.sequences??[],[],meta.composedAdditiveAnimations===true);
   if(!register){this.effectResources??={urls:[],files:[],materials:[]};this.effectResources.urls.push(...[...this.urls].filter(u=>!oldUrls.has(u)));this.effectResources.files.push(...[...this.files.keys()].filter(k=>!oldFiles.has(k)));this.effectResources.materials.push(...Object.keys(this.manifest.materials).filter(k=>!oldMaterials.has(k)));}
   return file;
  }
+ applyMetadata(results,preferred=[]){for(const [owner,info] of this.modelMetadata){const data=results?.models?.[info.model]??info.metadata;const attachments={};for(const [name,row] of Object.entries({...data.attachments,...info.metadata.attachments})){const a=normalizeAttachment(row);if(a)attachments[name]=a;}if(Object.keys(attachments).length)this.manifest.attachments[owner]=attachments;if(owner==='hero'){let clips=info.animations,composed=info.metadata.composedAdditiveAnimations===true;if(!clips.length&&data.animationGlb&&info.hasSkeleton){this.addGlb(bytes64(data.animationGlb),{key:'animation-source',owner:'animation-source'});const recovery=this.modelMetadata.get('animation-source');clips=recovery.animations;composed=recovery.metadata.composedAdditiveAnimations===true;}this.manifest.animations=sceneAnimations(clips,data.sequences??[],preferred,composed);}}this.warnings.push(...(results?.warnings??[]));}
  clearEffects(){const r=this.effectResources;if(!r)return;for(const u of r.urls){this.revokeUrl(u);this.urls.delete(u);}for(const k of r.files)this.files.delete(k);for(const k of r.materials){delete this.manifest.materials[k];this.materialMetadata.delete(k);}this.effectResources=null;}
  dispose(){for(const u of this.urls)this.revokeUrl(u);this.urls.clear();this.files.clear();}
 }
@@ -64,6 +69,7 @@ export function effectSource(scene,entries,{glow=null}={}){
   for(const[path,m]of Object.entries(packet.models??{}))if(m.data){const id=remap.get(compiled(path));const file=scene.addGlb(bytes64(m.data),{key:'fx-'+index+'-'+Object.keys(fxModels).length,owner:'fx',register:false});fxModels[id]={file};}
   const root=remap.get(compiled(packet.root));if(!root||!systems[root]){warnings.push((entry.effectId??index)+': корневой партикл отсутствует');continue;}
   const owner=entry.scope==='hero'?'hero':scene.owners.get(entry.itemId)??'hero',id='effect-'+index;
+  for(const config of systems[root].m_controlPointConfigurations??[])for(const driver of config.m_drivers??[]){const name=driver.m_attachmentName;if(name&&/POINT/.test(String(driver.m_iAttachType))&&!Object.values(scene.manifest.attachments).some(group=>Object.hasOwn(group,name)))warnings.push((entry.effectId??id)+': отсутствует точка крепления '+name);}
   bindings.push({id,system:root,owner,effectId:entry.effectId??id,itemId:entry.itemId??null,color:entry.color??null,ghost:!!entry.ghost});effects.push({system:root,owner});
  }
  if(glow)for(const path of ['materials/particle/particle_glow_05.vtex','materials/particle/particle_glow_01.vtex','materials/particle/smoke1/smoke1.vtex'])textures[path]??={file:glow};

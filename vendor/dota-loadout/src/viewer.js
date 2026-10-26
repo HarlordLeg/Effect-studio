@@ -78,7 +78,7 @@ void main() {
     this.sun = new THREE.DirectionalLight(0xffffff, 0); this.sun.castShadow = true; this.sun.shadow.mapSize.set(2048, 2048); this.sun.shadow.bias = -0.0005; this.sun.shadow.normalBias = 0.02;
     this.scene.add(this.sun, this.sun.target);
     this.time = { value: 0 }; this.clock = 0; this.paused = false; this.hero = null; this.loading = 0;
-    this.view = { center: new THREE.Vector3(0, 2, 0), distance: 10, zoom: 1, zoomTarget: 1 };
+    this.view = { center: new THREE.Vector3(0, 2, 0), distance: 10, zoom: 1, zoomTarget: 1, pitch: 0 };
     this.turn = { angle: 0, target: 0, velocity: 0, dragging: null };
     this.listen();
     this.resize = new ResizeObserver(() => this.fit()); this.resize.observe(canvas);
@@ -102,7 +102,7 @@ void main() {
     if (ticket !== this.loading) { hero.dispose(); return null; }
     this.unload(); this.hero = hero; this.scene.add(hero.lib.group, hero.turntable);
     this.applyLighting(manifest.lighting || DEFAULT_LIGHTING, hero);
-    this.turn.angle = this.turn.target = this.turn.velocity = 0; this.view.zoom = this.view.zoomTarget = 1;
+    this.turn.angle = this.turn.target = this.turn.velocity = 0; this.view.zoom = this.view.zoomTarget = 1; this.view.pitch = 0;
     this.fit();
     // Each kinetic gem with the activities it changes (those of the variants with its modifiers).
     const variants = manifest.animations?.variants || [];
@@ -162,7 +162,7 @@ void main() {
     const { center, size, zoom } = this.view; if (!size) return;
     const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)), tanH = tanV * this.camera.aspect;
     const depth = Math.max(size.x, size.z) / 2, distance = Math.max((size.y * 0.62) / tanV, (Math.max(size.x, size.z) * 0.68) / tanH) + depth;
-    this.camera.position.set(center.x, center.y, center.z + distance / zoom); this.camera.lookAt(center.x, center.y, center.z);
+    const pitch = this.view.pitch || 0; this.camera.position.set(center.x, center.y + Math.sin(pitch) * distance / zoom, center.z + Math.cos(pitch) * distance / zoom); this.camera.lookAt(center.x, center.y, center.z);
     this.camera.near = Math.max(0.05, distance / zoom / 50); this.camera.far = distance * 10; this.camera.updateProjectionMatrix(); this.camera.updateMatrixWorld();
     const view = this.camera.matrixWorldInverse;
     this.light.uLightDir.value.copy(this.toLight).transformDirection(view); this.light.uAmbientDir.value.copy(this.ambientDir).transformDirection(view); this.light.uUp.value.set(0, 1, 0).transformDirection(view);
@@ -177,11 +177,12 @@ void main() {
       const r = c.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width) * 2 - 1, y = -((e.clientY - r.top) / r.height) * 2 + 1;
       const s = this.hero.screenBox(this.camera); return x >= s.min.x && x <= s.max.x && y >= s.min.y && y <= s.max.y;
     };
-    this.onDown = (e) => { if (!this.options.controls || e.button !== 0 || !onHero(e)) return; e.stopPropagation(); t.dragging = { x: e.clientX, t: performance.now() }; t.velocity = 0; c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing'; };
+    this.onDown = (e) => { if (!this.options.controls || e.button !== 0 || !onHero(e)) return; e.stopPropagation(); t.dragging = { x: e.clientX, y: e.clientY, t: performance.now() }; t.velocity = 0; c.setPointerCapture(e.pointerId); c.style.cursor = 'grabbing'; };
     this.onMove = (e) => {
       if (!t.dragging) { if (this.options.controls) c.style.cursor = onHero(e) ? 'grab' : ''; return; }
       const now = performance.now(), turn = (e.clientX - t.dragging.x) * DRAG; t.target += turn;
-      t.velocity = t.velocity * 0.5 + (turn / Math.max(8, now - t.dragging.t)) * 1000 * 0.5; t.dragging = { x: e.clientX, t: now };
+      this.view.pitch = THREE.MathUtils.clamp((this.view.pitch || 0) + (e.clientY - t.dragging.y) * DRAG, -1.45, 1.45); this.place();
+      t.velocity = t.velocity * 0.5 + (turn / Math.max(8, now - t.dragging.t)) * 1000 * 0.5; t.dragging = { x: e.clientX, y: e.clientY, t: now };
     };
     this.onUp = (e) => { if (!t.dragging) return; if (performance.now() - t.dragging.t > 80) t.velocity = 0; t.dragging = null; c.style.cursor = this.options.controls ? 'grab' : ''; };
     this.onWheel = (e) => {
@@ -267,29 +268,33 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   const propModels = Object.fromEntries(await Promise.all(propFiles.map(async (f) => [f, await loader.loadAsync(url(f))])));
   const heroModel = loaded.hero, root = heroModel.scene, bones = {}, inverses = {};
 
+  // Our VRF GLBs retain native names for attachment/snapshot lookup even when
+  // GLTFLoader sanitizes a dot or colon out of the display bone name.
+  const boneKey = b => String(b.userData.studioSourceName || b.name).toLowerCase();
+  const registerBone = (bone, mapped, inverse) => { for(const key of new Set([boneKey(bone),bone.name.toLowerCase()])) { bones[key] ||= mapped; if(inverse) inverses[key] ||= inverse; } };
   // Items follow the hero's skeleton by bone name, as the game bone-merges them; an item's own
   // extra bones hang under the hero bone that is their parent. What a slot wears is a set of meshes
   // and such bones, put on and taken off whole (the defaults are kept for when they come back).
-  root.traverse((o) => { if (o.isBone) bones[o.name.toLowerCase()] = o; if (o.isSkinnedMesh) o.skeleton.bones.forEach((b, i) => { inverses[b.name.toLowerCase()] ||= o.skeleton.boneInverses[i]; }); });
+  root.traverse((o) => { if (o.isBone) registerBone(o,o); if (o.isSkinnedMesh) o.skeleton.bones.forEach((b,i)=>registerBone(b,b,o.skeleton.boneInverses[i])); });
   const fit = (scene) => {
     const skinned = [], rigid = [], extra = [];
     scene.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); else if (o.isMesh) rigid.push(o); });
     for (const mesh of skinned) {
-      const mapped = mesh.skeleton.bones.map((b, i) => { const own = bones[b.name.toLowerCase()]; if (own) return own; const parent = b.parent && bones[b.parent.name.toLowerCase()];
+      const mapped = mesh.skeleton.bones.map((b, i) => { const own = bones[boneKey(b)] || bones[b.name.toLowerCase()]; if (own) return own; const parent = b.parent && (bones[boneKey(b.parent)] || bones[b.parent.name.toLowerCase()]);
         if (parent && !extra.some((x) => x.bone === b)) {
           // Where it hangs under the hero's bone, from the bind poses of the two: the item's own of
           // that bone (its weapon's bone, Pugna's sceptre, bound otherwise than his default one's),
           // unless the item has only a stand-in of it at the origin (Tinker's Arcanic Resonance Beam:
           // its cannon's bones 4 m off, under the floor), then the hero's.
-          const key = parent.name.toLowerCase(), j = mesh.skeleton.bones.findIndex((x) => x.name.toLowerCase() === key);
+          const key = boneKey(parent), j = mesh.skeleton.bones.findIndex((x) => boneKey(x) === key);
           const at = (m) => new THREE.Vector3().setFromMatrixPosition(m.clone().invert());
           const own = j >= 0 ? mesh.skeleton.boneInverses[j] : null, hero = inverses[key];
           const parentInverse = own && (!hero || at(own).distanceTo(at(hero)) < 0.5) ? own : hero;
           const local = parentInverse ? parentInverse.clone().multiply(mesh.skeleton.boneInverses[i].clone().invert()) : null;
-          extra.push({ bone: b, parent, key: b.name.toLowerCase(), inverse: mesh.skeleton.boneInverses[i], local });
+          extra.push({ bone: b, parent, key: boneKey(b), inverse: mesh.skeleton.boneInverses[i], local });
         }
         return b; });
-      mesh.skeleton.bones.forEach((b, i) => { const k = b.name.toLowerCase(); inverses[k] ||= mesh.skeleton.boneInverses[i]; bones[k] ||= mapped[i]; });
+      mesh.skeleton.bones.forEach((b,i)=>registerBone(b,mapped[i],mesh.skeleton.boneInverses[i]));
       mesh.bind(new THREE.Skeleton(mapped, mesh.skeleton.boneInverses), mesh.bindMatrix);
     }
     // Unskinned items stay as they are, beside the hero.
@@ -312,7 +317,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   // A companion (a pet, a summoned unit's look) stands beside the hero on the turntable.
   const putOn = (w) => { for (const x of w.extra) { x.parent.add(x.bone); if (x.local) x.local.decompose(x.bone.position, x.bone.quaternion, x.bone.scale); bones[x.key] = x.bone; inverses[x.key] = x.inverse; } for (const m of w.meshes) root.add(m); if (w.companion) turntable.add(w.companion.group); };
   const takeOff = (w) => { if (w.companion) w.companion.group.removeFromParent(); for (const m of w.meshes) root.remove(m); for (const x of w.extra) { x.bone.parent?.remove(x.bone); if (bones[x.key] === x.bone) delete bones[x.key]; if (inverses[x.key] === x.inverse) delete inverses[x.key]; } };
-  const items = names.filter((k) => k !== 'hero' && k !== 'pedestal'), defaults = new Map(), worn = new Map(), wearing = new Map();
+  const items = names.filter((k) => k !== 'hero' && k !== 'pedestal' && k !== 'animation-source'), defaults = new Map(), worn = new Map(), wearing = new Map();
   const heroMeshes = []; root.traverse((o) => { if (o.isMesh) heroMeshes.push(o); });
   for (const name of items) { const w = fit(loaded[name].scene); defaults.set(name, w); worn.set(name, { ...w, item: null }); putOn(w); }
   const turntable = new THREE.Group(); turntable.add(root); if (loaded.pedestal) turntable.add(loaded.pedestal.scene);
@@ -323,7 +328,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     o.frustumCulled = false; o.castShadow = o.receiveShadow = true;
     // A mesh whose material did not come with the hero (an additive glow, a motion smear) is hidden
     // rather than drawn plain white. Its own material's name is kept for changing skins later.
-    o.userData.material ??= o.material.name;
+    if (!Object.hasOwn(mats, o.userData.material)) o.userData.material = o.material.name;
     const key = skin?.[o.userData.material] ?? o.userData.material, m = mats[key]; o.visible = !!m; if (!m) return;
     if (!materials.has(base + key)) materials.set(base + key, heroMaterial(m, tex, time, light, cubeMap));
     if (!o.material.userData.hero) o.material.dispose(); // the loader's; ours are shared
@@ -339,7 +344,16 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
 
   // Animations: the entry once, then the idle loop; the others on request.
   const mixer = new THREE.AnimationMixer(root), clips = new Map(heroModel.animations.map((a) => [a.name, a]));
-  const a = manifest.animations || {}, list = (a.list || [...clips.keys()].map((name) => ({ name }))).filter((x) => clips.has(x.name));
+  for (const [owner, model] of Object.entries(loaded)) if (owner !== 'hero') for (const clip of model.animations) if (!clips.has(clip.name)) {
+    const tracks = clip.tracks.flatMap(track => {
+      const parsed = THREE.PropertyBinding.parseTrackName(track.name), node = model.scene.getObjectByName(parsed.nodeName) || model.scene.getObjectByProperty('uuid', parsed.nodeName), target = node && (bones[node.name.toLowerCase()] || root.getObjectByName(node.name));
+      if (!target) return [];
+      const copy = track.clone(); copy.name = target.uuid + track.name.slice(track.name.lastIndexOf('.')); return [copy];
+    });
+    if (tracks.length) clips.set(clip.name, new THREE.AnimationClip(clip.name, clip.duration, tracks));
+  }
+  const a = manifest.animations || {}, list = (a.list?.length ? [...a.list, ...[...clips.keys()].filter(name=>!a.list.some(x=>x.name===name)).map(name=>({name,loop:/(?:idle|run|walk|loadout)/i.test(name)}))] : [...clips.keys()].map((name) => ({ name,loop:/(?:idle|run|walk|loadout)/i.test(name) }))).filter((x) => clips.has(x.name));
+  for (const item of list) if (item.additive) clips.get(item.name).blendMode = THREE.AdditiveAnimationBlendMode;
   const action = (name) => { const c = clips.get(name); return c ? mixer.clipAction(c) : null; };
   const idleName = clips.has(a.idle) ? a.idle : list[0]?.name;
   const idle = idleName ? action(idleName) : null; let current = idle, currentName = idleName;
@@ -420,10 +434,17 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   // Attachments by model: the hero's, and those of what each slot wears.
   const attachments = { ...manifest.attachments };
   const attachment = (name, owner) => { for (const model of [owner, 'hero', ...worn.keys()]) { const at = attachments[model]?.[name]; if (at) return at; } return null; };
-  const attachmentMatrix = (at) => { const bone = bones[at.bones[0].toLowerCase()]; if (!bone) return null;
-    return toSource(bone.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(...at.offsets[0]).multiplyScalar(0.0254), new THREE.Quaternion(...at.rotations[0]), new THREE.Vector3(1, 1, 1)))); };
+  const attachmentMatrix = (at) => {
+    const influence = i => { const bone = bones[at.bones[i].toLowerCase()]; if(!bone) return null;
+      return toSource(bone.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(...at.offsets[i]).multiplyScalar(0.0254), new THREE.Quaternion(...at.rotations[i]), new THREE.Vector3(1,1,1)))); };
+    if(at.bones.length===1&&!at.ignoreRotation)return influence(0);
+    const position=new THREE.Vector3(),scale=new THREE.Vector3(),rotation=new THREE.Quaternion(0,0,0,0);let total=0,reference;
+    for(let i=0;i<at.bones.length;i++){const weight=at.weights?.[i]??(i===0?1:0),matrix=weight>0&&influence(i);if(!matrix)continue;const p=new THREE.Vector3(),q=new THREE.Quaternion(),s=new THREE.Vector3();matrix.decompose(p,q,s);reference??=q.clone();if(reference.dot(q)<0)q.set(-q.x,-q.y,-q.z,-q.w);position.addScaledVector(p,weight);scale.addScaledVector(s,weight);rotation.set(rotation.x+q.x*weight,rotation.y+q.y*weight,rotation.z+q.z*weight,rotation.w+q.w*weight);total+=weight;}
+    if(!total)return influence(0);position.divideScalar(total);scale.divideScalar(total);if(at.ignoreRotation)rotation.identity();else rotation.normalize();return new THREE.Matrix4().compose(position,rotation,scale);
+  };
+
   const model = {
-    bones: ((list) => (list.length ? list : Object.values(bones).filter((b) => b.isBone)))(Object.values(bones).filter((b) => b.name.endsWith('_JNT'))),
+    bones: ((list) => (list.length ? list : [...new Set(Object.values(bones))].filter((b) => b.isBone)))(Object.values(bones).filter((b) => b.name.endsWith('_JNT'))),
     bone: (name) => bones[name.toLowerCase()] || null,
     // A point in a bone's own space (inches), in the effects' space.
     boneLocal(name, pos) { const b = bones[name.toLowerCase()]; return b ? pos.clone().multiplyScalar(0.0254).applyMatrix4(b.matrixWorld).applyMatrix4(groupInverse) : pos.clone(); },
@@ -669,7 +690,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
       refit(); ambient(); remodify(); reskin(); gemTint();
     },
     dispose() {
-      studioDisposed = true; for (const file of studioPropFiles) disposeProp(propModels[file]); studioPropFiles.clear();
+      studioDisposed = true; loaded['animation-source']?.scene.traverse(o=>{o.geometry?.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material])material?.dispose();}); for (const file of studioPropFiles) disposeProp(propModels[file]); studioPropFiles.clear();
       mixer.stopAllAction(); for (const p of props) p.mixer.stopAllAction(); turntable.traverse((o) => { o.geometry?.dispose(); });
       for (const r of wearing.values()) for (const mesh of r.meshes || []) mesh.geometry?.dispose();
       for (const w of defaults.values()) for (const mesh of w.meshes) mesh.geometry?.dispose();
