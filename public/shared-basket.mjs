@@ -2,7 +2,7 @@ import {translate} from './i18n.mjs';
 import {buildLibrary,prepareSavedBuild} from './saved-builds.mjs';
 import {heroImage} from './hero-picker.mjs';
 import {configureBasketVariants,basketRows,removeBasketRow,cosmeticBasket,chooseCosmetic,sharedBuildPayload,restoreBuild} from './cosmetics-store.mjs';
-export function initSharedBasket(catalog,{api,token}){
+export function initSharedBasket(catalog,{api,token,resourceUrl=url=>url}){
  configureBasketVariants(catalog.heroes);
  document.documentElement.dataset.sharedBasket='true';const basket=document.createElement('aside');basket.className='panel shared-basket';basket.innerHTML='<h2>Корзина</h2><div class="shared-basket-list"></div><label>Имя VPK<select aria-label="Номер VPK"></select></label><button class="primary">Собрать VPK</button><p role="status"></p>';document.querySelector('main').append(basket);
  const list=basket.querySelector('div'),number=basket.querySelector('select'),build=basket.querySelector('button'),status=basket.querySelector('p');for(let n=1;n<=99;n++){const option=document.createElement('option');option.value=n;option.textContent='pak'+String(n).padStart(2,'0')+'_dir.vpk';number.append(option);}let working=false;
@@ -28,6 +28,6 @@ export function initSharedBasket(catalog,{api,token}){
   if(!rows.length&&!cosmetics.length)list.textContent='Добавь предметы или косметику.';build.disabled=working||presetBusy||!sharedBuildPayload().ready||!rows.length&&!cosmetics.length;
  }
 
- build.onclick=async()=>{if(working)return;try{const payload=sharedBuildPayload();if(!payload.ready)throw new Error('Выбери приоритет конфликтующих эффектов');working=true;draw();status.textContent='Собираем VPK…';let job=await api('/api/build',{...payload,vpkNumber:Number(number.value)});for(;;){job=await api('/api/jobs/'+job.id);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')break;await new Promise(r=>setTimeout(r,500));}const a=document.createElement('a');a.className='download';a.textContent=job.packageType?.endsWith('-zip')?'Скачать ZIP':'Скачать VPK';a.href='/api/jobs/'+job.id+'/download'+(token?'?token='+encodeURIComponent(token):'');status.replaceChildren(a);}catch(error){status.textContent=error.message;}finally{working=false;draw();}};
+ build.onclick=async()=>{if(working)return;try{const payload=sharedBuildPayload();if(!payload.ready)throw new Error('Выбери приоритет конфликтующих эффектов');working=true;draw();status.textContent='Собираем VPK…';let job=await api('/api/build',{...payload,vpkNumber:Number(number.value)});for(;;){job=await api('/api/jobs/'+job.id);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')break;await new Promise(r=>setTimeout(r,500));}const a=document.createElement('a');a.className='download';a.textContent=job.packageType?.endsWith('-zip')?'Скачать ZIP':'Скачать VPK';a.href=resourceUrl('/api/jobs/'+job.id+'/download'+(token?'?token='+encodeURIComponent(token):''));status.replaceChildren(a);}catch(error){status.textContent=error.message;}finally{working=false;draw();}};
  globalThis.addEventListener('basket-change',draw);globalThis.addEventListener('cosmetics-change',draw);draw();
 }

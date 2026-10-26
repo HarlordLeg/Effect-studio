@@ -1,3 +1,4 @@
+import {adminSetAccess,ADMIN_SET_COOKIE} from './lib/admin-set-session.mjs';
 import {adminSetCatalog,adminSetPayload} from './lib/admin-set-preview.mjs';
 import {DownloadTickets,serveDownload} from './lib/downloads.mjs';
 import {liveDrowWardrobe} from './lib/drow-wardrobe.mjs';
@@ -64,6 +65,12 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       if(url.pathname==='/api/notifications'&&req.method==='GET'){res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Cache-Control','public, max-age=60');return json(res,200,notifications.feed());}
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
+      let adminStudioOwner=null;
+      try{
+        const access=adminSetAccess(req,url,admin,{host,publicBaseUrl:config.publicBaseUrl});
+        if(access?.session){res.setHeader('Set-Cookie',ADMIN_SET_COOKIE+'='+access.token+'; Path=/api/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
+        if(access){adminStudioOwner=access.owner;url.pathname=access.pathname;}
+      }catch(error){return json(res,error.status??401,{error:error.message});}
       const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
@@ -153,11 +160,11 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       }
       let session=null;
       const token=req.headers.authorization?.replace(/^Bearer /,'')??url.searchParams.get('token');
-      if(token)session=auth.verify(token);
+      if(token&&!adminStudioOwner)session=auth.verify(token);
       if(session&&origin&&origin!==session.origin&&origin!==ownServerOrigin(host,config))return json(res,403,{error:'Origin токена не совпадает с сайтом'});
-      const allowed=localAdmin||session;
+      const allowed=localAdmin||session||adminStudioOwner;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
-      const owner=session?session.id+':'+session.nonce:'local';previews.touch(owner);
+      const owner=adminStudioOwner??(session?session.id+':'+session.nonce:'local');previews.touch(owner);
       if(req.method==='GET'&&staticViewer.api(req,res,url))return;
       if(staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
       if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
@@ -217,7 +224,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
-        if(staticViewer.enabled()){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);const data=await body(req);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
+        if(staticViewer.enabled()){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);const data=await body(req);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,url:'/api/admin/set-studio/previews/'+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
         const data=await body(req);let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
         const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
         if(stance&&setRows)setRows=kineticBuildChoices(setRows,[stance]);
@@ -233,6 +240,12 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
         if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}
         if(session)auth.consume(session,'preview');
         const job=previews.create(choice,owner,buildJob);tracking.set(job,{selections:selectionStatistics(choice.selections??[choice]),source:session?.origin??'local'});return json(res,202,publicPreview(job));
+      }
+      const adminStaticPart=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})\/parts\/(\d+)$/);
+      if(adminStudioOwner&&adminStaticPart&&staticJobs.has(adminStaticPart[1])){
+        const job=staticJobs.get(adminStaticPart[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});
+        const file=job.partFiles?.[Number(adminStaticPart[2])];if(!file||!fs.existsSync(file))return json(res,404,{error:'Static model missing on server. Re-export/sync the static catalog.'});
+        res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);
       }
       const staticMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);if(staticMatch&&staticJobs.has(staticMatch[1])){const job=staticJobs.get(staticMatch[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});if(!staticMatch[2])countModel(job);return json(res,200,staticMatch[2]?{effects:job.effects}:Object.fromEntries(Object.entries(publicPreview(job)).filter(([key])=>key!=='effects')));}
       const previewMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/);
@@ -270,10 +283,10 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:'Маршрут не найден'});
       if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET'});
       const isSection=/^\/(effects|sets|cosmetics|weather)\.html$/.test(url.pathname);
-      const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin';
+      const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin',isAdminSetCatalog=url.pathname==='/admin-set-catalog.html';
       if(isWidget&&!session)return json(res,401,{error:'Нужна сессия виджета'});
       const assetOrigin=config.staticViewerBaseUrl?.startsWith('https://')?new URL(config.staticViewerBaseUrl).origin:'';
-      const csp="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net "+assetOrigin+"; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self' "+assetOrigin+"; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+((isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
+      const csp="default-src 'self'; script-src 'self'"+(isAdminSetCatalog?" 'wasm-unsafe-eval'":"")+"; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net "+assetOrigin+"; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self' "+(isAdminSetCatalog?'blob: ':'')+assetOrigin+"; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+(isAdminSetCatalog?"'self'":(isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
       res.setHeader('Content-Security-Policy',csp);if(/\.(mjs|js)$/.test(url.pathname))res.setHeader('Access-Control-Allow-Origin','*');
       let file;
       {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}

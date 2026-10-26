@@ -7,3 +7,4 @@
 .admin .cosmetics-courier-effects label{display:flex;margin:0}.admin .cosmetics-courier-effects input[type=checkbox]{width:auto;margin:0;padding:0}
 
 .admin-set-stage{height:600px;max-height:65vh;min-height:300px;background:#111824;border:1px solid #384253;border-radius:12px;overflow:hidden}.admin-set-stage canvas{display:block;width:100%;height:100%;outline:none}#admin-set-catalog[hidden]{display:none}
+.admin:has(#admin-set-catalog:not([hidden])){max-width:1800px}.admin-set-catalog-frame{display:block;width:100%;height:calc(100dvh - 180px);min-height:800px;border:0;border-radius:12px;background:#0b1017}#admin-set-catalog{min-width:0}
