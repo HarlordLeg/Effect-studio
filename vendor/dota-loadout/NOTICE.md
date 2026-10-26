@@ -5,3 +5,5 @@ Local changes in src/viewer.js expose scene updates, effect visibility and host 
 Game assets remain the property of Valve and are not supplied by this source package.
 
 The asset pipeline and animation activity ordering were reviewed against upstream commit 3c09d200391cf19db14705dbaca0d6c544dae670. Effect Studio additionally preserves native bone aliases, native attachment metadata and additive-clip flags; it supports vertical camera orbit and cancellable cached part downloads.
+
+Follow-up: economy preview control-point configurations take priority; parent entity drivers resolve hero attachments and do not borrow unrelated wearable attachments.

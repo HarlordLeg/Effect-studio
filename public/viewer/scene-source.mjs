@@ -21,7 +21,7 @@ export class SceneSource {
  source(){return{manifest:this.manifest,url:this.url};}
  addGlb(bytes,{key,owner='hero',itemId=null,register=true}={}){
   const oldUrls=new Set(this.urls),oldFiles=new Set(this.files.keys()),oldMaterials=new Set(Object.keys(this.manifest.materials));
-  const glb=readGlb(bytes),json=structuredClone(glb.json),meta=json.extras?.dotaStudio??{},images=new Map(),prefix=key??'model-'+Object.keys(this.manifest.models).length;
+  const glb=readGlb(bytes),meta=glb.json.extras?.dotaStudio??{},json=structuredClone({...glb.json,extras:{...glb.json.extras,dotaStudio:undefined}}),images=new Map(),prefix=key??'model-'+Object.keys(this.manifest.models).length;
   let fallback;for(const mesh of json.meshes??[])for(const primitive of mesh.primitives??[])if(primitive.material===undefined){json.materials??=[];fallback??=json.materials.push({name:'studio-geometry-fallback',pbrMetallicRoughness:{baseColorFactor:[.55,.58,.65,1],metallicFactor:0,roughnessFactor:1}})-1;primitive.material=fallback;}
   const image=index=>{if(images.has(index))return images.get(index);const img=json.images?.[index];if(!img)return null;let uri=img.uri;if(!uri&&Number.isInteger(img.bufferView)){const b=json.bufferViews?.[img.bufferView];if(!b)throw Error('Invalid GLB image');uri=this.blob(glb.bin.subarray(b.byteOffset??0,(b.byteOffset??0)+b.byteLength),img.mimeType??'image/png');}if(uri&&!/^(?:blob:|data:)/.test(uri))throw Error('GLB must contain embedded textures');const name=prefix+'-image-'+index;this.files.set('textures/'+name,uri);images.set(index,name);return name;};
   const texture=info=>{if(!info||!Number.isInteger(info.index))return null;const tex=json.textures?.[info.index];return image(tex?.extensions?.EXT_texture_webp?.source??tex?.source);};
@@ -38,6 +38,8 @@ export class SceneSource {
   for(const node of json.nodes??[]){const original=node.name;node.extras={...(node.extras??{}),studioOwner:owner,studioPart:itemId??prefix,...(original?{studioSourceName:original}:{})};if(original?.includes('/')||original?.includes('\\'))node.name=original.replaceAll('\\','/').split('/').at(-1).replace(/\.vmdl_c.*/,'');}
   if(register)this.modelMetadata.set(owner,{owner,itemId,hasSkeleton:!!json.skins?.some(s=>s.joints?.length),model:sourceModel(glb.json),animations:(json.animations??[]).map(a=>({name:a.name})),metadata:meta});
   const attachments={};for(const[name,row]of Object.entries(meta.attachments??{})){const a=normalizeAttachment(row);if(a)attachments[name]=a;}if(register)this.manifest.attachments[owner]=attachments;
+  // All material images are now owned by the host shader, not GLTFLoader.
+  delete json.images;delete json.textures;
   const file='models/'+prefix+'.glb';this.files.set(file,this.blob(writeGlb({json,bin:glb.bin,extra:glb.extra}),'model/gltf-binary'));
   if(register){this.manifest.models[owner]=file;if(itemId)this.owners.set(itemId,owner);}
   if(owner==='hero')this.manifest.animations=sceneAnimations(json.animations??[],meta.sequences??[],[],meta.composedAdditiveAnimations===true);
@@ -70,8 +72,18 @@ export function effectSource(scene,entries,{glow=null}={}){
   const root=remap.get(compiled(packet.root));if(!root||!systems[root]){warnings.push((entry.effectId??index)+': корневой партикл отсутствует');continue;}
   const owner=entry.scope==='hero'?'hero':scene.owners.get(entry.itemId)??'hero',id='effect-'+index;
   for(const config of systems[root].m_controlPointConfigurations??[])for(const driver of config.m_drivers??[]){const name=driver.m_attachmentName;if(name&&/POINT/.test(String(driver.m_iAttachType))&&!Object.values(scene.manifest.attachments).some(group=>Object.hasOwn(group,name)))warnings.push((entry.effectId??id)+': отсутствует точка крепления '+name);}
+  applyParticleBinding(systems[root],entry.binding);
   bindings.push({id,system:root,owner,effectId:entry.effectId??id,itemId:entry.itemId??null,color:entry.color??null,ghost:!!entry.ghost});effects.push({system:root,owner});
  }
  if(glow)for(const path of ['materials/particle/particle_glow_05.vtex','materials/particle/particle_glow_01.vtex','materials/particle/smoke1/smoke1.vtex'])textures[path]??={file:glow};
  return{systems,textures,snapshots,effects,fxModels,bindings,warnings};
+}
+
+export function applyParticleBinding(def,binding){
+ if(!binding||(!binding.attach_type&&!binding.control_points))return;
+ const points=Object.entries(binding.control_points??{}),drivers=[];
+ const add=(index,row)=>{const cp=Number(row.control_point_index??index);if(!Number.isInteger(cp)||cp<0||cp>63)return;const type=String(row.attach_type??'absorigin_follow').toUpperCase();drivers.push({m_iControlPoint:cp,m_iAttachType:type.startsWith('PATTACH_')?type:'PATTACH_'+type,m_entityName:row.attach_entity??binding.attach_entity??'self',...(row.attachment?{m_attachmentName:row.attachment}:{})});};
+ if(!points.some(([i,p])=>Number(p.control_point_index??i)===0))add(0,binding);
+ for(const [i,row] of points)add(i,row);
+ const configs=def.m_controlPointConfigurations??=[];const preview=configs.find(c=>c.m_name==='preview');if(preview)preview.m_drivers=drivers;else configs.unshift({m_name:'preview',m_drivers:drivers});
 }

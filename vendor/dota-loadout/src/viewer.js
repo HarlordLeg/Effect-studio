@@ -433,7 +433,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   lib.loader.manager = manager;
   // Attachments by model: the hero's, and those of what each slot wears.
   const attachments = { ...manifest.attachments };
-  const attachment = (name, owner) => { for (const model of [owner, 'hero', ...worn.keys()]) { const at = attachments[model]?.[name]; if (at) return at; } return null; };
+  const attachment = (name, owner) => { for (const model of [owner, 'hero']) { const at = attachments[model]?.[name]; if (at) return at; } return null; };
   const attachmentMatrix = (at) => {
     const influence = i => { const bone = bones[at.bones[i].toLowerCase()]; if(!bone) return null;
       return toSource(bone.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(...at.offsets[i]).multiplyScalar(0.0254), new THREE.Quaternion(...at.rotations[i]), new THREE.Vector3(1,1,1)))); };
@@ -464,19 +464,19 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   // The hero's origin as a control point: his turn on the turntable, in the game's axes (facing +x,
   // z up) — the conversion to glTF taken out on both sides, not only before.
   const heroOrigin = () => toSource(root.matrixWorld.clone()).multiply(SOURCE_TO_GLTF);
-  const driverOf = (d) => ({ cp: d.m_iControlPoint ?? 0, type: d.m_iAttachType || 'PATTACH_ABSORIGIN_FOLLOW', attachment: d.m_attachmentName || null, offset: d.m_vecOffset ? new THREE.Vector3(...d.m_vecOffset) : null });
+  const driverOf = (d) => ({ cp: d.m_iControlPoint ?? 0, type: d.m_iAttachType || 'PATTACH_ABSORIGIN_FOLLOW', attachment: d.m_attachmentName || null, entity: d.m_entityName || 'self', offset: d.m_vecOffset ? new THREE.Vector3(...d.m_vecOffset) : null });
   const configs = (def) => def.m_controlPointConfigurations || [];
   const driversFor = (def, config) => {
     const named = config != null && configs(def).find((c) => c.m_name === config);
     if (named) return (named.m_drivers || []).map(driverOf);
     // An event's config that the system lacks names an attach type (absorigin, point_follow…).
     if (config && /^(absorigin|point|world)/.test(config)) return [{ cp: 0, type: `PATTACH_${config.replace(/^point/, 'point').toUpperCase()}`, attachment: null, offset: null }];
-    return (configs(def)[0]?.m_drivers || []).map(driverOf);
+    return ((configs(def).find(c=>c.m_name==='preview') || configs(def)[0])?.m_drivers || []).map(driverOf);
   };
   const cpOf = (m) => { const c = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), matrix() { return new THREE.Matrix4().compose(this.pos, this.quat, new THREE.Vector3(1, 1, 1)); } }; m.decompose(c.pos, c.quat, new THREE.Vector3()); return c; };
   const placeCP = (d, owner, origin) => {
     if (d.type === 'PATTACH_WORLDORIGIN') { const c = cpOf(origin); if (d.offset) c.pos.add(d.offset); return c; }
-    const at = /POINT|CENTER/.test(d.type) && d.attachment ? attachment(d.attachment, owner) : null, c = cpOf((at && attachmentMatrix(at)) || origin);
+    const at = /POINT|CENTER/.test(d.type) && d.attachment ? attachment(d.attachment, d.entity==='parent'?'hero':owner) : null, c = cpOf((at && attachmentMatrix(at)) || origin);
     if (d.offset) c.pos.add(d.offset.clone().applyQuaternion(c.quat));
     return c;
   };

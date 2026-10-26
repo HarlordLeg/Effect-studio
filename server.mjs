@@ -1,3 +1,4 @@
+import {serveViewerModel} from './lib/viewer-transfer.mjs';
 import {ViewerMetadata} from './lib/viewer-metadata.mjs';
 import {adminSetAccess,ADMIN_SET_COOKIE} from './lib/admin-set-session.mjs';
 import {adminSetCatalog,adminSetPayload} from './lib/admin-set-preview.mjs';
@@ -30,7 +31,7 @@ import path from 'node:path';
 import http from 'node:http';
 import {fileURLToPath} from 'node:url';
 import {Builder} from './lib/build.mjs';
-import {PreviewService,publicPreview} from './lib/preview.mjs';
+import {PreviewService,publicPreview,previewParticleBinding} from './lib/preview.mjs';
 import {WidgetAuth} from './lib/auth.mjs';
 import {requestAccess} from './lib/request-access.mjs';
 import {AdminAuth,Statistics,selectionStatistics,vpkFilename} from './lib/admin.mjs';
@@ -248,17 +249,17 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
       if(adminStudioOwner&&adminStaticPart&&staticJobs.has(adminStaticPart[1])){
         const job=staticJobs.get(adminStaticPart[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});
         const file=job.partFiles?.[Number(adminStaticPart[2])];if(!file||!fs.existsSync(file))return json(res,404,{error:'Static model missing on server. Re-export/sync the static catalog.'});
-        res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);
+        return serveViewerModel(req,res,file);
       }
-      const staticMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);if(staticMatch&&staticJobs.has(staticMatch[1])){const job=staticJobs.get(staticMatch[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});if(!staticMatch[2])countModel(job);return json(res,200,staticMatch[2]?{effects:job.effects}:Object.fromEntries(Object.entries(publicPreview(job)).filter(([key])=>key!=='effects')));}
+      const staticMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);if(staticMatch&&staticJobs.has(staticMatch[1])){const job=staticJobs.get(staticMatch[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});if(!staticMatch[2])countModel(job);return json(res,200,staticMatch[2]?{effects:adminStudioOwner?bindViewerEffects(job.effects,builder):job.effects}:Object.fromEntries(Object.entries(publicPreview(job)).filter(([key])=>key!=='effects')));}
       const previewMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/);
       if(previewMatch){
         const job=previews.jobs.get(previewMatch[1]);if(!job||job.owner!==owner)return json(res,404,{error:'Предпросмотр не найден'});
         if(!previewMatch[2])return json(res,200,publicPreview(job));
         if(job.status!=='ready')return json(res,409,{error:'Модель ещё не готова'});
-        if(previewMatch[3]?.startsWith('parts/')){const index=Number(previewMatch[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part not found'});res.once('finish',()=>countModel(job));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
+        if(previewMatch[3]?.startsWith('parts/')){const index=Number(previewMatch[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part not found'});res.once('finish',()=>countModel(job));if(adminStudioOwner)return serveViewerModel(req,res,file);res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
         if(previewMatch[3]==='diagnostics'){res.setHeader('Content-Disposition','attachment; filename=preview-diagnostics.json');return json(res,200,previewDiagnostics(job));}
-        if(previewMatch[3]==='effect'){const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Данные эффекта не экспортированы'});res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
+        if(previewMatch[3]==='effect'){const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Данные эффекта не экспортированы'});if(adminStudioOwner){const packet=JSON.parse(fs.readFileSync(file,'utf8'));return json(res,200,{...packet,effects:bindViewerEffects(packet.effects??[],builder)});}res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
         const modelFile=previews.ensureModel(job);res.once('finish',()=>countModel(job));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(modelFile).pipe(res);
       }
       const match=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})(\/download(?:-ticket)?)?$/);
@@ -303,3 +304,5 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
   return new Promise((resolve,reject)=>{server.once('error',reject);server.listen(overridePort??config.port,config.host,()=>{const url=`http://${config.host}:${server.address().port}`;console.log(`Dota Effect Studio: ${url}`);resolve({server,builder,auth,previews,url});});});
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer().then(({server,previews})=>{for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{previews.dispose();server.close();});}).catch(error=>{console.error(error.message);process.exitCode=1;});
+
+function bindViewerEffects(entries,builder){return (entries??[]).map(entry=>{if(entry.binding||!entry.packet?.root)return entry;const native=builder.catalog.heroes.flatMap(h=>h.items??[]).find(i=>i.id===entry.itemId)?.nativeOverrides??{};return {...entry,binding:previewParticleBinding(builder.store,native,entry.packet.root)};});}
