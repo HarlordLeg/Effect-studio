@@ -6,13 +6,13 @@ using ValveResourceFormat.ResourceTypes;
 internal static class Program
 {
     private sealed record DefaultModel(string Model, string Output);
-    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null, string[]? MetadataModels = null, string[]? MetadataAnimationModels = null, string[]? MetadataPreferredAnimations = null, string[]? MetadataActivityTags = null);
+    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null, string[]? MetadataModels = null, string[]? MetadataAnimationModels = null, string[]? MetadataPreferredAnimations = null, string[]? MetadataActivityTags = null, bool ParticleOnly = false);
 
     public static int Main(string[] args)
     {
         try
         {
-            if(args.Length==1&&args[0]=="--capabilities"){Console.WriteLine("{\"version\":\"1.1.0\",\"skipModel\":true,\"animatedParticleModels\":true}");return 0;}
+            if(args.Length==1&&args[0]=="--capabilities"){Console.WriteLine("{\"version\":\"1.1.0\",\"skipModel\":true,\"editorParticleExportV1\":true,\"animatedParticleModels\":true}");return 0;}
             if (args.Length != 1) throw new ArgumentException("Usage: DotaAssetBridge request.json");
             var request = JsonSerializer.Deserialize<Request>(File.ReadAllText(args[0]), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                 ?? throw new InvalidDataException("Empty request");
@@ -63,6 +63,7 @@ internal static class Program
                 return 0;
             }
 
+            if(request.ParticleOnly){if(request.Particle is null||!request.Particle.StartsWith("particles/",StringComparison.Ordinal)||request.Particle.Split('/').Contains(".."))throw new InvalidDataException("Invalid particle path");ParticleExport.Write(loader,request.Particle,target);return 0;}
             if (!request.SkipModel) ExportModel(loader, request.Model, target, request.Materials, request.Skin);
             if (request.HeroModel is not null && request.HeroOutput is not null)
                 ExportModel(loader, request.HeroModel, Path.GetFullPath(request.HeroOutput), request.Materials);

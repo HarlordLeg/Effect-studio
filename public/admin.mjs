@@ -19,3 +19,8 @@ $('refresh').addEventListener('click',refresh);$('period').addEventListener('cha
 document.addEventListener('des-language-change',()=>{labels();if(lastStats)render(lastStats);});
 
 $('admin-statistics-tab').addEventListener('click',()=>{$('cosmetics-studio').hidden=true;$('statistics').hidden=false;$('admin-statistics-tab').setAttribute('aria-pressed','true');$('admin-cosmetics-tab').setAttribute('aria-pressed','false');});
+
+let disposeEditor=null,editorLoading=false;
+$('admin-editor-tab').addEventListener('click',async()=>{if(!token||editorLoading)return;$('statistics').hidden=true;$('cosmetics-studio').hidden=true;$('admin-set-catalog').hidden=true;$('admin-editor').hidden=false;for(const id of ['admin-statistics-tab','admin-cosmetics-tab','admin-sets-tab'])$(id).setAttribute('aria-pressed','false');$('admin-editor-tab').setAttribute('aria-pressed','true');if(disposeEditor)return;editorLoading=true;try{await request('editor/session',{});const{initEditor}=await import('/api/admin/editor/ui.mjs');disposeEditor=await initEditor($('admin-editor'),request,()=>token);}catch(e){$('message').textContent=e.message;}finally{editorLoading=false;}});
+for(const id of ['admin-statistics-tab','admin-cosmetics-tab','admin-sets-tab'])$(id).addEventListener('click',()=>{$('admin-editor').hidden=true;$('admin-editor-tab').setAttribute('aria-pressed','false');});
+$('logout').addEventListener('click',()=>{disposeEditor?.();disposeEditor=null;$('admin-editor').hidden=true;});

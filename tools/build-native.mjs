@@ -12,6 +12,7 @@ const stage=fs.mkdtempSync(path.join(os.tmpdir(),'des-native-'));
 function run(exe,args,capture=false){const result=spawnSync(exe,args,{cwd:root,stdio:capture?'pipe':'inherit',encoding:'utf8',windowsHide:true});if(result.error)throw result.error;if(result.status!==0)throw new Error('Command failed: '+exe+' '+args.join(' ')+'\n'+(result.stdout??'')+(result.stderr??''));return result.stdout??'';}
 try{
  console.log('[BUILD] Project: '+project);console.log('[BUILD] Source: '+source);
+ if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','editor-resources','EditorResources.Tests.csproj'),'-c','Release']);
  if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','model-mesh-groups','ModelMeshGroups.Tests.csproj'),'-c','Release']);
  if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','global-cosmetics','GlobalCosmetics.Tests.csproj'),'-c','Release']);
  if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','hud-cosmetics','HudCosmetics.Tests.csproj'),'-c','Release']);

@@ -16,6 +16,7 @@ internal static class ModelRootProfiles
         }
         if(host.Contains("/legion_commander/")&&donor.StartsWith("models/items/legion_commander/conquests_of_golden_sun_",StringComparison.Ordinal))return Map("Root0_JNT","Object001","Object002","SMDImport","SMDImport001","SMDImport002","SMDImport009","smdimport1","legion_base","legion_flags","legion_sword","legion_shoulder");
         if(host.StartsWith("models/heroes/lion/",StringComparison.Ordinal)&&donor.StartsWith("models/items/lion/",StringComparison.Ordinal))return Map("Root_0","spine_3");
+        if(host.StartsWith("models/heroes/kunkka/",StringComparison.Ordinal)&&donor.StartsWith("models/items/kunkka/",StringComparison.Ordinal))return Map("root","flexslidersnode");
         return null;
     }
 }

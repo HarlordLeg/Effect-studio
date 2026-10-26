@@ -1,3 +1,6 @@
+import {EditorProjectService} from './lib/editor/project-service.mjs';
+import {EditorBuildService} from './lib/editor/build-service.mjs';
+import {editorRoute} from './lib/editor/routes.mjs';
 import {serveViewerModel} from './lib/viewer-transfer.mjs';
 import {ViewerMetadata} from './lib/viewer-metadata.mjs';
 import {adminSetAccess,ADMIN_SET_COOKIE} from './lib/admin-set-session.mjs';
@@ -38,7 +41,7 @@ import {AdminAuth,Statistics,selectionStatistics,vpkFilename} from './lib/admin.
 export const root=path.dirname(fileURLToPath(import.meta.url));
 const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':res.getHeader('Cache-Control')??'no-store'});res.end(JSON.stringify(data));};
 const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
-async function body(req){let b='';for await(const chunk of req){b+=chunk;if(b.length>16384)throw new Error('Слишком большой запрос');}return JSON.parse(b||'{}');}
+async function body(req,maxBytes=16384){const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>maxBytes)throw Error('Слишком большой запрос');chunks.push(chunk);}return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}
 function publicJob(job){const {file,owner,_terrain,_attackVpk,...result}=job;return result;}
 export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={}) {
   const root=serverRoot;
@@ -48,6 +51,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
   const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
   const staticViewer=createStaticViewer(root,config),staticJobs=new Map(),staticData=new Map();
   const staticRead=ref=>{if(!/^assets\/[a-f0-9]{64}\.json$/.test(ref))throw Error('Invalid static reference');if(!staticData.has(ref))staticData.set(ref,JSON.parse(fs.readFileSync(path.join(staticViewer.directory,ref),'utf8')));while(staticData.size>96)staticData.delete(staticData.keys().next().value);return staticData.get(ref);};
+  const editorProjects=new EditorProjectService(root),editorBuilds=new EditorBuildService(builder);
   const viewerMetadata=new ViewerMetadata(root,previews.config,builder.store,(...args)=>previews.run(...args));
   const tracking=new WeakMap(),downloadTickets=new DownloadTickets();
   const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
@@ -83,9 +87,12 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         if(origin&&origin!==`http://${host}`&&origin!==config.publicBaseUrl)return json(res,403,{error:'Origin не разрешён'});
         if(url.pathname==='/api/admin/login'&&req.method==='POST'){const data=await body(req);try{return json(res,200,{token:await admin.login(data.username,data.password)});}catch(e){return json(res,401,{error:e.message});}}
         const tokenInUrl=req.method==='GET'&&/^\/api\/admin\/(cosmetic-icon|jobs\/[a-f0-9]{32}\/download)$/.test(url.pathname)?url.searchParams.get('token'):null;
-        const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl;
+        const editorCookie=url.pathname.startsWith('/api/admin/editor/')?req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('studio-editor='))?.slice('studio-editor='.length):null;
+        const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl??editorCookie;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
         const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
+        if(url.pathname==='/api/admin/editor/session'&&req.method==='POST'){res.setHeader('Set-Cookie','studio-editor='+adminToken+'; Path=/api/admin/editor/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
+        if(url.pathname.startsWith('/api/admin/editor/')&&await editorRoute({req,res,url,owner:'editor-admin',projects:editorProjects,builds:editorBuilds,body:req=>body(req,24*1024*1024),json,root}))return;
         if(url.pathname==='/api/admin/set-catalog'&&req.method==='GET')return json(res,200,adminSetCatalog(builder.catalog));
         if(url.pathname==='/api/admin/set-preview'&&req.method==='POST'){
           const data=adminSetPayload(builder.catalog,await body(req));previews.touch(adminOwner);

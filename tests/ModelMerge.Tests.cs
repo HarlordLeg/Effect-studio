@@ -8,6 +8,7 @@ internal static class ModelMergeTests
   {
    KVObject Pose(string name,float x){var s=Skeleton([name],[-1]);s["m_bonePosParent"]=Array(Array(new KVObject(x),new KVObject(0f),new KVObject(0f)));s["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return s;}
    var profiles=new[]{
+    ("models/heroes/kunkka/kunkka_head.vmdl","models/items/kunkka/sea_spirit_head/sea_spirit_head.vmdl","root","flexslidersnode"),
     ("models/heroes/lion/lion_head.vmdl","models/items/lion/test_head/test_head.vmdl","Root_0","spine_3"),
     ("models/items/earthshaker/earthshaker_arcana/earthshaker_arcana.vmdl","models/items/earthshaker/siege_beast_head/siege_beast_head_refit.vmdl","root","earthshaker1"),
     ("models/items/tidehunter/tidehunter_arcana/tidehunter_arcana.vmdl","models/items/tidehunter/executioner_ray_hood/executioner_ray_hood.vmdl","root1","group1"),
