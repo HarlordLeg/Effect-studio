@@ -15,6 +15,7 @@ internal static class ModelRootProfiles
             if(donor=="models/items/io/dark_carnival_io/dark_carnival_io.vmdl")return Map("root_immortal","alt_root");
         }
         if(host.Contains("/legion_commander/")&&donor.StartsWith("models/items/legion_commander/conquests_of_golden_sun_",StringComparison.Ordinal))return Map("Root0_JNT","Object001","Object002","SMDImport","SMDImport001","SMDImport002","SMDImport009","smdimport1","legion_base","legion_flags","legion_sword","legion_shoulder");
+        if(host.StartsWith("models/heroes/lion/",StringComparison.Ordinal)&&donor.StartsWith("models/items/lion/",StringComparison.Ordinal))return Map("Root_0","spine_3");
         return null;
     }
 }

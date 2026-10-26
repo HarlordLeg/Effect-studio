@@ -1,0 +1,1 @@
+export function showBuildError(target,error){target.replaceChildren(document.createTextNode(error?.message??String(error)));const link=document.createElement('a');link.href='https://t.me/harlord_mods';link.target='_blank';link.rel='noopener noreferrer';link.className='secondary bug-report';link.textContent='Bug report';target.append(document.createTextNode(' '),link);}

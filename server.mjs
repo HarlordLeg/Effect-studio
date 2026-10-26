@@ -74,7 +74,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         if(access?.session){res.setHeader('Set-Cookie',ADMIN_SET_COOKIE+'='+access.token+'; Path=/api/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
         if(access){adminStudioOwner=access.owner;url.pathname=access.pathname;}
       }catch(error){return json(res,error.status??401,{error:error.message});}
-      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|model-metadata|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
@@ -168,7 +168,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       const allowed=localAdmin||session||adminStudioOwner;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=adminStudioOwner??(session?session.id+':'+session.nonce:'local');previews.touch(owner);
-      if(adminStudioOwner&&url.pathname==='/api/model-metadata'&&req.method==='POST'){const data=await body(req);return json(res,200,await viewerMetadata.get(data.models,data.animationModels??[],data.preferred??[]));}
+      if(url.pathname==='/api/model-metadata'&&req.method==='POST'){const data=await body(req);if(session)auth.consume(session,'preview');return json(res,200,await viewerMetadata.get(data.models,data.animationModels??[],data.preferred??[]));}
       if(req.method==='GET'&&staticViewer.api(req,res,url))return;
       if(staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
       if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
@@ -243,7 +243,7 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
         let buildJob=null;
         if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}
         if(session)auth.consume(session,'preview');
-        const job=previews.create(choice,owner,buildJob);tracking.set(job,{selections:selectionStatistics(choice.selections??[choice]),source:session?.origin??'local'});return json(res,202,publicPreview(job));
+        if(choice.hero.id==='legion_commander'&&choice.selections?.some(row=>row.arcana)&&!choice.preferredAnimations?.length)choice.preferredAnimations=['lc_questidle','ARCANA_dualwield_legion_commander_loadout'];const job=previews.create(choice,owner,buildJob);job.preferredAnimations=choice.preferredAnimations??[];tracking.set(job,{selections:selectionStatistics(choice.selections??[choice]),source:session?.origin??'local'});return json(res,202,publicPreview(job));
       }
       const adminStaticPart=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})\/parts\/(\d+)$/);
       if(adminStudioOwner&&adminStaticPart&&staticJobs.has(adminStaticPart[1])){
@@ -284,14 +284,14 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
         const {spawn}=await import('node:child_process');const child=spawn(path.resolve(root,config.viewer),[file],{detached:true,stdio:'ignore',shell:false});
         await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();return json(res,200,{opened:true});
       }
-      if(url.pathname==='/hero-pedestal.glb'&&['GET','HEAD'].includes(req.method)){res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'public, max-age=86400'});if(req.method==='HEAD')return res.end();return fs.createReadStream(path.join(root,'hero-pedestal.glb')).pipe(res);}
+      if(url.pathname==='/hero-pedestal.glb'&&['GET','HEAD'].includes(req.method)){const original=path.join(root,'hero-pedestal.glb'),file=fs.existsSync(original)?original:path.join(root,'public/viewer/assets/hero-pedestal.glb');if(!fs.existsSync(file))return json(res,404,{error:'Пьедестал отсутствует в установленном приложении. Требуется обновление файлов сервера.'});res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'public, max-age=86400'});if(req.method==='HEAD')return res.end();const stream=fs.createReadStream(file);stream.on('error',error=>res.destroy(error));res.once('close',()=>stream.destroy());return stream.pipe(res);}
       if(url.pathname.startsWith('/api/'))return json(res,404,{error:'Маршрут не найден'});
       if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET'});
       const isSection=/^\/(effects|sets|cosmetics|weather)\.html$/.test(url.pathname);
       const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin',isAdminSetCatalog=url.pathname==='/admin-set-catalog.html';
       if(isWidget&&!session)return json(res,401,{error:'Нужна сессия виджета'});
       const assetOrigin=config.staticViewerBaseUrl?.startsWith('https://')?new URL(config.staticViewerBaseUrl).origin:'';
-      const csp="default-src 'self'; script-src 'self'"+(isAdminSetCatalog?" 'wasm-unsafe-eval'":"")+"; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net "+assetOrigin+"; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self' "+(isAdminSetCatalog?'blob: ':'')+assetOrigin+"; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+(isAdminSetCatalog?"'self'":(isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
+      const csp="default-src 'self'; script-src 'self'"+" 'wasm-unsafe-eval'"+"; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net "+assetOrigin+"; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self' "+'blob: '+assetOrigin+"; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+(isAdminSetCatalog?"'self'":(isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
       res.setHeader('Content-Security-Policy',csp);if(/\.(mjs|js)$/.test(url.pathname))res.setHeader('Access-Control-Allow-Origin','*');
       let file;
       {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}

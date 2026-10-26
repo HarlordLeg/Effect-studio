@@ -23,6 +23,6 @@ test('admin set namespace supports shared catalog, private preview parts and str
   const id='b'.repeat(32),owner='admin:'+createHash('sha256').update('valid').digest('hex');previews.jobs.set(id,{id,owner,status:'ready',parts:[]});
   assert.equal((await fetch(base+'previews/'+id,{headers})).status,200);assert.equal((await fetch(url+'/api/previews/'+id)).status,404);
   const frame=await fetch(url+'/admin-set-catalog.html');assert.equal(frame.status,200);assert.match(frame.headers.get('content-security-policy'),/frame-ancestors 'self'/);assert.match(frame.headers.get('content-security-policy'),/connect-src 'self' blob:/);assert.match(frame.headers.get('content-security-policy'),/script-src 'self' 'wasm-unsafe-eval'/);
-  const normal=await fetch(url+'/sets.html');assert(!normal.headers.get('content-security-policy').includes("connect-src 'self' blob:"));assert.match(await normal.text(),/app\.mjs/);
+  const normal=await fetch(url+'/sets.html');assert(normal.headers.get('content-security-policy').includes("connect-src 'self' blob:"));assert.match(await normal.text(),/app\.mjs/);
  }finally{await new Promise(r=>server.close(r));}
 });

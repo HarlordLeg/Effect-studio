@@ -76,9 +76,10 @@ internal static class ParticleExport
                 try {
                     var exporter = new GltfModelExporter(loader) {
                         ProgressReporter = new Progress<string>(message => Console.WriteLine(message)),
-                        ExportMaterials = true, ExportAnimations = true, AdaptTextures = true, SatelliteImages = false
+                        ExportMaterials = true, ExportAnimations = true, ComposeAdditiveAnimations = true, AdaptTextures = true, SatelliteImages = false
                     };
                     exporter.Export(resource, file);
+                    PreviewMetadata.Write(resource, file, loader);
                     var groups=model.Data.TryGetValue("m_meshGroups",out var groupNames)?JsonValue(groupNames):null;
                     var masks=model.Data.TryGetValue("m_refMeshGroupMasks",out var groupMasks)&&groupMasks.IsArray?groupMasks.Values.Select(v=>v.ToUInt64(CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture)).ToArray():[];
                     models[path] = new { data = Convert.ToBase64String(File.ReadAllBytes(file)), meshGroups=groups, meshMasks=masks, meshes=model.GetEmbeddedMeshes().Select(m=>new {index=m.MeshIndex,name=m.Name}).ToArray() };

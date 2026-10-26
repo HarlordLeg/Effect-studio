@@ -1,1 +1,1 @@
-export {ModelPreview} from './renderer/engine.mjs';
+export {ModelPreview} from './viewer/runtime.mjs';

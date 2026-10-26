@@ -18,12 +18,12 @@ export class ModelPreview {
  async loadScene(manifest,base,query=''){
   const ticket=++this.generation;this.loadingVersion++;this.viewer.loading++;this.abort?.abort();this.abort=new AbortController();
   if(!manifest.parts?.length)throw Error('Некорректный состав сцены');
-  const parts=[...(manifest.parts??[]).filter(p=>p.role!=='pedestal'),{role:'pedestal',id:'studio-pedestal',key:'studio-pedestal-v1',url:'/hero-pedestal.glb'}];if(!parts.length||parts.length>128)throw Error('Некорректный состав сцены');
+  const parts=[...(manifest.parts??[]).filter(p=>p.role!=='pedestal'),{role:'pedestal',id:'studio-pedestal',key:'studio-pedestal-v1',url:new URL('./assets/hero-pedestal.glb',import.meta.url).href}];if(!parts.length||parts.length>128)throw Error('Некорректный состав сцены');
   const signature=sceneSignature(manifest);
-  if(signature===this.signature&&this.viewer.hero){this.preservedScene=true;return this.asset.json.animations;}
+  if(signature===this.signature&&this.viewer.hero){this.preservedScene=true;this.progress({phase:'ready'});return this.asset.json.animations;}
   const source=new SceneSource();const started=performance.now();
   try{
-   const {buffers,...stats}=await this.downloads.load(parts,base,query,{fetcher:this.fetcher,signal:this.abort.signal,onProgress:detail=>this.progress(detail)});this.lastLoadStats=stats;this.progress({phase:'prepare'});
+   const {buffers,...stats}=await this.downloads.load(parts,base,query,{fetcher:this.fetcher,signal:this.abort.signal,onProgress:detail=>{if(ticket===this.generation)this.progress(detail);}});this.lastLoadStats=stats;this.progress({phase:'prepare'});
    if(ticket!==this.generation)throw cancelled();
    let heroSeen=false;for(let i=0;i<parts.length;i++){const p=parts[i],isHero=p.role==='hero'||(!heroSeen&&i===0);if(isHero)heroSeen=true;let owner=p.role==='pedestal'?'pedestal':isHero?'hero':(p.slot??manifest.selectedItems?.find(it=>it.id===p.id)?.slot??'part-'+i);if(Object.hasOwn(source.manifest.models,owner))owner+='-'+i;source.addGlb(buffers[i],{key:'part-'+i,owner,itemId:p.id});}
    source.manifest.studioPedestal=true;source.manifest.id=manifest.heroId??'effect-studio';
@@ -36,7 +36,7 @@ export class ModelPreview {
    const animations=this.viewer.animations.map(a=>({...a,isDefault:a.name===source.manifest.animations?.idle}));this.asset={json:{animations}};this.animation=Math.max(0,animations.findIndex(a=>a.name===this.viewer.hero.playing));if(this.preservedScene&&playing){const index=animations.findIndex(a=>a.name===playing);if(index>=0)this.setAnimation(index);}this.document.reset({materials:source.manifest.materials});
    if(!Object.values(source.manifest.attachments).some(a=>Object.keys(a).length))console.warn('[Effect Studio viewer] Точки крепления отсутствуют в GLB и метаданных исходной модели.');
    this.lastLoadStats.elapsedMs=Math.round(performance.now()-started);this.progress({phase:'ready',animations:animations.length,...this.lastLoadStats});return animations;
-  }catch(error){if(ticket===this.generation)this.abort.abort();source.dispose();throw error;}
+  }catch(error){if(ticket===this.generation)this.abort.abort();source.dispose();if(ticket===this.generation)this.progress({phase:'error'});throw error;}
  }
  progress(detail){this.canvas.dispatchEvent(new CustomEvent('preview-progress',{detail}));}
  cancelLoad(){this.generation++;this.loadingVersion++;this.abort?.abort();this.viewer.loading++;}

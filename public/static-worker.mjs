@@ -63,7 +63,7 @@ async function route(request,event){const url=new URL(request.url),name=url.path
  }
  if(name==='/api/notifications')return proxy(request,{authenticated:false});
  if(name.startsWith('/api/')){
-  if(!/^\/api\/(build$|jobs\/|visit$|preview-view$)/.test(name))return json({error:'Runtime preview export disabled'},409);
+  if(!/^\/api\/(build$|jobs\/|visit$|preview-view$|model-metadata$)/.test(name))return json({error:'Runtime preview export disabled'},409);
   return proxy(request);
  }
  return fetch(request);

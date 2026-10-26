@@ -432,8 +432,9 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
         // stand-in card, Ravencloak's main-menu sky, must not show as itself).
         const m = override ? mats[override] || manifest.materials?.[override] : mats[o.userData.material]; o.visible = !!m; if (!m) return; o.material = heroMaterial(m, info.texture || texture, time, light, info.cube || cube); own.push(o.material); });
       const words = (system || '').split('/').pop().split('_'), tail = (name) => { const w = name.split('_'); let k = 0; while (k < w.length && k < words.length && w[w.length - 1 - k] === words[words.length - 1 - k]) k++; return k; };
-      const named = source.animations.map((c) => [c, tail(c.name)]).sort((a, b) => b[1] - a[1])[0];
-      const clip = named && named[1] >= 2 ? named[0] : source.animations.find((c) => c.name === info.clips?.[activity]) || source.animations[0] || null;
+      const usable=source.animations.filter(c=>c.name!=='bindPose'&&!c.name.startsWith('@'));
+      const named = usable.map((c) => [c, tail(c.name)]).sort((a, b) => b[1] - a[1])[0];
+      const clip = named && named[1] >= 2 ? named[0] : usable.find((c) => c.name === info.clips?.[activity||'ACT_DOTA_IDLE']) || usable.find(c=>/(^|[_/])(idle|loop)([_/]|$)/i.test(c.name)) || usable[0] || null;
       return { scene, clip, materials: own };
     },
   };

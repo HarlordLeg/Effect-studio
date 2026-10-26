@@ -1,4 +1,10 @@
-export const translations = {"Личность уже есть":"I already own this persona","Погода":"Weather","Твоя погода.":"Your weather.",
+export const translations = {
+ "Загрузка частей: ": "Loading parts: ",
+ "Подготовка модели…": "Preparing model…",
+ "Подготавливаем сет…": "Preparing loadout…",
+ "Сет готов к просмотру.": "Loadout ready.",
+ "Загрузка каталога…": "Loading catalog…",
+"Личность уже есть":"I already own this persona","Погода":"Weather","Твоя погода.":"Your weather.",
 "Башни · Radiant":"Towers · Radiant","Башни · Dire":"Towers · Dire","Экспериментально: проверь атаку и разрушение башен в игре.":"Experimental: test tower attacks and destruction in game.",
 "Сохранить":"Save",
 "Сохранённые сборки":"Saved builds","Новая сборка":"New build","Название сборки":"Build name","Сохранить копию":"Save a copy","Загрузить":"Load","Удалить":"Delete","Сохранено в этом браузере":"Saved in this browser","Удалить сохранённую сборку?":"Delete this saved build?","Сохранение удалено":"Saved build deleted","Заменить текущую корзину сохранённой сборкой?":"Replace the current basket with this saved build?","Сборка загружена. Можно менять и собирать VPK.":"Build loaded. Edit it or build a VPK.","Загружено. Недоступные предметы пропущены: ":"Loaded. Unavailable items skipped: ","Не удалось прочитать сохранения: ":"Unable to read saved builds: ","Сначала выбери приоритеты эффектов":"Choose effect priorities first",

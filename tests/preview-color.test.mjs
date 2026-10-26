@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
-import {previewColor} from '../public/particles/style.mjs';import {ModelPreview} from '../public/preview.mjs';
+import {previewColor} from '../public/particles/style.mjs';import {ModelPreview} from '../public/renderer/engine.mjs';
 const effect=JSON.parse(fs.readFileSync(new URL('../data/catalog.json',import.meta.url))).effects.find(e=>e.id==='lava');
 test('Lava has orange default in preview; custom color wins and other effects retain source colors',()=>{assert.deepEqual(previewColor(effect),[1,92/255,8/255]);assert.deepEqual(previewColor(effect,[0,0,255]),[0,0,1]);assert.equal(previewColor({id:'smoke'}),null);assert.equal(effect.color,undefined);});
 test('disabling custom color restores default in single and batch previews',()=>{const part={options:{scope:'hero',defaultColor:previewColor(effect)},sim:{}},preview={effect:{parts:[part]}};ModelPreview.prototype.setEffectColor.call(preview,[0,0,1]);assert.deepEqual(part.sim.colorOverride,[0,0,1]);ModelPreview.prototype.setEffectColor.call(preview,null);assert.deepEqual(part.sim.colorOverride,previewColor(effect));const single={effect:{options:{defaultColor:previewColor(effect)},sim:{}}};ModelPreview.prototype.setEffectColor.call(single,null);assert.deepEqual(single.effect.sim.colorOverride,previewColor(effect));});

@@ -1,3 +1,4 @@
+import {showBuildError} from './build-error.mjs';
 import {translate} from './i18n.mjs';
 import {buildLibrary,prepareSavedBuild} from './saved-builds.mjs';
 import {heroImage} from './hero-picker.mjs';
@@ -28,6 +29,6 @@ export function initSharedBasket(catalog,{api,token,resourceUrl=url=>url}){
   if(!rows.length&&!cosmetics.length)list.textContent='Добавь предметы или косметику.';build.disabled=working||presetBusy||!sharedBuildPayload().ready||!rows.length&&!cosmetics.length;
  }
 
- build.onclick=async()=>{if(working)return;try{const payload=sharedBuildPayload();if(!payload.ready)throw new Error('Выбери приоритет конфликтующих эффектов');working=true;draw();status.textContent='Собираем VPK…';let job=await api('/api/build',{...payload,vpkNumber:Number(number.value)});for(;;){job=await api('/api/jobs/'+job.id);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')break;await new Promise(r=>setTimeout(r,500));}const a=document.createElement('a');a.className='download';a.textContent=job.packageType?.endsWith('-zip')?'Скачать ZIP':'Скачать VPK';a.href=resourceUrl('/api/jobs/'+job.id+'/download'+(token?'?token='+encodeURIComponent(token):''));status.replaceChildren(a);}catch(error){status.textContent=error.message;}finally{working=false;draw();}};
+ build.onclick=async()=>{if(working)return;try{const payload=sharedBuildPayload();if(!payload.ready)throw new Error('Выбери приоритет конфликтующих эффектов');working=true;draw();status.textContent='Собираем VPK…';let job=await api('/api/build',{...payload,vpkNumber:Number(number.value)});for(;;){job=await api('/api/jobs/'+job.id);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')break;await new Promise(r=>setTimeout(r,500));}const a=document.createElement('a');a.className='download';a.textContent=job.packageType?.endsWith('-zip')?'Скачать ZIP':'Скачать VPK';a.href=resourceUrl('/api/jobs/'+job.id+'/download'+(token?'?token='+encodeURIComponent(token):''));status.replaceChildren(a);}catch(error){showBuildError(status,error);}finally{working=false;draw();}};
  globalThis.addEventListener('basket-change',draw);globalThis.addEventListener('cosmetics-change',draw);draw();
 }

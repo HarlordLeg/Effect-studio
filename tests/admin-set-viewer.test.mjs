@@ -15,7 +15,7 @@ test('new set viewer remains admin-only and its preview parts require the owner 
   assert.equal((await fetch(url+'/api/admin/set-previews/'+id+'/parts/0?token=one')).status,401);
   assert.equal((await fetch(url+'/api/admin/set-previews/'+id+'/effect',{headers})).status,200);
   assert.equal((await fetch(url+'/api/previews/'+id)).status,404);
-  for(const base of ['public','docs'])assert.match(fs.readFileSync(new URL('../'+base+'/preview.mjs',import.meta.url),'utf8'),/renderer\/engine\.mjs/);
+  for(const base of ['public','docs'])assert.match(fs.readFileSync(new URL('../'+base+'/preview.mjs',import.meta.url),'utf8'),/viewer\/runtime\.mjs/);
   for(const file of ['public/app.mjs','public/set-studio.mjs','public/sdk-viewer.mjs'])assert(!fs.readFileSync(new URL('../'+file,import.meta.url),'utf8').includes('viewer/runtime.mjs'));
  }finally{await new Promise(r=>server.close(r));}
 });
