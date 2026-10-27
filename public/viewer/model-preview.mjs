@@ -1,6 +1,7 @@
 import {SceneDownloads,sceneSignature} from './scene-download.mjs';
 import * as THREE from 'three';
 import {HeroViewer} from '../../vendor/dota-loadout/src/index.js';
+import {editorMeshMatches} from './editor-focus.mjs';
 import {SceneDocument} from './scene-document.mjs';
 import {SceneSource,effectSource} from './scene-source.mjs';
 const cancelled=()=>Object.assign(Error('Просмотр отменён'),{name:'AbortError'});
@@ -16,7 +17,7 @@ export class ModelPreview {
  moveCamera(dt){this.updateControlPoints();if(!this.keys.size||!this.viewer.hero)return;const v=this.viewer,step=dt*Math.max(.5,v.hero.box.getSize(new THREE.Vector3()).length())*(this.keys.has('ShiftLeft')||this.keys.has('ShiftRight')?1.5:.4),forward=new THREE.Vector3();v.camera.getWorldDirection(forward);forward.y=0;forward.normalize();const right=new THREE.Vector3().crossVectors(forward,v.camera.up).normalize(),delta=new THREE.Vector3();if(this.keys.has('KeyW'))delta.add(forward);if(this.keys.has('KeyS'))delta.sub(forward);if(this.keys.has('KeyD'))delta.add(right);if(this.keys.has('KeyA'))delta.sub(right);if(this.keys.has('KeyE'))delta.y++;if(this.keys.has('KeyQ'))delta.y--;if(delta.lengthSq()){delta.normalize().multiplyScalar(step);v.view.center.add(delta);v.place();}}
  async load(url){return this.loadScene({heroId:'single-model',parts:[{role:'hero',id:'hero',url,key:url}]},'');}
  async loadScene(manifest,base,query=''){
-  const ticket=++this.generation;this.loadingVersion++;this.viewer.loading++;this.abort?.abort();this.abort=new AbortController();
+  this.setEditorFocus(null);const ticket=++this.generation;this.loadingVersion++;this.viewer.loading++;this.abort?.abort();this.abort=new AbortController();
   if(!manifest.parts?.length)throw Error('Некорректный состав сцены');
   const parts=[...(manifest.parts??[]).filter(p=>p.role!=='pedestal'),{role:'pedestal',id:'studio-pedestal',key:'studio-pedestal-v1',url:new URL('./assets/hero-pedestal.glb',import.meta.url).href}];if(!parts.length||parts.length>128)throw Error('Некорректный состав сцены');
   const signature=sceneSignature(manifest);
@@ -40,6 +41,18 @@ export class ModelPreview {
  }
  progress(detail){this.canvas.dispatchEvent(new CustomEvent('preview-progress',{detail}));}
  cancelLoad(){this.generation++;this.loadingVersion++;this.abort?.abort();this.viewer.loading++;}
+ // Editor-only isolation keeps the authored skeleton and attachments alive.
+ setEditorFocus(focus=null){
+  if(this.editorFocusState){const old=this.editorFocusState;for(const[o,visible]of old.meshes)o.visible=visible;this.viewer.view.center.copy(old.center);this.viewer.view.size=old.size;this.viewer.zoom(old.zoom);this.viewer.place();this.editorFocusState=null;}
+  if(!focus||!this.viewer.hero||!this.source)return 0;
+  const models=new Set((focus.models??[]).map(n=>n.replace(/_c$/,''))),owners=[...this.source.modelMetadata.values()].filter(m=>models.has(m.model?.replace(/_c$/,''))).map(m=>m.owner);focus={...focus,owners};
+  const state={meshes:[],center:this.viewer.view.center.clone(),size:this.viewer.view.size?.clone(),zoom:this.viewer.view.zoomTarget},box=new THREE.Box3();let count=0;
+  this.viewer.hero.turntable.updateMatrixWorld(true);
+  this.viewer.hero.turntable.traverse(o=>{if(!o.isMesh)return;state.meshes.push([o,o.visible]);o.visible=editorMeshMatches(o,this.source.materialMetadata,focus);if(o.visible){count++;box.expandByObject(o,true);}});
+  this.editorFocusState=state;
+  if(!box.isEmpty()){box.getCenter(this.viewer.view.center);this.viewer.view.size=box.getSize(new THREE.Vector3());this.viewer.zoom(1);this.viewer.place();}
+  return count;
+ }
  setAnimation(index){const animation=this.asset?.json.animations[index];if(!animation)return;this.animation=index;this.viewer.play(animation.name);}
  get effectsEnabled(){return this.viewer.studioEffectsEnabled!==false;}
  set effectsEnabled(value){this.viewer.studioEffectsEnabled=!!value;this.viewer.hero?.studioEffectsVisible(value);}
@@ -66,6 +79,6 @@ export class ModelPreview {
  setEffectColor(color){const entries=this.lastEntries.map(entry=>entry.scope==='hero'?{...entry,color:color??entry.defaultColor??null}:entry);return this.setEffects(entries).catch(e=>this.error(e));}
  replayEffect(){return this.setEffects(this.lastEntries).catch(e=>this.error(e));}
  error(e){if(e?.name!=='AbortError')this.canvas.dispatchEvent(new CustomEvent('preview-error',{detail:e.message??String(e)}));}
- clear(){this.cpGroup?.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});this.cpGroup?.removeFromParent();this.cpGroup=null;this.cpHero=null;this.generation++;this.loadingVersion++;this.abort?.abort();this.viewer.loading++;this.viewer.unload();this.source?.dispose();this.source=null;this.signature=null;this.asset=null;this.lastEntries=[];this.document.reset();}
+ clear(){this.setEditorFocus(null);this.cpGroup?.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});this.cpGroup?.removeFromParent();this.cpGroup=null;this.cpHero=null;this.generation++;this.loadingVersion++;this.abort?.abort();this.viewer.loading++;this.viewer.unload();this.source?.dispose();this.source=null;this.signature=null;this.asset=null;this.lastEntries=[];this.document.reset();}
  dispose(){this.clear();this.downloads.clear();this.viewer.dispose();this.canvas.removeEventListener('keydown',this.down);this.canvas.removeEventListener('keyup',this.up);this.canvas.removeEventListener('blur',this.blur);this.canvas.removeEventListener('pointerdown',this.focus);}
 }
