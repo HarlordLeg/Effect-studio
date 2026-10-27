@@ -68,7 +68,7 @@ export function effectSource(scene,entries,{glow=null}={}){
   for(const path of Object.keys(packet.models??{}))remap.set(compiled(path),prefix+compiled(path));
   for(const path of Object.keys(packet.materials??{}))remap.set(compiled(path),prefix+compiled(path));
   for(const[path,value]of Object.entries(packet.materials??{}))materials[remap.get(compiled(path))]=normalized(value,remap);
-  for(const[path,value]of Object.entries(packet.definitions??{})){const id=remap.get(compiled(path)),def=normalized(value,remap);def.m_nMaxParticles=Math.min(4000,Math.max(0,finite(def.m_nMaxParticles,1000)));if(entry.color){def.m_ConstantColor=[...entry.color.map(n=>Math.round(n*255)),255];for(const op of [...(def.m_Initializers??[]),...(def.m_Operators??[])])for(const k of ['m_ColorMin','m_ColorMax','m_ColorFade'])if(k in op)op[k]=[...entry.color.map(n=>Math.round(n*255)),255];}systems[id]=def;}
+  for(const[path,value]of Object.entries(packet.definitions??{})){const id=remap.get(compiled(path)),def=normalized(value,remap);def.m_nMaxParticles=Math.min(4000,finite(def.m_nMaxParticles,1000)>0?finite(def.m_nMaxParticles,1000):1000);if(entry.color){def.m_ConstantColor=[...entry.color.map(n=>Math.round(n*255)),255];for(const op of [...(def.m_Initializers??[]),...(def.m_Operators??[])])for(const k of ['m_ColorMin','m_ColorMax','m_ColorFade'])if(k in op)op[k]=[...entry.color.map(n=>Math.round(n*255)),255];}systems[id]=def;}
   for(const[path,t]of Object.entries(packet.textures??{})){
    const id=remap.get(compiled(path)),file=t.data?'data:'+(t.mime??'image/png')+';base64,'+t.data:t.url;if(!file)continue;
    textures[id]={file,sequences:(t.sequences??[]).map(seq=>({clamp:!!seq.clamp,frames:(seq.frames??[]).map(frame=>{

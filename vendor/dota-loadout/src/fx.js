@@ -1358,7 +1358,7 @@ export class Simulation {
     this.def = def; this.lib = lib; this.root = root || this; this.children = []; this.particles = []; this.emitted = 0;
     if (!root) { this.cps = new Map(); this.model = null; }
     this.state = new State(this, parentState);
-    this.maxParticles = Math.min(def.m_nMaxParticles ?? 1000, 2000);
+    this.maxParticles = Math.min(Number.isFinite(def.m_nMaxParticles)&&def.m_nMaxParticles>0?def.m_nMaxParticles:1000, 2000);
     const cc = def.m_ConstantColor || [255, 255, 255, 255];
     this.constants = { color: new THREE.Vector3(cc[0] / 255, cc[1] / 255, cc[2] / 255), alpha: (cc[3] ?? 255) / 255, radius: def.m_flConstantRadius ?? 5, life: def.m_flConstantLifespan ?? 1,
       roll: (def.m_flConstantRotation ?? 0) * Math.PI / 180, rollSpeed: (def.m_flConstantRotationSpeed ?? 0) * Math.PI / 180, seq: def.m_nConstantSequenceNumber ?? 0 };
