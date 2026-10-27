@@ -1,0 +1,15 @@
+{
+  "lib/editor/ui.mjs": "a2b8d5671f83f94cc27d868b62b6fdddc2c08007fd9de35383c55b4602dfe8cf",
+  "lib/editor/editor.css": "cc99b8b8cd3805021bcd80d1cb964501230dfa061b4c311e607fae946d750aff",
+  "lib/editor/selection-state.mjs": "a5433f7313947bffe1700c7daf17d2fbb7cc2a4d06de5cafbd08cd079dd432f1",
+  "lib/editor/routes.mjs": "7b2867025c08b6e1404477a7138ed1702a83fbd4045d588022769b8770230a75",
+  "lib/editor/project-service.mjs": "4453bec5caa3d79b11e84f6788c668af51fa0a1b599e93f04a783071457d1ad9",
+  "lib/editor/build-service.mjs": "ede77588e7fc02e28ea2c56fdd21c0aff317f9379bcae34e18aa592e775c8d8e",
+  "public/set-studio.mjs": "42760821de628d5f5238ae598ecf4e3b44107bd5e2719a8692e058c522139801",
+  "docs/set-studio.mjs": "42760821de628d5f5238ae598ecf4e3b44107bd5e2719a8692e058c522139801",
+  "public/admin.mjs": "18df4bbf8d39db0c053c882791492ffd979b77a255f56972746ef78a98a222e0",
+  "tests/editor.test.mjs": "a7ae29f671b63e9aa615a651efabf3d7fe0aa98f38c0be9e2470a602d83ab8be",
+  "tests/editor-selection.test.mjs": "3f45fb8d23ed3c2b9d0a177bb95a8594fea989b4dd315bf1a763b9efea37f49c",
+  "EDITOR_SETS_UI_FIX.md": "88560ac43666230fa5b505157c0f6e8ce4a55220e3dcf4888f1a63f1363e1981",
+  "COMMIT_MESSAGE_EDITOR_UI.txt": "5c54b0b34e9f328269201b8fd265a2dcb1e066a4530f0220bbd5cd6e06fa792d"
+}
