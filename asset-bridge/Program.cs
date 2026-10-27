@@ -6,7 +6,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class Program
 {
     private sealed record DefaultModel(string Model, string Output);
-    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null, string[]? MetadataModels = null, string[]? MetadataAnimationModels = null, string[]? MetadataPreferredAnimations = null, string[]? MetadataActivityTags = null, bool ParticleOnly = false);
+    private sealed record Request(string Model, string Output, string[] Archives, string[] AssetDirectories, bool Materials, string? HeroModel = null, string? HeroOutput = null, string? Particle = null, DefaultModel[]? DefaultModels = null, bool SkipModel = false, int Skin = 0, string[]? NativeParticles = null, string? ThumbnailTexture = null, string[]? MetadataModels = null, string[]? MetadataAnimationModels = null, string[]? MetadataPreferredAnimations = null, string[]? MetadataActivityTags = null, bool ParticleOnly = false, bool ParticleChildren = true);
 
     public static int Main(string[] args)
     {
@@ -63,7 +63,7 @@ internal static class Program
                 return 0;
             }
 
-            if(request.ParticleOnly){if(request.Particle is null||!request.Particle.StartsWith("particles/",StringComparison.Ordinal)||request.Particle.Split('/').Contains(".."))throw new InvalidDataException("Invalid particle path");ParticleExport.Write(loader,request.Particle,target);return 0;}
+            if(request.ParticleOnly){if(request.Particle is null||!request.Particle.StartsWith("particles/",StringComparison.Ordinal)||request.Particle.Split('/').Contains(".."))throw new InvalidDataException("Invalid particle path");ParticleExport.Write(loader,request.Particle,target,request.ParticleChildren);return 0;}
             if (!request.SkipModel) ExportModel(loader, request.Model, target, request.Materials, request.Skin);
             if (request.HeroModel is not null && request.HeroOutput is not null)
                 ExportModel(loader, request.HeroModel, Path.GetFullPath(request.HeroOutput), request.Materials);

@@ -4,6 +4,7 @@
 // game's own space (inches, Z up); the group that holds the meshes converts to glTF like Source 2
 // Viewer's exporter does (scale 0.0254, Z-up to Y-up).
 import * as THREE from 'three';
+import {MarchingCubes} from 'three/addons/objects/MarchingCubes.js';
 
 // ParticleField
 const F = { Position: 0, LifeDuration: 1, PositionPrevious: 2, Radius: 3, Roll: 4, RollSpeed: 5, Color: 6, Alpha: 7, CreationTime: 8,
@@ -1359,7 +1360,7 @@ export class Simulation {
     this.state = new State(this, parentState);
     this.maxParticles = Math.min(def.m_nMaxParticles ?? 1000, 2000);
     const cc = def.m_ConstantColor || [255, 255, 255, 255];
-    this.constants = { color: new THREE.Vector3(cc[0] / 255, cc[1] / 255, cc[2] / 255), alpha: cc[3] / 255, radius: def.m_flConstantRadius ?? 5, life: def.m_flConstantLifespan ?? 1,
+    this.constants = { color: new THREE.Vector3(cc[0] / 255, cc[1] / 255, cc[2] / 255), alpha: (cc[3] ?? 255) / 255, radius: def.m_flConstantRadius ?? 5, life: def.m_flConstantLifespan ?? 1,
       roll: (def.m_flConstantRotation ?? 0) * Math.PI / 180, rollSpeed: (def.m_flConstantRotationSpeed ?? 0) * Math.PI / 180, seq: def.m_nConstantSequenceNumber ?? 0 };
     this.maxStep = def.m_flMaximumTimeStep ?? 0.1;
     this.preSim = def.m_flPreSimulationTime ?? 0;
@@ -1568,6 +1569,12 @@ function billboard(camera, groupInverse) {
 // red, its smoke pink, its shadow dark grey). Without one, the colour as it is.
 const colorScale = (r) => { if (!r.m_vecColorScale) return null; const v = vector(r.m_vecColorScale, [1, 1, 1]); return (p, s) => v(p, s); };
 const scaled = (k, p, s) => { const c = p.color; if (!k) return [c.x, c.y, c.z]; const m = k(p, s); return [c.x * m.x, c.y * m.y, c.z * m.z]; };
+// The engine's blob shader is approximated with a fused metaball surface.
+class BlobRenderer {
+ constructor(r,lib,sim){this.r=r;this.lib=lib;const native=lib.materials?.[r.m_hMaterial],tint=native?.vectors?.g_vColorTint??[1,1,1];this.material=new THREE.MeshPhysicalMaterial({color:new THREE.Color().setRGB(...tint.slice(0,3)),vertexColors:true,roughness:.16,metalness:.35,clearcoat:1,transparent:true,opacity:.9,side:THREE.DoubleSide});const normal=native?.textures?.g_tNormal;if(normal&&lib.textures?.[normal])this.material.normalMap=lib.texture({m_hTexture:normal}).texture;this.surface=new MarchingCubes(28,this.material,false,true,16000);this.surface.frustumCulled=false;lib.group.add(this.surface);lib.unsupported.add('C_OP_RenderBlobs: approximate metaball surface');}
+ update(ps,s){this.surface.reset();const live=ps.filter(p=>p.alpha>1/255);this.surface.visible=!!live.length;if(!live.length)return;const box=new THREE.Box3();for(const p of live)box.expandByPoint(p.pos);const radius=Math.max(this.r.m_cutoffRadius??13,...live.map(p=>p.radius)),center=box.getCenter(new THREE.Vector3()),extent=Math.max(32,box.getSize(new THREE.Vector3()).length()+radius*4);this.surface.position.copy(center);this.surface.scale.setScalar(extent/2);for(const p of live.slice(0,256)){const point=p.pos.clone().sub(center).divideScalar(extent).addScalar(.5),r=Math.max(this.r.m_renderRadius??4,p.radius*.5)/extent,c=scaled(this.colorScale,p,s);this.surface.addBall(point.x,point.y,point.z,r*r*92,12,new THREE.Color().setRGB(...c));}this.material.opacity=Math.min(1,Math.max(...live.map(p=>p.alpha)));this.surface.update();}
+ dispose(){this.lib.group.remove(this.surface);this.surface.geometry.dispose();this.material.dispose();}
+}
 class SpriteRenderer {
   dispose() { this.batch.dispose(); }
   constructor(r, lib, sim) {
@@ -1679,7 +1686,7 @@ class ModelRenderer {
       }
       // The particle's colour tints the model; its alpha fades those that blend (glows, glass).
       const [cr, cg, cb] = scaled(this.colorScale, p, s);
-      for (const mat of inst.materials) { mat.color.setRGB(cr, cg, cb); if (mat.transparent) mat.opacity = saturate(p.alpha); }
+      for (const mat of inst.materials) { mat.userData.studioParticleBaseColor??=mat.color.clone();mat.userData.studioParticleBaseOpacity??=mat.opacity;const base=mat.userData.studioParticleBaseColor;mat.color.setRGB(base.r*cr,base.g*cg,base.b*cb); if (mat.transparent) mat.opacity = mat.userData.studioParticleBaseOpacity*saturate(p.alpha); }
       alive.add(p);
       const q = p.orient || qangle(p.rot.y, p.rot.x, p.rot.z), r = Math.max(1e-4, p.radius);
       inst.scene.matrix.compose(p.pos, q, new THREE.Vector3(r, r, r)).multiply(GLTF_TO_SOURCE); inst.scene.matrixWorldNeedsUpdate = true; inst.scene.visible = p.alpha > 0.01;
@@ -1727,6 +1734,8 @@ export class Library {
   }
   renderer(r, sim) {
     // A renderer whose texture did not come with the hero would draw bare squares: it is left out.
+    if (r._class === 'C_OP_RenderBlobs')return new BlobRenderer(r,this,sim);
+    if(r._class==='C_OP_RenderProjected'){const material=this.materials?.[r.m_hProjectedMaterial],path=material?.textures?.g_tColor;if(!path||!this.textures[path]){this.unsupported.add('C_OP_RenderProjected: material unavailable');return null;}this.unsupported.add('C_OP_RenderProjected: approximate ground projection');return new SpriteRenderer({...r,m_hTexture:path,m_nOrientationType:'PARTICLE_ORIENTATION_WORLD_Z_ALIGNED',m_nOutputBlendMode:'PARTICLE_OUTPUT_BLEND_MODE_ADD'},this,sim);}
     if (r._class === 'C_OP_RenderModels') return this.models ? new ModelRenderer(r, this, sim) : null;
     if (!this.texture(r).texture) return null;
     switch (r._class) {

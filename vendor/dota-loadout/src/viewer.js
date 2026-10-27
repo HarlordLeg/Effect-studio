@@ -209,6 +209,7 @@ void main() {
     if (Math.abs(this.view.zoomTarget - this.view.zoom) > 1e-4) { this.view.zoom += (this.view.zoomTarget - this.view.zoom) * (1 - Math.exp(-EASE * real)); this.place(); }
     this.options.onFrame?.(real, this);
     this.hero.update(dt, this.camera);
+    this.options.onAfterUpdate?.(this);
     const r = this.renderer;
     if (this.soft) {
       const fx = this.hero.lib.group, shadows = r.shadowMap.autoUpdate; fx.visible = false; r.shadowMap.autoUpdate = false; this.scene.overrideMaterial = this.soft.material;
@@ -538,7 +539,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   };
   // The ambient effects: the hero's own and his items' — a slot's default ones only while it wears
   // its default. Worn items may put their own effects and snapshots in place of the hero's.
-  let effects = [];
+  let effects = [], studioIsolated=false;
   const replaced = new Map(), replacedBy = new Map(), unusuals = new Map();
   const ambient = () => {
     for (const e of effects) e.sim.dispose();
@@ -546,7 +547,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     const list = (manifest.effects || []).filter((e) => !worn.get(e.owner)?.item);
     // A slot's default replaces effects while it is worn (the hero's own default, always).
     for (const [slot, r] of Object.entries(manifest.replace || {})) if (!worn.get(slot)?.item) for (const [from, to] of Object.entries(r)) replaced.set(from, to);
-    for (const [slot, w] of worn) if (w.item) {
+    for (const [slot, w] of worn) if (w.item&&!studioIsolated) {
       for (const system of w.style.effects) list.push({ system, owner: slot });
       const u = unusuals.has(slot) && w.unusual?.find((x) => x.id === unusuals.get(slot)); if (u) list.push({ system: u.system, owner: slot });
       // An effect an item puts in place of the hero's is the item's (its gem colours it).
@@ -569,7 +570,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   };
   let lastName = null, lastTime = 0;
   const schedule = () => {
-    if (!current) return;
+    if (studioIsolated||!current) return;
     const duration = current.getClip().duration || 1, now = current.time;
     if (currentName !== lastName) {
       // A new animation: those of the last one that end with it stop making particles.
@@ -591,6 +592,9 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     turntable, lib, box, heroBox, live, get effects() { return effects; },
     // Effect Studio extension: data-only scene updates for the host application.
     // The public page does not expose an editor or file-write operations.
+    studioIsolation(value){studioIsolated=!!value;},
+    studioReplayEffects(){for(const e of live)e.sim.dispose();live.length=0;ambient();},
+    studioSeekEffects(seconds){ambient();const duration=Math.max(0,Math.min(5,seconds));for(const e of effects){drive(e,heroOrigin());for(let t=0;t<duration;t+=1/120){drive(e,heroOrigin());e.sim.update(Math.min(1/120,duration-t));}}},
     async studioEffects(patch) {
       if (studioDisposed) throw Object.assign(Error('Scene disposed'), {name:'AbortError'});
       const nextFiles = new Set(Object.values(patch.fxModels || {}).map(info => info.file));
@@ -599,7 +603,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
       for (const e of live) e.sim.dispose(); live.length = 0;
       for (const { texture } of lib.cache.values()) texture?.dispose(); lib.cache.clear();
       snapshotFitter.fit(patch.snapshots);
-      lib.systems = patch.systems || {}; lib.textures = patch.textures || {}; lib.snapshots = patch.snapshots || {};
+      lib.materials = patch.materials || {};lib.systems = patch.systems || {}; lib.textures = patch.textures || {}; lib.snapshots = patch.snapshots || {};
       for (const [path, def] of Object.entries(lib.systems)) if (def && !def._path) Object.defineProperty(def, '_path', { value: path });
       for (const [path, info] of Object.entries(patch.fxModels || {})) {
         if (!propModels[info.file]) { const gltf = await loader.loadAsync(url(info.file)); if (studioDisposed) { disposeProp(gltf); throw Object.assign(Error('Scene disposed'), {name:'AbortError'}); } propModels[info.file] = gltf; studioPropFiles.add(info.file); }
@@ -613,6 +617,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
       Object.assign(manifest.materials[name], patch);
       for (const [key, material] of materials) if (key === name) { material.dispose(); materials.delete(key); }
       turntable.traverse((o) => { if (o.isMesh && o.userData.material === name) dressMesh(o); });
+      lib.group.traverse(o=>{if(!o.isMesh||o.userData.material!==name)return;const fresh=heroMaterial(manifest.materials[name],texture,time,light,cube);for(const material of Array.isArray(o.material)?o.material:[o.material]){material.copy(fresh);material.userData=fresh.userData;material.userData.studioParticleBaseColor=material.color.clone();material.userData.studioParticleBaseOpacity=material.opacity;material.onBeforeCompile=fresh.onBeforeCompile;material.needsUpdate=true;}fresh.dispose();});
     },
     studioEffectsVisible(visible) { lib.group.visible = !!visible; },
  animations: list.map((x) => ({ ...x, loop: loops.has(x.name), duration: clips.get(x.name).duration })),

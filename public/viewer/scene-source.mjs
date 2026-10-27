@@ -58,13 +58,16 @@ export class SceneSource {
 function normalized(value,map){if(typeof value==='string'){const v=compiled(value);return map.get(v)??v;}if(Array.isArray(value))return value.map(v=>normalized(v,map));if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,normalized(v,map)]));return value;}
 const bytes64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 export function effectSource(scene,entries,{glow=null}={}){
- const systems={},textures={},snapshots={},effects=[],fxModels={},bindings=[],warnings=[];
+ const systems={},textures={},snapshots={},effects=[],fxModels={},materials={},bindings=[],warnings=[];
  for(const[index,entry]of entries.entries()){
   const packet=entry.packet??{};if(packet.error){warnings.push((entry.effectId??index)+': '+packet.error);continue;}
+  warnings.push(...(packet.missing??[]).map(p=>'Missing particle resource: '+p));
   const prefix='studio/'+index+'/',remap=new Map();for(const path of Object.keys(packet.definitions??{}))remap.set(compiled(path),prefix+systemKey(path));
   for(const path of Object.keys(packet.textures??{}))remap.set(compiled(path),prefix+compiled(path));
   for(const path of Object.keys(packet.snapshots??{}))remap.set(compiled(path),prefix+compiled(path));
   for(const path of Object.keys(packet.models??{}))remap.set(compiled(path),prefix+compiled(path));
+  for(const path of Object.keys(packet.materials??{}))remap.set(compiled(path),prefix+compiled(path));
+  for(const[path,value]of Object.entries(packet.materials??{}))materials[remap.get(compiled(path))]=normalized(value,remap);
   for(const[path,value]of Object.entries(packet.definitions??{})){const id=remap.get(compiled(path)),def=normalized(value,remap);def.m_nMaxParticles=Math.min(4000,Math.max(0,finite(def.m_nMaxParticles,1000)));if(entry.color){def.m_ConstantColor=[...entry.color.map(n=>Math.round(n*255)),255];for(const op of [...(def.m_Initializers??[]),...(def.m_Operators??[])])for(const k of ['m_ColorMin','m_ColorMax','m_ColorFade'])if(k in op)op[k]=[...entry.color.map(n=>Math.round(n*255)),255];}systems[id]=def;}
   for(const[path,t]of Object.entries(packet.textures??{})){
    const id=remap.get(compiled(path)),file=t.data?'data:'+(t.mime??'image/png')+';base64,'+t.data:t.url;if(!file)continue;
@@ -81,7 +84,7 @@ export function effectSource(scene,entries,{glow=null}={}){
   bindings.push({id,system:root,owner,effectId:entry.effectId??id,itemId:entry.itemId??null,color:entry.color??null,ghost:!!entry.ghost});effects.push({system:root,owner});
  }
  if(glow)for(const path of ['materials/particle/particle_glow_05.vtex','materials/particle/particle_glow_01.vtex','materials/particle/smoke1/smoke1.vtex'])textures[path]??={file:glow};
- return{systems,textures,snapshots,effects,fxModels,bindings,warnings};
+ return{systems,textures,snapshots,effects,fxModels,materials,bindings,warnings};
 }
 
 export function applyParticleBinding(def,binding){

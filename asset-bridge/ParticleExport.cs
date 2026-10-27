@@ -23,7 +23,7 @@ internal static class ParticleExport
         };
     }
 
-    public static void Write(GameFileLoader loader, string root, string output)
+    public static void Write(GameFileLoader loader, string root, string output, bool includeChildren = true)
     {
         var definitions = new Dictionary<string, object?>();
         var textures = new Dictionary<string, object?>();
@@ -49,7 +49,7 @@ internal static class ParticleExport
                     ParticleSnapshot.SkinningData skin => new { joints=skin.JointNames, weights=skin.Weights },
                     _ => value
                 }).ToArray());
-            if (resource.DataBlock is ParticleSystem system) definitions[path] = JsonValue(system.Data);
+            if (resource.DataBlock is ParticleSystem system){var definition=(Dictionary<string,object?>)JsonValue(system.Data)!;if(!includeChildren)definition["m_Children"]=Array.Empty<object>();definitions[path]=definition;}
             if(resource.DataBlock is Material material)materials[path]=new {shader=material.ShaderName,vectors=material.VectorParams.ToDictionary(pair=>pair.Key,pair=>new[]{pair.Value.X,pair.Value.Y,pair.Value.Z,pair.Value.W}),floats=material.FloatParams,textures=material.TextureParams};
             if (resource.DataBlock is Texture texture)
             {
@@ -90,7 +90,7 @@ internal static class ParticleExport
             {
                 foreach (var reference in resource.ExternalReferences.ResourceRefInfoList)
                 {
-                    if (reference.Name.EndsWith(".vpcf", StringComparison.OrdinalIgnoreCase)
+                    if ((includeChildren && reference.Name.EndsWith(".vpcf", StringComparison.OrdinalIgnoreCase))
                         || reference.Name.EndsWith(".vtex", StringComparison.OrdinalIgnoreCase)
                         || reference.Name.EndsWith(".vmat", StringComparison.OrdinalIgnoreCase)
                         || reference.Name.EndsWith(".vmdl", StringComparison.OrdinalIgnoreCase)
