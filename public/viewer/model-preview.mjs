@@ -48,8 +48,9 @@ export class ModelPreview {
   const models=new Set((focus.models??[]).map(n=>n.replace(/_c$/,''))),owners=[...this.source.modelMetadata.values()].filter(m=>models.has(m.model?.replace(/_c$/,''))).map(m=>m.owner);focus={...focus,owners};
   const state={meshes:[],center:this.viewer.view.center.clone(),size:this.viewer.view.size?.clone(),zoom:this.viewer.view.zoomTarget},box=new THREE.Box3();let count=0;
   this.viewer.hero.turntable.updateMatrixWorld(true);
-  this.viewer.hero.turntable.traverse(o=>{if(!o.isMesh)return;state.meshes.push([o,o.visible]);o.visible=editorMeshMatches(o,this.source.materialMetadata,focus);if(o.visible){count++;box.expandByObject(o,true);}});
+  this.viewer.hero.turntable.traverse(o=>{if(!o.isMesh)return;state.meshes.push([o,o.visible]);const matched=editorMeshMatches(o,this.source.materialMetadata,focus);o.visible=matched&&!focus.hideItem;if(matched){count++;box.expandByObject(o,true);}});
   this.editorFocusState=state;
+  if(focus.hideItem&&this.viewer.hero.box)box.copy(this.viewer.hero.box);
   if(!box.isEmpty()){box.getCenter(this.viewer.view.center);this.viewer.view.size=box.getSize(new THREE.Vector3());this.viewer.zoom(1);this.viewer.place();}
   return count;
  }
