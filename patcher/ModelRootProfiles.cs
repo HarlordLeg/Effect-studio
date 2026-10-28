@@ -5,6 +5,7 @@ internal static class ModelRootProfiles
     internal static IReadOnlyDictionary<string,string>? Attachments(string host,string donor)
     {
         host=host.Replace("\\","/");donor=donor.Replace("\\","/");
+        if(host.StartsWith("harlord/",StringComparison.Ordinal))host=host[8..];if(donor.StartsWith("harlord/",StringComparison.Ordinal))donor=donor[8..];
         if(host.EndsWith("_c",StringComparison.Ordinal))host=host[..^2];if(donor.EndsWith("_c",StringComparison.Ordinal))donor=donor[..^2];
         Dictionary<string,string> Map(string parent,params string[] roots)=>roots.ToDictionary(r=>r,_=>parent,StringComparer.Ordinal);
         if(host.Contains("/earthshaker/")&&donor.StartsWith("models/items/earthshaker/siege_beast_",StringComparison.Ordinal))return Map("root","earthshaker1");

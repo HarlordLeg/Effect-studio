@@ -97,3 +97,11 @@ test('TB bindings move eye, chest and TI8 wings to the hero while retaining exac
  await finalizeTerrorbladeBindings(builder,packed,selections,{arcana:{mode:'base'}},directory);const binding=manifest.files.find(r=>r.particles);assert.equal(binding.particles.length,3);assert.ok(binding.particles.includes(body.replace(/_c$/,'')));assert.deepEqual(binding.attachments.flatMap(a=>a.names),['attach_eye','attach_wing_l','attach_wing_r']);assert.equal(manifest.files.filter(r=>r.selfBindings).length,2);assert.deepEqual(fs.readdirSync(directory),[]);
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
+
+test('explicit default head never replaces the arcana head or its authored body animation bytes',()=>{
+ const body=hero.model,head=hero.defaultSlotModels.head,arcanaHead='models/heroes/terrorblade/horns_arcana.vmdl_c';
+ const packed=new Map([[body,Buffer.from('stock-body')],[head,Buffer.from('stock-head')],[arcanaHead,Buffer.from('stock-alias')]]);
+ const arcanaBody=Buffer.from('authored-arcana-body-and-animation'),arcanaHorns=Buffer.from('authored-arcana-head');
+ mergeArcanaFiles(packed,{files:new Map([[body,arcanaBody],[head,arcanaHorns]])},[{hero,item:{slot:'head',isDefault:true,replacesModel:head,nativeOverrides:{entries:[{type:'model',target:body}]}}}]);
+ assert.deepEqual(packed.get(body),arcanaBody);assert.deepEqual(packed.get(head),arcanaHorns);assert.deepEqual(packed.get(arcanaHead),arcanaHorns);
+});

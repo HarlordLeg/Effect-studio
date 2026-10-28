@@ -110,3 +110,16 @@ test('Pangolier merge opts into unique case matching for fk_pelvis / fk_Pelvis',
   await finalizeModelMerges(builder,[{hero:h,item}],packed,[],temp,'patcher',{});assert.ok(called);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
+
+test('Kunkka merge carries stable source identities through staged files and rejects old patchers',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'des-kunkka-identity-'));
+ try{
+  const h=hero('kunkka'),item={...h.items[0],mergeTarget:h.model},choice={hero:h,item},staged=stagedMergeTarget(h,item),packed=new Map([[h.model,resource(1)],[staged,resource(2)]]);let current=false,seen=false;
+  const builder={root:dir,store:{read:()=>null},run:async(_,args)=>{
+   if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeIdentityV1:current});
+   assert.equal(args[0],'--merge-models');const request=JSON.parse(fs.readFileSync(args[1]));assert.equal(request.hostModel,h.model);assert.equal(request.donors[0].sourceModel,item.model);assert.notEqual(request.donors[0].input,item.model);seen=true;fs.writeFileSync(request.output,resource(3));return '';
+  }};
+  await assert.rejects(finalizeModelMerges(builder,[choice],packed,[],dir,'patcher',{}),/modelMergeIdentityV1/);current=true;
+  await finalizeModelMerges(builder,[choice],packed,[],dir,'patcher',{});assert.ok(seen);assert.deepEqual(packed.get(h.model),resource(3));
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

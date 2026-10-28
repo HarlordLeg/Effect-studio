@@ -9,8 +9,8 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false);
-    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false,string? SourceModel=null);
+    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null,string? HostModel=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
     internal static string MeshReference(KVObject value)=>value.ValueType==KVValueType.Null?string.Empty:value.ValueType==KVValueType.String?Text(value):throw new InvalidDataException("Mesh reference must be a resource string or null");
@@ -226,7 +226,7 @@ internal static class ModelMerge
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
                 if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
-            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,ModelRootProfiles.Attachments(Text(root["m_name"]),Text(source["m_name"])));
+            var boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,ModelRootProfiles.Attachments(request.HostModel??Text(root["m_name"]),entry.SourceModel??Text(source["m_name"])));
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
             var renamedBones=entry.MetadataOnly?new Dictionary<string,string>():Values(source["m_modelSkeleton"],"m_boneName").Select((name,index)=>(name:Text(name),mapped:Text(mergedBoneNames[boneMap[index]]))).Where(v=>v.name!=v.mapped).ToDictionary(v=>v.name,v=>v.mapped,StringComparer.Ordinal);
             var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");

@@ -23,6 +23,7 @@ export function itemImage(item,heroId=null,token=null){if(item.arcanaCart){const
 
 export function setDefaultItem(hero,slot,arcana=null){
  const base=hero.items.find(i=>i.slot===slot&&i.isDefault)??{};
+ if(hero.id==='monkey_king'&&arcana&&slot==='head'){const crown=hero.items.find(i=>String(i.gameItemId)==='34183'||i.id==='game-34183');return{...(crown??base),id:null,arcanaImageId:crown?.id,name:"Great Sage's Reckoning - Head",isDefault:true};}
  if(arcana&&newArcanaDefinitions[hero.id]){const definition=newArcanaDefinitions[hero.id],partId=definition.companions[slot];if(partId){const candidates=hero.items.filter(i=>String(i.gameItemId)===partId||i.id==='game-'+partId),part=candidates.find(i=>String(i.styleId??0)===String(arcana.style))??candidates.find(i=>String(i.styleId??0)==='0');if(part)return {...part,arcanaImageId:part.id,id:null,isDefault:true};return {...base,id:null,name:definition.name+' · '+slot,isDefault:true};}}
  if(hero.id==='drow_ranger'&&arcana){const ids={arms:'19088',back:'19089',legs:'19091',misc:'19092',shoulder:'19093',head:'19094',weapon:String(arcana.weaponId)};const part=hero.items.find(i=>String(i.gameItemId)===ids[slot]&&(!i.styleId||i.styleId==='0'));if(part)return {...part,arcanaImageId:part.id,id:null,isDefault:true};}
  return hero.id==='techies'&&arcana&&hero.defaultSlotModels?.[slot]==='models/heroes/techies/techies_cart.vmdl_c'?{...base,id:null,name:'Swine of the Sunken Galley',isDefault:true,arcanaCart:true}:{...base,id:null,name:'Базовый предмет',isDefault:true};

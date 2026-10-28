@@ -114,6 +114,14 @@ internal static class HeroActivitiesTests
   }
   var skeleton=KVObject.Collection();skeleton["m_boneName"]=Array(new KVObject("root"));skeleton["m_nParent"]=Array(new KVObject(-1));foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})skeleton[key]=Array(new KVObject(1d));HeroActivities.ValidateSkeleton(skeleton,skeleton);
   var mismatched=KVObject.Collection();mismatched["m_boneName"]=Array(new KVObject("wrong"));mismatched["m_nParent"]=Array(new KVObject(-1));var rejected=false;try{HeroActivities.ValidateSkeleton(skeleton,mismatched);}catch(InvalidDataException){rejected=true;}Check(rejected);
+  // Appended cosmetic bones preserve hero track indices; reordered roots and changed bind poses do not.
+  {
+   var extended=KVObject.Collection();extended["m_boneName"]=Array(new KVObject("root"),new KVObject("cosmetic"));extended["m_nParent"]=Array(new KVObject(-1),new KVObject(0));
+   foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})extended[key]=Array(new KVObject(1d),new KVObject(2d));
+   HeroActivities.ValidateSkeleton(extended,skeleton);
+   extended["m_bonePosParent"]=Array(new KVObject(10d),new KVObject(2d));try{HeroActivities.ValidateSkeleton(extended,skeleton);throw new Exception("Changed hero bind pose accepted");}catch(InvalidDataException){}
+   extended["m_bonePosParent"]=Array(new KVObject(1d),new KVObject(2d));extended["m_boneName"]=Array(new KVObject("cosmetic"),new KVObject("root"));try{HeroActivities.ValidateSkeleton(extended,skeleton);throw new Exception("Changed hero indices accepted");}catch(InvalidDataException){}
+  }
   // Optional real Pudge arcana regression: its large v5 ANIM overflows VRF
   // when unnecessarily reserialized although the arcana rule changes nothing.
   if(args.Length==2&&args[0]=="--pudge"){

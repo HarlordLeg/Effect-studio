@@ -17,7 +17,7 @@ internal static class ModelMergeTests
     ("models/heroes/legion_commander/legion_commander.vmdl","models/items/legion_commander/conquests_of_golden_sun_head/conquests_of_golden_sun_head.vmdl","Root0_JNT","SMDImport001")
    };
    foreach(var(hostName,donorName,parent,bone) in profiles){
-    var attachments=ModelRootProfiles.Attachments(hostName,donorName);Check(attachments is not null&&attachments[bone]==parent);
+    var attachments=ModelRootProfiles.Attachments(hostName,donorName);Check(ModelRootProfiles.Attachments("harlord/"+hostName+"_c","harlord/"+donorName+"_c")?[bone]==parent);Check(attachments is not null&&attachments[bone]==parent);
     var h=Pose(parent,2);var d=Pose(bone,10);ModelMerge.MergeSkeleton(h,d,rootAttachments:attachments);
     Check(h["m_nParent"][1].ToInt32(null)==0);Check(Math.Abs(h["m_bonePosParent"][1][0].ToSingle(null)+2-10)<0.00001);
     Check(ModelRootProfiles.Attachments("models/heroes/unrelated/body.vmdl",donorName) is null);

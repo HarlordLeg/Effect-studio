@@ -52,10 +52,17 @@ internal static class HeroActivities
         return selected.Count;
     }
     internal static void ValidateSkeleton(KVObject target,KVObject donor){
-        foreach(var key in new[]{"m_boneName","m_nParent"})if(!target[key].Values.Select(v=>v.ToString(CultureInfo.InvariantCulture)).SequenceEqual(donor[key].Values.Select(v=>v.ToString(CultureInfo.InvariantCulture))))throw new InvalidDataException("Skullbasher animation skeleton mismatch: "+key);
+        var count=donor["m_boneName"].Count;var hostCount=target["m_boneName"].Count;
+        if(count==0||hostCount<count)throw new InvalidDataException("Skullbasher animation skeleton is incomplete");
+        // ModelMerge appends wearable bones without changing the original hero
+        // indices. Raw donor animation blocks remain valid for this exact prefix.
+        foreach(var key in new[]{"m_boneName","m_nParent"})if(target[key].Count!=hostCount||donor[key].Count!=count||!target[key].Values.Take(count).Select(v=>v.ToString(CultureInfo.InvariantCulture)).SequenceEqual(donor[key].Values.Select(v=>v.ToString(CultureInfo.InvariantCulture))))throw new InvalidDataException("Skullbasher animation skeleton mismatch: "+key);
         foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
-            var a=Numbers(target[key]).ToArray();var b=Numbers(donor[key]).ToArray();
-            if(a.Length!=b.Length||a.Where((v,i)=>Math.Abs(v-b[i])>.001).Any())throw new InvalidDataException("Skullbasher animation bind pose mismatch: "+key);
+            var host=target.TryGetValue(key,out var h)?h.Values.ToArray():[];var source=donor.TryGetValue(key,out var d)?d.Values.ToArray():[];
+            if(key=="m_boneScaleParent"){if(host.Length==0)host=Enumerable.Range(0,hostCount).Select(_=>new KVObject(1f)).ToArray();if(source.Length==0)source=Enumerable.Range(0,count).Select(_=>new KVObject(1f)).ToArray();}
+            if(host.Length!=hostCount||source.Length!=count)throw new InvalidDataException("Skullbasher animation bind pose is incomplete: "+key);
+            var a=host.Take(count).SelectMany(Numbers).ToArray();var b=source.SelectMany(Numbers).ToArray();
+            if(a.Length!=b.Length||a.Where((v,i)=>!double.IsFinite(v)||!double.IsFinite(b[i])||Math.Abs(v-b[i])>.001).Any())throw new InvalidDataException("Skullbasher animation bind pose mismatch: "+key);
         }
     }
     private static IEnumerable<double> Numbers(KVObject value){if(value.IsArray){foreach(var child in value.Values)foreach(var number in Numbers(child))yield return number;}else yield return value.ToDouble(CultureInfo.InvariantCulture);}

@@ -11,7 +11,7 @@ test('Monkey King uses authored body skins 1..4 and style-specific crown and wea
  const rows=adminArcanaChoices(b,'monkey_king',{style:1,items:{weapon:'weapon'}});assert.deepEqual(rows[0].item.nativeOverrides.particles,['particles/water.vpcf_c']);assert.deepEqual(rows[1].item.nativeOverrides.particles,['particles/water_crown.vpcf_c']);assert.equal(rows[2].item.model,'models/items/mk/weapon_arcana.vmdl_c');assert.deepEqual(rows[2].item.nativeOverrides.particles,['particles/weapon.vpcf_c']);assert.ok(rows.every(r=>r.item.nativeOverrides.entries.every(e=>e.type!=='model')));assert.ok(heroActivityPlans(rows)[0].rules.some(r=>r.modifier==='arcana'));
 });
 test('admin arcana rejects forged slots, unsupported heroes/styles, missing assets and does not mutate the catalog',()=>{
- const b=builder(),before=JSON.stringify(b.catalog);for(const [id,data]of [['lina',{style:1}],['monkey_king',{style:4}],['monkey_king',{style:'1'}],['monkey_king',{items:{head:'weapon'}}],['lina',{items:{weapon:'fake'}}],['axe',{}]])assert.throws(()=>adminArcanaChoices(b,id,data));assert.ok(adminArcanaCatalog(b,'monkey_king').slots.every(s=>s.id!=='head'));assert.equal(JSON.stringify(b.catalog),before);b.store.has=()=>false;assert.throws(()=>adminArcanaChoices(b,'lina'),/missing/);
+ const b=builder(),before=JSON.stringify(b.catalog);for(const [id,data]of [['lina',{style:1}],['monkey_king',{style:4}],['monkey_king',{style:'1'}],['monkey_king',{items:{head:'weapon'}}],['lina',{items:{weapon:'fake'}}],['axe',{}]])assert.throws(()=>adminArcanaChoices(b,id,data));assert.ok(adminArcanaCatalog(b,'monkey_king').slots.some(s=>s.id==='head'));assert.ok(adminArcanaCatalog(b,'lina').slots.every(s=>s.id!=='head'));assert.equal(JSON.stringify(b.catalog),before);b.store.has=()=>false;assert.throws(()=>adminArcanaChoices(b,'lina'),/missing/);
 });
 test('new arcana endpoints reject unauthenticated public and widget callers before reading assets',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-admin-arcanas-'));fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify({heroes:[],effects:[]}));fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({archives:[],catalog:'catalog.json',autoCatalog:false,patcher:'none'}));const {server,url,previews}=await startServer({root,port:0,adminAuth:{verify(t){if(t!=='admin')throw Error('Unauthorized');}}});
@@ -38,4 +38,9 @@ test('full admin arcana packing applies animations to the already skinned body f
    await engine.build(rows,job);assert.equal(job.status,'ready');assert.equal(calls,1);const packed=new Vpk(job.file);assert.match(packed.read(rows[0].hero.model).toString(),/skin:.*:activity/);assert.deepEqual(packed.read(rows[0].hero.defaultSlotModels.head),original);engine.dispose();
   }finally{fs.rmSync(root,{recursive:true,force:true});}
  }
+});
+
+test('Monkey King arcana keeps body style and replaces its optional crown with the selected head',()=>{
+ const b=builder(),hero=b.catalog.heroes.find(h=>h.id==='monkey_king');hero.items.push({id:'custom-head',slot:'head',name:'Custom head',model:'models/items/mk/custom_head.vmdl_c'});
+ const rows=adminArcanaChoices(b,'monkey_king',{style:3,items:{head:'custom-head'}});assert.equal(rows.length,2);assert.equal(rows[0].item.nativeOverrides.skin,4);assert.equal(rows[1].item.id,'custom-head');assert.equal(rows[1].item.replacesModel,hero.defaultSlotModels.head);assert.ok(!rows.some(r=>r.item.id==='admin-arcana:monkey_king:head'));
 });
