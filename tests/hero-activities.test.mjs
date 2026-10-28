@@ -76,3 +76,8 @@ test('Darkclaw build needs no animation template and leaves ordinary blade parti
   await assert.rejects(new Builder(temp,config,async()=>JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivitiesV4:true})).build(choices,{id:'old'}),/darkclawActivities/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
+
+test('Naga cosmetic activities retain the ordinary server slots without changing other heroes',()=>{
+ const item={model:'models/items/siren/naga_ti8_immortal_tail/naga_ti8_immortal_tail.vmdl_c',nativeOverrides:{activities:[{asset:'ALL',modifier:'ti8'}]}};
+ for(const id of ['naga_siren','other']){const hero={id,model:'models/heroes/'+id+'/'+id+'.vmdl_c',items:[item]};const [plan]=heroActivityPlans([{hero,item}]);assert.equal(!!plan.rules[0].retainBase,id==='naga_siren');}
+});

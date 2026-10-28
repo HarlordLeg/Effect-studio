@@ -123,3 +123,20 @@ test('Kunkka merge carries stable source identities through staged files and rej
   await finalizeModelMerges(builder,[choice],packed,[],dir,'patcher',{});assert.ok(seen);assert.deepEqual(packed.get(h.model),resource(3));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('Naga immortal head and Tinker laser use authored animated hero profiles, suppressing only their base part',()=>{
+ for(const [id,model,base,profile,slot] of [
+  ['naga_siren','models/items/siren/naga_ti10_immortal_head/naga_ti10_immortal_head.vmdl_c','models/heroes/siren/siren_hair.vmdl_c','naga-ti10-head','head'],
+  ['tinker','models/items/tinker/tinker_ti10_immortal_laser/tinker_ti10_immortal_laser.vmdl_c','models/heroes/tinker/tinker_right_arm.vmdl_c','tinker-ti10-laser','weapon']]){
+  const h=hero(id);h.model=id==='naga_siren'?'models/heroes/siren/siren.vmdl_c':h.model;h.defaultSlotModels={[slot]:base};h.items=[{id:'selected',slot,model},{id:'ordinary',slot,model:'models/items/'+id+'/ordinary.vmdl_c'}];
+  configureModelMerging({heroes:[h]},{read:()=>null});assert.equal(h.items[0].mergeProfile,profile);assert.equal(h.items[0].mergeTarget,h.model);assert.deepEqual(h.items[0].mergeSuppress,[base]);assert.equal(h.items[1].mergeProfile,undefined);
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-animated-profile-'));
+  try{const dir=path.join(root,'data/model-merge-templates');fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,profile+'.vpk'),packVpk(new Map([[h.model,resource(4)]])));const files=profileSources({root},[{hero:h,item:h.items[0]}]);assert.deepEqual(files.get(h.model),resource(4));}finally{fs.rmSync(root,{recursive:true,force:true});}
+ }
+});
+
+test('animated profiles fail clearly when a manually installed server template is missing',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-missing-profile-'));
+ try{for(const profile of ['naga-ti10-head','tinker-ti10-laser'])assert.throws(()=>profileSources({root},[{hero:{id:'test'},item:{mergeProfile:profile}}]),error=>error.message.includes('data'+path.sep+'model-merge-templates'+path.sep+profile+'.vpk'));}
+ finally{fs.rmSync(root,{recursive:true,force:true});}
+});
