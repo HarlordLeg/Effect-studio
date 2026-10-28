@@ -1,3 +1,4 @@
+import {etherealInfoButton} from './ethereal-info.mjs';
 import {createViewerMetadataProvider} from './viewer/metadata-provider.mjs';
 import {showBuildError} from './build-error.mjs';
 import {configureStaticPreview,staticPreviewApi} from './static-preview.mjs';
@@ -23,7 +24,7 @@ function notifyHost(type,data){if(!token||window.parent===window)return;try{cons
 function status(text,error=false){if(error)notifyHost('error',{message:text});$('status').hidden=!error;$('status').textContent=text;$('status').classList.toggle('error',error);}
 const courierColor=()=> $('courier-color-enabled').checked?$('courier-color').value.match(/[0-9a-f]{2}/gi).map(x=>parseInt(x,16)):null;
 const choice=()=>({vpkNumber:Number($('vpk-number').value),heroId:$('hero').value,itemId:$('item').value,effectId:$('effect').value,courierColor:courierColor(),effectIds:[...new Set([$('effect').value,...Array.from($('extra-effects').selectedOptions,o=>o.value)])]});
-function options(select,values){select.replaceChildren(...values.map(x=>{const opt=document.createElement('option');opt.value=x.id;opt.textContent=x.name;return opt;}));}
+function options(select,values){select.replaceChildren(...values.map(x=>{const opt=document.createElement('option');opt.value=x.id;opt.textContent=x.name;opt.disabled=x.selectable===false;return opt;}));}
 function reset(){buildIsBatch=false;previewRequest++;if(!building)clearTimeout(jobTimer);jobId=null;$('load-dota').disabled=false;$('download').hidden=true;$('build').disabled=building;}
 let heroLoadRevision=0,catalogRenderRevision=0;
 async function updateHero(){const generation=++heroLoadRevision;reset();const id=$('hero').value;if(!id)return;for(const name of ['item','effect','load-dota','build','cart-add'])$(name).disabled=true;try{const h=await catalog.ensureHero(id);if(generation!==heroLoadRevision||$('hero').value!==id)return;const items=effectItems(h,$('catalog-scope').value,$('catalog-search').value.toLowerCase(),catalog.effects);const visible=visibleHeroes.find(v=>v.id===id);if(visible)visible.items=items;options($('item'),items);if(items.length){for(const name of ['item','effect','cart-add'])$(name).disabled=false;updateItem();}}catch(error){if(generation===heroLoadRevision)status(error.message,true);}}
@@ -32,7 +33,7 @@ function updateItem(){reset();const item=catalog.heroes.find(h=>h.id===$('hero')
   if(preview?.heroId!==$('hero').value)preview?.clear();if($('replay-effect'))$('replay-effect').hidden=true;if($('animation'))$('animation').hidden=true;$('empty').hidden=false;$('canvas').hidden=true;
   if(item.previewUnsupported){status(item.previewUnsupported,true);$('load-dota').disabled=true;return;}if(item.preview)loadModel(item.preview).catch(e=>status(e.message,true));else if(catalog.assetBridgeReady)loadDotaModel();
 }
-function updateEffect(){reset();$('courier-color-controls').hidden=!catalog.effects.find(e=>e.id===$('effect').value)?.courier;options($('extra-effects'),catalog.effects.filter(e=>e.id!==$('effect').value));status(catalog.patcherReady?'':'Сборщик VPK недоступен на сервере.',!catalog.patcherReady);}
+function updateEffect(){reset();document.getElementById('selected-ethereal-info')?.remove();const gemInfo=etherealInfoButton(catalog.effects.find(e=>e.id===$('effect').value)??{});if(gemInfo){gemInfo.id='selected-ethereal-info';$('effect').after(gemInfo);}$('courier-color-controls').hidden=!catalog.effects.find(e=>e.id===$('effect').value)?.courier;options($('extra-effects'),catalog.effects.filter(e=>e.id!==$('effect').value));status(catalog.patcherReady?'':'Сборщик VPK недоступен на сервере.',!catalog.patcherReady);}
 function showMissing(values){}
 $('hero').addEventListener('change',updateHero);$('item').addEventListener('change',updateItem);$('effect').addEventListener('change',()=>{updateEffect();if(catalog.assetBridgeReady)loadDotaModel();});
 $('build').addEventListener('click',async()=>{try{building=true;$('build').disabled=true;drawCart();$('download').hidden=true;const job=await api('/api/build',choice());jobId=job.id;activeBuildId=job.id;await poll();}catch(e){building=false;$('build').disabled=false;drawCart();status(e.message,true);showBuildError($('status'),e);}});

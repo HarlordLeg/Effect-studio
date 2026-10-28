@@ -1,3 +1,4 @@
+import {particleSurfaceMeshes} from './surface-meshes.js';
 import {SnapshotFitter} from '../../../public/viewer/snapshot-bindings.mjs';
 // A Dota 2 hero in the browser: the hero, his items and pedestal from the files built by
 // tools/build-heroes.mjs, lit like the game's loadout page, animated, with his particle effects,
@@ -495,16 +496,16 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   // Points on what a slot wears, for effects born on their model (C_INIT_CreateOnModel: an item's
   // effects are on the item, unusual ones all over it): a triangle by its area, a point in it, and
   // where that point is as the item moves (skinned); null when the slot shows nothing of its own.
-  const surfaces = new WeakMap();
+  const surfaces = new Map();
   const surfaceOf = (owner) => {
-    const meshes = worn.get(owner)?.meshes?.filter((m) => m.visible && m.geometry?.attributes.position); if (!meshes?.length) return null;
-    let s = surfaces.get(meshes[0]);
-    if (!s) {
+    const meshes = particleSurfaceMeshes(heroMeshes, worn, owner); if (!meshes?.length) return null;
+    let s = surfaces.get(owner || 'hero');
+    if (!s || s.meshes.length !== meshes.length || s.meshes.some((m, i) => m !== meshes[i])) {
       const tris = [], a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(); let total = 0;
       for (const m of meshes) { const g = m.geometry, idx = g.index, n = idx ? idx.count : g.attributes.position.count, pos = g.attributes.position;
         for (let i = 0; i + 2 < n; i += 3) { const i0 = idx ? idx.getX(i) : i, i1 = idx ? idx.getX(i + 1) : i + 1, i2 = idx ? idx.getX(i + 2) : i + 2;
           a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2); total += b.sub(a).cross(c.sub(a)).length(); tris.push({ m, i: [i0, i1, i2], at: total }); } }
-      s = { tris, total }; surfaces.set(meshes[0], s);
+      s = { tris, total, meshes: [...meshes] }; surfaces.set(owner || 'hero', s);
     }
     return s.total ? s : null;
   };
@@ -516,7 +517,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     return () => { out.set(0, 0, 0); for (let k = 0; k < 3; k++) out.addScaledVector(m.getVertexPosition(i[k], p), w[k]); return out.applyMatrix4(m.matrixWorld).applyMatrix4(groupInverse); };
   };
   const instance = (def, owner, drivers) => {
-    const sim = new Simulation(def, lib); sim.model = owner && owner !== 'hero' ? { ...model, surface: () => surfacePoint(owner) } : model;
+    const sim = new Simulation(def, lib); sim.model = { ...model, surface: () => surfacePoint(owner || 'hero') };
     const e = { sim, owner, drivers, fixed: new Map() }, origin = heroOrigin();
     for (const d of drivers) if (!follows(d)) e.fixed.set(d.cp, placeCP(d, owner, origin));
     return e;

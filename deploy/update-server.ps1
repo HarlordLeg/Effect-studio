@@ -10,7 +10,10 @@ function Copy-Managed([string]$from,[string]$to) {
     $source=Join-Path $from $relative;$target=Join-Path $to $relative
     if (Test-Path $source -PathType Container) {
       New-Item -ItemType Directory -Force -Path $target | Out-Null
-      & robocopy $source $target /MIR /R:2 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+      # Manually installed Wiki previews are not part of Git/CI artifacts.
+      $copyArgs=@($source,$target,'/MIR','/R:2','/W:1','/NFL','/NDL','/NJH','/NJS','/NP')
+      if ($relative -eq 'public') { $copyArgs+=@('/XD',(Join-Path $source 'ethereal-media'),(Join-Path $target 'ethereal-media')) }
+      & robocopy @copyArgs | Out-Null
       if ($LASTEXITCODE -ge 8) { throw "Copy failed: $relative ($LASTEXITCODE)" }
     } elseif (Test-Path $source -PathType Leaf) {
       New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null

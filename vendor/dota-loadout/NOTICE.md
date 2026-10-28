@@ -11,3 +11,5 @@ Follow-up: economy preview control-point configurations take priority; parent en
 Effect Studio shared original pedestal support: scales independently to hero height and participates in full-scene framing; meshes with vertex colors retain those colors.
 
 Native-resource follow-up: spritecard channel mixing synced from upstream fx.js at 3c09d200391cf19db14705dbaca0d6c544dae670; rigid snapshot fitting adapted from upstream tools/lib/hero.mjs, with a KD tree for nearest-vertex queries. Host adapter retains native skinning, sprite frame crops, activity modifiers and Dota material metadata. Original MIT notices remain in place.
+
+Effect Studio: hero-scoped particle surface sampling includes the dressed hero and mounts; cached surfaces invalidate when equipped meshes change.

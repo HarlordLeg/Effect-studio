@@ -41,7 +41,7 @@ async function nativeDownloadNavigation(request){
  if(typeof data.downloadPath!=='string'||target.origin!==base.origin||target.pathname!==url.pathname||!target.searchParams.get('download_ticket')||target.username||target.password)throw Error('Invalid download link');
  return Response.redirect(target.href,302);
 }
-async function route(request,event){const url=new URL(request.url),name=url.pathname;if(/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name)&&url.searchParams.has('download_ticket'))return fetch(request);if(request.mode==='navigate'&&request.method==='GET'&&/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name))return nativeDownloadNavigation(request);if((await config()).staticViewerEnabled===false)return proxy(request,{authenticated:!name.startsWith('/kinetic-media/')});
+async function route(request,event){const url=new URL(request.url),name=url.pathname;if(name.startsWith('/ethereal-media/'))return proxy(request,{authenticated:false});if(/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name)&&url.searchParams.has('download_ticket'))return fetch(request);if(request.mode==='navigate'&&request.method==='GET'&&/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name))return nativeDownloadNavigation(request);if((await config()).staticViewerEnabled===false)return proxy(request,{authenticated:!name.startsWith('/kinetic-media/')});
  if(name==='/manifest.json')return publication(request.url,event,{manifest:true});
  if(/^\/assets\/[a-f0-9]{64}\.json$/.test(name))return publication(request.url,event);
  if(name.startsWith('/images/')&&!name.startsWith('/images/personas/'))return fetch(request);
@@ -68,4 +68,4 @@ async function route(request,event){const url=new URL(request.url),name=url.path
  }
  return fetch(request);
 }
-self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(url.origin!==new URL(self.registration.scope).origin||!(/^\/(api|images|kinetic-media)\//.test(url.pathname)||url.pathname==='/manifest.json'||/^\/assets\/[a-f0-9]{64}\.json$/.test(url.pathname)))return;event.respondWith(route(event.request,event).catch(error=>json({error:error.message},503)));});
+self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(url.origin!==new URL(self.registration.scope).origin||!(/^\/(api|images|kinetic-media|ethereal-media)\//.test(url.pathname)||url.pathname==='/manifest.json'||/^\/assets\/[a-f0-9]{64}\.json$/.test(url.pathname)))return;event.respondWith(route(event.request,event).catch(error=>json({error:error.message},503)));});
