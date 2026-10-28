@@ -1,3 +1,4 @@
+import {createAdminSetBuilder,requiresMountedArchivePreview} from './lib/admin-unreleased-sets.mjs';
 import {EditorProjectService} from './lib/editor/project-service.mjs';
 import {EditorBuildService} from './lib/editor/build-service.mjs';
 import {editorRoute} from './lib/editor/routes.mjs';
@@ -58,7 +59,10 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
   builder.onReady=job=>count('vpks',tracking.get(job));
   const countModel=job=>{if(!job.modelServed){job.modelServed=true;count('models',tracking.get(job));}};
 
+  const baseBuilder=builder,basePreviews=previews,baseEditorBuilds=editorBuilds;let adminSetContext=null;
+  const adminContext=()=>{if(!adminSetContext){const builder=createAdminSetBuilder(baseBuilder),previews=Object.create(basePreviews);previews.builder=builder;adminSetContext={builder,previews,editorBuilds:new EditorBuildService(builder)};}return adminSetContext;};
   const server=http.createServer(async(req,res)=>{
+    let builder=baseBuilder,previews=basePreviews,editorBuilds=baseEditorBuilds;
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
     try {
       const host=req.headers.host??'',url=new URL(req.url,'http://localhost');
@@ -77,7 +81,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       try{
         const access=adminSetAccess(req,url,admin,{host,publicBaseUrl:config.publicBaseUrl});
         if(access?.session){res.setHeader('Set-Cookie',ADMIN_SET_COOKIE+'='+access.token+'; Path=/api/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
-        if(access){adminStudioOwner=access.owner;url.pathname=access.pathname;}
+        if(access){adminStudioOwner=access.owner;url.pathname=access.pathname;({builder,previews,editorBuilds}=adminContext());}
       }catch(error){return json(res,error.status??401,{error:error.message});}
       const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|model-metadata|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
@@ -91,13 +95,14 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         const editorCookie=url.pathname.startsWith('/api/admin/editor/')?req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('studio-editor='))?.slice('studio-editor='.length):null;
         const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl??editorCookie;
         try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
+        ({builder,previews,editorBuilds}=adminContext());
         const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
         if(url.pathname==='/api/admin/editor/session'&&req.method==='POST'){res.setHeader('Set-Cookie','studio-editor='+adminToken+'; Path=/api/admin/editor/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
         if(url.pathname.startsWith('/api/admin/editor/')&&await editorRoute({req,res,url,owner:'editor-admin',projects:editorProjects,builds:editorBuilds,body:req=>body(req,24*1024*1024),json,root}))return;
         if(url.pathname==='/api/admin/set-catalog'&&req.method==='GET')return json(res,200,adminSetCatalog(builder.catalog));
         if(url.pathname==='/api/admin/set-preview'&&req.method==='POST'){
           const data=adminSetPayload(builder.catalog,await body(req));previews.touch(adminOwner);
-          if(staticViewer.enabled()){
+          if(staticViewer.enabled()&&!requiresMountedArchivePreview(builder.catalog,data)){
             const job=await assembleStaticPreview(data,builder.catalog,staticViewer.manifest(),staticRead),base=config.staticViewerBaseUrl??'/static-viewer/';
             job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=adminOwner;job.created=Date.now();
             for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);
@@ -177,8 +182,8 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=adminStudioOwner??(session?session.id+':'+session.nonce:'local');previews.touch(owner);
       if(url.pathname==='/api/model-metadata'&&req.method==='POST'){const data=await body(req);if(session)auth.consume(session,'preview');return json(res,200,await viewerMetadata.get(data.models,data.animationModels??[],data.preferred??[]));}
-      if(req.method==='GET'&&staticViewer.api(req,res,url))return;
-      if(staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
+      if(req.method==='GET'&&(!adminStudioOwner||/^\/api\/(item-icon|set-icon)$/.test(url.pathname))&&staticViewer.api(req,res,url))return;
+      if(!adminStudioOwner&&staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
       if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
       if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits',{source:session?.origin??'local'});return json(res,200,{ok:true});}
       if(url.pathname==='/api/techies-icon'&&req.method==='GET'){
@@ -236,8 +241,9 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
-        if(staticViewer.enabled()){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);const data=await body(req);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,key:p.key??path.basename(job.partFiles[i],'.glb'),url:'/api/admin/set-studio/previews/'+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
-        const data=await body(req);let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
+        const data=await body(req);
+        if(staticViewer.enabled()&&!requiresMountedArchivePreview(builder.catalog,data)){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,key:p.key??path.basename(job.partFiles[i],'.glb'),url:'/api/admin/set-studio/previews/'+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
+        let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
         const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
         if(stance&&setRows)setRows=kineticBuildChoices(setRows,[stance]);
         const choice=setRows?{...setRows[0]}:builder.choice(data.heroId,data.itemId,data.effectId,{preview:true,styleId:data.styleId});

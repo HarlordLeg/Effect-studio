@@ -1,5 +1,5 @@
 export function applyHeroSet(hero,setId,previousEffects=new Map()){
- const set=hero.sets?.find(s=>s.id===setId);if(!set)throw new Error('Unknown hero set');
+ const set=hero.sets?.find(s=>s.id===setId);if(!set)throw new Error('Unknown hero set');if(set.unavailable||set.available===false)throw new Error(set.unavailable??'Set files are unavailable');
  const selected=new Map(),effects=new Map();
  for(const row of set.items){const item=hero.items.find(i=>i.id===row.itemId);if(!item||item.specialKind||item.previewUnsupported||item.styleUnsupported)throw new Error('Set item is unavailable');if(selected.has(item.slot))throw new Error('Set has conflicting slots');selected.set(item.slot,item.id);const allowed=(previousEffects.get(item.slot)??[]).filter(id=>item.effects?.includes(id));if(allowed.length)effects.set(item.slot,allowed);}
  const growth=hero.id==='tiny'?set.items.map(row=>hero.items.find(i=>i.id===row.itemId)).filter(i=>i?.entityKind==='growth').sort((a,b)=>(a.replacesModel??'').localeCompare(b.replacesModel??''))[0]:null;
