@@ -1,9 +1,9 @@
 import {etherealGemById} from './ethereal-gems.mjs';
 let active;
 const english=doc=>doc.documentElement.lang!=='ru';
-function stylesheet(doc){if(doc.querySelector('link[data-ethereal-info]'))return;const link=doc.createElement('link');link.rel='stylesheet';link.href=new URL('./ethereal-info.css',import.meta.url).href;link.dataset.etherealInfo='';doc.head.append(link);}
+export function ensureEtherealStyles(doc){if(doc.querySelector('link[data-ethereal-info]'))return;const link=doc.createElement('link');link.rel='stylesheet';link.href=new URL('./ethereal-info.css?v=palette-3',import.meta.url).href;link.dataset.etherealInfo='';doc.head.append(link);}
 export function showEtherealInfo(effect,{document:doc=document,resourceUrl=url=>url}={}){
- const gem=etherealGemById.get(effect.id);if(!gem)return;active?.close();stylesheet(doc);
+ const gem=etherealGemById.get(effect.id);if(!gem)return;active?.close();ensureEtherealStyles(doc);
  const en=english(doc),dialog=doc.createElement('dialog');dialog.className='ethereal-info';dialog.setAttribute('aria-labelledby','ethereal-info-title');
  const content=doc.createElement('section'),top=doc.createElement('header'),title=doc.createElement('h2'),close=doc.createElement('button');title.id='ethereal-info-title';title.textContent=gem.gemName;close.type='button';close.className='secondary ethereal-close';close.textContent='×';close.setAttribute('aria-label',en?'Close':'Закрыть');close.onclick=()=>dialog.close();top.append(title,close);content.append(top);
  const stage=doc.createElement('div');stage.className='ethereal-info-stage';const note=doc.createElement('p');note.className='muted';note.setAttribute('role','status');
@@ -14,5 +14,5 @@ export function showEtherealInfo(effect,{document:doc=document,resourceUrl=url=>
  dialog.append(content);dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});dialog.addEventListener('close',()=>{dialog.remove();if(active===dialog)active=null;},{once:true});doc.body.append(dialog);active=dialog;dialog.showModal();close.focus();return dialog;
 }
 export function etherealInfoButton(effect,options={}){
- const gem=etherealGemById.get(effect.id);if(!gem)return null;const doc=options.document??document;stylesheet(doc);const button=doc.createElement('button');button.type='button';button.className='ethereal-info-button';button.textContent='i';button.setAttribute('aria-label',(english(doc)?'About ':'О самоцвете ')+gem.gemName);button.title=english(doc)?'Effect example and description':'Пример эффекта и описание';button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();showEtherealInfo(effect,{...options,document:doc});});return button;
+ const gem=etherealGemById.get(effect.id);if(!gem)return null;const doc=options.document??document;ensureEtherealStyles(doc);const button=doc.createElement('button');button.type='button';button.className='ethereal-info-button';button.textContent='i';button.setAttribute('aria-label',(english(doc)?'About ':'О самоцвете ')+gem.gemName);button.title=english(doc)?'Effect example and description':'Пример эффекта и описание';button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();showEtherealInfo(effect,{...options,document:doc});});return button;
 }
