@@ -8,11 +8,18 @@ using ValveResourceFormat.ResourceTypes;
 internal static class ResourceRelocator
 {
     private sealed record FileEntry(string Input, string Output, int[]? Color = null, string? Name = null, Dictionary<string,string>? Paths = null, bool PreserveModelName = false);
-    private sealed record Request(FileEntry[] Files, Dictionary<string,string> Paths, bool Watermark=false);
+    private sealed record Request(FileEntry[] Files, Dictionary<string,string> Paths, bool Watermark=false, bool RecolorParticleTextures=false);
     public static void Run(string manifest)
     {
         var request = JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest), new JsonSerializerOptions { PropertyNameCaseInsensitive=true }) ?? throw new InvalidDataException("Empty relocation request");
         if(request.Watermark){ResourceWatermark.Run(manifest);return;}
+        var colorTextures=new HashSet<string>(StringComparer.Ordinal);
+        if(request.RecolorParticleTextures)foreach(var source in request.Files.Where(f=>f.Color is not null)){
+            using var scan=new Resource{FileName=source.Input};scan.Read(source.Input);
+            if(scan.DataBlock is ParticleSystem ps)foreach(var name in ParticleRecolor.ColorTextures(ps,scan)){
+                var paths=source.Paths??request.Paths;var mapped=paths.TryGetValue(name,out var target)?target:request.Paths.TryGetValue(name,out target)?target:name;colorTextures.Add(mapped+"_c");
+            }
+        }
         foreach(var file in request.Files)
         {
             try
@@ -20,7 +27,10 @@ internal static class ResourceRelocator
             var paths=new Dictionary<string,string>(request.Paths);
             if(file.Paths is not null)foreach(var pair in file.Paths)paths[pair.Key]=pair.Value;
             var bytes=File.ReadAllBytes(file.Input);
-            if(file.Input.EndsWith(".vtex_c",StringComparison.OrdinalIgnoreCase)||file.Input.EndsWith(".vsnd_c",StringComparison.OrdinalIgnoreCase)) { File.Copy(file.Input,file.Output,true); continue; }
+            if(file.Input.EndsWith(".vtex_c",StringComparison.OrdinalIgnoreCase)||file.Input.EndsWith(".vsnd_c",StringComparison.OrdinalIgnoreCase)) {
+                if(colorTextures.Contains(file.Name??"")){using var tex=new Resource{FileName=file.Input};tex.Read(file.Input);if(tex.DataBlock is not Texture texture)throw new InvalidDataException("Invalid particle texture");if(!EditorTextures.NeutralizeColor(texture,file.Output))File.Copy(file.Input,file.Output,true);}
+                else File.Copy(file.Input,file.Output,true);continue;
+            }
             using var resource=new Resource { FileName=file.Input }; resource.Read(file.Input);
             var isModel=resource.DataBlock is Model;
             var originalModelName=isModel&&file.PreserveModelName&&((Model)resource.DataBlock!).Data.TryGetValue("m_name",out var originalName)?originalName:null;
@@ -92,18 +102,7 @@ internal static class ResourceRelocator
     private static KVObject ColorValue(int[] rgb) { var a=KVObject.Array(4);foreach(var channel in rgb)a.Add(new KVObject(channel));a.Add(new KVObject(255));return a; }
     private static void ForceColor(KVObject root,int[] rgb)
     {
-        root["m_ConstantColor"]=ColorValue(rgb);
-        foreach(var group in new[]{"m_Initializers","m_Operators"})
-        {
-            if(!root.TryGetValue(group,out var ops)||!ops.IsArray)continue;
-            foreach(var op in ops.Values)
-            {
-                if(!op.IsCollection)continue;
-                foreach(var key in new[]{"m_ColorMin","m_ColorMax","m_ColorFade"})if(op.TryGetValue(key,out _))op[key]=ColorValue(rgb);
-                if(op.TryGetValue("_class",out var type)&&type.ToString(CultureInfo.InvariantCulture)=="C_OP_SetVec"&&(!op.TryGetValue("m_nOutputField",out var field)||field.ToInt32(CultureInfo.InvariantCulture)==6))
-                {var v=KVObject.Collection();v["m_nType"]=new KVObject("PVEC_TYPE_LITERAL_COLOR");v["m_LiteralColor"]=ColorValue(rgb);op["m_InputValue"]=v;}
-            }
-        }
+        ParticleRecolor.Apply(root,rgb);
     }
     private static KVObject Rewrite(KVObject value,Dictionary<string,string> paths,Dictionary<ulong,ulong> ids,ref bool changed)
     {

@@ -1456,7 +1456,7 @@ attribute vec4 color; attribute vec4 uvA; attribute vec4 uvB; attribute float bl
 varying vec4 vColor; varying vec2 vUvA; varying vec2 vUvB; varying float vBlend;
 void main() { vColor = color; vUvA = mix(uvA.xy, uvA.zw, uv); vUvB = mix(uvB.xy, uvB.zw, uv); vBlend = blend; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 const fragmentShader = `
-uniform sampler2D map; uniform float overbright; uniform float addSelf; uniform bool saturateColor; uniform int mode; uniform bool blendFrames; uniform int channels;
+uniform sampler2D map; uniform float overbright; uniform float addSelf; uniform bool studioRecolor; uniform bool saturateColor; uniform int mode; uniform bool blendFrames; uniform int channels;
 uniform sampler2D tSceneDepth; uniform vec2 uSceneSize; uniform float uNear, uFar, uFeather; uniform bool uSoft;
 varying vec4 vColor; varying vec2 vUvA; varying vec2 vUvB; varying float vBlend;
 // m_nTextureChannels: which of the texture's channels give the alpha (the game's spritecard; as
@@ -1480,7 +1480,7 @@ vec4 channelMix(vec4 t) {
 }
 float viewDepth(float d) { float z = d * 2.0 - 1.0; return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear)); }
 void main() {
-  vec4 t = texture2D(map, vUvA); if (blendFrames) t = mix(t, texture2D(map, vUvB), vBlend); t = channelMix(t);
+  vec4 t = texture2D(map, vUvA); if (blendFrames) t = mix(t, texture2D(map, vUvB), vBlend); if (studioRecolor) t.rgb = vec3(max(t.r, max(t.g, t.b))); t = channelMix(t);
   vec3 c = vColor.rgb * t.rgb; float a = t.a * vColor.a;
   // Depth feathering: the card fades where it meets what lies behind it (a glow on an item lights its
   // outline and leaves the item seen through it, as in the game).
@@ -1502,7 +1502,7 @@ function material(tex, r) {
   const feather = /ON_/.test(r.m_nFeatheringMode || '') ? number(r.m_flFeatheringMaxDist, FEATHER)(null, null) * 0.0254 : 0;
   const m = new THREE.ShaderMaterial({
     vertexShader, fragmentShader, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    uniforms: { map: { value: tex }, overbright: { value: number(r.m_flOverbrightFactor, 1)(null, null) }, addSelf: { value: 1 + number(r.m_flAddSelfAmount, 0)(null, null) },
+    uniforms: { studioRecolor: { value: r.m_bStudioRecolor === true }, map: { value: tex }, overbright: { value: number(r.m_flOverbrightFactor, 1)(null, null) }, addSelf: { value: 1 + number(r.m_flAddSelfAmount, 0)(null, null) },
       saturateColor: { value: r.m_bSaturateColorPreAlphaBlend !== false }, mode: { value: mode }, blendFrames: { value: r.m_bBlendFramesSeq0 !== false }, ...SOFT, uFeather: { value: feather },
       channels: { value: CHANNELS.indexOf(r.m_vecTexturesInput?.[0]?.m_nTextureChannels ?? 'SPRITECARD_TEXTURE_CHANNEL_MIX_RGBA') } },
   });

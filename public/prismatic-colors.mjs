@@ -13,9 +13,9 @@ export function prismaticControl(effect,{document:doc=document,color=null,onChan
  const en=doc.documentElement.lang!=='ru',box=doc.createElement('div');box.className='ethereal-color';
  const select=doc.createElement('select');select.setAttribute('aria-label',en?'Prismatic color':'Призматический цвет');
  for(const[value,label]of [['original',en?'Original color':'Исходный цвет'],...prismaticColors.map(([id,name])=>[id,name]),['custom',en?'Custom color…':'Свой цвет…']]){const option=doc.createElement('option');option.value=value;option.textContent=label;select.append(option);}
- const input=doc.createElement('input');input.type='color';input.setAttribute('aria-label',en?'Custom effect color':'Свой цвет эффекта');input.value='#'+(color??[208,61,51]).map(n=>n.toString(16).padStart(2,'0')).join('');
+ const values=[...(color??[208,61,51])],channels=doc.createElement('div');channels.className='ethereal-rgb';
+ const inputs=values.map((value,i)=>{const label=doc.createElement('label');label.textContent=['R','G','B'][i];const input=doc.createElement('input');input.type='number';input.min='0';input.max='255';input.step='1';input.value=value;input.setAttribute('aria-label',['Red','Green','Blue'][i]);input.onchange=()=>{const rgb=inputs.map(n=>n.value.trim()===''?NaN:Number(n.value));if(valid(rgb)){inputs.forEach(n=>n.setCustomValidity(''));onChange(rgb);}else input.setCustomValidity(en?'Enter an integer from 0 to 255':'Введите целое число от 0 до 255');};label.append(input);channels.append(label);return input;});
  select.value=color?(prismaticColors.find(c=>c[2].every((n,i)=>n===color[i]))?.[0]??'custom'):'original';
- const update=()=>{input.hidden=select.value!=='custom';};update();
- const rgb=()=>[1,3,5].map(i=>parseInt(input.value.slice(i,i+2),16));
- select.onchange=()=>{update();onChange(select.value==='original'?null:select.value==='custom'?rgb():prismaticColors.find(c=>c[0]===select.value)[2]);};input.onchange=()=>onChange(rgb());box.append(select,input);return box;
+ const update=()=>{channels.hidden=select.value!=='custom';};update();
+ select.onchange=()=>{update();const rgb=select.value==='original'?null:select.value==='custom'?inputs.map(n=>Number(n.value)):prismaticColors.find(c=>c[0]===select.value)[2];if(rgb&&!valid(rgb))return;if(rgb)inputs.forEach((n,i)=>n.value=rgb[i]);onChange(rgb);};box.append(select,channels);return box;
 }

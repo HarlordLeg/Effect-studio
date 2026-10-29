@@ -11,6 +11,12 @@ internal static class EditorTextures{
   for(var i=0;i<pixels.Length;){var run=1;var repeated=false;if(bytes[2]==10){if(at>=bytes.Length)throw new InvalidDataException("Truncated TGA packet");var p=bytes[at++];run=(p&127)+1;repeated=(p&128)!=0;}if(i+run>pixels.Length)throw new InvalidDataException("Invalid TGA run");var c=repeated?Read():default;for(var j=0;j<run;j++)pixels[i++]=repeated?c:Read();}for(var y=0;y<height;y++)for(var x=0;x<width;x++)bitmap.SetPixel(x,y,pixels[((bytes[17]&32)!=0?y:height-y-1)*width+((bytes[17]&16)!=0?width-x-1:x)]);return bitmap;
  }
  internal static int Faces(Texture t)=>((int)t.Flags&0x10)!=0?6:1;
+ internal static bool NeutralizeColor(Texture texture,string output){
+  var changes=new Dictionary<(int,int),SKBitmap>();try{for(int layer=0;layer<texture.Depth;layer++)for(int face=0;face<Faces(texture);face++){
+   var bitmap=texture.GenerateBitmap((uint)layer,(Texture.CubemapFace)face);var pixels=bitmap.Pixels;bool changed=false;for(int i=0;i<pixels.Length;i++){var c=pixels[i];if(c.Red==c.Green&&c.Green==c.Blue)continue;var value=Math.Max(c.Red,Math.Max(c.Green,c.Blue));pixels[i]=new SKColor(value,value,value,c.Alpha);changed=true;}
+   if(changed){bitmap.Pixels=pixels;changes.Add((layer,face),bitmap);}else bitmap.Dispose();
+  }if(changes.Count==0)return false;WriteSurfaces(texture,changes,output);return true;}finally{foreach(var bitmap in changes.Values)bitmap.Dispose();}
+ }
  internal static void Write(Texture texture,SKBitmap bitmap,string output)=>WriteSurfaces(texture,new Dictionary<(int,int),SKBitmap>{{(0,0),bitmap}},output);
  private static void WriteSurfaces(Texture texture,Dictionary<(int,int),SKBitmap> changes,string output){
   var first=changes.Values.First();int width=first.Width,height=first.Height,faces=Faces(texture),depth=texture.Depth;bool volume=((int)texture.Flags&0x20)!=0;

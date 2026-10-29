@@ -59,6 +59,15 @@ try {
     $null=$capabilities | ConvertFrom-Json
   }
   $stopped=$true;Stop-App
+  # Recover media removed by a previous installed /MIR updater, before replacing
+  # its backup. Keep every current server file; only missing files are copied.
+  $oldMedia=Join-Path $backup 'public\ethereal-media'
+  if(Test-Path $oldMedia -PathType Container) {
+    $media=Join-Path $app 'public\ethereal-media'
+    New-Item -ItemType Directory -Force -Path $media | Out-Null
+    & robocopy $oldMedia $media '*.webp' /E /XC /XN /XO /R:2 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+    if($LASTEXITCODE -ge 8){throw 'Could not recover preview media from previous deployment.'}
+  }
   # Existing manual installs may lack newer BAT files; only copy incoming-managed paths that exist.
   if(Test-Path $backup){Remove-Item $backup -Recurse -Force}
   New-Item -ItemType Directory -Path $backup | Out-Null

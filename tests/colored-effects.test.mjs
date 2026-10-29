@@ -8,7 +8,7 @@ test('two colored effects sharing a child survive together, and separate VPK mou
  const heroes=[hero('first'),hero('second')],effects=['a','b'].map(id=>({id,name:id,courier:true,scope:'hero',particle:'particles/'+id+'.vpcf'})),assets=new Map([[child,resource([material])],[material,resource([texture])],[texture,resource()]]);
  for(const h of heroes){assets.set(h.model,resource());assets.set(h.items[0].model,resource());}for(const e of effects)assets.set(compiled(e.particle),resource([child]));
  fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify({heroes,effects}));fs.writeFileSync(path.join(root,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(root,'patcher'),'stub');
- const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true});
+ const run=async(_,args)=>{if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',particleRecolorV2:true,legacyRaw:true,modelOnly:true});
  if(args[0]==='--relocate'){const m=JSON.parse(fs.readFileSync(args[1]));for(const row of m.files){const input=fs.readFileSync(row.input),paths={...m.paths,...row.paths};fs.writeFileSync(row.output,resource(references(input).map(n=>compiled(paths[n.replace(/_c$/,'')]??n)),row.color??[...input.subarray(-3)]));}return '';}
  assert.equal(args[0],'--input');const input=fs.readFileSync(args[1]),particles=args.flatMap((a,i)=>a==='--particle'?[args[i+1]]:[]);fs.writeFileSync(args[args.indexOf('--output')+1],resource([...references(input),...particles]));return '';};
  const builder=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',autoCatalog:false,patcher:'patcher'},run);
@@ -23,3 +23,5 @@ test('two colored effects sharing a child survive together, and separate VPK mou
  assert.equal(one.read(child),null);assert.equal(assets.get(child).subarray(-3).equals(Buffer.from([0,0,0])),true);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+
+test('old recolor capability fails before a partial tree can be produced',async()=>{const {scopeColoredEffects}=await import('../lib/colored-effects.mjs'),root=fs.mkdtempSync(path.join(os.tmpdir(),'old-recolor-'));let calls=0;try{await assert.rejects(scopeColoredEffects({root,config:{patcher:'patcher'},run:async(_,args)=>{calls++;assert.deepEqual(args,['--capabilities']);return '{}';}},[{effect:{particle:'a.vpcf',color:[0,203,10]}}]),/particleRecolorV2/);assert.equal(calls,1);assert.deepEqual(fs.readdirSync(path.join(root,'output')),[]);}finally{fs.rmSync(root,{recursive:true,force:true});}});

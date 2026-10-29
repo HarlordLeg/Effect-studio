@@ -16,6 +16,7 @@ fs.mkdirSync(path.join(destination,'runtime'),{recursive:true});const nodeLicens
 // Ship diagnostic/export tools as well as launch helpers, so a successful
 // deployment cannot leave a newly committed tool missing on the server.
 copy('tools');
+copy('deploy/update-server.ps1');
 copy('docs');
 const bat=(name,command)=>fs.writeFileSync(path.join(destination,name),'@echo off\r\ncd /d "%~dp0"\r\n'+command+'\r\npause\r\n');
 bat('publish-static-viewer.bat','runtime\\node.exe tools\\publish-static-viewer.mjs %*');

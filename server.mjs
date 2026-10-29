@@ -75,7 +75,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
       if(url.pathname==='/api/notifications'&&req.method==='GET'){res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Cache-Control','public, max-age=60');return json(res,200,notifications.feed());}
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
-      if(url.pathname.startsWith('/ethereal-media/')){res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Cache-Control','public, max-age=86400');}
+      if(url.pathname.startsWith('/ethereal-media/'))res.setHeader('Access-Control-Allow-Origin','*');
       if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
       let adminStudioOwner=null;
       try{
@@ -310,6 +310,7 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
       let file;
       {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}
       if(!fs.existsSync(file)||!fs.statSync(file).isFile())return json(res,404,{error:'Файл не найден'});
+      if(url.pathname.startsWith('/ethereal-media/'))res.setHeader('Cache-Control','public, max-age=86400');
       const ext=path.extname(file),mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.glb':'model/gltf-binary','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml'}[ext]??'application/octet-stream';
       res.writeHead(200,{'Content-Type':mime});if(req.method==='HEAD')return res.end();
       fs.createReadStream(file).pipe(res);
