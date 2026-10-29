@@ -66,13 +66,13 @@ export class ModelPreview {
    const hero=this.viewer.hero;await hero.studioEffects({});if(revision!==this.effectRevision||ticket!==this.generation||hero!==this.viewer.hero)throw cancelled();this.source.clearEffects();this.setGhostStyle(false);for(const owner of Object.keys(this.source.manifest.models))this.viewer.gem(owner,null);const glow=this.glow??=this.makeGlow(),data=effectSource(this.source,entries,{glow});
    await hero.studioEffects(data);if(revision!==this.effectRevision||ticket!==this.generation||hero!==this.viewer.hero)throw cancelled();
    this.nextEditorReplay=this.viewer.clock+(this.editorEffectLoop??0);this.effectData=data;this.document.reset({materials:this.source.manifest.materials,systems:data.systems,bindings:data.bindings});this.effectsEnabled=true;
-   for(const binding of data.bindings)if(binding.color)this.viewer.gem(binding.owner,'#'+binding.color.map(n=>Math.max(0,Math.min(255,Math.round(n*255))).toString(16).padStart(2,'0')).join(''));
+   // Each effect carries its own prismatic CPs; owner-wide gem state would overwrite siblings.
    for(const entry of entries)if(entry.ghost)this.setGhostStyle(true,entry.itemId);
    return{systems:Object.keys(data.systems).length,warnings:[...new Set([...this.source.warnings,...data.warnings,...this.viewer.hero.lib.unsupported])]};
   };const result=this.effectQueue.then(action);this.effectQueue=result.catch(()=>{});return result;
  }
  makeGlow(){const c=document.createElement('canvas');c.width=c.height=64;const ctx=c.getContext('2d'),g=ctx.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.3,'rgba(255,255,255,.6)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,64,64);return c.toDataURL('image/png');}
- queueDocumentEffects(){const ticket=this.generation,data=this.effectData;if(!data)return;this.effectQueue=this.effectQueue.then(async()=>{if(ticket!==this.generation)return;await this.viewer.hero.studioEffects({...data,systems:structuredClone(this.document.systems),effects:this.document.bindings.map(b=>({system:b.system,owner:b.owner}))});}).catch(e=>this.error(e));}
+ queueDocumentEffects(){const ticket=this.generation,data=this.effectData;if(!data)return;this.effectQueue=this.effectQueue.then(async()=>{if(ticket!==this.generation)return;await this.viewer.hero.studioEffects({...data,systems:structuredClone(this.document.systems),effects:this.document.bindings.map(b=>({system:b.system,owner:b.owner,color:b.color}))});}).catch(e=>this.error(e));}
  // Internal data boundary for the later Mod Maker. No editor controls or writes
  // are exposed on ordinary pages. Saving/export remains a separate server task.
  applyScenePatch(patch){return this.document.apply(patch);}

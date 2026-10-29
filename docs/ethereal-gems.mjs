@@ -493,23 +493,6 @@ export const etherealGems = [
     "wikiMediaFile": "Ethereal_Triumph_of_Champions_sampler.webm"
   },
   {
-    "id": "self-made-aura",
-    "name": "Self-Made Aura",
-    "gemName": "Self-Made Aura",
-    "ethereal": true,
-    "courier": false,
-    "scope": "hero",
-    "includesMounts": true,
-    "custom": true,
-    "particle": null,
-    "description": "По описанию вики этот самоцвет не добавляет визуального эффекта.",
-    "descriptionEn": "The wiki describes this gem as having no visual effect.",
-    "wikiPage": "https://dota2.fandom.com/wiki/Ethereal%3A_Self-Made_Aura",
-    "previewImage": null,
-    "wikiMediaFile": null,
-    "selectable": false
-  },
-  {
     "id": "new-bloom-celebration",
     "name": "New Bloom Celebration",
     "gemName": "New Bloom Celebration",

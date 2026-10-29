@@ -1,15 +1,16 @@
+import {configureCatalogLoader} from '../public/catalog-loader.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import {etherealGems} from '../public/ethereal-gems.mjs';import {addEtherealGems} from '../lib/ethereal-catalog.mjs';import {resolveGameEffects} from '../lib/effect-collections.mjs';
 import {heroEffectPlans} from '../lib/hero-effects.mjs';import {particleSurfaceMeshes} from '../vendor/dota-loadout/src/surface-meshes.js';
-test('all 35 wiki gems have unique stable ids, descriptions and whole-hero scope, with Self-Made explicitly nonvisual',()=>{
- assert.equal(etherealGems.length,35);assert.equal(new Set(etherealGems.map(g=>g.id)).size,35);
+test('all 34 visual wiki gems have unique stable ids, descriptions and whole-hero scope, with Self-Made excluded',()=>{
+ assert.equal(etherealGems.length,34);assert.equal(new Set(etherealGems.map(g=>g.id)).size,34);
  for(const g of etherealGems){assert.equal(g.scope,'hero');assert.equal(g.includesMounts,true);assert.ok(g.description&&g.descriptionEn&&g.wikiPage.startsWith('https://dota2.fandom.com/wiki/'));if(g.selectable!==false)assert.match(g.particle,/^particles\/econ\/courier\/.+\.vpcf$/);}
  assert.equal(etherealGems.find(g=>g.id==='lava').gemName,'Trail of Burning Doom');assert.notEqual(etherealGems.find(g=>g.id==='touch-of-flame').particle,etherealGems.find(g=>g.id==='lava').particle);
- const self=etherealGems.find(g=>g.id==='self-made-aura');assert.equal(self.particle,null);assert.equal(self.selectable,false);
+ assert.equal(etherealGems.some(g=>g.id==='self-made-aura'),false);
 });
 test('catalog expansion is idempotent, preserves existing particle overrides and makes every gem visible on ordinary items',()=>{
  const base={effects:[{id:'lava',particle:'custom/lava.vpcf',previewColor:[1,2,3]}],heroes:[{items:[{id:'sword',effects:['lava']}]}]},before=JSON.stringify(base),one=addEtherealGems(base),two=addEtherealGems(one);
- assert.equal(JSON.stringify(base),before);assert.equal(one.effects.length,35);assert.deepEqual(one,two);assert.equal(one.effects.find(e=>e.id==='lava').particle,'custom/lava.vpcf');assert.equal(one.heroes[0].items[0].effects.length,35);
+ assert.equal(JSON.stringify(base),before);assert.equal(one.effects.length,34);assert.deepEqual(one,two);assert.equal(one.effects.find(e=>e.id==='lava').particle,'custom/lava.vpcf');assert.equal(one.heroes[0].items[0].effects.length,34);
  const resolved=resolveGameEffects(one.effects,{attribute_controlled_attached_particles:{22:{system:'particles/real/vermin.vpcf'}}});assert.equal(resolved.find(g=>g.id==='affliction-of-vermin').particle,'particles/real/vermin.vpcf');
 });
 test('whole-hero plans deduplicate gems selected on several items and include the selected mount target, never summons',()=>{
@@ -44,3 +45,5 @@ test('native hero-effect pass uses the selected mount model and preserves unrela
   assert.deepEqual(hosts,[1,4]);assert.deepEqual(job.heroEffectHosts,[hero.model,hero.defaultSlotModels.mount]);const result=new Vpk(job.file);assert.deepEqual(result.read(hero.defaultSlotModels.weapon),resource(2));
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+
+test('previous catalog records and item references cannot restore Self-Made',()=>{const input={effects:[{id:'self-made-aura'},{id:'self_made'}],heroes:[{items:[{effects:['self-made-aura','self_made','lava']}]}]},result=addEtherealGems(input);assert.ok(result.effects.every(e=>!['self-made-aura','self_made'].includes(e.id)));assert.ok(result.heroes[0].items[0].effects.every(id=>!['self-made-aura','self_made'].includes(id)));assert.equal(input.effects.length,2);configureCatalogLoader(input,()=>{});assert.equal(input.effects.length,0);});

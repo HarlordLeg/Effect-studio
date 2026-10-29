@@ -536,7 +536,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   const drive = (e, origin) => {
     const cps = e.sim.cps; cps.clear(); cps.set(0, cpOf(origin)); cps.set(15, GEMLESS); cps.set(16, GEMLESS);
     for (const d of e.drivers) cps.set(d.cp, e.fixed.get(d.cp) || placeCP(d, e.owner, origin));
-    const gem = gemPoints(e.owner); if (gem) { cps.set(15, gem[0]); cps.set(16, gem[1]); }
+    const gem = e.color ? [cpOf(new THREE.Matrix4().makeTranslation(...e.color.map(n=>Math.round(n*255)))),cpOf(new THREE.Matrix4().makeTranslation(1,1,0))] : gemPoints(e.owner); if (gem) { cps.set(15, gem[0]); cps.set(16, gem[1]); }
   };
   // The ambient effects: the hero's own and his items' — a slot's default ones only while it wears
   // its default. Worn items may put their own effects and snapshots in place of the hero's.
@@ -555,7 +555,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
       for (const [from, to] of Object.entries(w.style.particles)) { replaced.set(from, to); replacedBy.set(from, slot); }
       for (const [from, to] of Object.entries(w.style.snapshots)) lib.aliases.set(from, to);
     }
-    effects = list.map((e) => { const def = lib.system(replaced.get(e.system) ?? e.system); return def ? instance(def, replacedBy.get(e.system) || e.owner, driversFor(def, null)) : null; }).filter(Boolean);
+    effects = list.map((e) => { const def = lib.system(replaced.get(e.system) ?? e.system); return def ? Object.assign(instance(def, replacedBy.get(e.system) || e.owner, driversFor(def, null)),{color:e.color??null}) : null; }).filter(Boolean);
   };
   ambient();
 

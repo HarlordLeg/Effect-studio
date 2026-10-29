@@ -81,7 +81,7 @@ export function effectSource(scene,entries,{glow=null}={}){
   const owner=entry.scope==='hero'?'hero':scene.owners.get(entry.itemId)??'hero',id='effect-'+index;
   for(const config of systems[root].m_controlPointConfigurations??[])for(const driver of config.m_drivers??[]){const name=driver.m_attachmentName;if(name&&/POINT/.test(String(driver.m_iAttachType))&&!Object.values(scene.manifest.attachments).some(group=>Object.hasOwn(group,name)))warnings.push((entry.effectId??id)+': отсутствует точка крепления '+name);}
   applyParticleBinding(systems[root],entry.binding??scene.particleBindings?.[String(packet.root).replace(/_c$/,'')]);
-  bindings.push({id,system:root,owner,effectId:entry.effectId??id,itemId:entry.itemId??null,color:entry.color??null,ghost:!!entry.ghost});effects.push({system:root,owner});
+  bindings.push({id,system:root,owner,effectId:entry.effectId??id,itemId:entry.itemId??null,color:entry.color??null,ghost:!!entry.ghost});effects.push({system:root,owner,color:entry.color??null});
  }
  if(glow)for(const path of ['materials/particle/particle_glow_05.vtex','materials/particle/particle_glow_01.vtex','materials/particle/smoke1/smoke1.vtex'])textures[path]??={file:glow};
  return{systems,textures,snapshots,effects,fxModels,materials,bindings,warnings};
