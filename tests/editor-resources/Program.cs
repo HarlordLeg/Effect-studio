@@ -20,6 +20,7 @@ internal class EditorNativeTests{
  using(var small=new SKBitmap(1,1)){small.SetPixel(0,0,new SKColor(1,2,3,255));using var image=SKImage.FromBitmap(small);using var data=image.Encode(SKEncodedImageFormat.Png,100);File.WriteAllBytes(png,data.ToArray());}File.WriteAllText(textureManifest,JsonSerializer.Serialize(new{input=textureInput,output=textureOutput,image=png}));try{textureRun.Invoke(null,new object[]{textureManifest});throw new Exception("implicit resizing accepted");}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException){}File.WriteAllText(textureManifest,JsonSerializer.Serialize(new{input=textureInput,output=textureOutput,image=png,resize=true}));textureRun.Invoke(null,new object[]{textureManifest});using(var resized=new Resource{FileName=textureOutput}){resized.Read(textureOutput);Check(((Texture)resized.DataBlock!).Width==1,"explicit resize");}
  EditorTextureSurfaceTests.Run(dir,textureRun);
  ParticleRecolorTests.Run(type.Assembly,dir);
+ WildlifeMaterialTests.Run(type.Assembly,dir);
  Console.WriteLine("Editor native tests passed: material recolor, alpha, typed particle edit, emitter schema, children, RERL, unknown fields, originals, PNG/TGA VTEX and mip/pixel verification.");
  }finally{Directory.Delete(dir,true);}
  }

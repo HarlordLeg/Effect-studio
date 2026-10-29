@@ -69,6 +69,7 @@ internal static class ResourceRelocator
                 else if(block is BinaryKV3 binary)Rewrite(binary.Data.Root,paths,ids,ref changed);
                 if(changed){changedBlocks.Add(block);if(ReferenceEquals(block,resource.DataBlock))dataChanged=true;}
             }
+            if(resource.DataBlock is Material wildlife&&!resource.ContainsBlockType(ValveResourceFormat.BlockType.NTRO)&&WildlifeMaterial.Repair(wildlife))dataChanged=true;
             if(originalModelName is not null)((Model)resource.DataBlock!).Data["m_name"]=originalModelName;
             if(file.Color is not null)
             {
