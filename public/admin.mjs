@@ -24,3 +24,15 @@ let disposeEditor=null,editorLoading=false;
 $('admin-editor-tab').addEventListener('click',async()=>{if(!token||editorLoading)return;$('statistics').hidden=true;$('cosmetics-studio').hidden=true;$('admin-set-catalog').hidden=true;$('admin-editor').hidden=false;for(const id of ['admin-statistics-tab','admin-cosmetics-tab','admin-sets-tab'])$(id).setAttribute('aria-pressed','false');$('admin-editor-tab').setAttribute('aria-pressed','true');if(disposeEditor){disposeEditor.show?.();return;}editorLoading=true;try{await request('editor/session',{});const{initEditor}=await import('/api/admin/editor/ui.mjs');disposeEditor=await initEditor($('admin-editor'),request,()=>token);}catch(e){$('message').textContent=e.message;}finally{editorLoading=false;}});
 for(const id of ['admin-statistics-tab','admin-cosmetics-tab','admin-sets-tab'])$(id).addEventListener('click',()=>{$('admin-editor').hidden=true;disposeEditor?.hide?.();$('admin-editor-tab').setAttribute('aria-pressed','false');});
 $('logout').addEventListener('click',()=>{disposeEditor?.();disposeEditor=null;$('admin-editor').hidden=true;});
+
+let disposeHud=null,hudLoading=false;
+$('admin-hud-tab').addEventListener('click',async()=>{
+ if(!token||hudLoading)return;
+ for(const id of ['statistics','cosmetics-studio','admin-set-catalog','admin-editor'])$(id).hidden=true;
+ disposeEditor?.hide?.();$('admin-hud-creator').hidden=false;
+ for(const button of $('admin-tabs').querySelectorAll('[aria-pressed]'))button.setAttribute('aria-pressed',String(button.id==='admin-hud-tab'));
+ if(disposeHud)return;hudLoading=true;const current=token;
+ try{await request('editor/session',{});const {initHudCreator}=await import('/api/admin/editor/hud/ui.mjs');if(token!==current)return;const dispose=await initHudCreator($('admin-hud-creator'),request);if(token!==current)dispose();else disposeHud=dispose;}catch(e){$('message').textContent=e.message;}finally{hudLoading=false;}
+});
+for(const id of ['admin-statistics-tab','admin-cosmetics-tab','admin-sets-tab','admin-editor-tab'])$(id).addEventListener('click',()=>{$('admin-hud-creator').hidden=true;$('admin-hud-tab').setAttribute('aria-pressed','false');});
+$('logout').addEventListener('click',()=>{disposeHud?.();disposeHud=null;$('admin-hud-creator').hidden=true;});
