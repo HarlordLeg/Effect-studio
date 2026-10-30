@@ -3,3 +3,5 @@
 .hc-game-views{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}.hc-game-views button[aria-pressed=true]{background:#25434b;border-color:#67a8af}.hc-resource-warnings{font-size:12px;color:#b5c3cf;margin:0 0 12px}.hc-resource-warnings pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;background:#111d28;padding:10px}.hc-canvas{background:#080e12}
 
 .hc-simulation{padding:12px 16px;background:#121d27;border:1px solid #304452;border-radius:8px;margin-bottom:12px}.hc-simulation label{display:inline-flex;align-items:center;gap:10px;margin:14px 20px 8px 0}.hc-simulation input[type=number]{width:90px}.hc-simulation p{color:#96adbe;font-size:12px}
+
+.hc-simulation input[type=checkbox]{width:auto}.hc-simulation input[type=range]{width:140px}.hc-preview-label [data-reload]{font-size:11px;padding:5px 8px}
