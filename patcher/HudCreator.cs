@@ -18,14 +18,21 @@ internal static class HudCreator
  private static KVObject Obj(params (string,KVObject)[] pairs){var n=KVObject.Collection();foreach(var(k,v)in pairs)n[k]=v;return n;}
  private static void Add(KVObject parent,KVObject node){
   var arr=KVObject.Array();foreach(var c in Children(parent))arr.Add(c);arr.Add(node);
-  // PANEL nodes in LaCo use vecChildren. Refuse the single-child AST form rather than duplicating it.
-  if(parent.ContainsKey("child"))throw new InvalidDataException("Single-child panel AST is not writable");
+  // LaCo represents a panel with one child using child, and multiple children using vecChildren.
+  // Promote the existing child without changing its attributes, events or resource flags.
+  if(Str(parent,"eType")!="PANEL")throw new InvalidDataException("Only PANEL nodes accept HUD children");
+  if(parent.ContainsKey("child")){if(parent.ContainsKey("vecChildren"))throw new InvalidDataException("Ambiguous HUD child representation");parent.Remove("child");}
   parent["vecChildren"]=arr;
  }
  private static void Set(KVObject node,string key,string value){
   var existing=Children(node).FirstOrDefault(c=>Str(c,"eType")=="PANEL_ATTRIBUTE"&&Str(c,"name")==key);
   if(existing is not null){existing["child"]["name"]=new KVObject(value);return;}
   Add(node,Obj(("eType",new("PANEL_ATTRIBUTE")),("name",new(key)),("child",Obj(("eType",new("PANEL_ATTRIBUTE_VALUE")),("name",new(value))))));
+ }
+ private static void AppendReferences(string file,IEnumerable<string> names){
+  var list=names.Distinct().ToArray();if(list.Length==0)return;var bytes=File.ReadAllBytes(file);var count=BitConverter.ToUInt32(bytes,12);var directory=8+BitConverter.ToUInt32(bytes,8);var blocks=new List<(string Name,byte[] Data)>();for(var i=0;i<count;i++){var p=checked((int)directory+i*12);var at=checked(p+4+(int)BitConverter.ToUInt32(bytes,p+4));blocks.Add((System.Text.Encoding.ASCII.GetString(bytes,p,4),bytes.AsSpan(at,(int)BitConverter.ToUInt32(bytes,p+8)).ToArray()));}
+  using var refs=new MemoryStream();using(var w=new BinaryWriter(refs,System.Text.Encoding.UTF8,true)){w.Write(8u);w.Write((uint)list.Length);var start=8+16*list.Length;for(var i=0;i<list.Length;i++){w.Write(Program.ComputeResourceId(list[i]));w.Write((long)(start-(16+i*16)));start+=System.Text.Encoding.UTF8.GetByteCount(list[i])+1;}foreach(var n in list){w.Write(System.Text.Encoding.UTF8.GetBytes(n));w.Write((byte)0);}}
+  blocks.Add(("RERL",refs.ToArray()));using var stream=File.Create(file);using var writer=new BinaryWriter(stream);writer.Write(0u);writer.Write(BitConverter.ToUInt16(bytes,4));writer.Write(BitConverter.ToUInt16(bytes,6));writer.Write(8u);writer.Write((uint)blocks.Count);writer.Write(new byte[blocks.Count*12]);for(var i=0;i<blocks.Count;i++){writer.Write(new byte[(16-stream.Position%16)%16]);var start=stream.Position;writer.Write(blocks[i].Data);var end=stream.Position;stream.Position=16+i*12;writer.Write(System.Text.Encoding.ASCII.GetBytes(blocks[i].Name));writer.Write(checked((uint)(start-(20+i*12))));writer.Write((uint)blocks[i].Data.Length);stream.Position=end;}stream.Position=0;writer.Write((uint)stream.Length);
  }
  public static void Run(string manifest){
   var q=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty HUD request");var result=new List<object>();
@@ -54,7 +61,7 @@ internal static class HudCreator
    var refs=(f.Patches??[]).Where(p=>p.Texture is not null).Select(p=>p.Texture!).Distinct().ToArray();var changed=new HashSet<object>{block};
    if(r.ExternalReferences is {} rr){foreach(var name in refs)if(!rr.ResourceRefInfoList.Any(n=>n.Name==name))rr.ResourceRefInfoList.Add(new ResourceExtRefList.ResourceReferenceInfo{Id=Program.ComputeResourceId(name),Name=name});changed.Add(rr);}
    using(var output=File.Create(f.Output))Program.SerializePatchedResource(r,bytes,output,false,changed,preserveMetadata:true);
-   if(r.ExternalReferences is null)EditorResources.AppendReferences(f.Output,refs);
+   if(r.ExternalReferences is null)AppendReferences(f.Output,refs);
    using var verify=new Resource{FileName=f.Output};verify.Read(f.Output);if(verify.GetBlockByType(BlockType.LaCo) is not BinaryKV3 written||JsonSerializer.Serialize(EditorResources.Describe(written.AsKeyValueCollection()))!=JsonSerializer.Serialize(EditorResources.Describe(block.AsKeyValueCollection())))throw new InvalidDataException("HUD layout roundtrip failed");
   }catch(Exception e)when(f.Output is null&&f.ImageOutput is null){result.Add(new{error=e.Message});}
   }
