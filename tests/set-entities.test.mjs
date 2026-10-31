@@ -57,3 +57,7 @@ test('one entity item may declare the same secondary model through native metada
  const other={...choice,item:{...choice.item,id:'another',replacesModel:greater,entityReplacements:[{source:cosmetic,target:greater}],nativeOverrides:{...choice.item.nativeOverrides,entries:[]}}};await assert.rejects(builder.build([choice,other],{id:'real-conflict'}),/один базовый слот|Conflicting entity replacement/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
+test('summon effects retain RGB and bind to every summon model rather than the hero',async()=>{
+ const {normalizeSelections}=await import('../lib/namespace.mjs'),{heroEffectPlans}=await import('../lib/hero-effects.mjs');const hero=fixture(),item=hero.items.find(i=>!i.isDefault),effect={id:'test-gem',name:'Test',particle:'particles/test.vpcf',scope:'hero',ethereal:true,prismatic:true};const builder={catalog:{effects:[effect]},cosmeticChoice:()=>({hero,item,effect:{id:'native-only',particle:null}})};
+ const [choice]=normalizeSelections(builder,{mode:'set',selections:[{heroId:hero.id,itemId:item.id,effectIds:[effect.id],effectColors:{[effect.id]:[20,100,240]}}]});assert.deepEqual(choice.effects[0].color,[20,100,240]);assert.equal(choice.effects[0].scope,'item');assert.equal(effect.scope,'hero');assert.deepEqual(heroEffectPlans([choice]),[]);assert.equal(choice.item.entityReplacements.length,2);
+});

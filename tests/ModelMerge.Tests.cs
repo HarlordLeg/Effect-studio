@@ -6,6 +6,14 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   foreach(var pair in new[]{("windrunner","wr_root"),("venomancer","m_snake_L_09_attach_JNT"),("nyx_assassin","body"),("io","alt_root"),("dazzle","legs_lod0"),("bane","achain0_0"),("batrider","batrider_base")}){
+    KVObject Pose(string bone){var sk=Skeleton([bone],[-1]);sk["m_bonePosParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f)));sk["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return sk;}
+    var profileHost=Pose("root");var profileDonor=Pose(pair.Item2);var profileMap=ModelRootProfiles.TesterAttachments("models/heroes/"+pair.Item1+"/hero.vmdl","models/items/"+pair.Item1+"/item.vmdl",profileHost);Check(profileMap is not null);ModelMerge.MergeSkeleton(profileHost,profileDonor,rootAttachments:profileMap);Check(profileHost["m_nParent"].Values.Last().ToInt32(null)==0);
+    Check(ModelRootProfiles.TesterAttachments("models/heroes/axe/axe.vmdl","models/items/"+pair.Item1+"/item.vmdl",Pose("root")) is null);
+   }
+  }
+
+  {
    KVObject Pose(string name,float x){var s=Skeleton([name],[-1]);s["m_bonePosParent"]=Array(Array(new KVObject(x),new KVObject(0f),new KVObject(0f)));s["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return s;}
    var profiles=new[]{
     ("models/heroes/kunkka/kunkka_head.vmdl","models/items/kunkka/sea_spirit_head/sea_spirit_head.vmdl","root","flexslidersnode"),

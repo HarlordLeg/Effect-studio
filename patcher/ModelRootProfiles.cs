@@ -2,6 +2,26 @@
 // models. Never accept an arbitrary unknown root on an unrelated wearable.
 internal static class ModelRootProfiles
 {
+    // Tester-only importer roots reported by the first tester batch. Each
+    // profile is limited to matching hero namespaces and a unique host root.
+    internal static IReadOnlyDictionary<string,string>? TesterAttachments(string host,string donor,ValveKeyValue.KVObject skeleton)
+    {
+        host=host.Replace("\\","/");donor=donor.Replace("\\","/");
+        var names=skeleton["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
+        var parents=skeleton["m_nParent"].Values.Select(v=>v.ToInt32(null)).ToArray();
+        var roots=names.Where((_,i)=>parents[i]<0).ToArray();if(roots.Length!=1)return null;
+        var profiles=new (string[] Heroes,string[] Bones)[]{
+            (new[]{"windrunner","windranger"},new[]{"wr_root"}),
+            (new[]{"venomancer"},new[]{"m_snake_L_09_attach_JNT"}),
+            (new[]{"nyx_assassin","nerubian_assassin"},new[]{"body"}),
+            (new[]{"io","wisp"},new[]{"alt_root"}),
+            (new[]{"dazzle"},new[]{"legs_lod0"}),
+            (new[]{"bane"},new[]{"achain0_0"}),
+            (new[]{"batrider"},new[]{"batrider_base"})
+        };
+        foreach(var p in profiles)if(p.Heroes.Any(h=>host.Contains("/"+h+"/"))&&p.Heroes.Any(h=>donor.StartsWith("models/items/"+h+"/",StringComparison.Ordinal)))return p.Bones.ToDictionary(b=>b,_=>roots[0],StringComparer.Ordinal);
+        return null;
+    }
     internal static IReadOnlyDictionary<string,string>? Attachments(string host,string donor)
     {
         host=host.Replace("\\","/");donor=donor.Replace("\\","/");
