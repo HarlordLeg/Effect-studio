@@ -1,3 +1,4 @@
+import {activeSkinJoints} from './skin-joints.js';
 import {particleSurfaceMeshes} from './surface-meshes.js';
 import {SnapshotFitter} from '../../../public/viewer/snapshot-bindings.mjs';
 // A Dota 2 hero in the browser: the hero, his items and pedestal from the files built by
@@ -284,7 +285,8 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     const skinned = [], rigid = [], extra = [];
     scene.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); else if (o.isMesh) rigid.push(o); });
     for (const mesh of skinned) {
-      const mapped = mesh.skeleton.bones.map((b, i) => { const own = bones[boneKey(b)] || bones[b.name.toLowerCase()]; if (own) return own; const parent = b.parent && (bones[boneKey(b.parent)] || bones[b.parent.name.toLowerCase()]);
+      const active=activeSkinJoints(mesh);
+      const mapped = mesh.skeleton.bones.map((b, i) => { if(!active.has(i))return b; const own = bones[boneKey(b)] || bones[b.name.toLowerCase()]; if (own) return own; const parent = b.parent && (bones[boneKey(b.parent)] || bones[b.parent.name.toLowerCase()]);
         if (parent && !extra.some((x) => x.bone === b)) {
           // Where it hangs under the hero's bone, from the bind poses of the two: the item's own of
           // that bone (its weapon's bone, Pugna's sceptre, bound otherwise than his default one's),
@@ -298,7 +300,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
           extra.push({ bone: b, parent, key: boneKey(b), inverse: mesh.skeleton.boneInverses[i], local });
         }
         return b; });
-      mesh.skeleton.bones.forEach((b,i)=>registerBone(b,mapped[i],mesh.skeleton.boneInverses[i]));
+      mesh.skeleton.bones.forEach((b,i)=>{if(active.has(i))registerBone(b,mapped[i],mesh.skeleton.boneInverses[i]);});
       mesh.bind(new THREE.Skeleton(mapped, mesh.skeleton.boneInverses), mesh.bindMatrix);
     }
     // Unskinned items stay as they are, beside the hero.

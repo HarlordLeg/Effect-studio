@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {activeSkinJoints} from '../vendor/dota-loadout/src/skin-joints.js';
+const attr=(rows)=>({count:rows.length,itemSize:rows[0].length,getComponent:(i,c)=>rows[i][c]});
+function fixture(indices,weights){const bones=[{name:'root'},{name:'head'},{name:'tail0_3'},{name:'tailSpike4_L4_1'},{name:'tailSpike4_R4_1'}];bones[1].parent=bones[0];bones[2].parent=bones[0];bones[3].parent=bones[2];bones[4].parent=bones[2];return {skeleton:{bones},geometry:{getAttribute:key=>key==='skinIndex'?attr(indices):attr(weights)}};}
+test('a head containing unused Sand King tail joints cannot register those placeholders',()=>{const mesh=fixture([[1,3,4,2]],[[1,0,0,0]]);assert.deepEqual([...activeSkinJoints(mesh)].sort(),[0,1]);});
+test('the real tail retains both weighted tips and the unweighted parent chain',()=>{const mesh=fixture([[3,4,0,0]],[[.5,.5,0,0]]);assert.deepEqual([...activeSkinJoints(mesh)].sort(),[0,2,3,4]);});
+test('absent skin attributes remain compatible; invalid weighted joint indices fail explicitly',()=>{const mesh=fixture([[9]],[[1]]);assert.throws(()=>activeSkinJoints(mesh),/Invalid wearable skin joint/);mesh.geometry.getAttribute=()=>null;assert.equal(activeSkinJoints(mesh).size,5);});

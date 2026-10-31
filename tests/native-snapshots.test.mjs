@@ -27,3 +27,8 @@ test('final build rechecks a stale snapshot introduced after catalog initializat
  await builder.build([row],job);assert.equal(job.status,'ready');assert.ok(new Vpk(job.file).entries.has(target));assert.ok(job.unsupportedNative.some(s=>s.includes('Unused legacy snapshot')));assert.equal(native.entries.length,1);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+test('missing installed Tyrian hit uses the available ordinary TI9 hit with an explicit warning',()=>{
+ const prefix='particles/econ/items/nyx_assassin/nyx_ti9_immortal/',missing=prefix+'nyx_ti9_tyrian_carapace_hit.vpcf_c',fallback=prefix+'nyx_ti9_carapace_hit.vpcf_c',ambient=prefix+'nyx_ti9_tyrian_ambient.vpcf_c';const item={model:'models/items/nerubian_assassin/nyx_ti9_immortal_back/nyx_ti9_immortal_back.vmdl_c',nativeOverrides:{entries:[{type:'particle',target:'particles/hit.vpcf_c',source:missing}],particles:[ambient],unsupported:[]}};
+ const repaired=resolveNativeSnapshots({has:p=>p===fallback,read:()=>null},item);assert.equal(repaired.entries[0].source,fallback);assert.deepEqual(repaired.particles,[ambient]);assert.equal(item.nativeOverrides.entries[0].source,missing);assert.equal(repaired.warnings.length,1);
+ assert.equal(resolveNativeSnapshots({has:()=>true,read:()=>null},item).entries[0].source,missing);assert.equal(resolveNativeSnapshots({has:()=>false,read:()=>null},item).entries[0].source,missing);assert.equal(resolveNativeSnapshots({has:p=>p===fallback,read:()=>null},{...item,model:'models/items/other.vmdl_c'}).entries[0].source,missing);
+});
