@@ -1,3 +1,4 @@
+import {createTesterPortal} from './lib/tester/routes.mjs';
 import {createAdminSetBuilder,requiresMountedArchivePreview} from './lib/admin-unreleased-sets.mjs';
 import {EditorProjectService} from './lib/editor/project-service.mjs';
 import {EditorBuildService} from './lib/editor/build-service.mjs';
@@ -44,9 +45,10 @@ const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/jso
 const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
 async function body(req,maxBytes=16384){const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>maxBytes)throw Error('Слишком большой запрос');chunks.push(chunk);}return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}
 function publicJob(job){const {file,owner,_terrain,_attackVpk,...result}=job;return result;}
-export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={}) {
+export function startServer({root:serverRoot=root,port:overridePort,adminAuth,testerAuth}={}) {
   const root=serverRoot;
   const configPath=path.join(root,'config.json'),config={host:'127.0.0.1',port:8787,...JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'))};
+  config.testerBuildV1=false;
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
   const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons),techiesIconPreviews=new TechiesIconPreviews(builder,itemIcons);
   const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
@@ -59,6 +61,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
   builder.onReady=job=>count('vpks',tracking.get(job));
   const countModel=job=>{if(!job.modelServed){job.modelServed=true;count('models',tracking.get(job));}};
 
+  const testerPortal=createTesterPortal({root,config,builder,previews,projects:editorProjects,body,json,auth:testerAuth});
   const baseBuilder=builder,basePreviews=previews,baseEditorBuilds=editorBuilds;let adminSetContext=null;
   const adminContext=()=>{if(!adminSetContext){const builder=createAdminSetBuilder(baseBuilder),previews=Object.create(basePreviews);previews.builder=builder;adminSetContext={builder,previews,editorBuilds:new EditorBuildService(builder)};}return adminSetContext;};
   const server=http.createServer(async(req,res)=>{
@@ -70,6 +73,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       const expectedPort=server.address()?.port;
       const {allowedHost,localAdmin}=requestAccess(req,config,expectedPort);
       if(!allowedHost)return json(res,403,{error:'Host не разрешён. Укажи publicBaseUrl для серверного режима.'});
+      const testerAccess=await testerPortal.route(req,res,url);if(testerAccess===true)return;if(testerAccess){({builder,previews,editorBuilds}=testerAccess);}
       if(staticViewer.route(req,res,url))return;
       if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
       if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
@@ -77,9 +81,9 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
       if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
       if(url.pathname.startsWith('/ethereal-media/'))res.setHeader('Access-Control-Allow-Origin','*');
       if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
-      let adminStudioOwner=null;
+      let adminStudioOwner=testerAccess?.owner??null;
       try{
-        const access=adminSetAccess(req,url,admin,{host,publicBaseUrl:config.publicBaseUrl});
+        const access=testerAccess?null:adminSetAccess(req,url,admin,{host,publicBaseUrl:config.publicBaseUrl});
         if(access?.session){res.setHeader('Set-Cookie',ADMIN_SET_COOKIE+'='+access.token+'; Path=/api/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
         if(access){adminStudioOwner=access.owner;url.pathname=access.pathname;({builder,previews,editorBuilds}=adminContext());}
       }catch(error){return json(res,error.status??401,{error:error.message});}
@@ -227,22 +231,22 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth}={
         try{const entry=immortalIconEntry(option,url.searchParams.get('index'));const texture=url.searchParams.get('variant')==='classic'?entry.target:entry.source;const file=await itemIcons.getTexture(texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Immortal icon unavailable'});}
       }
       if(url.pathname==='/api/stances'&&req.method==='GET'){const heroId=url.searchParams.get('heroId'),result=await heroStances(builder,heroId);return json(res,200,{options:result.options,abilities:abilityCatalog(builder,heroId,result.options)});}
-      if(url.pathname==='/api/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder):cosmeticCatalog(builder));
+      if(url.pathname==='/api/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder,{admin:!!testerAccess}):cosmeticCatalog(builder,{admin:!!testerAccess}));
       if(url.pathname==='/api/cosmetic-icon'&&req.method==='GET'){
-        const item=cosmeticCatalog(builder).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
+        const item=cosmeticCatalog(builder,{admin:!!testerAccess}).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
         try{const style=item.styles?.find(s=>s.id===url.searchParams.get('styleId'));const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:style?.imageInventory??item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
       }
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),rubickArcana:true,linaArcana:true,monkeyKingArcana:true,drowArcana:true,terrorbladeArcana:hasTerrorbladeArcana(root),techiesArcana:hasTechiesArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req);for(const heroId of new Set((data.selections??[]).filter(row=>row.stanceId!=null).map(row=>row.heroId)))await heroStances(builder,heroId);const cosmetics=cosmeticChoices(builder,data.cosmetics??[]);const choices=Array.isArray(data.selections)&&!data.selections.length&&cosmetics.length?[]:normalizeSelections(builder,data),choice=choices[0];if(!cosmetics.length&&data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
+        const data=await body(req);for(const heroId of new Set((data.selections??[]).filter(row=>row.stanceId!=null).map(row=>row.heroId)))await heroStances(builder,heroId);const cosmetics=cosmeticChoices(builder,data.cosmetics??[],{admin:!!testerAccess});const choices=Array.isArray(data.selections)&&!data.selections.length&&cosmetics.length?[]:normalizeSelections(builder,data),choice=choices[0];if(!cosmetics.length&&data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){if(!choice)return json(res,400,{error:'Select a hero item to inspect'});const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
       }
       if(url.pathname==='/api/preview'&&req.method==='POST') {
         const data=await body(req);
-        if(staticViewer.enabled()&&!requiresMountedArchivePreview(builder.catalog,data)){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,key:p.key??path.basename(job.partFiles[i],'.glb'),url:'/api/admin/set-studio/previews/'+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
+        if(staticViewer.enabled()&&!requiresMountedArchivePreview(builder.catalog,data)){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,key:p.key??path.basename(job.partFiles[i],'.glb'),url:(testerAccess?'/api/tester/studio/previews/':'/api/admin/set-studio/previews/')+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
         let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
         const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
         if(stance&&setRows)setRows=kineticBuildChoices(setRows,[stance]);
@@ -316,7 +320,7 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
       fs.createReadStream(file).pipe(res);
     } catch(error){if(error.statusCode===429)res.setHeader('Retry-After',String(error.retryAfter));json(res,error.statusCode===429?429:400,{error:error.message,...(error.statusCode===429?{code:error.code,retryAfter:error.retryAfter}:{})});}
   });
-  server.once('close',()=>{previews.dispose();builder.dispose();});
+  server.once('close',()=>{testerPortal.dispose();previews.dispose();builder.dispose();});
   return new Promise((resolve,reject)=>{server.once('error',reject);server.listen(overridePort??config.port,config.host,()=>{const url=`http://${config.host}:${server.address().port}`;console.log(`Dota Effect Studio: ${url}`);resolve({server,builder,auth,previews,url});});});
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer().then(({server,previews})=>{for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{previews.dispose();server.close();});}).catch(error=>{console.error(error.message);process.exitCode=1;});
