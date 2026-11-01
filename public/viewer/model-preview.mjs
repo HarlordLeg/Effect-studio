@@ -26,7 +26,7 @@ export class ModelPreview {
   try{
    const {buffers,...stats}=await this.downloads.load(parts,base,query,{fetcher:this.fetcher,signal:this.abort.signal,onProgress:detail=>{if(ticket===this.generation)this.progress(detail);}});this.lastLoadStats=stats;this.progress({phase:'prepare'});
    if(ticket!==this.generation)throw cancelled();
-   let heroSeen=false;for(let i=0;i<parts.length;i++){const p=parts[i],isHero=p.role==='hero'||(!heroSeen&&i===0);if(isHero)heroSeen=true;let owner=p.role==='pedestal'?'pedestal':isHero?'hero':(p.slot??manifest.selectedItems?.find(it=>it.id===p.id)?.slot??'part-'+i);if(Object.hasOwn(source.manifest.models,owner))owner+='-'+i;source.addGlb(buffers[i],{key:'part-'+i,owner,itemId:p.id});}
+   let heroSeen=false;for(let i=0;i<parts.length;i++){const p=parts[i],isHero=p.role==='hero'||(!heroSeen&&i===0);if(isHero)heroSeen=true;let owner=p.role==='pedestal'?'pedestal':isHero?'hero':(p.slot??manifest.selectedItems?.find(it=>it.id===p.id)?.slot??'part-'+i);if(Object.hasOwn(source.manifest.models,owner))owner+='-'+i;source.addGlb(buffers[i],{key:'part-'+i,owner,itemId:p.id,model:p.sourceModel});}
    source.manifest.studioPedestal=true;source.manifest.id=manifest.heroId??'effect-studio';
    let metadata;try{metadata=await this.metadataProvider?.({heroId:manifest.heroId,preferred:manifest.preferredAnimations??[],models:[...source.modelMetadata.values()],signal:this.abort.signal});}catch(e){if(e.name==='AbortError')throw e;source.warnings.push('Метаданные креплений: '+e.message);}if(ticket!==this.generation)throw cancelled();source.applyMetadata(metadata,manifest.preferredAnimations??[]);
    const playing=this.asset?.json.animations[this.animation]?.name;

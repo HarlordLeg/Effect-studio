@@ -1,6 +1,6 @@
-import {activeSkinJoints} from './skin-joints.js';
+import {activeSkinJoints,attachmentSkinBones,resolveModelAttachment} from './skin-joints.js';
 import {particleSurfaceMeshes} from './surface-meshes.js';
-import {SnapshotFitter} from '../../../public/viewer/snapshot-bindings.mjs';
+import {snapshotBinding} from '../../../public/viewer/snapshot-bindings.mjs';
 // A Dota 2 hero in the browser: the hero, his items and pedestal from the files built by
 // tools/build-heroes.mjs, lit like the game's loadout page, animated, with his particle effects,
 // turned by dragging. One viewer keeps its WebGL context and swaps heroes with load().
@@ -270,7 +270,6 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   const names = Object.keys(manifest.models), loaded = Object.fromEntries(await Promise.all(names.map(async (k) => [k, await loader.loadAsync(url(manifest.models[k]))])));
   const propFiles = [...new Set([...(manifest.props || []).map((p) => p.file), ...Object.values(manifest.fxModels || {}).map((m) => m.file)])];
   const propModels = Object.fromEntries(await Promise.all(propFiles.map(async (f) => [f, await loader.loadAsync(url(f))])));
-  const snapshotFitter=new SnapshotFitter(Object.entries(loaded).filter(([name])=>name!=='pedestal'&&name!=='animation-source').map(([,model])=>model),SOURCE_TO_GLTF);
   const heroModel = loaded.hero, root = heroModel.scene, bones = {}, inverses = {};
 
   // Our VRF GLBs retain native names for attachment/snapshot lookup even when
@@ -281,11 +280,11 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   // extra bones hang under the hero bone that is their parent. What a slot wears is a set of meshes
   // and such bones, put on and taken off whole (the defaults are kept for when they come back).
   root.traverse((o) => { if (o.isBone) registerBone(o,o); if (o.isSkinnedMesh) o.skeleton.bones.forEach((b,i)=>registerBone(b,b,o.skeleton.boneInverses[i])); });
-  const fit = (scene) => {
+  const fit = (scene,attachmentRows) => {
     const skinned = [], rigid = [], extra = [];
     scene.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); else if (o.isMesh) rigid.push(o); });
     for (const mesh of skinned) {
-      const active=activeSkinJoints(mesh);
+      const active=activeSkinJoints(mesh,attachmentSkinBones(attachmentRows));
       const mapped = mesh.skeleton.bones.map((b, i) => { if(!active.has(i))return b; const own = bones[boneKey(b)] || bones[b.name.toLowerCase()]; if (own) return own; const parent = b.parent && (bones[boneKey(b.parent)] || bones[b.parent.name.toLowerCase()]);
         if (parent && !extra.some((x) => x.bone === b)) {
           // Where it hangs under the hero's bone, from the bind poses of the two: the item's own of
@@ -316,7 +315,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     for (const [, a] of worn) for (const r of a.refits || []) for (const [, w] of worn) {
       if (w === a || w.item !== r.item || (r.style != null && w.styleIndex !== r.style)) continue;
       for (const m of w.meshes) root.remove(m);
-      if (r.scene) { r.fitted ||= fit(r.scene); putOn({ meshes: r.fitted.meshes, extra: r.fitted.extra }); }
+      if (r.scene) { r.fitted ||= fit(r.scene,r.attachments); putOn({ meshes: r.fitted.meshes, extra: r.fitted.extra }); }
       refitted.push({ w, r });
     }
   };
@@ -325,7 +324,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   const takeOff = (w) => { if (w.companion) w.companion.group.removeFromParent(); for (const m of w.meshes) root.remove(m); for (const x of w.extra) { x.bone.parent?.remove(x.bone); if (bones[x.key] === x.bone) delete bones[x.key]; if (inverses[x.key] === x.inverse) delete inverses[x.key]; } };
   const items = names.filter((k) => k !== 'hero' && k !== 'pedestal' && k !== 'animation-source'), defaults = new Map(), worn = new Map(), wearing = new Map();
   const heroMeshes = []; root.traverse((o) => { if (o.isMesh) heroMeshes.push(o); });
-  for (const name of items) { const w = fit(loaded[name].scene); defaults.set(name, w); worn.set(name, { ...w, item: null }); putOn(w); }
+  for (const name of items) { const w = fit(loaded[name].scene,manifest.attachments?.[name]); defaults.set(name, w); worn.set(name, { ...w, item: null }); putOn(w); }
   const turntable = new THREE.Group(); turntable.add(root); if (loaded.pedestal) turntable.add(loaded.pedestal.scene);
   const materials = new Map();
   // An item's materials come with it, their textures from its folder: keyed by both.
@@ -447,7 +446,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   lib.loader.manager = manager;
   // Attachments by model: the hero's, and those of what each slot wears.
   const attachments = { ...manifest.attachments };
-  const attachment = (name, owner) => { for (const model of [owner, 'hero']) { const at = attachments[model]?.[name]; if (at) return at; } return null; };
+  const attachment = (name, owner) => resolveModelAttachment(attachments,name,owner);
   const attachmentMatrix = (at) => {
     const influence = i => { const bone = bones[at.bones[i].toLowerCase()]; if(!bone) return null;
       return toSource(bone.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(...at.offsets[i]).multiplyScalar(0.0254), new THREE.Quaternion(...at.rotations[i]), new THREE.Vector3(1,1,1)))); };
@@ -490,7 +489,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   const cpOf = (m) => { const c = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), matrix() { return new THREE.Matrix4().compose(this.pos, this.quat, new THREE.Vector3(1, 1, 1)); } }; m.decompose(c.pos, c.quat, new THREE.Vector3()); return c; };
   const placeCP = (d, owner, origin) => {
     if (d.type === 'PATTACH_WORLDORIGIN') { const c = cpOf(origin); if (d.offset) c.pos.add(d.offset); return c; }
-    const at = /POINT|CENTER/.test(d.type) && d.attachment ? attachment(d.attachment, d.entity==='parent'?'hero':owner) : null, c = cpOf((at && attachmentMatrix(at)) || origin);
+    const at = /POINT|CENTER/.test(d.type) && d.attachment ? attachment(d.attachment, owner) : null, c = cpOf((at && attachmentMatrix(at)) || origin);
     if (d.offset) c.pos.add(d.offset.clone().applyQuaternion(c.quat));
     return c;
   };
@@ -519,7 +518,12 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     return () => { out.set(0, 0, 0); for (let k = 0; k < 3; k++) out.addScaledVector(m.getVertexPosition(i[k], p), w[k]); return out.applyMatrix4(m.matrixWorld).applyMatrix4(groupInverse); };
   };
   const instance = (def, owner, drivers) => {
-    const sim = new Simulation(def, lib); sim.model = { ...model, surface: () => surfacePoint(owner || 'hero') };
+    const sim = new Simulation(def, lib);
+    // Refitted meshes replace their ordinary counterparts in the live scene.
+    let meshes=particleSurfaceMeshes(heroMeshes,worn,owner);
+    for(const{w,r}of refitted)if(r.fitted&&w.meshes.some(m=>meshes.includes(m)))meshes=[...meshes.filter(m=>!w.meshes.includes(m)),...r.fitted.meshes];
+    meshes=meshes.filter(m=>m.parent&&m.visible);
+    sim.model = { ...model,...snapshotBinding(meshes,SOURCE_TO_GLTF,model), surface: () => surfacePoint(owner || 'hero') };
     const e = { sim, owner, drivers, fixed: new Map() }, origin = heroOrigin();
     for (const d of drivers) if (!follows(d)) e.fixed.set(d.cp, placeCP(d, owner, origin));
     return e;
@@ -605,7 +609,6 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
       for (const e of effects) e.sim.dispose(); effects = [];
       for (const e of live) e.sim.dispose(); live.length = 0;
       for (const { texture } of lib.cache.values()) texture?.dispose(); lib.cache.clear();
-      snapshotFitter.fit(patch.snapshots);
       lib.materials = patch.materials || {};lib.systems = patch.systems || {}; lib.textures = patch.textures || {}; lib.snapshots = patch.snapshots || {};
       for (const [path, def] of Object.entries(lib.systems)) if (def && !def._path) Object.defineProperty(def, '_path', { value: path });
       for (const [path, info] of Object.entries(patch.fxModels || {})) {
@@ -693,7 +696,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
           // The models it refits other items into, ready for when one of them is worn too.
           const refits = await Promise.all((s.refits || []).map(async (r) => {
             if (!r.model) return { ...r, scene: null };
-            const sc = (await loader.loadAsync(source.url(m.models[r.model]))).scene; dress(sc, m.materials, tex, source.url(''), itemCube); return { ...r, scene: sc };
+            const sc = (await loader.loadAsync(source.url(m.models[r.model]))).scene; dress(sc, m.materials, tex, source.url(''), itemCube); return { ...r, scene: sc,attachments:m.attachments?.[r.model] };
           }));
           record = { scenes, companion, refits, attachments: Object.assign({}, ...s.models.map((n) => m.attachments?.[n] || {})) };
           wearing.set(key, record);
@@ -702,7 +705,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
       if (!current()) return;
       // Off with the old first: the new one's extra bones must not find the old one's by name.
       const old = worn.get(slot); if (old) takeOff(old);
-      if (record.scenes && !record.meshes) { record.meshes = []; record.extra = []; for (const sc of record.scenes) { const w = fit(sc.scene); record.meshes.push(...w.meshes); record.extra.push(...w.extra); } }
+      if (record.scenes && !record.meshes) { record.meshes = []; record.extra = []; for (const sc of record.scenes) { const w = fit(sc.scene,record.attachments); record.meshes.push(...w.meshes); record.extra.push(...w.extra); } }
       putOn(record);
       worn.set(slot, { meshes: record.meshes, extra: record.extra, companion: record.companion, refits: record.refits || [], item: m ? m.id : null, style: s, styleIndex: m ? m.styles.indexOf(s) : 0, unusual: m?.unusual || null });
       attachments[slot] = m ? record.attachments : manifest.attachments?.[slot];

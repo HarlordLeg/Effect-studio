@@ -22,7 +22,7 @@ export class SceneSource {
  url=(path)=>{if(this.files.has(path))return this.files.get(path);if(/^(?:blob:|data:|https?:)/.test(path))return path;throw Error('Unknown scene resource: '+path);};
  sanitizeMaterial(value,fallback={}){const next={...value};for(const field of ['color','normal','masks','specular','detail','fresnel','exponent','diffuseWarp','cube'])if(typeof next[field]==='string'&&!this.files.has('textures/'+next[field])){const old=fallback[field];next[field]=typeof old==='string'&&this.files.has('textures/'+old)?old:null;const message='Material texture unavailable: '+value[field];if(!this.warnings.includes(message))this.warnings.push(message);}return next;}
  source(){return{manifest:this.manifest,url:this.url};}
- addGlb(bytes,{key,owner='hero',itemId=null,register=true}={}){
+ addGlb(bytes,{key,owner='hero',itemId=null,register=true,model=null}={}){
   const oldUrls=new Set(this.urls),oldFiles=new Set(this.files.keys()),oldMaterials=new Set(Object.keys(this.manifest.materials));
   const glb=readGlb(bytes),meta=glb.json.extras?.dotaStudio??{},json=structuredClone({...glb.json,extras:{...glb.json.extras,dotaStudio:undefined}}),images=new Map(),prefix=key??'model-'+Object.keys(this.manifest.models).length;
   let fallback;for(const mesh of json.meshes??[])for(const primitive of mesh.primitives??[])if(primitive.material===undefined){json.materials??=[];fallback??=json.materials.push({name:'studio-geometry-fallback',pbrMetallicRoughness:{baseColorFactor:[.55,.58,.65,1],metallicFactor:0,roughnessFactor:1}})-1;primitive.material=fallback;}
@@ -40,7 +40,7 @@ export class SceneSource {
    json.materials[i]={name:id,pbrMetallicRoughness:{baseColorFactor:base.baseColorFactor??[1,1,1,1]},doubleSided:!!m.doubleSided,alphaMode:m.alphaMode??'OPAQUE'};
   }
   for(const node of json.nodes??[]){const original=node.name;node.extras={...(node.extras??{}),studioOwner:owner,studioPart:itemId??prefix,...(original?{studioSourceName:original}:{})};if(original?.includes('/')||original?.includes('\\'))node.name=original.replaceAll('\\','/').split('/').at(-1).replace(/\.vmdl_c.*/,'');}
-  if(register)this.modelMetadata.set(owner,{owner,itemId,hasSkeleton:!!json.skins?.some(s=>s.joints?.length),model:sourceModel(glb.json),animations:(json.animations??[]).map(a=>({name:a.name})),metadata:meta});
+  if(register)this.modelMetadata.set(owner,{owner,itemId,hasSkeleton:!!json.skins?.some(s=>s.joints?.length),model:model??sourceModel(glb.json),modelExplicit:!!(model||meta.sourceModel),animations:(json.animations??[]).map(a=>({name:a.name})),metadata:meta});
   const attachments={};for(const[name,row]of Object.entries(meta.attachments??{})){const a=normalizeAttachment(row);if(a)attachments[name]=a;}if(register)this.manifest.attachments[owner]=attachments;
   // All material images are now owned by the host shader, not GLTFLoader.
   delete json.images;delete json.textures;

@@ -7,13 +7,23 @@ internal static class ItemEffectScope {
  static ulong Mask(KVObject v){var s=v.ToString(System.Globalization.CultureInfo.InvariantCulture);return s.StartsWith('-')?unchecked((ulong)long.Parse(s,System.Globalization.CultureInfo.InvariantCulture)):ulong.Parse(s,System.Globalization.CultureInfo.InvariantCulture);}
  static KVObject A(IEnumerable<KVObject> rows)=>KVObject.Array(rows);
  static KVObject Row(params (string,KVObject)[] fields){var r=KVObject.Collection();foreach(var(k,v)in fields)r[k]=v;return r;}
+ // Mesh vertices can be authored in a bind pose different from the model/hero.
+ // Snapshots have no per-mesh inverse binds: bake that difference into their points.
+ static Dictionary<string,Matrix4x4> Poses(Model model,Dictionary<string,Matrix4x4>? shared=null){
+  var sk=model.Data["m_modelSkeleton"];var names=sk["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();var parents=sk["m_nParent"].Values.Select(v=>v.ToInt32(null)).ToArray();var pos=sk["m_bonePosParent"].Values.ToArray();var rot=sk["m_boneRotParent"].Values.ToArray();var scales=sk.TryGetValue("m_boneScaleParent",out var a)?a.Values.ToArray():[];var result=new Dictionary<string,Matrix4x4>(StringComparer.OrdinalIgnoreCase);var visiting=new HashSet<int>();
+  Matrix4x4 Pose(int i){if(result.TryGetValue(names[i],out var done))return done;if(shared is not null&&shared.TryGetValue(names[i],out done)){result[names[i]]=done;return done;}if(!visiting.Add(i))throw new InvalidDataException("Cyclic item skeleton");var p=pos[i].Values.Select(v=>v.ToSingle(null)).ToArray();var q=rot[i].Values.Select(v=>v.ToSingle(null)).ToArray();var scale=scales.Length==0?1:scales[i].ToSingle(null);var local=Matrix4x4.CreateScale(scale)*Matrix4x4.CreateFromQuaternion(new Quaternion(q[0],q[1],q[2],q[3]))*Matrix4x4.CreateTranslation(p[0],p[1],p[2]);var parent=parents[i];if(parent>=0)local*=Pose(parent);visiting.Remove(i);result.Add(names[i],local);return local;}
+  for(int i=0;i<names.Length;i++)Pose(i);return result;
+ }
+ static Matrix4x4 MeshInverse(KVObject value){var f=value.Values.Select(v=>v.ToSingle(null)).ToArray();if(f.Length!=12||f.Any(v=>!float.IsFinite(v)))throw new InvalidDataException("Invalid mesh inverse bind pose");return new(f[0],f[4],f[8],0,f[1],f[5],f[9],0,f[2],f[6],f[10],0,f[3],f[7],f[11],1);}
+ internal static Vector3 RebasePoint(Vector3 position,string[] bones,float[] weights,IReadOnlyDictionary<string,Matrix4x4> inverse,IReadOnlyDictionary<string,Matrix4x4> target){var result=Vector3.Zero;for(int i=0;i<weights.Length;i++){if(weights[i]<=0)continue;if(!inverse.TryGetValue(bones[i],out var inv)||!target.TryGetValue(bones[i],out var pose))throw new InvalidDataException("No bind pose for effect bone: "+bones[i]);result+=Vector3.Transform(position,inv*pose)*weights[i];}return result;}
  internal static List<Point> Geometry(Model model,Model host,IReadOnlyDictionary<string,Mesh>? external=null){
   var names=model.Skeleton.Bones.Select(b=>b.Name).ToArray();var canonical=host.Skeleton.Bones.GroupBy(b=>b.Name,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()==1).ToDictionary(g=>g.Key,g=>g.First().Name,StringComparer.OrdinalIgnoreCase);
-  var points=new List<Point>();var masks=model.Data["m_refMeshGroupMasks"].Values.ToArray();var selected=Mask(model.Data["m_nDefaultMeshGroupMask"]);
+  var targetPoses=Poses(model,Poses(host));var sourcePoses=Poses(model);var points=new List<Point>();var masks=model.Data["m_refMeshGroupMasks"].Values.ToArray();var selected=Mask(model.Data["m_nDefaultMeshGroupMask"]);
   var meshes=model.GetEmbeddedMeshesForLod(0).Select(v=>(Mesh:v.Item1,Index:v.Item2)).ToList();
   foreach(var(index,name,_)in model.GetReferenceMeshNamesForLod(0)){if(external is null||!external.TryGetValue(name,out var mesh))throw new InvalidDataException("Missing external item mesh: "+name);meshes.Add((mesh,index));}
   foreach(var(mesh,index)in meshes){
    if(index<masks.Length&&(Mask(masks[index])&selected)==0)continue;
+   var inverse=new Dictionary<string,Matrix4x4>(StringComparer.OrdinalIgnoreCase);foreach(var(name,pose)in sourcePoses){if(!Matrix4x4.Invert(pose,out var inv))throw new InvalidDataException("Singular item bind pose");inverse[name]=inv;}if(mesh.Data.TryGetValue("m_skeleton",out var meshSkin)&&meshSkin.TryGetValue("m_bones",out var meshBones))foreach(var bone in meshBones.Values)if(bone.TryGetValue("m_invBindPose",out var inv))inverse[bone["m_boneName"].ToString(null)]=MeshInverse(inv);
    var ranges=new List<(int Start,int Count)>();if(mesh.Data.TryGetValue("m_sceneObjects",out var scenes))foreach(var scene in scenes.Values)if(scene.TryGetValue("m_drawCalls",out var calls))foreach(var call in calls.Values)if(call.TryGetValue("m_nVertexCount",out var count)&&call.TryGetValue("m_nBaseVertex",out var start))ranges.Add((start.ToInt32(null),count.ToInt32(null)));
    if(ranges.Count==0||ranges.Any(r=>r.Start<0||r.Count<0))throw new InvalidDataException("Item mesh has no readable visible draw ranges");
    foreach(var buffer in mesh.VBIB.VertexBuffers){var fields=buffer.InputLayoutFields;var position=fields.FirstOrDefault(f=>f.SemanticName=="POSITION");if(position.SemanticName!="POSITION")continue;
@@ -24,7 +34,7 @@ internal static class ItemEffectScope {
     var visible=Enumerable.Range(0,positions.Length).Where(i=>ranges.Any(r=>i>=r.Start&&(long)i<((long)r.Start+r.Count))).ToArray();var stride=Math.Max(1,(int)Math.Ceiling(visible.Length/2048d));
     foreach(var i in visible.Where((_,index)=>index%stride==0)){var n=new string[4];var w=new[]{values[i].X,values[i].Y,values[i].Z,values[i].W};var sum=w.Sum();if(!float.IsFinite(sum)||sum<=0)continue;
      for(int j=0;j<4;j++){if(!float.IsFinite(w[j])||w[j]<0)throw new InvalidDataException("Invalid skin weight");if(w[j]==0){n[j]="";continue;}var bone=indices[i*4+j];if(bone>=names.Length)throw new InvalidDataException("Invalid mesh bone remap");n[j]=canonical.GetValueOrDefault(names[bone],names[bone]);w[j]/=sum;}
-     var p=positions[i];if(!float.IsFinite(p.X)||!float.IsFinite(p.Y)||!float.IsFinite(p.Z))throw new InvalidDataException("Invalid mesh point");points.Add(new(p,n,w));
+     var p=positions[i];if(!float.IsFinite(p.X)||!float.IsFinite(p.Y)||!float.IsFinite(p.Z))throw new InvalidDataException("Invalid mesh point");points.Add(new(RebasePoint(p,n,w,inverse,targetPoses),n,w));
     }
    }
   }

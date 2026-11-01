@@ -6,6 +6,21 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   KVObject Pose(string[] names,int[] parents){var sk=Skeleton(names,parents);sk["m_bonePosParent"]=Array(names.Select((_,i)=>Array(new KVObject((float)i),new KVObject(0f),new KVObject(0f))).ToArray());sk["m_boneRotParent"]=Array(names.Select(_=>Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f))).ToArray());return sk;}
+   var techiesHost=Pose(["root","root6","root2","root1","root4"],[-1,-1,-1,-1,-1]);var path="models/items/techies/techies_ti9_immortal_spleen/techies_ti9_immortal_spleen.vmdl";var profile=ModelRootProfiles.TesterAttachments("models/heroes/techies/techies.vmdl",path,techiesHost);Check(profile?["techies_ti9_immortal_spleen_root1"]=="root1");ModelMerge.MergeSkeleton(techiesHost,Pose(["techies_ti9_immortal_spleen_root1"],[-1]),rootAttachments:profile);Check(techiesHost["m_nParent"].Values.Last().ToInt32(null)==3);Check(Math.Abs(techiesHost["m_bonePosParent"].Values.Last()[0].ToSingle(null)+3)<.0001f);
+   Check(ModelRootProfiles.TesterAttachments("models/heroes/techies/techies.vmdl","models/items/techies/unrelated/item.vmdl",techiesHost) is null);Check(ModelRootProfiles.TesterAttachments("models/heroes/axe/axe.vmdl",path,techiesHost) is null);
+   var nyx=Pose(["root"],[-1]);var nyxProfile=ModelRootProfiles.TesterAttachments("models/heroes/nerubian_assassin/nerubian_assassin.vmdl","models/items/nerubian_assassin/nyx_dagon.vmdl",nyx);Check(nyxProfile?["armor_wbadges"]=="root");ModelMerge.MergeSkeleton(nyx,Pose(["armor_wbadges"],[-1]),rootAttachments:nyxProfile);Check(nyx["m_nParent"][1].ToInt32(null)==0);
+  }
+
+  { // Raw mesh and hero bind poses differ: names alone cannot bind a snapshot.
+   var source=new System.Numerics.Vector3(2,3,4);var bones=new[]{"spear","crystal","",""};var weights=new[]{.75f,.25f,0f,0f};
+   var inverse=new Dictionary<string,System.Numerics.Matrix4x4>{{"spear",System.Numerics.Matrix4x4.CreateTranslation(-2,0,0)},{"crystal",System.Numerics.Matrix4x4.CreateRotationZ(MathF.PI/2)}};
+   var target=new Dictionary<string,System.Numerics.Matrix4x4>{{"spear",System.Numerics.Matrix4x4.CreateTranslation(0,0,10)},{"crystal",System.Numerics.Matrix4x4.CreateTranslation(0,0,20)}};
+   var point=ItemEffectScope.RebasePoint(source,bones,weights,inverse,target);var expected=new System.Numerics.Vector3(0,3,14)*.75f+new System.Numerics.Vector3(-3,2,24)*.25f;Check(System.Numerics.Vector3.Distance(point,expected)<.0001f);Check(source==new System.Numerics.Vector3(2,3,4));
+   try{ItemEffectScope.RebasePoint(source,bones,weights,new Dictionary<string,System.Numerics.Matrix4x4>(),target);throw new Exception("Missing bind accepted");}catch(InvalidDataException){}
+  }
+
+  {
    var snapshotFile=System.IO.Path.Combine(System.IO.Path.GetTempPath(),System.Guid.NewGuid()+".vsnap_c");
    try{
     var geometry=new[]{new ItemEffectScope.Point(new System.Numerics.Vector3(1,2,3),new[]{"head","","",""},new[]{1f,0f,0f,0f})};
@@ -16,7 +31,7 @@ internal static class ModelMergeTests
   }
 
   {
-   foreach(var pair in new[]{("windrunner","wr_root"),("venomancer","m_snake_L_09_attach_JNT"),("nyx_assassin","body"),("io","alt_root"),("dazzle","legs_lod0"),("bane","achain0_0"),("batrider","batrider_base")}){
+   foreach(var pair in new[]{("windrunner","wr_root"),("venomancer","m_snake_L_09_attach_JNT"),("nyx_assassin","body"),("io","alt_root"),("dazzle","legs_lod0"),("dazzle","arms_lod0"),("bane","achain0_0"),("batrider","batrider_base")}){
     KVObject Pose(string bone){var sk=Skeleton([bone],[-1]);sk["m_bonePosParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f)));sk["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return sk;}
     var profileHost=Pose("root");var profileDonor=Pose(pair.Item2);var profileMap=ModelRootProfiles.TesterAttachments("models/heroes/"+pair.Item1+"/hero.vmdl","models/items/"+pair.Item1+"/item.vmdl",profileHost);Check(profileMap is not null);ModelMerge.MergeSkeleton(profileHost,profileDonor,rootAttachments:profileMap);Check(profileHost["m_nParent"].Values.Last().ToInt32(null)==0);
     Check(ModelRootProfiles.TesterAttachments("models/heroes/axe/axe.vmdl","models/items/"+pair.Item1+"/item.vmdl",Pose("root")) is null);

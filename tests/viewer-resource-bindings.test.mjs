@@ -17,3 +17,17 @@ test('sprite sheets preserve the full frame UV, content crop and sequence clamp 
 
 test('real Earthshaker arcana sequence metadata selects the same idle as the reference loadout',()=>{const rows=JSON.parse(fs.readFileSync(new URL('./fixtures/earthshaker-arcana-viewer-sequences.json',import.meta.url)));assert.equal(sceneAnimations(rows,rows).idle,'es_arc_idle_v2_loadout');});
 test('animated particle models use native activity clips and never bindPose as idle',async()=>{const{particleModelClips}=await import('../public/viewer/scene-source.mjs');const json={animations:[{name:'bindPose'},{name:'@internal'},{name:'tongue_idle'},{name:'tongue_attack'}],extras:{dotaStudio:{sequences:[{name:'tongue_attack',activity:'ACT_DOTA_ATTACK',modifiers:[]}]}}};assert.equal(particleModelClips(json).ACT_DOTA_IDLE,'tongue_idle');assert.equal(particleModelClips(json).ACT_DOTA_ATTACK,'tongue_attack');assert.equal(particleModelClips(json,{ACT_DOTA_IDLE:'bindPose'}).ACT_DOTA_IDLE,'tongue_idle');});
+
+test('wearable snapshots use their own inverse bind instead of the default hero pose',async()=>{
+ const{snapshotBinding}=await import('./helpers/viewer-test-runtime.bundle.mjs');
+ const sourceToGltf=new THREE.Matrix4().makeScale(.0254,.0254,.0254),bone=new THREE.Bone();bone.name='spear_1';bone.position.set(0,0,2.54);bone.updateMatrixWorld(true);
+ const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute([.0254,0,0],3));geometry.setAttribute('skinIndex',new THREE.Float32BufferAttribute([0,0,0,0],4));geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute([1,0,0,0],4));const mesh=new THREE.SkinnedMesh(geometry,new THREE.MeshBasicMaterial());mesh.bind(new THREE.Skeleton([bone],[new THREE.Matrix4().makeTranslation(-.0254,0,0)]),new THREE.Matrix4());
+ const fallback={skin:()=>{throw Error('Default hero inverse bind must not win');}},binding=snapshotBinding([mesh],sourceToGltf,fallback),point=new THREE.Vector3(1,0,0);
+ assert.ok(binding.skin(point,[['spear_1',1]]).distanceTo(new THREE.Vector3(0,0,100))<1e-5);bone.position.z=5.08;bone.updateMatrixWorld(true);assert.ok(binding.skin(point,[['spear_1',1]]).distanceTo(new THREE.Vector3(0,0,200))<1e-5);assert.deepEqual(point.toArray(),[1,0,0]);
+});
+test('rigid snapshot fitting belongs to the current wearable and never mutates shared packets',async()=>{
+ const{snapshotBinding}=await import('./helpers/viewer-test-runtime.bundle.mjs');const conversion=new THREE.Matrix4().makeScale(.0254,.0254,.0254);
+ function mesh(name,x){const bone=new THREE.Bone();bone.name=name;bone.position.x=x;bone.updateMatrixWorld(true);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute([x,0,0],3));const m=new THREE.SkinnedMesh(g,new THREE.MeshBasicMaterial());m.bind(new THREE.Skeleton([bone],[bone.matrixWorld.clone().invert()]));return m;}
+ const raw={position:[[0,0,0]]},fallback={skin:p=>p};const ordinary=snapshotBinding([mesh('ordinary',.254)],conversion,fallback),arcana=snapshotBinding([mesh('arcana',.508)],conversion,fallback);
+ assert.equal(ordinary.snapshotData(raw).bone,'ordinary');assert.equal(arcana.snapshotData(raw).bone,'arcana');assert.equal(raw.bone,undefined);assert.equal(ordinary.snapshotData(raw),ordinary.snapshotData(raw));
+});

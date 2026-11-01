@@ -1756,7 +1756,8 @@ const twin = (name) => { for (const [re, side] of SIDES) if (re.test(name)) retu
 
 // Snapshot points follow the hero: skinned by their bones, or rigid with the snapshot's control point.
 class Snapshot {
-  constructor(data, sim) { this.data = data; this.sim = sim; this.count = data.position?.length || 0; }
+  constructor(data, sim) { this.rawData = data; this.sim = sim; this.count = data.position?.length || 0; }
+  get data() { return this.sim?.root.model?.snapshotData?.(this.rawData) || this.rawData; }
   // A rigid snapshot is fitted to one bone (the builder's); one of a pair (a blade of two) goes on the
   // twin nearer the effect's control point 0: each sword's glow on its own sword.
   boneName() {

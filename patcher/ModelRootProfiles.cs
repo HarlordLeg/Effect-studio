@@ -9,13 +9,17 @@ internal static class ModelRootProfiles
         host=host.Replace("\\","/");donor=donor.Replace("\\","/");
         var names=skeleton["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
         var parents=skeleton["m_nParent"].Values.Select(v=>v.ToInt32(null)).ToArray();
-        var roots=names.Where((_,i)=>parents[i]<0).ToArray();if(roots.Length!=1)return null;
+        var roots=names.Where((_,i)=>parents[i]<0).ToArray();
+        // Techies has several independent character roots. This importer root
+        // belongs to the TI9 spleen component's root1, not to the first root.
+        if(host.Contains("/techies/")&&donor.StartsWith("models/items/techies/techies_ti9_immortal_spleen/",StringComparison.Ordinal)&&roots.Contains("root1",StringComparer.Ordinal))return new Dictionary<string,string>(StringComparer.Ordinal){{"techies_ti9_immortal_spleen_root1","root1"}};
+        if(roots.Length!=1)return null;
         var profiles=new (string[] Heroes,string[] Bones)[]{
             (new[]{"windrunner","windranger"},new[]{"wr_root"}),
             (new[]{"venomancer"},new[]{"m_snake_L_09_attach_JNT"}),
-            (new[]{"nyx_assassin","nerubian_assassin"},new[]{"body"}),
+            (new[]{"nyx_assassin","nerubian_assassin"},new[]{"body","armor_wbadges"}),
             (new[]{"io","wisp"},new[]{"alt_root"}),
-            (new[]{"dazzle"},new[]{"legs_lod0"}),
+            (new[]{"dazzle"},new[]{"legs_lod0","arms_lod0"}),
             (new[]{"bane"},new[]{"achain0_0"}),
             (new[]{"batrider"},new[]{"batrider_base"})
         };
