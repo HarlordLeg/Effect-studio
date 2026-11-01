@@ -93,6 +93,7 @@ internal static class ModelMerge
     }
     internal static void RenameMeshBones(KVObject mesh,IReadOnlyDictionary<string,string> names){
         if(mesh.TryGetValue("m_skeleton",out var skeleton))foreach(var bone in Values(skeleton,"m_bones"))foreach(var key in new[]{"m_boneName","m_parentName"})if(bone.TryGetValue(key,out var value)&&names.TryGetValue(Text(value),out var renamed))bone[key]=new KVObject(renamed);
+        foreach(var set in Values(mesh,"m_hitboxsets"))if(set.TryGetValue("value",out var boxSet))foreach(var box in Values(boxSet,"m_HitBoxes"))if(box.TryGetValue("m_sBoneName",out var bone)&&names.TryGetValue(Text(bone),out var renamed)){box["m_sBoneName"]=new KVObject(renamed);box["m_nBoneNameHash"]=new KVObject(ValveResourceFormat.Utils.StringToken.Get(renamed));}
         foreach(var row in Values(mesh,"m_attachments"))if(row.TryGetValue("value",out var attachment)&&attachment.TryGetValue("m_influenceNames",out var influences))attachment["m_influenceNames"]=Array(influences.Values.Select(value=>names.TryGetValue(Text(value),out var renamed)?new KVObject(renamed):value));
     }
     internal static int[] RemapMeshBones(KVObject[] table,int start,int end,int[] boneMap,int? meshBoneCount,string context){
@@ -135,7 +136,7 @@ internal static class ModelMerge
         foreach(var row in particles.Values)if(row.TryGetValue("name",out var name)&&known.Add(Text(name)))rows.Add(row);
         target.Root["particle_cfg_list"]=Array(rows);using var output=new MemoryStream();serializer.Serialize(output,target);return System.Text.Encoding.UTF8.GetString(output.ToArray());
     }
-    static string EmbedExternalMeshes(string input,Dictionary<string,string>? meshes,List<string> temporary){
+    internal static string EmbedExternalMeshes(string input,Dictionary<string,string>? meshes,List<string> temporary){
         var original=File.ReadAllBytes(input);using var model=new Resource{FileName=input};model.Read(input);
         if(model.DataBlock is not Model)throw new InvalidDataException("Expected model: "+input);
         var data=Read(model,original,model.DataBlock);var refs=Values(data.Data.Root,"m_refMeshes");

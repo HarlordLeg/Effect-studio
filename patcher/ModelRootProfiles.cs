@@ -19,8 +19,9 @@ internal static class ModelRootProfiles
             (new[]{"windrunner","windranger"},new[]{"wr_root"}),
             (new[]{"venomancer"},new[]{"m_snake_L_09_attach_JNT"}),
             (new[]{"nyx_assassin","nerubian_assassin"},new[]{"body","armor_wbadges","low_weapon"}),
-            (new[]{"io","wisp"},new[]{"alt_root"}),
+            (new[]{"io","wisp"},new[]{"alt_root","io_muerta_root"}),
             (new[]{"dazzle"},new[]{"legs_lod0","arms_lod0"}),
+            (new[]{"furion","natures_prophet","nature_prophet"},new[]{"blender_implicit"}),
             (new[]{"bane"},new[]{"achain0_0"}),
             (new[]{"batrider"},new[]{"batrider_base"})
         };
