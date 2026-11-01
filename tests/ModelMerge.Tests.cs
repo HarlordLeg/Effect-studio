@@ -5,6 +5,23 @@ internal static class ModelMergeTests
  static KVObject Skeleton(string[] names,int[] parents){var s=KVObject.Collection();s["m_boneName"]=Array(names.Select(n=>new KVObject(n)).ToArray());s["m_nParent"]=Array(parents.Select(n=>new KVObject(n)).ToArray());foreach(var key in new[]{"m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"})s[key]=Array(names.Select(_=>new KVObject(1)).ToArray());return s;}
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
+  {var segment=MorphlingFishChannels.Segment(6,3,new short[]{174},w=>{w.Write(1f);w.Write(2f);w.Write(3f);});Check(segment.Length==22&&BitConverter.ToUInt16(segment,6)==segment.Length&&BitConverter.ToInt16(segment,8)==174&&BitConverter.ToSingle(segment,10)==1f);}
+
+  {
+   var container=KVObject.Collection();container["m_Children"]=Array(new KVObject("unchanged-child"));ItemEffectScope.BindSnapshot(container,"harlord/particles/scoped.vsnap");Check(container["m_hSnapshot"].ToString(null)=="harlord/particles/scoped.vsnap");Check(container["m_nSnapshotControlPoint"].ToInt32(null)==60);Check(container["m_controlPointConfigurations"][0]["m_drivers"].Values.Any(d=>d["m_iControlPoint"].ToInt32(null)==0&&d["m_iAttachType"].ToString(null)=="PATTACH_ABSORIGIN_FOLLOW"));Check(container["m_Children"][0].ToString(null)=="unchanged-child");
+   var water=KVObject.Collection();var cp10=KVObject.Collection();cp10["m_iControlPoint"]=new KVObject(10);cp10["m_vecOffset"]=Array(new KVObject(1f),new KVObject(0f),new KVObject(0f));var old=KVObject.Collection();old["m_drivers"]=Array(cp10);water["m_controlPointConfigurations"]=Array(old);MorphlingRuntime.WaterBinding(water);var drivers=water["m_controlPointConfigurations"][0]["m_drivers"].Values.ToArray();Check(drivers.Length==7&&drivers[3]["m_attachmentName"].ToString(null)=="attach_ambient_spine2"&&drivers[6]["m_iControlPoint"].ToInt32(null)==10);
+  }
+  {var payload=new byte[]{1,2,3,4};var resource=ModelSoftbodyParts.PhysicsResource(payload);Check(resource.Length==32&&BitConverter.ToUInt32(resource,0)==32&&BitConverter.ToUInt32(resource,12)==1&&System.Text.Encoding.ASCII.GetString(resource,16,4)=="DATA"&&BitConverter.ToUInt32(resource,20)==8&&resource.AsSpan(28).SequenceEqual(payload));}
+
+  {
+   var implicitSkin=ItemEffectScope.Skin(2,new ushort[]{3,0,0,0,7,0,0,0},null);Check(implicitSkin.Indices[0]==3&&implicitSkin.Indices[4]==7&&implicitSkin.Weights.All(w=>w==new System.Numerics.Vector4(1,0,0,0)));
+   var rigid=ItemEffectScope.Skin(2,null,null,5);Check(rigid.Indices[0]==5&&rigid.Indices[4]==5);
+   try{ItemEffectScope.Skin(2,null,null);throw new Exception("Ambiguous skin accepted");}catch(InvalidDataException){}
+   Check(ModelRootProfiles.TesterAttachments("harlord/models/heroes/bane/bane.vmdl_c","harlord/models/items/bane/slumbering_terror/slumbering_terror.vmdl_c",Skeleton(["root"],[-1]))?["achain0_0"]=="root");
+   Check(ModelRootProfiles.TesterAttachments("models/heroes/bane/bane.vmdl_c","models/heroes/bane/bane_shoulders.vmdl_c",Skeleton(["root"],[-1]))?["achain0_0"]=="root");
+   Check(ModelRootProfiles.TesterAttachments("models/heroes/nyx_assassin/nyx_assassin.vmdl_c","models/items/nerubian_assassin/weapon.vmdl_c",Skeleton(["root"],[-1]))?["low_weapon"]=="root");
+  }
+
   {
    KVObject Pose(string[] names,int[] parents){var sk=Skeleton(names,parents);sk["m_bonePosParent"]=Array(names.Select((_,i)=>Array(new KVObject((float)i),new KVObject(0f),new KVObject(0f))).ToArray());sk["m_boneRotParent"]=Array(names.Select(_=>Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f))).ToArray());return sk;}
    var techiesHost=Pose(["root","root6","root2","root1","root4"],[-1,-1,-1,-1,-1]);var path="models/items/techies/techies_ti9_immortal_spleen/techies_ti9_immortal_spleen.vmdl";var profile=ModelRootProfiles.TesterAttachments("models/heroes/techies/techies.vmdl",path,techiesHost);Check(profile?["techies_ti9_immortal_spleen_root1"]=="root1");ModelMerge.MergeSkeleton(techiesHost,Pose(["techies_ti9_immortal_spleen_root1"],[-1]),rootAttachments:profile);Check(techiesHost["m_nParent"].Values.Last().ToInt32(null)==3);Check(Math.Abs(techiesHost["m_bonePosParent"].Values.Last()[0].ToSingle(null)+3)<.0001f);

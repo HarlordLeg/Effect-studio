@@ -7,6 +7,7 @@ internal static class ModelRootProfiles
     internal static IReadOnlyDictionary<string,string>? TesterAttachments(string host,string donor,ValveKeyValue.KVObject skeleton)
     {
         host=host.Replace("\\","/");donor=donor.Replace("\\","/");
+        if(host.StartsWith("harlord/",StringComparison.Ordinal))host=host[8..];if(donor.StartsWith("harlord/",StringComparison.Ordinal))donor=donor[8..];
         var names=skeleton["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
         var parents=skeleton["m_nParent"].Values.Select(v=>v.ToInt32(null)).ToArray();
         var roots=names.Where((_,i)=>parents[i]<0).ToArray();
@@ -17,13 +18,13 @@ internal static class ModelRootProfiles
         var profiles=new (string[] Heroes,string[] Bones)[]{
             (new[]{"windrunner","windranger"},new[]{"wr_root"}),
             (new[]{"venomancer"},new[]{"m_snake_L_09_attach_JNT"}),
-            (new[]{"nyx_assassin","nerubian_assassin"},new[]{"body","armor_wbadges"}),
+            (new[]{"nyx_assassin","nerubian_assassin"},new[]{"body","armor_wbadges","low_weapon"}),
             (new[]{"io","wisp"},new[]{"alt_root"}),
             (new[]{"dazzle"},new[]{"legs_lod0","arms_lod0"}),
             (new[]{"bane"},new[]{"achain0_0"}),
             (new[]{"batrider"},new[]{"batrider_base"})
         };
-        foreach(var p in profiles)if(p.Heroes.Any(h=>host.Contains("/"+h+"/"))&&p.Heroes.Any(h=>donor.StartsWith("models/items/"+h+"/",StringComparison.Ordinal)))return p.Bones.ToDictionary(b=>b,_=>roots[0],StringComparer.Ordinal);
+        foreach(var p in profiles)if(p.Heroes.Any(h=>host.Contains("/"+h+"/"))&&p.Heroes.Any(h=>(donor.StartsWith("models/items/"+h+"/",StringComparison.Ordinal)||donor.StartsWith("models/heroes/"+h+"/",StringComparison.Ordinal))))return p.Bones.ToDictionary(b=>b,_=>roots[0],StringComparer.Ordinal);
         return null;
     }
     internal static IReadOnlyDictionary<string,string>? Attachments(string host,string donor)

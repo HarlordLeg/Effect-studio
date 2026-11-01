@@ -34,8 +34,9 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  // parts. Treat those as defaults rather than attaching them once per selection.
  const classify=(part,selection)=>{
   const item=hero.items?.find(item=>item.id===part.id);
-  const slot=item?.slot??part.slot;
-  const implicitDefault=part.role==='item'&&item?.isDefault&&slot!==selection.recipe.slot;
+  const legacyDefault=String(part.id??'').startsWith('default:');
+  const slot=item?.slot??part.slot??(legacyDefault?part.id.slice(8):undefined);
+  const implicitDefault=part.role==='item'&&(item?.isDefault||legacyDefault)&&slot!==selection.recipe.slot;
   return {...part,slot,role:implicitDefault?'default':part.role};
  };
  const baseSelection=arcanaRecipe?{row:{itemId:'arcana:'+heroId},recipe:arcanaRecipe}:selected.find(s=>s.recipe.complexMerge)??selected[0];

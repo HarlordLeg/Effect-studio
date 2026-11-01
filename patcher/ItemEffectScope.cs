@@ -16,6 +16,14 @@ internal static class ItemEffectScope {
  }
  static Matrix4x4 MeshInverse(KVObject value){var f=value.Values.Select(v=>v.ToSingle(null)).ToArray();if(f.Length!=12||f.Any(v=>!float.IsFinite(v)))throw new InvalidDataException("Invalid mesh inverse bind pose");return new(f[0],f[4],f[8],0,f[1],f[5],f[9],0,f[2],f[6],f[10],0,f[3],f[7],f[11],1);}
  internal static Vector3 RebasePoint(Vector3 position,string[] bones,float[] weights,IReadOnlyDictionary<string,Matrix4x4> inverse,IReadOnlyDictionary<string,Matrix4x4> target){var result=Vector3.Zero;for(int i=0;i<weights.Length;i++){if(weights[i]<=0)continue;if(!inverse.TryGetValue(bones[i],out var inv)||!target.TryGetValue(bones[i],out var pose))throw new InvalidDataException("No bind pose for effect bone: "+bones[i]);result+=Vector3.Transform(position,inv*pose)*weights[i];}return result;}
+ internal static (ushort[] Indices,Vector4[] Weights) Skin(int count,ushort[]? indices,Vector4[]? weights,int? rigid=null){
+  if(indices is null){if(rigid is null||rigid<0||rigid>ushort.MaxValue)throw new InvalidDataException("Item has no skin stream or unambiguous rigid bone");indices=new ushort[count*4];for(int i=0;i<count;i++)indices[i*4]=(ushort)rigid.Value;}
+  if(indices.Length!=count*4)throw new InvalidDataException("Unsupported item skin index layout");
+  // Valve rigid vertex streams can have BLENDINDICES but no BLENDWEIGHT:
+  // the first joint has full weight. Do not substitute the hero's root.
+  weights??=Enumerable.Repeat(new Vector4(1,0,0,0),count).ToArray();if(weights.Length!=count)throw new InvalidDataException("Unsupported item skin weight layout");return(indices,weights);
+ }
+ static int? RigidBone(Model model,Mesh mesh,int index){var names=model.Skeleton.Bones.Select(b=>b.Name).ToArray();if(names.Length==1)return 0;var remap=model.GetRemapTable(index);if(remap?.Distinct().ToArray() is {Length:1} unique)return unique[0];if(mesh.Data.TryGetValue("m_skeleton",out var sk)&&sk.TryGetValue("m_bones",out var rows)){var used=rows.Values.Where(b=>b.TryGetValue("m_flSphereRadius",out var r)&&r.ToSingle(null)>0).ToArray();if(used.Length==1){var found=Array.FindIndex(names,n=>string.Equals(n,used[0]["m_boneName"].ToString(null),StringComparison.OrdinalIgnoreCase));if(found>=0)return found;}}return null;}
  internal static List<Point> Geometry(Model model,Model host,IReadOnlyDictionary<string,Mesh>? external=null){
   var names=model.Skeleton.Bones.Select(b=>b.Name).ToArray();var canonical=host.Skeleton.Bones.GroupBy(b=>b.Name,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()==1).ToDictionary(g=>g.Key,g=>g.First().Name,StringComparer.OrdinalIgnoreCase);
   var targetPoses=Poses(model,Poses(host));var sourcePoses=Poses(model);var points=new List<Point>();var masks=model.Data["m_refMeshGroupMasks"].Values.ToArray();var selected=Mask(model.Data["m_nDefaultMeshGroupMask"]);
@@ -28,9 +36,7 @@ internal static class ItemEffectScope {
    if(ranges.Count==0||ranges.Any(r=>r.Start<0||r.Count<0))throw new InvalidDataException("Item mesh has no readable visible draw ranges");
    foreach(var buffer in mesh.VBIB.VertexBuffers){var fields=buffer.InputLayoutFields;var position=fields.FirstOrDefault(f=>f.SemanticName=="POSITION");if(position.SemanticName!="POSITION")continue;
     var positions=VBIB.GetVector3AttributeArray(buffer,position);var joints=fields.FirstOrDefault(f=>f.SemanticName=="BLENDINDICES");var weights=fields.FirstOrDefault(f=>f.SemanticName=="BLENDWEIGHT");
-    if(joints.SemanticName!="BLENDINDICES"||weights.SemanticName!="BLENDWEIGHT")throw new InvalidDataException("Item has no readable four-weight skin; refusing a whole-hero effect fallback");
-    var indices=VBIB.GetBlendIndicesArray(buffer,joints,model.GetRemapTable(index));var values=VBIB.GetBlendWeightsArray(buffer,weights);
-    if(indices.Length!=positions.Length*4||values.Length!=positions.Length)throw new InvalidDataException("Unexpected skin layout");
+    var (indices,values)=Skin(positions.Length,joints.SemanticName=="BLENDINDICES"?VBIB.GetBlendIndicesArray(buffer,joints,model.GetRemapTable(index)):null,weights.SemanticName=="BLENDWEIGHT"?VBIB.GetBlendWeightsArray(buffer,weights):null,RigidBone(model,mesh,index));
     var visible=Enumerable.Range(0,positions.Length).Where(i=>ranges.Any(r=>i>=r.Start&&(long)i<((long)r.Start+r.Count))).ToArray();var stride=Math.Max(1,(int)Math.Ceiling(visible.Length/2048d));
     foreach(var i in visible.Where((_,index)=>index%stride==0)){var n=new string[4];var w=new[]{values[i].X,values[i].Y,values[i].Z,values[i].W};var sum=w.Sum();if(!float.IsFinite(sum)||sum<=0)continue;
      for(int j=0;j<4;j++){if(!float.IsFinite(w[j])||w[j]<0)throw new InvalidDataException("Invalid skin weight");if(w[j]==0){n[j]="";continue;}var bone=indices[i*4+j];if(bone>=names.Length)throw new InvalidDataException("Invalid mesh bone remap");n[j]=canonical.GetValueOrDefault(names[bone],names[bone]);w[j]/=sum;}
@@ -56,7 +62,10 @@ internal static class ItemEffectScope {
    if(op.TryGetValue("m_modelInput",out var input)&&((input.TryGetValue("m_nType",out var type)&&type.ToString(null)!="PM_TYPE_CONTROL_POINT")||(input.TryGetValue("m_nControlPoint",out var cp)&&cp.ToInt32(null)!=0)))throw new InvalidDataException("Effect samples another model/control point; an explicit binding profile is required");
    op.Clear();op["_class"]=new KVObject("C_INIT_InitSkinnedPositionFromCPSnapshot");op["m_nSnapshotControlPointNumber"]=new KVObject(60);op["m_nControlPointNumber"]=new KVObject(0);op["m_bRandom"]=new KVObject(true);changed++;
   }
-  if(changed>0){
+  if(changed>0)BindSnapshot(data,snapshot);
+  return changed;
+ }
+ internal static void BindSnapshot(KVObject data,string snapshot){
    data["m_hSnapshot"]=new KVObject(snapshot){Flag=KVFlag.Resource};data["m_nSnapshotControlPoint"]=new KVObject(60);
    var configs=data.TryGetValue("m_controlPointConfigurations",out var current)?current:KVObject.Array();
    if(!configs.Values.Any(v=>v.TryGetValue("m_name",out var n)&&n.ToString(null)=="preview"))configs.Add(Row(("m_name",new KVObject("preview")),("m_drivers",KVObject.Array())));
@@ -66,8 +75,6 @@ internal static class ItemEffectScope {
     drivers.Add(Row(("m_iControlPoint",new KVObject(60)),("m_entityName",new KVObject("self")),("m_iAttachType",new KVObject("PATTACH_WORLDORIGIN"))));config["m_drivers"]=drivers;
    }data["m_controlPointConfigurations"]=configs;
   }
-  return changed;
- }
  internal static List<Point> AuthoredSnapshot(string file,IReadOnlyList<Point> geometry){
   using var r=new Resource{FileName=file};r.Read(file);var snap=r.Blocks.OfType<ParticleSnapshot>().Single();
   var pos=snap.AttributeData.FirstOrDefault(p=>p.Key.Name=="position").Value?.Cast<Vector3>().ToArray();var skin=snap.AttributeData.FirstOrDefault(p=>p.Key.Name=="skinning").Value?.Cast<ParticleSnapshot.SkinningData>().ToArray();
@@ -82,6 +89,7 @@ internal static class ItemEffectScope {
  internal static bool UsesReservedPoint(KVObject value){if(value is null)return false;if(value.ValueType is not (KVValueType.Collection or KVValueType.Array))return false;foreach(var pair in value){if(pair.Key?.Contains("ControlPoint",StringComparison.OrdinalIgnoreCase)==true&&pair.Value.ValueType is not (KVValueType.Collection or KVValueType.Array)&&pair.Value.ToString(null)=="60")return true;if(UsesReservedPoint(pair.Value))return true;}return false;}
  public static void Run(string manifest){var q=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty item scope manifest");if(q.Particles.Length>256)throw new InvalidDataException("Too many scoped particles");var changed=0;var loaded=new List<(Particle,Resource,byte[])>();var meshResources=new List<Resource>();
   try{foreach(var file in q.Particles){var r=new Resource{FileName=file.Input};r.Read(file.Input);if(r.DataBlock is not ParticleSystem p)throw new InvalidDataException("Expected particle system");loaded.Add((file,r,File.ReadAllBytes(file.Input)));if(UsesReservedPoint(p.Data))throw new InvalidDataException("Effect already uses reserved snapshot CP60");changed+=Patch(p.Data,q.SnapshotName);}
+   if(changed>0)foreach(var(_,resource,_)in loaded){var definition=((ParticleSystem)resource.DataBlock!).Data;if(!definition.ContainsKey("m_hSnapshot"))BindSnapshot(definition,q.SnapshotName);}
    string[] bones=[],attachments=[];int pointCount=0;string sourceKind="none";
    if(changed>0){using var source=new Resource{FileName=q.Input};source.Read(q.Input);using var host=new Resource{FileName=q.Host};host.Read(q.Host);var model=(Model)source.DataBlock!;var external=new Dictionary<string,Mesh>();foreach(var(name,file)in q.Meshes??new()){var meshResource=new Resource{FileName=file};meshResources.Add(meshResource);meshResource.Read(file);external[name]=meshResource.DataBlock as Mesh??throw new InvalidDataException("Expected external mesh");}var points=Geometry(model,(Model)host.DataBlock!,external);sourceKind="geometry";
     var allowed=points.SelectMany(p=>p.Bones).Where(n=>n.Length>0).ToHashSet(StringComparer.OrdinalIgnoreCase);

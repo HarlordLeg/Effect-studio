@@ -1,3 +1,4 @@
+import {isMorphlingReferencePart} from './morphling-parts.mjs';
 import {SceneDownloads,sceneSignature} from './scene-download.mjs';
 import * as THREE from 'three';
 import {HeroViewer} from '../../vendor/dota-loadout/src/index.js';
@@ -19,7 +20,7 @@ export class ModelPreview {
  async loadScene(manifest,base,query=''){
   this.setEditorFocus(null);const ticket=++this.generation;this.loadingVersion++;this.viewer.loading++;this.abort?.abort();this.abort=new AbortController();
   if(!manifest.parts?.length)throw Error('Некорректный состав сцены');
-  const parts=[...(manifest.parts??[]).filter(p=>p.role!=='pedestal'),{role:'pedestal',id:'studio-pedestal',key:'studio-pedestal-v1',url:new URL('./assets/hero-pedestal.glb',import.meta.url).href}];if(!parts.length||parts.length>128)throw Error('Некорректный состав сцены');
+  const parts=[...(manifest.parts??[]).filter(p=>p.role!=='pedestal'&&!isMorphlingReferencePart(manifest.heroId,p)),{role:'pedestal',id:'studio-pedestal',key:'studio-pedestal-v1',url:new URL('./assets/hero-pedestal.glb',import.meta.url).href}];if(!parts.length||parts.length>128)throw Error('Некорректный состав сцены');
   const signature=sceneSignature(manifest);
   if(signature===this.signature&&this.viewer.hero){this.preservedScene=true;this.progress({phase:'ready'});return this.asset.json.animations;}
   const source=new SceneSource();const started=performance.now();

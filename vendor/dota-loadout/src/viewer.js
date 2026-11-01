@@ -285,7 +285,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
     scene.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); else if (o.isMesh) rigid.push(o); });
     for (const mesh of skinned) {
       const active=activeSkinJoints(mesh,attachmentSkinBones(attachmentRows));
-      const mapped = mesh.skeleton.bones.map((b, i) => { if(!active.has(i))return b; const own = bones[boneKey(b)] || bones[b.name.toLowerCase()]; if (own) return own; const parent = b.parent && (bones[boneKey(b.parent)] || bones[b.parent.name.toLowerCase()]);
+      const mapped = mesh.skeleton.bones.map((b, i) => { if(!active.has(i))return b; const own = bones[boneKey(b)] || bones[b.name.toLowerCase()]; if (own) return own; const parent = (b.parent && (bones[boneKey(b.parent)] || bones[b.parent.name.toLowerCase()])) || (manifest.id==='morphling'&&/^shark_(?:r|l)(?:_back)?_01_jnt$/.test(boneKey(b))?bones.root:null);
         if (parent && !extra.some((x) => x.bone === b)) {
           // Where it hangs under the hero's bone, from the bind poses of the two: the item's own of
           // that bone (its weapon's bone, Pugna's sceptre, bound otherwise than his default one's),
