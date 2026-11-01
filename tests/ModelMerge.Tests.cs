@@ -6,6 +6,16 @@ internal static class ModelMergeTests
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
   {
+   var snapshotFile=System.IO.Path.Combine(System.IO.Path.GetTempPath(),System.Guid.NewGuid()+".vsnap_c");
+   try{
+    var geometry=new[]{new ItemEffectScope.Point(new System.Numerics.Vector3(1,2,3),new[]{"head","","",""},new[]{1f,0f,0f,0f})};
+    var authored=new[]{geometry[0],new ItemEffectScope.Point(new System.Numerics.Vector3(1,2,3),new[]{"tail","","",""},new[]{1f,0f,0f,0f})};ItemEffectScope.Snapshot(snapshotFile,authored);
+    var filtered=ItemEffectScope.AuthoredSnapshot(snapshotFile,geometry);Check(filtered.Count==1&&filtered[0].Bones[0]=="head"&&filtered[0].Position==geometry[0].Position);
+    var definition=KVObject.Collection();var init=KVObject.Collection();init["_class"]=new KVObject("C_INIT_CreateOnModel");definition["m_Initializers"]=Array(init);var colorDriver=KVObject.Collection();colorDriver["m_iControlPoint"]=new KVObject(15);var configRow=KVObject.Collection();configRow["m_name"]=new KVObject("preview");configRow["m_drivers"]=Array(colorDriver);definition["m_controlPointConfigurations"]=Array(configRow);Check(ItemEffectScope.Patch(definition,"harlord/particles/test.vsnap")==1);Check(init["_class"].ToString(null)=="C_INIT_InitSkinnedPositionFromCPSnapshot"&&init["m_nSnapshotControlPointNumber"].ToInt32(null)==60);Check(ItemEffectScope.UsesReservedPoint(definition));Check(configRow["m_drivers"].Values.Any(v=>v["m_iControlPoint"].ToInt32(null)==15));Check(ItemEffectScope.Patch(definition,"harlord/particles/test.vsnap")==0);
+   }finally{System.IO.File.Delete(snapshotFile);}
+  }
+
+  {
    foreach(var pair in new[]{("windrunner","wr_root"),("venomancer","m_snake_L_09_attach_JNT"),("nyx_assassin","body"),("io","alt_root"),("dazzle","legs_lod0"),("bane","achain0_0"),("batrider","batrider_base")}){
     KVObject Pose(string bone){var sk=Skeleton([bone],[-1]);sk["m_bonePosParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f)));sk["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));return sk;}
     var profileHost=Pose("root");var profileDonor=Pose(pair.Item2);var profileMap=ModelRootProfiles.TesterAttachments("models/heroes/"+pair.Item1+"/hero.vmdl","models/items/"+pair.Item1+"/item.vmdl",profileHost);Check(profileMap is not null);ModelMerge.MergeSkeleton(profileHost,profileDonor,rootAttachments:profileMap);Check(profileHost["m_nParent"].Values.Last().ToInt32(null)==0);
