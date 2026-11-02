@@ -38,7 +38,19 @@ internal static class GlobalCosmetics
         if(points.ValueKind!=JsonValueKind.Object||!points.EnumerateObject().Any(p=>Text(p.Value,"control_point_index",p.Name)=="0"))Driver(0,binding);
         if(points.ValueKind==JsonValueKind.Object)foreach(var point in points.EnumerateObject())Driver(int.Parse(Text(point.Value,"control_point_index",point.Name),CultureInfo.InvariantCulture),point.Value);
         var configs=data.TryGetValue("m_controlPointConfigurations",out var current)?current:KVObject.Array();
-        var preview=configs.Values.FirstOrDefault(v=>v.TryGetValue("m_name",out var name)&&name.ToString(null)=="preview");if(preview is null){preview=KVObject.Collection();preview["m_name"]=new KVObject("preview");configs.Add(preview);}preview["m_drivers"]=drivers;data["m_controlPointConfigurations"]=configs;
+        var preview=configs.Values.FirstOrDefault(v=>v.TryGetValue("m_name",out var name)&&name.ToString(null)=="preview");
+        // Native wearable previews contain attachment CPs and constant inputs.
+        // Economy bindings may only describe CP0; preserve authored drivers and
+        // their entities/offsets, using schema entries for missing points only.
+        var authoredPreview=preview??configs.Values.FirstOrDefault();
+        if(respectEntity&&authoredPreview is not null&&authoredPreview.TryGetValue("m_drivers",out var nativeDrivers)){
+            static int Index(KVObject driver)=>driver.TryGetValue("m_iControlPoint",out var pointValue)?pointValue.ToInt32(null):0;
+            var merged=nativeDrivers.Values.ToList();var occupied=merged.Select(Index).ToHashSet();
+            foreach(var driver in drivers.Values)if(occupied.Add(Index(driver)))merged.Add(driver);
+            drivers=KVObject.Array(merged);
+        }
+        if(preview is null){preview=KVObject.Collection();preview["m_name"]=new KVObject("preview");configs.Add(preview);}
+        preview["m_drivers"]=drivers;data["m_controlPointConfigurations"]=configs;
     }
     private static IEnumerable<string> SoundNames(KVObject value){if(value.IsCollection){foreach(var pair in value)foreach(var s in SoundNames(pair.Value))yield return s;}else if(value.IsArray){foreach(var child in value.Values)foreach(var s in SoundNames(child))yield return s;}else if(value.ValueType==KVValueType.String){var s=value.ToString(CultureInfo.InvariantCulture);if(s.EndsWith(".vsnd")||s.EndsWith(".vsnd_c"))yield return s;}}
     internal static int MapSounds(KVObject target,KVObject source){

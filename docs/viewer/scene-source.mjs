@@ -88,7 +88,12 @@ export function applyParticleBinding(def,binding){
  const add=(index,row)=>{const cp=Number(row.control_point_index??index);if(!Number.isInteger(cp)||cp<0||cp>63)return;const type=String(row.attach_type??'absorigin_follow').toUpperCase();drivers.push({m_iControlPoint:cp,m_iAttachType:type.startsWith('PATTACH_')?type:'PATTACH_'+type,m_entityName:row.attach_entity??binding.attach_entity??'self',...(row.attachment?{m_attachmentName:row.attachment}:{})});};
  if(!points.some(([i,p])=>Number(p.control_point_index??i)===0))add(0,binding);
  for(const [i,row] of points)add(i,row);
- const configs=def.m_controlPointConfigurations??=[];const preview=configs.find(c=>c.m_name==='preview');if(preview)preview.m_drivers=drivers;else configs.unshift({m_name:'preview',m_drivers:drivers});
+ const configs=def.m_controlPointConfigurations??=[],preview=configs.find(c=>c.m_name==='preview');
+ // Native definitions own the complete CP setup. Economy rows frequently
+ // describe CP0 only; keep authored attachments, entities and constant offsets.
+ const authored=preview??configs[0],merged=[...(authored?.m_drivers??[])],occupied=new Set(merged.map(d=>Number(d.m_iControlPoint??0)));
+ for(const driver of drivers)if(!occupied.has(driver.m_iControlPoint)){occupied.add(driver.m_iControlPoint);merged.push(driver);}
+ if(preview)preview.m_drivers=merged;else configs.unshift({m_name:'preview',m_drivers:merged});
 }
 
 export function particleModelClips(json,authored={}){const usable=(json.animations??[]).filter(a=>a.name&&!a.name.startsWith('@')&&a.name!=='bindPose'),names=new Set(usable.map(a=>a.name)),clips=Object.fromEntries(Object.entries(authored??{}).filter(([,name])=>names.has(name)));for(const row of json.extras?.dotaStudio?.sequences??[])if(row.activity&&names.has(row.name)&&!clips[row.activity]&&!(row.modifiers?.length))clips[row.activity]=row.name;clips.ACT_DOTA_IDLE??=usable.find(a=>/(^|[_/])(idle|loop)([_/]|$)/i.test(a.name))?.name??usable[0]?.name;return clips;}

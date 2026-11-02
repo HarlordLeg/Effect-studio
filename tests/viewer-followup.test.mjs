@@ -6,7 +6,7 @@ test('static and native packets recover economy attachment settings including pa
  const binding=previewParticleBinding(store,{particleReplacements:{'particles/weapon.vpcf_c':'particles/new.vpcf_c'}},'particles/new.vpcf_c');assert.equal(binding.attach_entity,'parent');
  const source=new SceneSource(),packet={root:'particles/new.vpcf_c',definitions:{'particles/new.vpcf_c':{m_controlPointConfigurations:[{m_name:'default',m_drivers:[{m_iControlPoint:4}]}]}}};
  const data=effectSource(source,[{packet,binding}]),configs=data.systems['studio/0/particles/new'].m_controlPointConfigurations;
- assert.equal(configs[0].m_name,'preview');assert.deepEqual(configs[0].m_drivers.map(d=>[d.m_iControlPoint,d.m_attachmentName,d.m_entityName]),[[0,'attach_attack1','parent'],[2,'attach_attack2','parent']]);assert.equal(packet.definitions['particles/new.vpcf_c'].m_controlPointConfigurations.length,1);
+ assert.equal(configs[0].m_name,'preview');assert.deepEqual(configs[0].m_drivers.map(d=>[d.m_iControlPoint,d.m_attachmentName,d.m_entityName]),[[4,undefined,undefined],[0,'attach_attack1','parent'],[2,'attach_attack2','parent']]);assert.equal(packet.definitions['particles/new.vpcf_c'].m_controlPointConfigurations.length,1);
  assert.equal(previewParticleBinding({read:()=>null},{particleBindings:[{path:'particles/a.vpcf_c'}]},'particles/a.vpcf_c').path,'particles/a.vpcf_c');
 });
 test('GLTF payload excludes large host-only texture metadata while retaining geometry and native bindings',async()=>{
