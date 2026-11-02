@@ -3,7 +3,7 @@ import fs from 'node:fs';import path from 'node:path';import {fileURLToPath}from
 import {Builder}from '../lib/build.mjs';import {packVpk,compiled,references}from '../lib/vpk.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export const wanted={antimage:['Arc of Manta','Brands of the Reaper','Origins of Faith','Bracers of the Survivor','Belt of the Survivor','Shoulders of the Survivor'],luna:['Bloodmoon Stalker','Leonid Luminosity'],morphling:['Blade of Tears','Fluid Frenzy','Darktrench Stalker'],slark:['Gilded Edge','Bracer of the Lizard King','Shadow in the Deep','Carapace of the Ocean Conqueror','Angler in the Abyss'],sven:['Stormwrought Arbiter','Shattered Greatsword']};
-export function auditItems(hero){const id=hero.baseHeroId??hero.id;if(id==='invoker')return hero.items.filter(i=>i.model);const names=wanted[id];return names?hero.items.filter(i=>i.model&&names.some(n=>(i.name??'').toLowerCase().includes(n.toLowerCase()))):[];}
+export function auditItems(hero){const id=hero.baseHeroId??hero.id;if(['invoker','pangolier'].includes(id))return hero.items.filter(i=>i.model);const names=wanted[id];return names?hero.items.filter(i=>i.model&&names.some(n=>(i.name??'').toLowerCase().includes(n.toLowerCase()))):[];}
 export function collect(builder){const files=new Map(),rows=[],missing=[],queue=[];
  for(const hero of builder.catalog.heroes){const items=auditItems(hero);if(!items.length)continue;rows.push({hero:hero.id,model:hero.model,items:items.map(i=>({id:i.id,name:i.name,slot:i.slot,model:i.model}))});queue.push(hero.model,...Object.values(hero.defaultSlotModels??{}),...items.map(i=>i.model));}
  if(!rows.length)throw Error('No matching items in the mounted game catalog. Check config.json.');

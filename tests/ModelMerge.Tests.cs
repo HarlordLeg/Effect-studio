@@ -5,6 +5,31 @@ internal static class ModelMergeTests
  static KVObject Skeleton(string[] names,int[] parents){var s=KVObject.Collection();s["m_boneName"]=Array(names.Select(n=>new KVObject(n)).ToArray());s["m_nParent"]=Array(parents.Select(n=>new KVObject(n)).ToArray());foreach(var key in new[]{"m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"})s[key]=Array(names.Select(_=>new KVObject(1)).ToArray());return s;}
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
+  { // Original skeletons collected from the user's installed Dota archives.
+   var fixture=Path.Combine(Directory.GetCurrentDirectory(),"tests","fixtures","sven-arbiter-skeletons.json");
+   if(!File.Exists(fixture))throw new Exception("Run native tests from the repository root");
+   using var doc=System.Text.Json.JsonDocument.Parse(File.ReadAllText(fixture));
+   KVObject ReadSkeleton(System.Text.Json.JsonElement e){
+    var sk=KVObject.Collection();foreach(var field in e.EnumerateObject()){
+     KVObject Convert(System.Text.Json.JsonElement v)=>v.ValueKind switch{
+      System.Text.Json.JsonValueKind.Array=>Array(v.EnumerateArray().Select(Convert).ToArray()),
+      System.Text.Json.JsonValueKind.String=>new KVObject(v.GetString()!),
+      System.Text.Json.JsonValueKind.Number=>v.TryGetInt32(out var n)?new KVObject(n):new KVObject(v.GetSingle()),
+      _=>throw new Exception("Invalid skeleton fixture")};
+     sk[field.Name]=Convert(field.Value);
+    }return sk;
+   }
+   foreach(var donor in doc.RootElement.GetProperty("donors").EnumerateObject()){
+    var host=ReadSkeleton(doc.RootElement.GetProperty("host"));var originalNames=host["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
+    var source=ReadSkeleton(donor.Value);var profile=ModelRootProfiles.Attachments("models/heroes/sven/sven.vmdl_c",donor.Name+"_c");Check(profile is not null);
+    var map=ModelMerge.MergeSkeleton(host,source,matchBoneCase:true,rootAttachments:profile);
+    var names=source["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();var ankle=System.Array.IndexOf(names,"ankle_l");
+    if(ankle>=0)Check(map[ankle]==System.Array.IndexOf(originalNames,"ankle_L"));
+    foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})for(var i=0;i<originalNames.Length;i++)Check(host[key][i].ToString()==ReadSkeleton(doc.RootElement.GetProperty("host"))[key][i].ToString());
+    Check(ModelRootProfiles.Attachments("models/heroes/axe/axe.vmdl_c",donor.Name) is null);
+   }
+   Check(ModelRootProfiles.Attachments("models/heroes/sven/sven.vmdl_c","models/items/sven/unrelated/unrelated.vmdl_c") is null);
+  }
   {var host=Skeleton(new[]{"Root0_JNT"},new[]{-1});var weapon=Skeleton(new[]{"uprweapon0_jnt","LwrWeapon0_JNT","RtLegEnd_JNT"},new[]{-1,-1,-1});var set=Skeleton(new[]{"Root0_JNT","uprweapon0_jnt","LwrWeapon0_JNT","RtLeg3_JNT","RtLegEnd_JNT"},new[]{-1,0,0,0,3});Check(TesterWearableHost.DonorOrder(host,new[]{weapon,set}).SequenceEqual(new[]{1,0}));Check(TesterWearableHost.DonorOrder(host,new[]{set,weapon}).SequenceEqual(new[]{0,1}));Check(weapon["m_nParent"][2].ToInt32(null)==-1);}
   {Check(TesterWearableHost.IndependentCloth("models/heroes/drow/drow_base.vmdl_c","models/items/drow/ti6_immortal_cape/drow_ti6_immortal_arcana_refit.vmdl_c"));Check(!TesterWearableHost.IndependentCloth("models/heroes/test/test.vmdl_c","models/items/drow/ti6_immortal_cape/drow_ti6_immortal_arcana_refit.vmdl_c"));}
   foreach(var part in new[]{"weapon_fx_l","weapon_fx_r","weapon_feathers_fx_l","weapon_feathers_fx_r"}){

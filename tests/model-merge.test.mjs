@@ -111,6 +111,20 @@ test('Pangolier merge opts into unique case matching for fk_pelvis / fk_Pelvis',
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 
+test('Sven merge matches ankle_l to ankle_L before considering importer profiles',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-sven-case-'));
+ try{
+  const h=hero('sven');const item=h.items[0];item.mergeTarget=h.model;
+  const staged=stagedMergeTarget(h,item),packed=new Map([[h.model,resource(1)],[staged,resource(2)]]);
+  let called=false;
+  const builder={root:temp,store:{read:()=>null},run:async(_,args)=>{
+   if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeV2:true,modelMergeV4:true});
+   const request=JSON.parse(fs.readFileSync(args[1]));assert.equal(request.donors[0].matchBoneCase,true);assert.equal(request.donors[0].attachMorphlingSharkRoots,false);called=true;fs.writeFileSync(request.output,resource(3));
+  }};
+  await finalizeModelMerges(builder,[{hero:h,item}],packed,[],temp,'patcher',{});assert.ok(called);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+
 test('Kunkka merge carries stable source identities through staged files and rejects old patchers',async()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'des-kunkka-identity-'));
  try{
