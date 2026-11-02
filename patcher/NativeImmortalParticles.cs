@@ -8,7 +8,7 @@ internal static class NativeImmortalParticles {
  internal static int Patch(KVObject data){
   const string folder="particles/econ/items/beastmaster/bm_crimson_2021/";
   if(data.TryGetValue("m_Children",out var children)&&children.Values.Any(c=>Text(c,"m_ChildRef")==folder+"bm_weapon_2021_crimson_ambient_blade_l.vpcf")){
-   int changed=0;if(data.TryGetValue("m_controlPointConfigurations",out var configs))foreach(var c in configs.Values)if(c.TryGetValue("m_drivers",out var drivers))foreach(var d in drivers.Values)if((d.TryGetValue("m_iControlPoint",out var cp)?cp.ToInt32(null):0)==0&&Text(d,"m_iAttachType")!="PATTACH_ABSORIGIN_FOLLOW"){d["m_iAttachType"]=new KVObject("PATTACH_ABSORIGIN_FOLLOW");changed++;}return changed;
+   int changed=0;if(data.TryGetValue("m_controlPointConfigurations",out var configs))foreach(var c in configs.Values)if(c.TryGetValue("m_drivers",out var drivers))foreach(var d in drivers.Values)if((d.TryGetValue("m_iControlPoint",out var driverControlPoint)?driverControlPoint.ToInt32(null):0)==0&&Text(d,"m_iAttachType")!="PATTACH_ABSORIGIN_FOLLOW"){d["m_iAttachType"]=new KVObject("PATTACH_ABSORIGIN_FOLLOW");changed++;}return changed;
   }
   const string prefix="particles/models/items/beastmaster/bm_2021_immortal/bm_2021_immortal/";
   var snapshot=Text(data,"m_hSnapshot");var suffix=snapshot.StartsWith(prefix,StringComparison.Ordinal)?snapshot[prefix.Length..]:"";

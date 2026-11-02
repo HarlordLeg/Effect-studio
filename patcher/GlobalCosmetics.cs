@@ -29,7 +29,7 @@ internal static class GlobalCosmetics
         static string Attach(string value)=>value switch {"point_follow"=>"PATTACH_POINT_FOLLOW","point"=>"PATTACH_POINT","rootbone_follow"=>"PATTACH_ROOTBONE_FOLLOW","customorigin"=>"PATTACH_ABSORIGIN_FOLLOW","absorigin"=>"PATTACH_ABSORIGIN","renderorigin_follow"=>"PATTACH_RENDERORIGIN_FOLLOW",_=>"PATTACH_ABSORIGIN_FOLLOW"};
         static string Text(JsonElement e,string key,string fallback="")=>e.TryGetProperty(key,out var v)?v.ToString():fallback;
         if(!binding.TryGetProperty("attach_type",out _)&&!binding.TryGetProperty("control_points",out _)&&data.TryGetValue("m_controlPointConfigurations",out var authored)&&authored.Values.Any()){
-            foreach(var configuration in authored.Values)if(configuration.TryGetValue("m_drivers",out var nativeDrivers))foreach(var driver in nativeDrivers.Values)if(!respectEntity&&driver.TryGetValue("m_entityName",out var entity)&&entity.ToString(null)=="parent")driver["m_entityName"]=new KVObject("self");
+            foreach(var configuration in authored.Values)if(configuration.TryGetValue("m_drivers",out var authoredDrivers))foreach(var driver in authoredDrivers.Values)if(!respectEntity&&driver.TryGetValue("m_entityName",out var entity)&&entity.ToString(null)=="parent")driver["m_entityName"]=new KVObject("self");
             if(!authored.Values.Any(v=>v.TryGetValue("m_name",out var n)&&n.ToString(null)=="preview")){var previewConfig=KVObject.Collection();previewConfig["m_name"]=new KVObject("preview");if(authored.Values.First().TryGetValue("m_drivers",out var sourceDrivers))previewConfig["m_drivers"]=sourceDrivers;authored.Add(previewConfig);}return;
         }
         var drivers=KVObject.Array();
