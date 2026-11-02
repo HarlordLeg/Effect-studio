@@ -15,3 +15,13 @@ test('tester routes require Discord cookie even on localhost; admin/widget crede
  const publicCatalog=await fetch(app.url+'/api/catalog');assert.equal(publicCatalog.status,200);assert.equal(app.builder.config.testerBuildV1,false);
  f.auth.update({id:owner},tester,true);assert.equal((await fetch(app.url+'/api/tester/studio/catalog',{headers})).status,401);
  }finally{app.previews.dispose();await new Promise(r=>app.server.close(r));f.dispose();}});
+
+test('tester login survives restart, keeps bearer token off disk, and logout stays revoked',async()=>{
+ const f=fixture();try{const s=await login(f);const create=()=>new TesterAuth(f.root,{publicBaseUrl:origin},{env:{TESTER_OWNER_DISCORD_ID:owner,DISCORD_CLIENT_ID:f.auth.clientId,DISCORD_CLIENT_SECRET:'test-secret'}});const disk=fs.readFileSync(path.join(f.root,'data/tester-sessions.json'),'utf8');assert(!disk.includes(s.cookie.split('=')[1]));const restarted=create();assert.equal(restarted.verify({headers:{cookie:s.cookie}}).id,tester);restarted.logout({headers:{cookie:s.cookie}});assert.throws(()=>create().verify({headers:{cookie:s.cookie}}),/вход/);}finally{f.dispose();}
+});
+test('tester sessions renew while active, expire when inactive, and whitelist revocation survives restart',async()=>{
+ const f=fixture();try{let clock=Date.now();f.auth.now=()=>clock;const s=await login(f),req={headers:{cookie:s.cookie}};const first=f.auth.verify(req).expires;clock+=2*86400000;const renewed=f.auth.verify(req).expires;assert(renewed>first);clock=renewed+1;assert.throws(()=>f.auth.verify(req),/вход/);const next=await login(f);f.auth.update({id:owner},tester,true);const restart=new TesterAuth(f.root,{publicBaseUrl:origin},{env:{TESTER_OWNER_DISCORD_ID:owner,DISCORD_CLIENT_ID:f.auth.clientId,DISCORD_CLIENT_SECRET:'test-secret'},now:()=>clock});assert.throws(()=>restart.verify({headers:{cookie:next.cookie}}),/вход/);}finally{f.dispose();}
+});
+test('private tester scripts revalidate with ETag and never bypass login',async()=>{
+ const f=fixture(),s=await login(f);const app=await startServer({port:0,testerAuth:f.auth});try{const url=app.url+'/tester/assets/set-studio.mjs',r=await fetch(url,{headers:{Cookie:s.cookie}});assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/private/);const tag=r.headers.get('etag');assert(tag);await r.text();const cached=await fetch(url,{headers:{Cookie:s.cookie,'If-None-Match':tag}});assert.equal(cached.status,304);const denied=await fetch(url,{headers:{'If-None-Match':tag}});assert.equal(denied.status,401);}finally{app.previews.dispose();await new Promise(r=>app.server.close(r));f.dispose();}
+});

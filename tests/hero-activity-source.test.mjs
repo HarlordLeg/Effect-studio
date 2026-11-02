@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {nativeHeroActivitySource} from '../lib/hero-activity-source.mjs';
+const hero='models/heroes/sniper/sniper.vmdl_c',source='models/items/sniper/ardalan/sniper.vmdl_c';const row=(s=source,type='model',target=hero)=>({item:{nativeOverrides:{entries:[{source:s,type,target}]}}});
+test('authored Sniper body override can receive activity rules without replacing it again',()=>{assert.equal(nativeHeroActivitySource([row()],hero),source);assert.equal(nativeHeroActivitySource([row(),row()],hero),source);});
+test('different body overrides still conflict and unrelated assets never authorize a body write',()=>{assert.throws(()=>nativeHeroActivitySource([row(),row('models/other.vmdl_c')],hero),/Conflicting/);assert.equal(nativeHeroActivitySource([row(source,'particle')],hero),undefined);assert.equal(nativeHeroActivitySource([row(source,'model','models/other.vmdl_c')],hero),undefined);});
