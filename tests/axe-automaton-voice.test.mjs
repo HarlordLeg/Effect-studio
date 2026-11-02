@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {soundOverridePlan} from '../lib/sound-overrides.mjs';
+const choice=(criteria,persona=true)=>({hero:{id:'axe_persona',baseHeroId:'axe',isPersona:persona},item:{id:'axe-persona',name:'Axe (Persona)',nativeOverrides:{entries:[],particles:[],soundEvents:[],responseCriteria:criteria}}});
+test('Axe automaton persona preserves standard voice instead of requiring a nonexistent family',()=>{assert.deepEqual(soundOverridePlan([choice(['automaton_axe'])]),{events:[],profiles:[]});});
+test('unrecognized or mismatched voice criteria still fail',()=>{assert.throws(()=>soundOverridePlan([choice(['other_voice'])]),/озвучки/);assert.throws(()=>soundOverridePlan([choice(['automaton_oracle'])]),/озвучки/);assert.throws(()=>soundOverridePlan([choice(['automaton_axe'],false)]),/озвучки/);});

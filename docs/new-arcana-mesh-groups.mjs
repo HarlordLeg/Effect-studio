@@ -121,5 +121,17 @@ export const newArcanaMeshGroups={
     "0": "arcana_@1_#&tidehunter_arcana_belt",
     "1": "arcana_@2_#&tidehunter_arcana_belt_style1",
     "2": "arcana_@3_#&tidehunter_arcana_belt_style2"
+  },
+  "models/items/earthshaker/earthshaker_arcana/earthshaker_arcana_head.vmdl_c": {
+    "0": "arcana_@1_#&earthshaker_arcana_head_lod0",
+    "1": "arcana_@2_#&earthshaker_arcana_head_lod0_style1"
+  },
+  "models/items/earthshaker/earthshaker_arcana/earthshaker_arcana_weapon_refit.vmdl_c": {
+    "0": "arcana_@1_#&earthshaker_arcana_weapon_lod0",
+    "1": "arcana_@2_#&earthshaker_arcana_weapon_lod0_style1"
+  },
+  "models/items/earthshaker/earthshaker_arcana/earthshaker_arcana_bracers_refit.vmdl_c": {
+    "0": "arcana_@1_#&earthshaker_arcana_arms",
+    "1": "arcana_@2_#&earthshaker_arcana_arms_style1"
   }
 };
