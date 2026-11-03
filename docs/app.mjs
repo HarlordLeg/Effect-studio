@@ -72,7 +72,7 @@ async function renderCatalog(hydrate=true){
  if(!visibleHeroes.length){reset();options($('item'),[]);options($('effect'),[]);preview?.clear();$('canvas').hidden=true;$('empty').hidden=false;for(const id of ['build','load-dota'])$(id).disabled=true;status('Нет подходящих предметов. Подключи игровые VPK через configure-dota.bat или выбери «Все модели».');return;}
  if(hydrate!==false)await updateHero();
 }
-$('mode-effects').addEventListener('click',()=>queueMicrotask(()=>{if(!document.querySelector('main > .workspace').hidden&&!$('item').value)void updateHero();}));
+$('mode-effects')?.addEventListener('click',()=>queueMicrotask(()=>{if(!document.querySelector('main > .workspace').hidden&&!$('item').value)void updateHero();}));
 $('catalog-scope').addEventListener('change',renderCatalog);$('catalog-search').addEventListener('input',renderCatalog);
 
 $('canvas').addEventListener('preview-error',event=>status(event.detail,true));

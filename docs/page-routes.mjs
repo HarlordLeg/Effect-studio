@@ -1,5 +1,5 @@
-const pages={effects:'effects.html',set:'sets.html',cosmetics:'cosmetics.html',weather:'weather.html'};
-export function pageFromLocation(url,datasetPage){const query=new URL(url).searchParams.get('page');if(Object.hasOwn(pages,query))return query;const file=new URL(url).pathname.split('/').pop();return Object.keys(pages).find(page=>pages[page]===file)??(Object.hasOwn(pages,datasetPage)?datasetPage:'effects');}
+const pages={set:'sets.html',cosmetics:'cosmetics.html',weather:'weather.html'};
+export function pageFromLocation(url,datasetPage){const query=new URL(url).searchParams.get('page');if(Object.hasOwn(pages,query))return query;const file=new URL(url).pathname.split('/').pop();return Object.keys(pages).find(page=>pages[page]===file)??(Object.hasOwn(pages,datasetPage)?datasetPage:'set');}
 export function initPageRoutes(){
  let restoring=false;
  const nav=document.querySelector('.studio-modes');
