@@ -13,3 +13,28 @@ var willow=Skeleton("pelvis");willow["m_boneName"].Add(new KVObject("head"));wil
 var ur=fixture.RootElement.GetProperty("ursa");var uroot=Read(ur.GetProperty("root"));var meshes=ur.GetProperty("meshes").EnumerateArray().Select(Read).ToArray();var boxesBefore=string.Join("|",meshes.Select(m=>m.ToString()));var bounds=Method("ModelSelectionBounds","Apply");Check((bool)bounds.Invoke(null,new object[]{uroot,meshes})!,"Ursa bounds not restored");Check(uroot["m_modelInfo"]["m_vHullMax"][2].ToDouble(null)>uroot["m_modelInfo"]["m_vHullMin"][2].ToDouble(null),"Degenerate bounds");Check(boxesBefore==string.Join("|",meshes.Select(m=>m.ToString())),"Selection hitboxes changed");Check(!(bool)bounds.Invoke(null,new object[]{uroot,meshes})!,"Nonzero bounds rewritten");
 var bake=Method("LifestealerRuntime","Bake");foreach(var key in new[]{"m_animArray","m_localS1SeqDescArray"}){var field=key=="m_animArray"?"m_name":"m_sName";KVObject Anim(string n,string pose)=>R((field,new KVObject(n)),("m_activityArray",A()),("m_flags",R(("m_bHidden",new KVObject(false)))),("pose",new KVObject(pose)));KVObject idle=Anim("idle_anim","healthy"),hurt=Anim("idle_injured_anim","hurt"),attack=Anim("attack_injured","untouched");var data=R((key,A(idle,hurt,attack)));Check((int)bake.Invoke(null,new object[]{data,key})! ==1,"LS idle count");Check(data[key][1]["pose"].ToString(null)=="healthy"&&data[key][1][field].ToString(null)=="idle_injured_anim","LS identity or pose");Check(data[key][2]["pose"].ToString(null)=="untouched","LS attack changed");}
 Console.WriteLine("Reported runtime: authored PA CP26, Jugg/Mace names, hero-owned roots, exact WR/TA/Sven/Willow/Ember profiles, original Ursa selection bounds and Lifestealer idle slots passed.");
+
+var collectScope=Method("ScopedHitboxTransfer","Collect");var appendScope=Method("ScopedHitboxTransfer","Append");
+var scopeBone=R(("m_sBoneName",new KVObject("head")));
+KVObject ScopeSet(string name)=>R(("key",new KVObject(name)),("value",R(("m_HitBoxes",A(scopeBone)))));
+var sourceScope=R(("m_hitboxsets",A(ScopeSet("default"),ScopeSet("harlord_fx_test"))));
+var scopeSkel=R(("m_boneName",A(new KVObject("head"))));
+var transferred=(KVObject[])collectScope.Invoke(null,new object[]{sourceScope,scopeSkel})!;
+Check(transferred.Length==1,"Independent wearable copied non-effect hitboxes");
+var targetScope=R(("m_hitboxsets",A(ScopeSet("select_high"))));
+appendScope.Invoke(null,new object[]{targetScope,transferred});Check(targetScope["m_hitboxsets"].Count==2&&targetScope["m_hitboxsets"][0]["key"].ToString(null)=="select_high","Selection box overwritten by effect transfer");
+try{collectScope.Invoke(null,new object[]{sourceScope,R(("m_boneName",A(new KVObject("other"))))});throw new Exception("Unknown effect bone accepted");}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException){}
+Console.WriteLine("Independent effect hitboxes: only private volumes transferred; host selection and unknown-bone rejection passed.");
+
+var healthyBake=Method("HeroHealthyLocomotion","Bake");
+foreach(var key in new[]{"m_animArray","m_localS1SeqDescArray"}){var field=key=="m_animArray"?"m_name":"m_sName";KVObject Clip(string name,string payload)=>R((field,new KVObject(name)),("m_activityArray",A()),("payload",new KVObject(payload)));var data=R((key,A(Clip("run_anim","healthy"),Clip("run_new_injured_anim","injured"),Clip("attack_injured","attack"))));Check((int)healthyBake.Invoke(null,new object[]{data,key})! ==1,"Centaur run alias missing");Check(data[key][1]["payload"].ToString(null)=="healthy"&&data[key][1][field].ToString(null)=="run_new_injured_anim","Healthy locomotion changed sequence identity");Check(data[key][2]["payload"].ToString(null)=="attack","Healthy locomotion replaced injured attack");}
+Console.WriteLine("Centaur/DP healthy locomotion: run_new mapping, sequence identity and attack preservation passed.");
+
+var invokerBake=Method("HeroHealthyLocomotion","BakeInvoker");
+foreach(var key in new[]{"m_animArray","m_localS1SeqDescArray"}){var field=key=="m_animArray"?"m_name":"m_sName";var at=key=="m_animArray"?"@":"";KVObject Clip(string name,string pose)=>R((field,new KVObject(name)),("m_activityArray",A()),("pose",new KVObject(pose)));var data=R((key,A(Clip(at+"run_anim","walk"),Clip(at+"run_anim_var1","cartwheel"),Clip("run_versus_screen","versus"),Clip("cast_anim","cast"))));Check((int)invokerBake.Invoke(null,new object[]{data,key})! ==2,"Invoker run aliases absent");Check(data[key][1]["pose"].ToString(null)=="walk"&&data[key][2]["pose"].ToString(null)=="walk","Invoker cartwheel payload retained");Check(data[key][3]["pose"].ToString(null)=="cast","Invoker cast changed");}
+Console.WriteLine("Invoker persona: ANIM @ names and ASEQ run aliases normalized; casts preserved.");
+
+var wrSkeleton=R(("m_boneName",A(new KVObject("root"),new KVObject("hawk_chest"))),("m_nParent",A(new KVObject(-1),new KVObject(-1))));
+foreach(var part in new[]{"wr_arcana_head","wr_arcana_cape","wr_arcana_weapon","wr_arcana_quiver","wr_arcana_shoulder_refit_legacy"})foreach(var suffix in new[]{".vmdl",".vmdl_c"}){var mapped=(IReadOnlyDictionary<string,string>?)profiles.Invoke(null,new object[]{"models/heroes/windrunner/windrunner.vmdl_c","models/items/windrunner/windrunner_arcana/"+part+suffix,wrSkeleton});Check(mapped is not null&&mapped["wr_root"]=="root","WR authored part not attached: "+part);}
+Check(profiles.Invoke(null,new object[]{"models/heroes/windrunner/windrunner.vmdl_c","models/items/windrunner/windrunner_arcana/unrelated.vmdl_c",wrSkeleton}) is null,"WR exact profile accepted unrelated model");
+Console.WriteLine("Windranger: all five authored arcana parts resolve wr_root with hawk_chest present; unrelated models rejected.");

@@ -213,7 +213,7 @@ internal static class ModelMerge
             if(Values(root["m_modelSkeleton"],"m_boneName").Where((_,i)=>Number(Values(root["m_modelSkeleton"],"m_nParent")[i])<0).Any(n=>!knownRootBones.Contains(Text(n))))throw new InvalidDataException("Host roots are absent from hero skeleton reference");
         }
         var meshRows=Values(control,"embedded_meshes").ToList();var attachmentOverrides=new Dictionary<string,KVObject>(StringComparer.Ordinal);var editedHostMeshes=new HashSet<int>();if(meshRows.Count==0)throw new InvalidDataException("Merge host has no embedded meshes");
-        var chunks=host.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();var imported=new List<string>();
+        var chunks=host.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();var imported=new List<string>();var independentEffectSets=new List<KVObject>();
         var meshGroups=Values(root,"m_meshGroups").ToList();if(meshGroups.Count>=63)throw new InvalidDataException("Host has no free mesh group bit");
         var mergedMask=1UL<<meshGroups.Count;meshGroups.Add(new KVObject("harlord_merged"));root["m_meshGroups"]=Array(meshGroups);
         root["m_nDefaultMeshGroupMask"]=new KVObject((root.TryGetValue("m_nDefaultMeshGroupMask",out var maskValue)?Mask(maskValue):ulong.MaxValue)|mergedMask);
@@ -227,6 +227,8 @@ internal static class ModelMerge
             if(Values(source,"m_boneFlexDrivers").Length>0)throw new InvalidDataException("Donor bone flex drivers require a dedicated merge profile");
             if(!entry.MetadataOnly&&donor.Blocks.Any(b=>b.Type==BlockType.PHYS&&(b.ToString()?.Contains("m_cloth",StringComparison.OrdinalIgnoreCase)??false)))throw new InvalidDataException("Donor contains cloth physics; use a dedicated merge profile");
             if(!entry.MetadataOnly&&Values(source,"m_ExtParts").Length>0)throw new InvalidDataException("Donor external parts require a dedicated merge profile");
+            if(entry.MetadataOnly&&!entry.SkipParticleMetadata)foreach(var block in donor.Blocks.Where(b=>b.Type==BlockType.MDAT))
+                independentEffectSets.AddRange(ScopedHitboxTransfer.Collect(Read(donor,bytes,block).Data.Root,root["m_modelSkeleton"]));
             var normalizedMorphs=new Dictionary<int,byte[]>();
             if(!entry.MetadataOnly){
                 var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
@@ -283,6 +285,12 @@ internal static class ModelMerge
         // attack attachments must replace colliding base-hand attachments.
         if(attachmentOverrides.Count>0)foreach(var block in host.Blocks.Where(b=>b.Type==BlockType.MDAT)){
             var mesh=Read(host,original,block);if(OverrideMeshAttachments(mesh.Data.Root,attachmentOverrides)==0)continue;
+            var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
+        }
+        if(independentEffectSets.Count>0){
+            var block=host.Blocks.First(b=>b.Type==BlockType.MDAT);var mesh=Read(host,original,block);
+            if(attachmentOverrides.Count>0)OverrideMeshAttachments(mesh.Data.Root,attachmentOverrides);
+            ScopedHitboxTransfer.Append(mesh.Data.Root,independentEffectSets);
             var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
         }
         if(morphEdited&&mergedMorph is not null&&morphBlock is not null)chunks[host.Blocks.IndexOf(morphBlock)]=new Chunk(BlockType.MRPH,Serialize(mergedMorph,original[(int)morphBlock.Offset]));

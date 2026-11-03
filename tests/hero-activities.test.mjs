@@ -81,3 +81,8 @@ test('Naga cosmetic activities retain the ordinary server slots without changing
  const item={model:'models/items/siren/naga_ti8_immortal_tail/naga_ti8_immortal_tail.vmdl_c',nativeOverrides:{activities:[{asset:'ALL',modifier:'ti8'}]}};
  for(const id of ['naga_siren','other']){const hero={id,model:'models/heroes/'+id+'/'+id+'.vmdl_c',items:[item]};const [plan]=heroActivityPlans([{hero,item}]);assert.equal(!!plan.rules[0].retainBase,id==='naga_siren');}
 });
+
+ test('Centaur Crownfall keeps healthy server activities alongside cosmetic variants',()=>{
+ const item={id:'crownfall-belt',slot:'belt',model:'models/items/centaur/centaur_crownfall_belt/centaur_crownfall_belt_style1.vmdl_c',nativeOverrides:{activities:[{asset:'ALL',modifier:'crownfall'}]}};
+ const hero={id:'centaur',model:'models/heroes/centaur/centaur.vmdl_c',items:[item]};const [plan]=heroActivityPlans([{hero,item}]);assert.equal(plan.rules.length,1);assert.equal(plan.rules[0].retainBase,true);assert.equal(plan.rules[0].modifier,'crownfall');
+ });
