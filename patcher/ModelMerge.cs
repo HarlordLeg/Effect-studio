@@ -40,7 +40,11 @@ internal static class ModelMerge
             var q=new System.Numerics.Quaternion(rot[0],rot[1],rot[2],rot[3]);if(q.LengthSquared()<0.000001f)throw new InvalidDataException("Invalid root attachment rotation");
             return System.Numerics.Matrix4x4.CreateScale(scale)*System.Numerics.Matrix4x4.CreateFromQuaternion(System.Numerics.Quaternion.Normalize(q))*System.Numerics.Matrix4x4.CreateTranslation(pos[0],pos[1],pos[2]);
         }
-        if(!System.Numerics.Matrix4x4.Invert(Pose(host,parent),out var inverse)||!System.Numerics.Matrix4x4.Decompose(Pose(donor,bone)*inverse,out var scale,out var rotation,out var translation))throw new InvalidDataException("Cannot preserve root attachment bind pose");
+        System.Numerics.Matrix4x4 WorldPose(KVObject sk,int i){
+            var matrix=System.Numerics.Matrix4x4.Identity;var visited=new HashSet<int>();var parents=Values(sk,"m_nParent");
+            while(i>=0){if(i>=parents.Length||!visited.Add(i))throw new InvalidDataException("Invalid attachment bind hierarchy");matrix*=Pose(sk,i);i=Number(parents[i]);}return matrix;
+        }
+        if(!System.Numerics.Matrix4x4.Invert(WorldPose(host,parent),out var inverse)||!System.Numerics.Matrix4x4.Decompose(WorldPose(donor,bone)*inverse,out var scale,out var rotation,out var translation))throw new InvalidDataException("Cannot preserve root attachment bind pose");
         if(Math.Abs(scale.X-scale.Y)>0.00001f||Math.Abs(scale.X-scale.Z)>0.00001f)throw new InvalidDataException("Nonuniform root attachment scale");
         return new(){["m_bonePosParent"]=Array(new[]{translation.X,translation.Y,translation.Z}.Select(v=>new KVObject(v))),["m_boneRotParent"]=Array(new[]{rotation.X,rotation.Y,rotation.Z,rotation.W}.Select(v=>new KVObject(v))),["m_boneScaleParent"]=new KVObject(scale.X)};
     }
@@ -64,7 +68,7 @@ internal static class ModelMerge
                 var profileParent=-1;
                 if(rootAttachments?.TryGetValue(donorNames[i],out var parentName)==true){
                     profileParent=hostNames.IndexOf(parentName);
-                    if(profileParent<0||!roots.Contains(profileParent))throw new InvalidDataException("Wearable root profile requires host root: "+parentName);
+                    if(profileParent<0)throw new InvalidDataException("Wearable root profile requires host bone: "+parentName);
                 }
                 if(profileParent<0&&!sharkRoot&&((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1))throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
                 var parentRoot=profileParent>=0?profileParent:roots[0];
