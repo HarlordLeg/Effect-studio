@@ -1,0 +1,582 @@
+{
+  "items": {
+    "13670": {
+      "name": "Flockheart's Gamble",
+      "prefab": "wearable",
+      "creation_date": "2019-12-18",
+      "image_inventory": "econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_head",
+      "item_description": "#DOTA_Item_Desc_Flockhearts_Gamble",
+      "item_name": "#DOTA_Item_Flockhearts_Gamble",
+      "item_rarity": "arcana",
+      "item_slot": "hero_base",
+      "portraits": {
+        "icon": {
+          "cameras": {
+            "Default": {
+              "PortraitPosition": "438.160919 -94.334465 166.501846",
+              "PortraitAngles": "0.624187 166.629623 0.000000",
+              "PortraitFOV": "14",
+              "PortraitFar": "1000"
+            }
+          },
+          "PortraitLightPosition": "107.081284 90.068001 302.825348",
+          "PortraitLightAngles": "50.471191 230.471191 0.000000",
+          "PortraitLightFOV": "29",
+          "PortraitLightDistance": "377",
+          "PortraitLightColor": "254 254 254",
+          "PortraitLightScale": "1.750000",
+          "PortraitShadowColor": "97 97 97",
+          "PortraitShadowScale": "5",
+          "PortraitGroundShadowScale": "1.500000",
+          "PortraitAmbientDirection": "-79.070 -84.150 -25.320",
+          "PortraitAmbientColor": "148 148 148",
+          "PortraitAmbientScale": "5",
+          "PortraitSpecularColor": "251 74 84",
+          "PortraitSpecularDirection": "0.000000 0.000000 -1.000000",
+          "PortraitSpecularPower": "16",
+          "PortraitBackgroundColor1": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundColor2": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundColor3": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundColor4": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundTexture": "materials/vgui/econ/item_icon_bg.vmat",
+          "PortraitAnimationActivity": "ACT_DOTA_ATTACK",
+          "PortraitAnimationCycle": "0",
+          "PortraitAnimationRate": "0",
+          "PortraitPlayIdleExpression": "0",
+          "PortraitHideHero": "0",
+          "PortraitHideParticles": "0",
+          "PortraitHideDropShadow": "0",
+          "PortraitDesaturateParticles": "0",
+          "PortraitDesaturateHero": "1"
+        },
+        "game": {
+          "PortraitLightPosition": "138.240005 -0.590000 286.010010",
+          "PortraitLightAngles": "47.000000 187.369995 0.000000",
+          "PortraitLightFOV": "72",
+          "PortraitLightDistance": "396",
+          "PortraitLightColor": "254 250 254",
+          "PortraitShadowColor": "63 56 56",
+          "PortraitShadowScale": "5",
+          "PortraitAmbientColor": "146 56 123",
+          "PortraitAmbientScale": "0.775000",
+          "PortraitSpecularColor": "251 74 84",
+          "PortraitBackgroundTexture": "materials/vgui/hud/heroportraits/portraitbackground_desert.vmat",
+          "PortraitBackgroundColor1": "0.200000 0.600000 1.000000",
+          "PortraitBackgroundColor2": "0.300000 0.500000 1.000000",
+          "PortraitBackgroundColor3": "0.000000 0.000000 0.000000",
+          "PortraitBackgroundColor4": "0.000000 0.000000 0.000000",
+          "PortraitLightScale": "1.250000",
+          "PortraitGroundShadowScale": "1.500000",
+          "PortraitAmbientDirection": "36.460 -128.310 -233.310",
+          "PortraitAnimationActivity": "ACT_DOTA_IDLE",
+          "cameras": {
+            "default": {
+              "PortraitPosition": "159.706207 -104.988548 158.341858",
+              "PortraitAngles": "356.084961 147.128448 -5.000000",
+              "PortraitFOV": "28",
+              "PortraitFar": "1000"
+            }
+          },
+          "PortraitSpecularDirection": "0.000000 0.000000 -1.000000",
+          "PortraitSpecularPower": "16",
+          "PortraitAnimationCycle": "0",
+          "PortraitAnimationRate": "1",
+          "PortraitPlayIdleExpression": "0",
+          "PortraitHideHero": "0",
+          "PortraitHideParticles": "0",
+          "PortraitHideDropShadow": "0",
+          "PortraitDesaturateParticles": "0",
+          "PortraitDesaturateHero": "1"
+        }
+      },
+      "used_by_heroes": {
+        "npc_dota_hero_ogre_magi": "1"
+      },
+      "visuals": {
+        "styles": {
+          "0": {
+            "name": "#DOTA_Style_Ogre_Magi_Arcana_Head_Item_Style0",
+            "skin": "0",
+            "alternate_icon": "0"
+          },
+          "1": {
+            "name": "#DOTA_Style_Ogre_Magi_Arcana_Head_Item_Style1",
+            "skin": "1",
+            "alternate_icon": "1",
+            "unlock": {
+              "gem": {
+                "def_index": "3026",
+                "type_field": "strange_type",
+                "type_value": "266",
+                "unlock_field": "strange_value",
+                "unlock_value": "500"
+              }
+            }
+          }
+        },
+        "skip_model_combine": "1",
+        "asset_modifier": {
+          "type": "arcana_level",
+          "level": "1",
+          "style": "0"
+        },
+        "asset_modifier__repeat1": {
+          "type": "arcana_level",
+          "level": "2",
+          "style": "1"
+        },
+        "asset_modifier__repeat2": {
+          "type": "buff_modifier",
+          "modifier": "modifier_ogre_magi_arcana"
+        },
+        "asset_modifier__repeat3": {
+          "type": "entity_model",
+          "asset": "npc_dota_hero_ogre_magi",
+          "modifier": "models/items/ogre_magi/ogre_arcana/ogre_magi_arcana.vmdl",
+          "style": "0"
+        },
+        "asset_modifier__repeat4": {
+          "type": "entity_model",
+          "asset": "npc_dota_hero_ogre_magi",
+          "modifier": "models/items/ogre_magi/ogre_arcana/ogre_magi_arcana.vmdl",
+          "style": "1"
+        },
+        "asset_modifier__repeat5": {
+          "type": "hero_scale",
+          "asset": "npc_dota_hero_ogre_magi",
+          "ModelScale": "0.850000",
+          "VersusScale": "0.767700",
+          "LoadoutScale": "0.795200",
+          "SpectatorLoadoutScale": "0.804500"
+        },
+        "asset_modifier__repeat6": {
+          "type": "activity",
+          "asset": "ALL",
+          "modifier": "arcana"
+        },
+        "asset_modifier__repeat7": {
+          "type": "healthbar_offset",
+          "offset": "250"
+        },
+        "asset_modifier__repeat8": {
+          "type": "particle_create",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_ambient.vpcf",
+          "style": "0"
+        },
+        "asset_modifier__repeat9": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_fireblast.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_fireblast.vpcf",
+          "style": "0"
+        },
+        "asset_modifier__repeat10": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_fireblast_cast.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_fireblast_cast.vpcf",
+          "style": "0"
+        },
+        "asset_modifier__repeat11": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_ignite_cast.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_ignite_cast.vpcf"
+        },
+        "asset_modifier__repeat12": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_ignite.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_ignite.vpcf",
+          "style": "0"
+        },
+        "asset_modifier__repeat13": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_ignite_debuff.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_ignite_debuff.vpcf",
+          "style": "0"
+        },
+        "asset_modifier__repeat14": {
+          "type": "particle",
+          "asset": "particles/items2_fx/hand_of_midas.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_hand_of_midas.vpcf"
+        },
+        "asset_modifier__repeat15": {
+          "type": "particle",
+          "asset": "particles/generic_gameplay/generic_stunned.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_stunned.vpcf"
+        },
+        "asset_modifier__repeat16": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_unr_fireblast.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_unrefined_fireblast.vpcf",
+          "style": "0"
+        },
+        "asset_modifier__repeat17": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_loadout.vpcf",
+          "modifier": "particles/error/null.vpcf"
+        },
+        "asset_modifier__repeat18": {
+          "type": "model_skin",
+          "style": "0",
+          "skin": "0"
+        },
+        "asset_modifier__repeat19": {
+          "type": "model_skin",
+          "style": "1",
+          "skin": "1"
+        },
+        "asset_modifier__repeat20": {
+          "type": "particle",
+          "asset": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_horns_ambient.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_secondstyle_horns_ambient.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat21": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_ignite.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_ignite_secondstyle.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat22": {
+          "type": "particle_create",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_secondstyle_ambient.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat23": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_ignite_debuff.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_ignite_secondstyle_debuff.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat24": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_fireblast.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_secondstyle_fireblast.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat25": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_fireblast_cast.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_secondstyle_fireblast_cast.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat26": {
+          "type": "portrait_background_model",
+          "asset": "models/items/ogre_magi/ogre_arcana/pedestal_ogre_arcana.vmdl",
+          "style": "0"
+        },
+        "asset_modifier__repeat27": {
+          "type": "portrait_background_model",
+          "asset": "models/items/ogre_magi/ogre_arcana/pedestal_ogre_arcana_style1.vmdl",
+          "style": "1"
+        },
+        "asset_modifier__repeat28": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_fireblast",
+          "modifier": "ogre_magi/arcana/ogre_magi_fireblast_arcana",
+          "style": "0"
+        },
+        "asset_modifier__repeat29": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_bloodlust",
+          "modifier": "ogre_magi/arcana/ogre_magi_bloodlust_arcana",
+          "style": "0"
+        },
+        "asset_modifier__repeat30": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_ignite",
+          "modifier": "ogre_magi/arcana/ogre_magi_ignite_arcana",
+          "style": "0"
+        },
+        "asset_modifier__repeat31": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_unrefined_fireblast",
+          "modifier": "ogre_magi/arcana/ogre_magi_unrefined_fireblast_arcana",
+          "style": "0"
+        },
+        "asset_modifier__repeat32": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_multicast",
+          "modifier": "ogre_magi/arcana/ogre_magi_multicast_arcana",
+          "style": "0"
+        },
+        "asset_modifier__repeat33": {
+          "type": "inventory_icon",
+          "asset": "hand_of_midas",
+          "modifier": "hand_of_midas_ogre_arcana"
+        },
+        "asset_modifier__repeat34": {
+          "type": "particle",
+          "asset": "particles/units/heroes/hero_ogre_magi/ogre_magi_unr_fireblast.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_unrefined_fireblast_secondstyle.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat35": {
+          "type": "icon_replacement_hero",
+          "asset": "npc_dota_hero_ogre_magi",
+          "modifier": "npc_dota_hero_ogre_magi_alt1",
+          "force_display": "1",
+          "style": "0"
+        },
+        "asset_modifier__repeat36": {
+          "type": "icon_replacement_hero",
+          "asset": "npc_dota_hero_ogre_magi",
+          "modifier": "npc_dota_hero_ogre_magi_alt2",
+          "force_display": "1",
+          "style": "1"
+        },
+        "alternate_icons": {
+          "0": {
+            "icon_path": "econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_head"
+          },
+          "1": {
+            "icon_path": "econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_head_style1"
+          }
+        },
+        "asset_modifier__repeat37": {
+          "type": "particle",
+          "asset": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_loadout_dustpoof.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_loadout_dustpoof_secondstyle.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat38": {
+          "type": "icon_replacement_hero_minimap",
+          "asset": "npc_dota_hero_ogre_magi",
+          "modifier": "npc_dota_hero_ogre_magi_alt1",
+          "style": "0",
+          "force_display": "0"
+        },
+        "asset_modifier__repeat39": {
+          "type": "icon_replacement_hero_minimap",
+          "asset": "npc_dota_hero_ogre_magi",
+          "modifier": "npc_dota_hero_ogre_magi_alt2",
+          "style": "1",
+          "force_display": "1"
+        },
+        "asset_modifier__repeat40": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_fireblast",
+          "modifier": "ogre_magi/arcana/ogre_magi_fireblast_arcana_alt1",
+          "style": "1"
+        },
+        "asset_modifier__repeat41": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_bloodlust",
+          "modifier": "ogre_magi/arcana/ogre_magi_bloodlust_arcana_alt2",
+          "style": "1"
+        },
+        "asset_modifier__repeat42": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_ignite",
+          "modifier": "ogre_magi/arcana/ogre_magi_ignite_arcana_alt1",
+          "style": "1"
+        },
+        "asset_modifier__repeat43": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_unrefined_fireblast",
+          "modifier": "ogre_magi/arcana/ogre_magi_unrefined_fireblast_arcana_alt1",
+          "style": "1"
+        },
+        "asset_modifier__repeat44": {
+          "type": "ability_icon",
+          "asset": "ogre_magi_multicast",
+          "modifier": "ogre_magi/arcana/ogre_magi_multicast_arcana_alt1",
+          "style": "1"
+        },
+        "asset_modifier__repeat45": {
+          "type": "particle",
+          "asset": "particles/econ/items/ogre_magi/ogre_ti10_taunt/ogre_taunt_ambient.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_ti10_taunt/ogre_arcana_taunt_ambient.vpcf",
+          "style": "0"
+        },
+        "asset_modifier__repeat46": {
+          "type": "particle",
+          "asset": "particles/econ/items/ogre_magi/ogre_ti10_taunt/ogre_arcana_taunt_ambient.vpcf",
+          "modifier": "particles/econ/items/ogre_magi/ogre_ti10_taunt/ogre_arcana_taunt_sec_style_ambient.vpcf",
+          "style": "1"
+        },
+        "asset_modifier__repeat47": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_magi_enter_the_dragon_arms/ogre_magi_enter_the_dragon_arms.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_magi_enter_the_dragon_arms/om_arcana_cc_refit_arms.vmdl"
+        },
+        "asset_modifier__repeat48": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_magi_enter_the_dragon_back/ogre_magi_enter_the_dragon_back.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_magi_enter_the_dragon_back/om_arcana_cc_refit_back.vmdl"
+        },
+        "asset_modifier__repeat49": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_magi_enter_the_dragon_belt/ogre_magi_enter_the_dragon_belt.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_magi_enter_the_dragon_belt/om_arcana_cc_refit_belt.vmdl"
+        },
+        "asset_modifier__repeat50": {
+          "type": "particle",
+          "asset": "particles/econ/events/anniversary_10th/anniversary_10th_hat_ambient_npc_dota_hero_ogre_magi.vpcf",
+          "modifier": "particles/econ/events/anniversary_10th/anniversary_10th_hat_ambient_npc_dota_hero_ogre_magi_arcana.vpcf"
+        },
+        "asset_modifier__repeat51": {
+          "type": "mvp_map_override",
+          "modifier": "maps/scenes/mvp/mvp_ogre_magi_arcana.vmap"
+        },
+        "asset_modifier__repeat52": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_cosmic/ogre_cosmic_head.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_cosmic/ogre_cosmic_head_arcana_refit.vmdl"
+        },
+        "asset_modifier__repeat53": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/adventurers_of_fortune_head/adventurers_of_fortune_head.vmdl",
+          "modifier": "models/items/ogre_magi/adventurers_of_fortune_head/adventurers_of_fortune_head_refit.vmdl"
+        },
+        "asset_modifier__repeat54": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/antipodean_head/antipodean_head.vmdl",
+          "modifier": "models/items/ogre_magi/antipodean_head/antipodean_head_refit.vmdl"
+        },
+        "asset_modifier__repeat55": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/fortunes_veil_head/fortunes_veil_head.vmdl",
+          "modifier": "models/items/ogre_magi/fortunes_veil_head/fortunes_veil_head_refit.vmdl"
+        },
+        "asset_modifier__repeat56": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/frostivus2018_ogre_prehistoric_hunter_head/frostivus2018_ogre_prehistoric_hunter_head.vmdl",
+          "modifier": "models/items/ogre_magi/frostivus2018_ogre_prehistoric_hunter_head/frostivus2018_ogre_prehistoric_hunter_head_refit.vmdl"
+        },
+        "asset_modifier__repeat57": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_ancestral_head/ogre_ancestral_head.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_ancestral_head/ogre_ancestral_head_refit.vmdl"
+        },
+        "asset_modifier__repeat58": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_ancestral_head/ogre_ancestral_head.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_ancestral_head/ogre_ancestral_head_refit.vmdl"
+        },
+        "asset_modifier__repeat59": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_magi_enter_the_dragon_head/ogre_magi_enter_the_dragon_head.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_magi_enter_the_dragon_head/ogre_magi_enter_the_dragon_head_refit.vmdl"
+        },
+        "asset_modifier__repeat60": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_magi_oni_lord_head/ogre_magi_oni_lord_head.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_magi_oni_lord_head/ogre_magi_oni_lord_head_refit.vmdl"
+        },
+        "asset_modifier__repeat61": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_magi_set_head/ogre_magi_set_head.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_magi_set_head/ogre_magi_set_head_refit.vmdl"
+        },
+        "asset_modifier__repeat62": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ti8_ogre_crypt_treasure_hunting_team_head/ti8_ogre_crypt_treasure_hunting_team_head.vmdl",
+          "modifier": "models/items/ogre_magi/ti8_ogre_crypt_treasure_hunting_team_head/ti8_ogre_crypt_treasure_hunting_team_head_refit.vmdl"
+        },
+        "asset_modifier__repeat63": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_cosmic/ogre_cosmic_belt.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_cosmic_arcana/ogre_cosmic_arcana_belt.vmdl"
+        },
+        "asset_modifier__repeat64": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_cosmic/ogre_cosmic_arms.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_cosmic_arcana/ogre_cosmic_arcana_arms.vmdl"
+        },
+        "asset_modifier__repeat65": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_cosmic/ogre_cosmic_back.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_cosmic_arcana/ogre_cosmic_arcana_back.vmdl"
+        },
+        "asset_modifier__repeat66": {
+          "type": "model",
+          "asset": "models/items/ogre_magi/ogre_cosmic/ogre_cosmic_weapon.vmdl",
+          "modifier": "models/items/ogre_magi/ogre_cosmic_arcana/ogre_cosmic_arcana_weapon.vmdl"
+        }
+      }
+    },
+    "35553": {
+      "name": "Flockheart's Gamble - Head",
+      "prefab": "wearable",
+      "creation_date": "2025-08-12",
+      "image_inventory": "econ/items/ogre_magi/ogre_arcana/ogre_magi_arcana_head",
+      "item_name": "#DOTA_Item_Flockhearts_Gamble__Head",
+      "item_rarity": "mythical",
+      "item_slot": "head",
+      "model_player": "models/items/ogre_magi/ogre_arcana/ogre_magi_arcana_head.vmdl",
+      "portraits": {
+        "icon": {
+          "cameras": {
+            "Default": {
+              "PortraitPosition": "659.197876 -195.061371 166.501846",
+              "PortraitAngles": "1.416241 162.350494 0.000000",
+              "PortraitFOV": "12.530000",
+              "PortraitFar": "1000"
+            }
+          },
+          "hero_presets": {
+            "Default": {
+              "PortraitHeroRotation": "0.000000 0.000000 0.000000"
+            }
+          },
+          "PortraitLightPosition": "107.081284 90.068001 302.825348",
+          "PortraitLightAngles": "42.616104 -139.509277 -5.161556",
+          "PortraitLightFOV": "44.549999",
+          "PortraitLightDistance": "377",
+          "PortraitLightColor": "254 254 254",
+          "PortraitLightScale": "1.750000",
+          "PortraitShadowColor": "97 97 97",
+          "PortraitShadowScale": "5",
+          "PortraitGroundShadowScale": "1.500000",
+          "PortraitAmbientDirection": "-79.070 -84.150 -25.320",
+          "PortraitAmbientColor": "148 148 148",
+          "PortraitAmbientScale": "5",
+          "PortraitSpecularColor": "251 74 84",
+          "PortraitSpecularDirection": "0.000000 0.000000 -1.000000",
+          "PortraitSpecularPower": "16",
+          "PortraitBackgroundColor1": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundColor2": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundColor3": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundColor4": "0.900000 0.700000 0.100000",
+          "PortraitBackgroundTexture": "materials/vgui/econ/item_icon_bg.vmat",
+          "EffectDissolveColor": "1.000000 1.000000 1.000000",
+          "GodraysFXColor": "1.000000 1.000000 1.000000",
+          "GroundfogFXColor": "1.000000 1.000000 1.000000",
+          "PortraitAnimationActivity": "ACT_DOTA_IDLE",
+          "PortraitAnimationCycle": "0",
+          "PortraitAnimationRate": "0",
+          "PortraitPlayIdleExpression": "0",
+          "PortraitHideHero": "0",
+          "PortraitHideParticles": "0",
+          "PortraitHideDropShadow": "0",
+          "PortraitDesaturateParticles": "0",
+          "PortraitDesaturateHero": "1",
+          "PortraitVignetteItem": "0",
+          "PortraitAllowAnimatedPortrait": "1"
+        }
+      },
+      "used_by_heroes": {
+        "npc_dota_hero_ogre_magi": "1"
+      },
+      "visuals": {
+        "skip_model_combine": "1",
+        "asset_modifier": {
+          "type": "particle_create",
+          "modifier": "particles/econ/items/ogre_magi/ogre_magi_arcana/ogre_magi_arcana_horns_ambient.vpcf",
+          "style": "0"
+        }
+      }
+    },
+    "31207": {
+      "name": "Pisces Gemini - Head",
+      "model_player": "models/items/ogre_magi/ogre_cosmic/ogre_cosmic_head.vmdl",
+      "visuals": {
+        "asset_modifier": {
+          "type": "bodygroup_visibility",
+          "asset": "models/items/ogre_magi/ogre_arcana/ogre_magi_arcana.vmdl",
+          "modifier": "mount",
+          "value": "1"
+        }
+      }
+    }
+  }
+}

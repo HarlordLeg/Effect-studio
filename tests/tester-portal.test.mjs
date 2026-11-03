@@ -12,7 +12,7 @@ test('tester routes require Discord cookie even on localhost; admin/widget crede
  for(const route of ['/api/tester/me','/api/tester/studio/catalog','/api/tester/editor/catalog','/api/tester/editor/hud/projects','/tester/assets/set-studio.mjs'])assert.equal((await fetch(app.url+route,{headers:{Authorization:'Bearer admin-token'}})).status,401,route);
  const headers={Cookie:s.cookie};assert.equal((await fetch(app.url+'/api/tester/me',{headers})).status,200);assert.equal((await fetch(app.url+'/api/tester/studio/catalog',{headers})).status,200);assert.equal((await fetch(app.url+'/api/tester/studio/statistics',{headers})).status,404);assert.equal((await fetch(app.url+'/api/tester/whitelist',{headers})).status,403);assert.equal((await fetch(app.url+'/api/admin/statistics',{headers})).status,401);assert.equal((await fetch(app.url+'/api/tester/editor/hud/projects',{headers})).status,200);assert.equal((await fetch(app.url+'/api/tester/editor/build',{method:'POST',headers,body:'{}'})).status,403);
  const js=await fetch(app.url+'/api/tester/editor/ui.mjs',{headers});assert.equal(js.status,200);assert(!((await js.text()).includes('/api/admin/')));
- const publicCatalog=await fetch(app.url+'/api/catalog');assert.equal(publicCatalog.status,200);assert.equal(app.builder.config.testerBuildV1,false);
+ const publicCatalog=await fetch(app.url+'/api/catalog');assert.equal(publicCatalog.status,200);assert.equal(app.builder.config.testerBuildV1,true);
  f.auth.update({id:owner},tester,true);assert.equal((await fetch(app.url+'/api/tester/studio/catalog',{headers})).status,401);
  }finally{app.previews.dispose();await new Promise(r=>app.server.close(r));f.dispose();}});
 

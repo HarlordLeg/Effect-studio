@@ -1,3 +1,4 @@
+import {productionBuilderConfig} from './lib/production-builder.mjs';
 import {createTesterPortal} from './lib/tester/routes.mjs';
 import {createAdminSetBuilder,requiresMountedArchivePreview} from './lib/admin-unreleased-sets.mjs';
 import {EditorProjectService} from './lib/editor/project-service.mjs';
@@ -48,7 +49,7 @@ function publicJob(job){const {file,owner,_terrain,_attackVpk,...result}=job;ret
 export function startServer({root:serverRoot=root,port:overridePort,adminAuth,testerAuth}={}) {
   const root=serverRoot;
   const configPath=path.join(root,'config.json'),config={host:'127.0.0.1',port:8787,...JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'))};
-  config.testerBuildV1=false;
+  Object.assign(config,productionBuilderConfig(config));
   const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
   const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons),techiesIconPreviews=new TechiesIconPreviews(builder,itemIcons);
   const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
