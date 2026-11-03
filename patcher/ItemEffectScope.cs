@@ -44,7 +44,11 @@ internal static class ItemEffectScope {
     }
    }
   }
-  if(points.Count==0||points.Count>32768)throw new InvalidDataException("No bounded visible item geometry for effect scope");return points;
+  const int maxSnapshotPoints=32768;
+  if(points.Count==0)throw new InvalidDataException("No visible skinned item geometry for effect scope");
+  if(points.Count<=maxSnapshotPoints)return points;
+  return Enumerable.Range(0,maxSnapshotPoints)
+   .Select(i=>points[(int)((long)i*(points.Count-1)/(maxSnapshotPoints-1))]).ToList();
  }
  internal static void Snapshot(string output,IReadOnlyList<Point> points){
   var strings=new[]{""}.Concat(points.SelectMany(p=>p.Bones).Where(n=>n.Length>0)).Distinct(StringComparer.Ordinal).ToArray();if(strings.Length>short.MaxValue)throw new InvalidDataException("Too many snapshot bones");var ids=strings.Select((n,i)=>(n,i)).ToDictionary(v=>v.n,v=>(short)v.i);

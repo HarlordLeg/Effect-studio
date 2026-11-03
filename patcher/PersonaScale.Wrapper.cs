@@ -4,7 +4,9 @@ internal static partial class PersonaScale{
   const string name="harlord_persona_scale";var names=Values(skeleton,"m_boneName");var count=names.Length;
   if(names.Any(n=>Text(n)==name))throw new InvalidDataException("Persona scale root already exists");
   var roots=Values(skeleton,"m_nParent").Select((v,i)=>(v,i)).Where(x=>x.v.ToInt32(null)<0).Select(x=>x.i).ToArray();
-  var bones=Values(decode,"m_boneArray");if(bones.Length!=count||roots.Length==0)throw new InvalidDataException("Persona decode skeleton mismatch");
+  var bones=Values(decode,"m_boneArray");
+  var decodeRoots=bones.Where(b=>b["m_parent"].ToInt32(null)<0).ToArray();
+  if(roots.Length==0||decodeRoots.Length==0)throw new InvalidDataException("Persona skeleton has no roots");
   KVObject A(params KVObject[] v)=>KVObject.Array(v);
   var position=A(new KVObject(0f),new KVObject(0f),new KVObject(0f));var rotation=A(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f));
   foreach(var key in new[]{"m_boneName","m_nParent","m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
@@ -12,8 +14,8 @@ internal static partial class PersonaScale{
    list.Add(key switch{"m_boneName"=>new KVObject(name),"m_nParent"=>new KVObject(-1),"m_boneSphere"=>new KVObject(0f),"m_nFlag"=>list[roots[0]],"m_bonePosParent"=>position,"m_boneRotParent"=>rotation,_=>new KVObject(factor)});skeleton[key]=KVObject.Array(list);
   }
   foreach(var i in roots)skeleton["m_nParent"].AsArraySpan()[i]=new KVObject(count);
-  var added=KVObject.Collection();added["m_name"]=new KVObject(name);added["m_parent"]=new KVObject(-1);added["m_pos"]=position;added["m_quat"]=rotation;added["m_scale"]=new KVObject(factor);added["m_qAlignment"]=A(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(0f));added["m_flags"]=bones[roots[0]]["m_flags"];
-  foreach(var i in roots){if(Text(bones[i]["m_name"])!=Text(names[i]))throw new InvalidDataException("Persona root index mismatch");bones[i]["m_parent"]=new KVObject(count);}
+  var added=KVObject.Collection();added["m_name"]=new KVObject(name);added["m_parent"]=new KVObject(-1);added["m_pos"]=position;added["m_quat"]=rotation;added["m_scale"]=new KVObject(factor);added["m_qAlignment"]=A(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(0f));added["m_flags"]=decodeRoots[0]["m_flags"];
+  foreach(var bone in decodeRoots)bone["m_parent"]=new KVObject(bones.Length);
   decode["m_boneArray"]=KVObject.Array(bones.Append(added));return count;
  }
  static void RunWrapper(Resource resource,byte[] original,string output,float factor){
