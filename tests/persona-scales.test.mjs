@@ -18,3 +18,8 @@ test('persona scale patches the final composed body once and preserves separate 
   await applyPersonaScales({run:()=>{throw Error('must skip');}},[{hero:{...hero,personaScaleFactor:1},item:{personaBody:true}}],packed,dir,'unused',{});
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('CM persona refuses the old per-layer scaler',async()=>{
+ const hero={id:'crystal_maiden_persona1',baseHeroId:'crystal_maiden',isPersona:true,personaScaleFactor:1.358,personaReplacementModel:'models/cm.vmdl_c'};
+ await assert.rejects(applyPersonaScales({run:async()=>'{"personaScaleV1":true}'},[{hero,item:{personaBody:true}}],new Map(),'.','old',{}),/personaSingleScaleRootV1/);
+});

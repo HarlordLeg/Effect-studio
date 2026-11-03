@@ -3,7 +3,7 @@ using ValveResourceFormat;using ValveResourceFormat.Blocks;using ValveResourceFo
 // inverse bind poses. Scale root bind/decode poses and only root translation /
 // scale tracks; descendants, rotations, morph channels and timing stay intact.
 // Bone-merged wearables inherit the resulting hero bone transforms once.
-internal static class PersonaScale{
+internal static partial class PersonaScale{
  static KVObject[] Values(KVObject v,string key)=>v.TryGetValue(key,out var a)?a.Values.ToArray():[];
  static string Text(KVObject v)=>v.ToString(CultureInfo.InvariantCulture);
  static void Vector(KVObject v,float s){for(var i=0;i<v.Count;i++)v.AsArraySpan()[i]=new KVObject(v[i].ToSingle()*s);}
@@ -12,6 +12,7 @@ internal static class PersonaScale{
  public static void Run(string input,string output,float scale){
  if(!float.IsFinite(scale)||scale<0.25f||scale>4)throw new InvalidDataException("Invalid persona scale factor");
  var bytes=File.ReadAllBytes(input);using var r=new Resource();r.Read(input);var model=r.DataBlock as Model??throw new InvalidDataException("Persona scale input is not a model");
+ if(model.Data["m_name"].ToString(null)=="models/heroes/crystal_maiden_persona/crystal_maiden_persona.vmdl"){RunWrapper(r,bytes,output,scale);return;}
  var binary=new Dictionary<Block,BinaryKV3>();BinaryKV3 Read(Block b){if(binary.TryGetValue(b,out var k))return k;k=new BinaryKV3(b.Type){Resource=r,Offset=b.Offset,Size=b.Size};using var rd=new BinaryReader(new MemoryStream(bytes));rd.BaseStream.Position=b.Offset;k.Read(rd);binary.Add(b,k);return k;}
  var data=Read(r.DataBlock!).Data.Root;var skeleton=data["m_modelSkeleton"];var roots=Values(skeleton,"m_nParent").Select((p,i)=>(p,i)).Where(v=>v.p.ToInt32()<0).Select(v=>v.i).ToArray();var names=roots.Select(i=>Text(skeleton["m_boneName"][i])).ToHashSet();if(roots.Length==0)throw new InvalidDataException("Persona skeleton has no root bone");
  foreach(var i in roots){Vector(skeleton["m_bonePosParent"][i],scale);skeleton["m_boneScaleParent"].AsArraySpan()[i]=new KVObject(skeleton["m_boneScaleParent"][i].ToSingle()*scale);}

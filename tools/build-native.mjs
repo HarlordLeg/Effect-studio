@@ -19,6 +19,7 @@ try{
  if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','hud-creator','HudCreator.Tests.csproj'),'-c','Release']);
  if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','watermark','Watermark.Tests.csproj'),'-c','Release']);
  if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','persona-voices','PersonaVoices.Tests.csproj'),'-c','Release']);
+ if(kind==='patcher')run('dotnet',['run','--project',path.join(root,'tests','persona-scale-wrapper','PersonaScaleWrapper.Tests.csproj'),'-c','Release']);
  if(!fs.readFileSync(source,'utf8').includes('--capabilities'))throw new Error('Old Program.cs. Extract the full update into this project folder, then run update.bat there.');
  // Generated build directories may contain an old incremental assembly.
  for(const name of ['obj','bin'])fs.rmSync(path.join(projectDirectory,name),{recursive:true,force:true});
