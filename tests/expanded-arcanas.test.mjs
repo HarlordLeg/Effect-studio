@@ -9,8 +9,8 @@ test('occupied slots disappear from set payloads, ordinary compatible equipment 
 test('static preview understands CM authored style 1 and preserves ordinary head selection',async()=>{const id='crystal_maiden',hero=fixture(id).catalog.heroes[0],catalog={heroes:[hero]},manifest={heroes:{[id]:'base'},arcanas:{[id]:{'1':'arcana'}}},data={base:{items:{'custom-head':{slot:'head',parts:[{id:'hat',key:'hat',role:'item',slot:'head'}]}}},arcana:{parts:[{key:'body',role:'hero'},{id:'cape',key:'cape',role:'default',slot:'back'},{id:'head',key:'head',role:'default',slot:'head'}]}};const job=await assembleStaticPreview({selections:[{heroId:id,arcana:{style:1}},{heroId:id,itemId:'custom-head',slot:'head'}]},catalog,manifest,async k=>data[k]);assert.deepEqual(job.parts.map(p=>p.key).sort(),['body','cape','hat']);});
 
 import {heroActivityPlans} from '../lib/hero-activities.mjs';import os from 'node:os';import path from 'node:path';import {Builder} from '../lib/build.mjs';import {packVpk,Vpk} from '../lib/vpk.mjs';
-test('expanded arcana activity patches use the packed replacement body, including different source model paths',async()=>{
- for(const [id,def] of Object.entries(expandedArcanaDefinitions))for(const style of arcanaStyleIds(def)){
+test('legacy and new builders preserve expanded arcana activities and packed replacement identity',async()=>{
+ for(const testerBuildV1 of [false,true])for(const [id,def] of Object.entries(expandedArcanaDefinitions))for(const style of arcanaStyleIds(def)){
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-expanded-pack-'));
   try{
    const b=fixture(id),rows=expandedArcanaChoices(b,id,{style}),original=Buffer.alloc(16);original.writeUInt32LE(16);original.writeUInt32LE(8,8);
@@ -18,14 +18,16 @@ test('expanded arcana activity patches use the packed replacement body, includin
    const assets=new Map(rows.map(r=>[r.item.model,original]));if(rows[0].item.model!==rows[0].hero.model)assets.set(rows[0].hero.model,Buffer.concat([original,Buffer.from(':UNPATCHED_BASE')]));
    fs.writeFileSync(path.join(root,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(root,'patcher'),'stub');fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify(b.catalog));let calls=0;
    const run=async(_,args)=>{
-    if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,materialSkin:true,activityRulesV1:true,activityRulesV9:true,heroActivitiesV4:true});
+    if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,materialSkin:true,activityRulesV1:true,activityRulesV9:true,heroActivitiesV4:true,crystalMaidenArcanaRuntimeV1:true,testerWearableHostV2:true,testerRuntimeBindingsV3:true,testerImporterRootProfilesV4:true,immortalRuntimeFixesV1:true});
     if(args[0]==='--input'){fs.writeFileSync(args[args.indexOf('--output')+1],Buffer.concat([fs.readFileSync(args[1]),Buffer.from(':PACKED_BODY')]));return '';}
     if(args[0]==='--model-mesh-groups'){const m=JSON.parse(fs.readFileSync(args[1]));assert.equal(id,'skywrath_mage');assert.match(m.group,style===0?/_@1_/:/_@2_/);fs.copyFileSync(m.input,m.output);return '';}
     if(args[0]==='--activity-rules'){calls++;const m=JSON.parse(fs.readFileSync(args[1]));assert.equal(m.model,rows[0].item.model,'activity request must name the arcana source model, not its replacement path');assert.ok(!fs.readFileSync(m.input).toString().includes('UNPATCHED_BASE'));fs.writeFileSync(m.output,Buffer.concat([fs.readFileSync(m.input),Buffer.from(':ACTIVITIES')]));return '';}
+    if(args[0]==='--cm-arcana-runtime'){assert.equal(id,'crystal_maiden');const q=JSON.parse(fs.readFileSync(args[1]));assert.ok(!fs.readFileSync(q.input).toString().includes('UNPATCHED_BASE'));fs.writeFileSync(q.output,Buffer.concat([fs.readFileSync(q.input),Buffer.from(':CM_RUNTIME')]));return '';}
+    if(args[0]==='--tester-wearable-host'){assert.equal(testerBuildV1,true);const q=JSON.parse(fs.readFileSync(args[1]));for(const h of q.hosts){fs.copyFileSync(h.input,h.output);for(const d of h.donors){fs.copyFileSync(d.input,d.hidden);fs.copyFileSync(d.input,d.visible);}}for(const p of q.particles)fs.copyFileSync(p.input,p.output);fs.writeFileSync(q.report,JSON.stringify({version:2,hosts:q.hosts.map(h=>({host:h.host,wearables:h.donors.map(d=>d.target)}))}));return '';}
     if(args[0]==='--relocate'){for(const f of JSON.parse(fs.readFileSync(args[1])).files)fs.copyFileSync(f.input,f.output);return '';}
     throw Error('Unexpected patch step: '+args[0]);
    };
-   const engine=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run),job={id:'arcana'};
+   const engine=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false,testerBuildV1},run),job={id:'arcana'};
    try{await engine.build(rows,job);assert.equal(job.status,'ready');assert.equal(calls,heroActivityPlans(rows).length,id+' activity plan');if(calls)assert.match(new Vpk(job.file).read(rows[0].hero.model).toString(),/ACTIVITIES/);else assert.ok(new Vpk(job.file).read(rows[0].hero.model));}finally{await engine.dispose();}
   }finally{fs.rmSync(root,{recursive:true,force:true});}
  }

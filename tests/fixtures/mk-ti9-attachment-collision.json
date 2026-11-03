@@ -1,0 +1,2293 @@
+{
+  "source": "User VPK pak01_dir - 2026-11-03T081651.531.vpk",
+  "meshes": {
+    "models/items/monkey_king/mk_ti9_immortal_head/mk_ti9_immortal_arcana_head.vmdl": {
+      "m_attachments": [
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                -0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202299118041992,
+                5.173089981079102,
+                7.817379951477051
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "head",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.0,
+                0.0,
+                -1.0,
+                -4.371138828673793e-08
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                17.202293395996094,
+                -5.173086166381836,
+                7.8173828125
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        }
+      ]
+    },
+    "models/items/monkey_king/mk_ti9_immortal_weapon/mk_ti9_immortal_arcana_weapon.vmdl": {
+      "m_attachments": [
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_l",
+          "value": {
+            "m_name": "attach_eye_l",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.4999999701976776,
+                -0.4999999701976776,
+                0.4999999701976776,
+                0.4999999701976776
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.700088977813721,
+                -10.304539680480957,
+                6.450129985809326
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        },
+        {
+          "key": "attach_eye_r",
+          "value": {
+            "m_name": "attach_eye_r",
+            "m_influenceNames": [
+              "weapon_top_04",
+              "",
+              ""
+            ],
+            "m_vInfluenceRotations": [
+              [
+                0.5000000596046448,
+                0.4999999403953552,
+                -0.5000000596046448,
+                0.4999999403953552
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "m_vInfluenceOffsets": [
+              [
+                -4.7000579833984375,
+                -10.3045015335083,
+                -7.207636833190918
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "m_influenceWeights": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "m_bInfluenceRootTransform": [
+              false,
+              false,
+              false
+            ],
+            "m_nInfluences": 1,
+            "m_bIgnoreRotation": false
+          }
+        }
+      ]
+    }
+  },
+  "particles": {
+    "particles/econ/items/monkey_king/mk_ti9_immortal/arcana_death/mk_ti9_immortal_arcana_death_weapon_ambient.vpcf_c": {
+      "m_PreEmissionOperators": [
+        {
+          "_class": "C_OP_SetParentControlPointsToChildCP",
+          "m_nNumControlPoints": 4,
+          "m_bSetOrientation": true
+        }
+      ],
+      "m_controlPointConfigurations": [
+        {
+          "m_name": "preview",
+          "m_drivers": [
+            {
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_eye_l",
+              "m_entityName": "self_with_wearables"
+            },
+            {
+              "m_iControlPoint": 1,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_eye_r",
+              "m_entityName": "self_with_wearables"
+            },
+            {
+              "m_iControlPoint": 2,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_attack1",
+              "m_entityName": "parent"
+            },
+            {
+              "m_iControlPoint": 3,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_attack1",
+              "m_entityName": "parent"
+            }
+          ],
+          "m_previewState": {
+            "m_previewModel": "models/items/monkey_king/mk_ti9_immortal_weapon/mk_ti9_immortal_weapon.vmdl",
+            "m_nModSpecificData": 13546,
+            "m_sequenceName": "mk_idle_head_turn",
+            "m_hitboxSetName": "default"
+          }
+        }
+      ]
+    },
+    "particles/econ/items/monkey_king/mk_ti9_immortal/arcana_death/mk_ti9_immortal_arcana_death_head_ambient.vpcf_c": {
+      "m_controlPointConfigurations": [
+        {
+          "m_name": "preview",
+          "m_drivers": [
+            {
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_eye_l",
+              "m_entityName": "self_with_wearables"
+            },
+            {
+              "m_iControlPoint": 1,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_eye_r",
+              "m_entityName": "self_with_wearables"
+            }
+          ],
+          "m_previewState": {
+            "m_previewModel": "models/items/monkey_king/mk_ti9_immortal_head/mk_ti9_immortal_head.vmdl",
+            "m_nModSpecificData": 13544,
+            "m_sequenceName": "mk_idle_head_turn",
+            "m_hitboxSetName": "default",
+            "m_materialGroupName": "0"
+          }
+        }
+      ],
+      "m_PreEmissionOperators": [
+        {
+          "_class": "C_OP_SetParentControlPointsToChildCP",
+          "m_nNumControlPoints": 2,
+          "m_bSetOrientation": true
+        }
+      ]
+    },
+    "harlord/particles/wearables/60c5a1c5ba16900301e790c2.vpcf_c": {
+      "m_controlPointConfigurations": [
+        {
+          "m_name": "preview",
+          "m_drivers": [
+            {
+              "m_entityName": "parent"
+            },
+            {
+              "m_iControlPoint": 3,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_hand_l",
+              "m_entityName": "parent"
+            },
+            {
+              "m_iControlPoint": 4,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_attachmentName": "attach_hand_r",
+              "m_entityName": "parent"
+            },
+            {
+              "m_iControlPoint": 1,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_entityName": "parent",
+              "m_attachmentName": "attach_eye_l"
+            },
+            {
+              "m_iControlPoint": 2,
+              "m_iAttachType": "PATTACH_POINT_FOLLOW",
+              "m_entityName": "parent",
+              "m_attachmentName": "attach_eye_r"
+            }
+          ],
+          "m_previewState": {
+            "m_previewModel": "models/items/monkey_king/monkey_king_arcana_head/mesh/monkey_king_arcana.vmdl"
+          }
+        }
+      ]
+    }
+  }
+}

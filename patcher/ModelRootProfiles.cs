@@ -14,6 +14,13 @@ internal static class ModelRootProfiles
         // Techies has several independent character roots. This importer root
         // belongs to the TI9 spleen component's root1, not to the first root.
         if(host.Contains("/techies/")&&donor.StartsWith("models/items/techies/techies_ti9_immortal_spleen/",StringComparison.Ordinal)&&roots.Contains("root1",StringComparer.Ordinal))return new Dictionary<string,string>(StringComparer.Ordinal){{"techies_ti9_immortal_spleen_root1","root1"}};
+        if(host.StartsWith("models/heroes/windrunner/",StringComparison.Ordinal)&&(donor=="models/items/windrunner/windrunner_arcana/wr_arcana_head.vmdl_c"||donor=="models/items/windrunner/windrunner_arcana/wr_arcana_head.vmdl")&&roots.Contains("root",StringComparer.Ordinal))return new Dictionary<string,string>(StringComparer.Ordinal){{"wr_root","root"}};
+        if(host.StartsWith("models/heroes/lanaya/",StringComparison.Ordinal)&&(donor=="models/items/lanaya/heavenly_secrets_armor/heavenly_secrets_armor.vmdl_c"||donor=="models/items/lanaya/heavenly_secrets_armor/heavenly_secrets_armor.vmdl")&&roots.Contains("Root_0",StringComparer.Ordinal))return new Dictionary<string,string>(StringComparer.Ordinal){{"armor_lod0","Root_0"}};
+        if(host.StartsWith("models/heroes/sven/",StringComparison.Ordinal)&&(donor=="models/items/sven/lord_of_the_north_belt/lord_of_the_north_belt.vmdl_c"||donor=="models/items/sven/lord_of_the_north_belt/lord_of_the_north_belt.vmdl")&&roots.Contains("root",StringComparer.Ordinal))return new Dictionary<string,string>(StringComparer.Ordinal){{"sven_body","root"}};
+        if(host.StartsWith("models/heroes/dark_willow/",StringComparison.Ordinal)&&(donor=="models/items/dark_willow/the_naughty_witch_from_dark_woods_head/the_naughty_witch_from_dark_woods_head.vmdl_c"||donor=="models/items/dark_willow/the_naughty_witch_from_dark_woods_head/the_naughty_witch_from_dark_woods_head.vmdl")){
+            var head=names.SingleOrDefault(n=>string.Equals(n,"head",StringComparison.OrdinalIgnoreCase));if(head is not null)return new Dictionary<string,string>(StringComparer.Ordinal){{"cat_head_base",head}};
+        }
+        if(host.StartsWith("models/heroes/ember_spirit/",StringComparison.Ordinal)&&(donor=="models/items/ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder.vmdl_c"||donor=="models/items/ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder.vmdl")&&roots.Length==1&&roots[0] is "Root_JNT" or "Root0_JNT")return new Dictionary<string,string>(StringComparer.Ordinal){{"ember_spirit_base",roots[0]}};
         if(roots.Length!=1)return null;
         var profiles=new (string[] Heroes,string[] Bones)[]{
             (new[]{"windrunner","windranger"},new[]{"wr_root"}),

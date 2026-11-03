@@ -19,26 +19,26 @@ internal static class ModelMergeTests
      sk[field.Name]=Convert(field.Value);
     }return sk;
    }
-   foreach(var donor in doc.RootElement.GetProperty("donors").EnumerateObject()){
-    var host=ReadSkeleton(doc.RootElement.GetProperty("host"));var originalNames=host["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
-    var source=ReadSkeleton(donor.Value);var profile=ModelRootProfiles.Attachments("models/heroes/sven/sven.vmdl_c",donor.Name+"_c");Check(profile is not null);
-    var map=ModelMerge.MergeSkeleton(host,source,matchBoneCase:true,rootAttachments:profile);
+   foreach(var fixtureDonor in doc.RootElement.GetProperty("donors").EnumerateObject()){
+    var fixtureHost=ReadSkeleton(doc.RootElement.GetProperty("host"));var originalNames=fixtureHost["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
+    var source=ReadSkeleton(fixtureDonor.Value);var profile=ModelRootProfiles.Attachments("models/heroes/sven/sven.vmdl_c",fixtureDonor.Name+"_c");Check(profile is not null);
+    var fixtureMap=ModelMerge.MergeSkeleton(fixtureHost,source,matchBoneCase:true,rootAttachments:profile);
     var names=source["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();var ankle=System.Array.IndexOf(names,"ankle_l");
-    if(ankle>=0)Check(map[ankle]==System.Array.IndexOf(originalNames,"ankle_L"));
-    foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})for(var i=0;i<originalNames.Length;i++)Check(host[key][i].ToString()==ReadSkeleton(doc.RootElement.GetProperty("host"))[key][i].ToString());
-    Check(ModelRootProfiles.Attachments("models/heroes/axe/axe.vmdl_c",donor.Name) is null);
+    if(ankle>=0)Check(fixtureMap[ankle]==System.Array.IndexOf(originalNames,"ankle_L"));
+    foreach(var key in new[]{"m_bonePosParent","m_boneRotParent","m_boneScaleParent"})for(var i=0;i<originalNames.Length;i++)Check(fixtureHost[key][i].ToString()==ReadSkeleton(doc.RootElement.GetProperty("host"))[key][i].ToString());
+    Check(ModelRootProfiles.Attachments("models/heroes/axe/axe.vmdl_c",fixtureDonor.Name) is null);
    }
    Check(ModelRootProfiles.Attachments("models/heroes/sven/sven.vmdl_c","models/items/sven/unrelated/unrelated.vmdl_c") is null);
   }
   { // Non-root attachment uses the full parent chain, retaining the world bind pose.
    KVObject P(string[] names,int[] parents,float[] positions){var sk=Skeleton(names,parents);sk["m_bonePosParent"]=Array(positions.Select(x=>Array(new KVObject(x),new KVObject(0f),new KVObject(0f))).ToArray());sk["m_boneRotParent"]=Array(names.Select(_=>Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f))).ToArray());return sk;}
-   var host=P(["FK_pelvis","sheath_0"],[-1,0],[10f,5f]);var source=P(["sword_cloth_01","sheath_ring"],[-1,-1],[20f,24f]);
+   var fixtureHost=P(["FK_pelvis","sheath_0"],[-1,0],[10f,5f]);var source=P(["sword_cloth_01","sheath_ring"],[-1,-1],[20f,24f]);
    const string model="models/items/pangolier/masked_swordsman_weapon/masked_swordsman_weapon.vmdl";
-   var profile=ModelRootProfiles.Attachments("models/heroes/pangolier/pangolier.vmdl",model);Check(profile?["sword_cloth_01"]=="sheath_0");ModelMerge.MergeSkeleton(host,source,rootAttachments:profile);
-   Check(host["m_nParent"][2].ToInt32(null)==1&&host["m_nParent"][3].ToInt32(null)==1);Check(Math.Abs(host["m_bonePosParent"][2][0].ToSingle(null)-5f)<.0001f);Check(Math.Abs(host["m_bonePosParent"][3][0].ToSingle(null)-9f)<.0001f);
+   var profile=ModelRootProfiles.Attachments("models/heroes/pangolier/pangolier.vmdl",model);Check(profile?["sword_cloth_01"]=="sheath_0");ModelMerge.MergeSkeleton(fixtureHost,source,rootAttachments:profile);
+   Check(fixtureHost["m_nParent"][2].ToInt32(null)==1&&fixtureHost["m_nParent"][3].ToInt32(null)==1);Check(Math.Abs(fixtureHost["m_bonePosParent"][2][0].ToSingle(null)-5f)<.0001f);Check(Math.Abs(fixtureHost["m_bonePosParent"][3][0].ToSingle(null)-9f)<.0001f);
    Check(ModelRootProfiles.Attachments("models/heroes/invoker/invoker.vmdl",model) is null);Check(ModelRootProfiles.Attachments("models/heroes/pangolier/pangolier.vmdl","models/items/pangolier/unrelated/item.vmdl") is null);
   }
-  {var host=Skeleton(new[]{"Root0_JNT"},new[]{-1});var weapon=Skeleton(new[]{"uprweapon0_jnt","LwrWeapon0_JNT","RtLegEnd_JNT"},new[]{-1,-1,-1});var set=Skeleton(new[]{"Root0_JNT","uprweapon0_jnt","LwrWeapon0_JNT","RtLeg3_JNT","RtLegEnd_JNT"},new[]{-1,0,0,0,3});Check(TesterWearableHost.DonorOrder(host,new[]{weapon,set}).SequenceEqual(new[]{1,0}));Check(TesterWearableHost.DonorOrder(host,new[]{set,weapon}).SequenceEqual(new[]{0,1}));Check(weapon["m_nParent"][2].ToInt32(null)==-1);}
+  {var fixtureHost=Skeleton(new[]{"Root0_JNT"},new[]{-1});var weapon=Skeleton(new[]{"uprweapon0_jnt","LwrWeapon0_JNT","RtLegEnd_JNT"},new[]{-1,-1,-1});var set=Skeleton(new[]{"Root0_JNT","uprweapon0_jnt","LwrWeapon0_JNT","RtLeg3_JNT","RtLegEnd_JNT"},new[]{-1,0,0,0,3});Check(TesterWearableHost.DonorOrder(fixtureHost,new[]{weapon,set}).SequenceEqual(new[]{1,0}));Check(TesterWearableHost.DonorOrder(fixtureHost,new[]{set,weapon}).SequenceEqual(new[]{0,1}));Check(weapon["m_nParent"][2].ToInt32(null)==-1);}
   {Check(TesterWearableHost.IndependentCloth("models/heroes/drow/drow_base.vmdl_c","models/items/drow/ti6_immortal_cape/drow_ti6_immortal_arcana_refit.vmdl_c"));Check(!TesterWearableHost.IndependentCloth("models/heroes/test/test.vmdl_c","models/items/drow/ti6_immortal_cape/drow_ti6_immortal_arcana_refit.vmdl_c"));}
   foreach(var part in new[]{"weapon_fx_l","weapon_fx_r","weapon_feathers_fx_l","weapon_feathers_fx_r"}){
    var root=KVObject.Collection();root["m_hSnapshot"]=new KVObject("particles/models/items/beastmaster/bm_2021_immortal/bm_2021_immortal/bm_2021_immortal_"+part+".vsnap");root["m_nSnapshotControlPoint"]=new KVObject(part.Contains("feathers")?5:6);var skin=KVObject.Collection();skin["_class"]=new KVObject("C_INIT_InitSkinnedPositionFromCPSnapshot");skin["m_bRigid"]=new KVObject(true);root["m_Initializers"]=Array(skin);var rigid=KVObject.Collection();rigid["_class"]=new KVObject("C_OP_SnapshotRigidSkinToBones");root["m_Operators"]=Array(rigid);Check(NativeImmortalParticles.Patch(root)==1);Check(!skin["m_bRigid"].ToBoolean(null));Check(root["m_Initializers"][0]["m_nInputMax"].ToInt32(null)==(part.Contains("feathers")?13:39));Check(root["m_Operators"].Values.Last()["_class"].ToString(null)=="C_OP_MovementSkinnedPositionFromCPSnapshot");Check(NativeImmortalParticles.Patch(root)==0);

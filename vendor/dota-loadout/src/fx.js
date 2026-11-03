@@ -351,7 +351,7 @@ const INIT = {
   // Snapshots: points on the model with their bones (.vsnap), skinned by the hero's skeleton.
   C_INIT_InitSkinnedPositionFromCPSnapshot(d) {
     const cp = d.m_nSnapshotControlPointNumber ?? 0, random = d.m_bRandom === true;
-    return (p, s) => { const snap = s.snapshot(cp); if (!snap) return; const i = random ? Math.floor(rnd() * snap.count) : p.uid % snap.count; p.snap = i; p.snapFrom = snap; p.pos.copy(snap.point(i)); p.prev.copy(p.pos); };
+    return (p, s) => { const snap = s.snapshot(cp); if (!snap || !snap.count) { p.dead = true; s.sim.lib.unsupported.add('C_INIT_InitSkinnedPositionFromCPSnapshot: position snapshot unavailable'); return; } const i = random ? Math.floor(rnd() * snap.count) : p.uid % snap.count; p.snap = i; p.snapFrom = snap; p.pos.copy(snap.point(i)); p.prev.copy(p.pos); };
   },
   // Skinned snapshots follow the hero's bones; rigid ones (no bone weights, e.g. the Desolation
   // blades) hold points in the space of the snapshot's control point, which here is the arm.
@@ -1406,7 +1406,7 @@ export class Simulation {
       if (this.version < 6 && (this.firstMultiple < 0 || i.index < this.firstMultiple) && i.fields.length && i.fields.every((f) => written.has(f))) continue;
       // An initializer at strength 0 does nothing (one gated by an item's gem, without a gem).
       if (i.strength && i.strength(this.state) <= 0) continue;
-      i.fn(p, this.state); for (const f of i.fields) written.add(f);
+      i.fn(p, this.state); if (p.dead) return; for (const f of i.fields) written.add(f);
     }
     // The previous position one previous step back: movement scales the step by dt / previous dt.
     p.prev.copy(p.pos).addScaledVector(p.vel, -(this.state.prevDt || this.dt || this.maxStep));

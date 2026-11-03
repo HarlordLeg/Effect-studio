@@ -1,3 +1,4 @@
+import {mergeWearableClips} from './wearable-clips.js';
 import {activeSkinJoints,attachmentSkinBones,resolveModelAttachment} from './skin-joints.js';
 import {particleSurfaceMeshes} from './surface-meshes.js';
 import {snapshotBinding} from '../../../public/viewer/snapshot-bindings.mjs';
@@ -280,6 +281,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
   // extra bones hang under the hero bone that is their parent. What a slot wears is a set of meshes
   // and such bones, put on and taken off whole (the defaults are kept for when they come back).
   root.traverse((o) => { if (o.isBone) registerBone(o,o); if (o.isSkinnedMesh) o.skeleton.bones.forEach((b,i)=>registerBone(b,b,o.skeleton.boneInverses[i])); });
+  const heroBoneNames = new Set(Object.keys(bones));
   const fit = (scene,attachmentRows) => {
     const skinned = [], rigid = [], extra = [];
     scene.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); else if (o.isMesh) rigid.push(o); });
@@ -349,14 +351,7 @@ async function buildHero(manifest, url, manager, time, light, textureScale = 1) 
 
   // Animations: the entry once, then the idle loop; the others on request.
   const mixer = new THREE.AnimationMixer(root), clips = new Map(heroModel.animations.map((a) => [a.name, a]));
-  for (const [owner, model] of Object.entries(loaded)) if (owner !== 'hero') for (const clip of model.animations) if (!clips.has(clip.name)) {
-    const tracks = clip.tracks.flatMap(track => {
-      const parsed = THREE.PropertyBinding.parseTrackName(track.name), node = model.scene.getObjectByName(parsed.nodeName) || model.scene.getObjectByProperty('uuid', parsed.nodeName), target = node && (bones[node.name.toLowerCase()] || root.getObjectByName(node.name));
-      if (!target) return [];
-      const copy = track.clone(); copy.name = target.uuid + track.name.slice(track.name.lastIndexOf('.')); return [copy];
-    });
-    if (tracks.length) clips.set(clip.name, new THREE.AnimationClip(clip.name, clip.duration, tracks));
-  }
+  for (const [owner, model] of Object.entries(loaded)) if (owner !== 'hero' && owner !== 'pedestal') mergeWearableClips(clips,model,manifest.wearableSequences?.[owner]??[],manifest.animations?.list??[],heroBoneNames,boneKey,node=>bones[boneKey(node)]||root.getObjectByName(node.name));
   const a = manifest.animations || {}, list = (a.list?.length ? [...a.list, ...[...clips.keys()].filter(name=>!a.list.some(x=>x.name===name)).map(name=>({name,loop:/(?:idle|run|walk|loadout)/i.test(name)}))] : [...clips.keys()].map((name) => ({ name,loop:/(?:idle|run|walk|loadout)/i.test(name) }))).filter((x) => clips.has(x.name));
   for (const item of list) if (item.additive) clips.get(item.name).blendMode = THREE.AdditiveAnimationBlendMode;
   const action = (name) => { const c = clips.get(name); return c ? mixer.clipAction(c) : null; };

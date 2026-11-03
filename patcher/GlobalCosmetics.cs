@@ -8,7 +8,8 @@ using ValveResourceFormat.ResourceTypes;
 internal static class GlobalCosmetics
 {
     private sealed record ModelFile(string Input,string Output,string[] Particles,int Skin=0,string? Replacements=null);
-    private sealed record ParticleFile(string Input,string Output,string? Original=null,string? Effect=null,int ControlPoint=1,string[]? AppendChildren=null,JsonElement? Binding=null,bool RespectEntity=false);
+    internal sealed record PointPosition(string Particle,int Point,float[] Position);
+    private sealed record ParticleFile(string Input,string Output,string? Original=null,string? Effect=null,int ControlPoint=1,string[]? AppendChildren=null,JsonElement? Binding=null,bool RespectEntity=false,PointPosition[]? Positions=null);
     private sealed record SoundFile(string Input,string Source,string Output,string Kind);
     private sealed record Request(ModelFile[]? Models=null,ParticleFile[]? Particles=null,SoundFile[]? Sounds=null);
     private static string Semantic(string name){
@@ -51,6 +52,14 @@ internal static class GlobalCosmetics
         }
         if(preview is null){preview=KVObject.Collection();preview["m_name"]=new KVObject("preview");configs.Add(preview);}
         preview["m_drivers"]=drivers;data["m_controlPointConfigurations"]=configs;
+    }
+    internal static void SetPositions(KVObject data,IEnumerable<PointPosition> positions){
+        var overrides=positions.ToArray();if(overrides.Any(p=>p.Point<0||p.Point>63||p.Position.Length!=3||p.Position.Any(v=>!float.IsFinite(v)))||overrides.Select(p=>p.Point).Distinct().Count()!=overrides.Length)throw new InvalidDataException("Invalid constant control points");
+        var ops=data.TryGetValue("m_PreEmissionOperators",out var old)?old.Values.ToList():new List<KVObject>();
+        foreach(var p in overrides.Reverse()){
+            ops.RemoveAll(o=>o.TryGetValue("_class",out var c)&&c.ToString(null)=="C_OP_SetSingleControlPointPosition"&&(!o.TryGetValue("m_nCP1",out var cp)?0:cp.ToInt32(null))==p.Point);
+            var row=KVObject.Collection();row["_class"]=new KVObject("C_OP_SetSingleControlPointPosition");row["m_nCP1"]=new KVObject(p.Point);row["m_vecCP1Pos"]=KVObject.Array(p.Position.Select(v=>new KVObject(v)));row["m_bUseWorldLocation"]=new KVObject(true);row["m_bSetOnce"]=new KVObject(false);ops.Insert(0,row);
+        }data["m_PreEmissionOperators"]=KVObject.Array(ops);
     }
     private static IEnumerable<string> SoundNames(KVObject value){if(value.IsCollection){foreach(var pair in value)foreach(var s in SoundNames(pair.Value))yield return s;}else if(value.IsArray){foreach(var child in value.Values)foreach(var s in SoundNames(child))yield return s;}else if(value.ValueType==KVValueType.String){var s=value.ToString(CultureInfo.InvariantCulture);if(s.EndsWith(".vsnd")||s.EndsWith(".vsnd_c"))yield return s;}}
     internal static int MapSounds(KVObject target,KVObject source){
@@ -100,6 +109,7 @@ internal static class GlobalCosmetics
             }else if(particle.Data.TryGetValue("m_ForceGenerators",out var forces))foreach(var force in forces.Values){if(force.TryGetValue("_class",out var kind)&&kind.ToString(null)=="C_OP_AttractToControlPoint")force["m_nControlPointNumber"]=new KVObject(file.ControlPoint);}
             if(file.AppendChildren is not null){AppendChildren(particle.Data,file.AppendChildren);foreach(var name in file.AppendChildren)Reference(resource,name);}
             if(file.Binding is {} binding)BindCourier(particle.Data,binding,file.RespectEntity);
+            if(file.Positions is {Length:>0})SetPositions(particle.Data,file.Positions);
             var changed=new HashSet<object>();if((file.AppendChildren is not null||file.Original is not null)&&resource.ExternalReferences is not null)changed.Add(resource.ExternalReferences);if(file.Original is not null&&resource.ExternalReferences is not null)changed.Add(resource.ExternalReferences);using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,changed,preserveMetadata:true);
         }
         foreach(var file in request.Sounds??[]){

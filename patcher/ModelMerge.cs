@@ -9,7 +9,7 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false,string? SourceModel=null);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false,string? SourceModel=null,bool SkipParticleMetadata=false);
     private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null,string? HostModel=null,bool TesterImporterRoots=false);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
@@ -114,6 +114,7 @@ internal static class ModelMerge
         }
         return result;
     }
+    static KVObject[] NamespacedAttachments(Resource donor,byte[] bytes,Block block,string? prefix){var mesh=Read(donor,bytes,block).Data.Root;TesterAttachmentProfiles.NamespaceMesh(mesh,prefix);return Values(mesh,"m_attachments");}
     internal static int OverrideMeshAttachments(KVObject mesh,IReadOnlyDictionary<string,KVObject> replacements){
         if(replacements.Count==0)return 0;
         var count=0;var rows=Values(mesh,"m_attachments").ToList();var existing=new HashSet<string>(StringComparer.Ordinal);
@@ -236,13 +237,14 @@ internal static class ModelMerge
             catch(InvalidDataException error){throw new InvalidDataException("Model merge failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donor: "+(entry.SourceModel??Text(source["m_name"]))+"; "+error.Message,error);}
 
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
+            var attachmentPrefix=request.TesterImporterRoots?TesterAttachmentProfiles.Prefix(entry.SourceModel??Text(source["m_name"])):null;
             var renamedBones=entry.MetadataOnly?new Dictionary<string,string>():Values(source["m_modelSkeleton"],"m_boneName").Select((name,index)=>(name:Text(name),mapped:Text(mergedBoneNames[boneMap[index]]))).Where(v=>v.name!=v.mapped).ToDictionary(v=>v.name,v=>v.mapped,StringComparer.Ordinal);
             var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");
             var sourceGroups=Values(source,"m_refMeshGroupMasks");var sourceDefault=source.TryGetValue("m_nDefaultMeshGroupMask",out var sourceMask)?Mask(sourceMask):ulong.MaxValue;
             var sourceRows=Values(sourceCtrl,"embedded_meshes").Where(r=>!entry.MetadataOnly).Where(r=>MeshIndex(r)>=sourceGroups.Length||(Mask(sourceGroups[MeshIndex(r)])&sourceDefault)!=0).Where(r=>entry.MeshNames is null||entry.MeshNames.Contains(MeshName(r),StringComparer.Ordinal)).ToArray();
             if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true)throw new InvalidDataException("Requested donor mesh not found: "+(entry.SourceModel??Text(source["m_name"]))+" (default mask: "+sourceDefault+"; available: "+string.Join(", ",Values(sourceCtrl,"embedded_meshes").Select(MeshName))+")");
             var blocks=new Dictionary<int,int>();
-            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=normalizedMorphs.TryGetValue(index,out var normalized)?normalized:bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&renamedBones.Count>0){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;return mapped;}
+            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=normalizedMorphs.TryGetValue(index,out var normalized)?normalized:bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&(renamedBones.Count>0||attachmentPrefix is not null)){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);TesterAttachmentProfiles.NamespaceMesh(mesh.Data.Root,attachmentPrefix);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;return mapped;}
             var nextIndex=new[]{meshRows.Max(MeshIndex)+1,starts.Count,Values(root,"m_refMeshes").Length,Values(root,"m_refMeshGroupMasks").Length}.Max();
             foreach(var row in sourceRows){
                 var oldIndex=MeshIndex(row);var newIndex=nextIndex++;var name=MeshName(row);imported.Add(name);
@@ -268,12 +270,12 @@ internal static class ModelMerge
             if(entry.OverrideAttachments){
                 var selected=new HashSet<string>(StringComparer.Ordinal);
                 foreach(var block in donor.Blocks.Where(b=>b.Type==BlockType.MDAT&&blocks.ContainsKey(donor.Blocks.IndexOf(b))))
-                    foreach(var attachment in Values(Read(donor,bytes,block).Data.Root,"m_attachments"))
+                    foreach(var attachment in NamespacedAttachments(donor,bytes,block,attachmentPrefix))
                         if(attachment.TryGetValue("key",out var name)&&attachment.TryGetValue("value",out var value)&&selected.Add(Text(name)))attachmentOverrides[Text(name)]=value;
             }
             var donorGroups=Values(source,"m_materialGroups");var donorMaterials=entry.MetadataOnly?System.Array.Empty<KVObject>():donorGroups.Length>0?Values(donorGroups[0],"m_materials"):donor.Blocks.Where(b=>blocks.ContainsKey(donor.Blocks.IndexOf(b))&&b.Type==BlockType.MDAT).SelectMany(b=>Values(Read(donor,bytes,b).Data.Root,"m_sceneObjects")).SelectMany(scene=>Values(scene,"m_drawCalls")).Where(draw=>draw.ContainsKey("m_material")).Select(draw=>draw["m_material"]).DistinctBy(Text).ToArray();
             foreach(var group in Values(root,"m_materialGroups"))group["m_materials"]=Array(Values(group,"m_materials").Concat(donorMaterials));
-            var info=root["m_modelInfo"];var sourceInfo=source["m_modelInfo"];if(sourceInfo.TryGetValue("m_keyValueText",out var text)&&Text(text).Length>0)info["m_keyValueText"]=new KVObject(MergeParticleText(info.TryGetValue("m_keyValueText",out var old)?Text(old):"",Text(text)));
+            var info=root["m_modelInfo"];var sourceInfo=source["m_modelInfo"];if(!entry.SkipParticleMetadata&&sourceInfo.TryGetValue("m_keyValueText",out var text)&&Text(text).Length>0)info["m_keyValueText"]=new KVObject(MergeParticleText(info.TryGetValue("m_keyValueText",out var old)?Text(old):"",Text(text)));
             AddReferences(host,donor);
             foreach(var key in new[]{"pool_size_hint","pool_size_hint_mesh"})if(control.TryGetValue(key,out var hint))control[key]=new KVObject(checked(hint.ToInt64(CultureInfo.InvariantCulture)+(sourceCtrl.TryGetValue(key,out var sourceHint)?sourceHint.ToInt64(CultureInfo.InvariantCulture):bytes.Length*4L)));
         }
@@ -284,6 +286,7 @@ internal static class ModelMerge
             var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
         }
         if(morphEdited&&mergedMorph is not null&&morphBlock is not null)chunks[host.Blocks.IndexOf(morphBlock)]=new Chunk(BlockType.MRPH,Serialize(mergedMorph,original[(int)morphBlock.Offset]));
+        if(request.TesterImporterRoots&&request.HostModel=="models/heroes/ursa/ursa.vmdl_c")ModelSelectionBounds.Apply(root,host.Blocks.Where(b=>b.Type==BlockType.MDAT).Select(b=>Read(host,original,b).Data.Root));
         control["embedded_meshes"]=Array(meshRows);
         chunks[host.Blocks.IndexOf(dataBlock)]=new Chunk(dataBlock.Type,Serialize(data,original[(int)dataBlock.Offset]));chunks[host.Blocks.IndexOf(ctrlBlock)]=new Chunk(ctrlBlock.Type,Serialize(ctrl,original[(int)ctrlBlock.Offset]));
         if(host.ExternalReferences is { } references){using var buffer=new MemoryStream();references.Serialize(buffer);chunks[host.Blocks.IndexOf(references)]=new Chunk(references.Type,buffer.ToArray());}

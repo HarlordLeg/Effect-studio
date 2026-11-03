@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <!-- Several standalone test projects live in tests/. Sharing their obj/
+         cache could execute a different project's stale entry point. -->
+    <BaseIntermediateOutputPath>obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/$(MSBuildProjectName)/</BaseOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

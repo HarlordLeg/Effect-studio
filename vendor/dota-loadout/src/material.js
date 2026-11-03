@@ -36,7 +36,7 @@ const TO_SOURCE = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRot
 export function heroMaterial(m, texture, time, light, cube = null) {
   const material = new THREE.MeshPhongMaterial({
     map: m.color ? texture(m.color, true) : null, normalMap: m.normal ? texture(m.normal) : null,
-    alphaTest: m.alphaTest || 0, transparent: !!(m.translucent || m.additive), depthWrite: !(m.translucent || m.additive), side: THREE.DoubleSide,
+    alphaMap: m.opacity ? texture(m.opacity) : null, alphaTest: m.alphaTest || 0, transparent: !!(m.translucent || m.additive || m.opacity && !m.alphaTest), depthWrite: !(m.translucent || m.additive || m.opacity && !m.alphaTest), side: THREE.DoubleSide,
   });
   // Effect Studio compatibility for existing glTF PBR color factors.
   if (m.baseColor?.length >= 3) { material.color.setRGB(...m.baseColor.slice(0, 3)); material.opacity = m.baseColor[3] ?? 1; }
