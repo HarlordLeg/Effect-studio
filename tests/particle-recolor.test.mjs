@@ -12,6 +12,7 @@ test('arcana tint retains its existing texture/rendering path',()=>{const packet
 test('black sprites darken the background in both recolor preview paths',()=>{
  const original=fixture();
  original.m_Renderers[0].m_nOutputBlendMode='PARTICLE_OUTPUT_BLEND_MODE_ADD';
+ original.m_Renderers[0].m_vecTexturesInput=[{}, {m_nTextureChannels:'SPRITECARD_TEXTURE_CHANNEL_MIX_A'}];
  const packet={root:'a.vpcf',definitions:{'a.vpcf_c':original}};
  const data=effectSource(new SceneSource(),[
   {packet,color:[0,0,0]},{packet:{...packet,arcanaRgb:true},color:[0,0,0]},{packet},
@@ -20,6 +21,8 @@ test('black sprites darken the background in both recolor preview paths',()=>{
   const renderer=data.systems[key].m_Renderers[0];
   assert.equal(renderer.m_nOutputBlendMode,undefined);
   assert.equal(renderer.m_flAddSelfAmount,0);
+  assert.equal(renderer.m_vecTexturesInput[0].m_nTextureChannels,'SPRITECARD_TEXTURE_CHANNEL_MIX_A_RGBALPHA');
+  assert.equal(renderer.m_vecTexturesInput[1].m_nTextureChannels,'SPRITECARD_TEXTURE_CHANNEL_MIX_A');
  }
  assert.equal(data.systems['studio/2/a'].m_Renderers[0].m_nOutputBlendMode,'PARTICLE_OUTPUT_BLEND_MODE_ADD');
 });

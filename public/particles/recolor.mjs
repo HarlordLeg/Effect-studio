@@ -1,8 +1,16 @@
+const rgbAlpha='SPRITECARD_TEXTURE_CHANNEL_MIX_A_RGBALPHA';
+export function usesRgbAlpha(channels){
+ return channels==null||channels==='SPRITECARD_TEXTURE_CHANNEL_MIX_RGB'||channels==='SPRITECARD_TEXTURE_CHANNEL_MIX_RGBA';
+}
 export function enableDarkBlend(root,rgb){
  if(Math.max(...rgb)>16)return;
  for(const renderer of root.m_Renderers??[]){
   if(!['C_OP_RenderSprites','C_OP_RenderTrails','C_OP_RenderRopes'].includes(renderer._class)||renderer.m_nOutputBlendMode==='PARTICLE_OUTPUT_BLEND_MODE_MOD2X')continue;
-  if(renderer.m_nOutputBlendMode==='PARTICLE_OUTPUT_BLEND_MODE_ADD')delete renderer.m_nOutputBlendMode;
+  const additive=renderer.m_nOutputBlendMode==='PARTICLE_OUTPUT_BLEND_MODE_ADD';
+  if(additive)delete renderer.m_nOutputBlendMode;
+  if(additive||Object.hasOwn(renderer,'m_flAddSelfAmount')){
+   for(const texture of renderer.m_vecTexturesInput??[])if(usesRgbAlpha(texture.m_nTextureChannels))texture.m_nTextureChannels=rgbAlpha;
+  }
   if(Object.hasOwn(renderer,'m_flAddSelfAmount'))renderer.m_flAddSelfAmount=0;
  }
 }

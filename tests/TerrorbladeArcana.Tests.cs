@@ -30,8 +30,10 @@ internal static class TerrorbladeArcanaTests{
  Check(TerrorbladeArcana.Color(new[]{255,60,40},new[]{0,0,0}).All(v=>v==0),"Black color invalid");
  var dark=ValveKeyValue.KVObject.Collection();var renderers=ValveKeyValue.KVObject.Array();dark["m_Renderers"]=renderers;
  var sprite=ValveKeyValue.KVObject.Collection();sprite["_class"]=new ValveKeyValue.KVObject("C_OP_RenderSprites");sprite["m_nOutputBlendMode"]=new ValveKeyValue.KVObject("PARTICLE_OUTPUT_BLEND_MODE_ADD");sprite["m_flAddSelfAmount"]=new ValveKeyValue.KVObject(1d);renderers.Add(sprite);
+ var textures=ValveKeyValue.KVObject.Array();var spriteTexture=ValveKeyValue.KVObject.Collection();textures.Add(spriteTexture);sprite["m_vecTexturesInput"]=textures;
  ParticleRecolor.EnableDarkBlend(dark,[255,60,40]);Check(sprite.ContainsKey("m_nOutputBlendMode"),"Bright recolor changed blend mode");
  ParticleRecolor.EnableDarkBlend(dark,[0,0,0]);Check(!sprite.ContainsKey("m_nOutputBlendMode")&&sprite["m_flAddSelfAmount"].ToDouble(CultureInfo.InvariantCulture)==0,"Black sprite still uses additive blending");
+ Check(spriteTexture["m_nTextureChannels"].ToString(null)=="SPRITECARD_TEXTURE_CHANNEL_MIX_A_RGBALPHA","Dark sprite needs RGB coverage");
  Console.WriteLine("[OK] Arcana particle colors, control point multipliers, material bindings, VTEX alpha and mip levels");return 0;
  }finally{Directory.Delete(root,true);}}
 }

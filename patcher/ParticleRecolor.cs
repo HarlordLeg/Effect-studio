@@ -12,11 +12,18 @@ internal static class ParticleRecolor {
   if(rgb.Max()>16||!root.TryGetValue("m_Renderers",out var renderers)||!renderers.IsArray)return;
   foreach(var renderer in renderers.Values){
    if(!renderer.TryGetValue("_class",out var cls)||cls.ToString(null) is not ("C_OP_RenderSprites" or "C_OP_RenderTrails" or "C_OP_RenderRopes"))continue;
-   if(renderer.TryGetValue("m_nOutputBlendMode",out var mode)){
-    if(mode.ToString(null)=="PARTICLE_OUTPUT_BLEND_MODE_MOD2X")continue;
-    if(mode.ToString(null)=="PARTICLE_OUTPUT_BLEND_MODE_ADD")renderer.Remove("m_nOutputBlendMode");
-   }
-   if(renderer.ContainsKey("m_flAddSelfAmount"))renderer["m_flAddSelfAmount"]=new KVObject(0d);
+   var mode=renderer.TryGetValue("m_nOutputBlendMode",out var blend)?blend.ToString(null):null;
+   if(mode=="PARTICLE_OUTPUT_BLEND_MODE_MOD2X")continue;
+   var additive=mode=="PARTICLE_OUTPUT_BLEND_MODE_ADD";
+   var addSelf=renderer.ContainsKey("m_flAddSelfAmount");
+   if(additive)renderer.Remove("m_nOutputBlendMode");
+   // Additive sprites can store the silhouette in RGB with opaque alpha.
+   if((additive||addSelf)&&renderer.TryGetValue("m_vecTexturesInput",out var textures)&&textures.IsArray)
+    foreach(var texture in textures.Values)
+     if(texture.IsCollection&&(!texture.TryGetValue("m_nTextureChannels",out var channels)||
+        channels.ToString(null) is "SPRITECARD_TEXTURE_CHANNEL_MIX_RGB" or "SPRITECARD_TEXTURE_CHANNEL_MIX_RGBA"))
+      texture["m_nTextureChannels"]=new KVObject("SPRITECARD_TEXTURE_CHANNEL_MIX_A_RGBALPHA");
+   if(addSelf)renderer["m_flAddSelfAmount"]=new KVObject(0d);
   }
  }
  internal static void Apply(KVObject root,int[] rgb){
