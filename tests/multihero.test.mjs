@@ -19,3 +19,13 @@ test('reported missing portraits are bundled and old/display hero names resolve 
  for(const id of ids){const url=heroImage({id});assert.ok(url.startsWith('/images/heroes/'));const data=fs.readFileSync(path.join(root,'public',url));assert.deepEqual([...data.subarray(0,8)],[137,80,78,71,13,10,26,10]);}
  for(const [alias,id] of [['magnus','magnataur'],['outworld_destroyer','obsidian_destroyer'],['windranger','windrunner']])assert.equal(heroImage({id:alias}),heroImage({id}));
 });
+
+test('VPK selection accepts 128 equipment slots and rejects 129',()=>{
+ const rows=Array.from({length:129},(_,i)=>({heroId:'hero-'+i,itemId:'item-'+i}));
+ const builder={
+  catalog:{effects:[]},
+  cosmeticChoice:(heroId,itemId)=>({hero:{id:heroId},item:{id:itemId,slot:'weapon'}})
+ };
+ for(const count of [33,128])assert.equal(normalizeSelections(builder,{mode:'set',selections:rows.slice(0,count)}).length,count);
+ assert.throws(()=>normalizeSelections(builder,{mode:'set',selections:rows}),/1–128 items/);
+});

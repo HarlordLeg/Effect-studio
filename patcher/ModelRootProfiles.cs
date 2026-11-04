@@ -21,6 +21,15 @@ internal static class ModelRootProfiles
             var head=names.SingleOrDefault(n=>string.Equals(n,"head",StringComparison.OrdinalIgnoreCase));if(head is not null)return new Dictionary<string,string>(StringComparer.Ordinal){{"cat_head_base",head}};
         }
         if(host.StartsWith("models/heroes/ember_spirit/",StringComparison.Ordinal)&&(donor=="models/items/ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder.vmdl_c"||donor=="models/items/ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder.vmdl")&&roots.Length==1&&roots[0] is "Root_JNT" or "Root0_JNT")return new Dictionary<string,string>(StringComparer.Ordinal){{"ember_spirit_base",roots[0]}};
+        var donorPath = donor.EndsWith("_c", StringComparison.Ordinal) ? donor[..^2] : donor;
+        if (host is ("models/heroes/omniknight/omniknight.vmdl_c" or "models/heroes/omniknight/omniknight.vmdl") &&
+            donorPath == "models/items/omniknight/the_fist_of_frenzied_sun_shoulders/the_fist_of_frenzied_sun_shoulders.vmdl" &&
+            roots.Contains("root", StringComparer.Ordinal))
+            return new Dictionary<string, string>(StringComparer.Ordinal) { ["back_rays_R_01_JNT"] = "root", ["back_rays_L_01_JNT"] = "root" };
+        if (host is ("models/heroes/invoker/invoker.vmdl_c" or "models/heroes/invoker/invoker.vmdl") &&
+            donorPath == "models/items/invoker/covenant_of_the_depths_belt_v2/covenant_of_the_depths_belt_v2.vmdl" &&
+            roots.Contains("root_0", StringComparer.Ordinal))
+            return new Dictionary<string, string>(StringComparer.Ordinal) { ["invoker_body_model"] = "root_0" };
         if(roots.Length!=1)return null;
         var profiles=new (string[] Heroes,string[] Bones)[]{
             (new[]{"windrunner","windranger"},new[]{"wr_root"}),
