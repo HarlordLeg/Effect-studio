@@ -32,3 +32,15 @@ test('Clinkz hero and summon build together despite their original shared-arrow 
   for(const row of rows){const file=manifest.files.find(f=>f.name===row.hero.defaultSlotModels[row.item.slot]);assert.equal(file.paths[target.replace(/_c$/,'')],row.item.nativeOverrides.entries[0].source.replace(/_c$/,''));}
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
+
+test('Void and QoP can share a VPK with the stock global deny effect',()=>{
+ const target='particles/msg_fx/msg_deny.vpcf_c';
+ const rows=[
+  ['faceless_void','faceless_void_arcana/faceless_void_arcana_deny'],
+  ['queen_of_pain','qop_arcana/qop_arcana_msg_deny'],
+ ].map(([id,source])=>({hero:{id},item:{nativeOverrides:{entries:[{
+  type:'particle',target,source:'particles/econ/items/'+id+'/'+source+'.vpcf_c',
+ }]}}}));
+ for(const row of rows)assert.equal(particleOverridePlan([row]).get(target),row.item.nativeOverrides.entries[0]);
+ for(const order of [rows,[...rows].reverse()])assert.equal(particleOverridePlan(order).has(target),false);
+});
