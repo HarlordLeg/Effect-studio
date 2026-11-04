@@ -12,7 +12,7 @@ internal static class PersonaVoices
     private sealed record Pick(string Input,string Output);
     private sealed record Request(Voice[] Voices,Pick? Pick);
     private static string Group(string suffix)=>Regex.Replace(suffix,@"\d+$","").Replace("_","",StringComparison.Ordinal);
-    internal static Dictionary<string,KVObject> Map(KVObject root,Profile[] profiles,Dictionary<string,string> exact)
+    internal static Dictionary<string,KVObject> Map(KVObject root,Profile[] profiles,Dictionary<string,string> exact,bool allowEmpty=false)
     {
         var result=new Dictionary<string,KVObject>(StringComparer.Ordinal);
         foreach(var profile in profiles)
@@ -38,7 +38,58 @@ internal static class PersonaVoices
                 if(source is not null)result[name]=source;
             }
         }
-        if(result.Count==0)throw new InvalidDataException("No base voice events could be replaced");
+        if(result.Count==0&&!allowEmpty)throw new InvalidDataException("No base voice events could be replaced");
+        return result;
+    }
+    internal static Dictionary<string,KVObject> MapGoodOldDays(KVObject root,bool owned)
+    {
+        const string kid="invoker_kidvoker_", adult="invoker_invo_";
+        var happyPrefix=new Regex(@"^invoker_(?:kidvoker_?happy|happy_?kidvoker)_",RegexOptions.IgnoreCase);
+        var sources=root.Where(p=>p.Value.IsCollection&&happyPrefix.IsMatch(p.Key)).ToArray();
+        var targets=root.Where(p=>p.Value.IsCollection&&!happyPrefix.IsMatch(p.Key)&&
+            (p.Key.StartsWith(kid,StringComparison.Ordinal)||(!owned&&p.Key.StartsWith(adult,StringComparison.Ordinal)))).ToArray();
+        string Line(string name)
+        {
+            name=name.Replace('\\','/').Split('/')[^1];
+            name=Regex.Replace(name,@"\.vsnd(?:_c)?$","",RegexOptions.IgnoreCase);
+            name=Regex.Replace(name,@"^(?:(?:invoker|kidvoker|invo|happy)[_-]*)+","",RegexOptions.IgnoreCase);
+            return name.Replace("_","",StringComparison.Ordinal).ToLowerInvariant();
+        }
+        IEnumerable<string> Clips(KVObject value)
+        {
+            if(value.IsCollection||value.IsArray)
+            {
+                foreach(var child in value.Values)
+                    foreach(var clip in Clips(child))yield return clip;
+            }
+            else
+            {
+                var name=value.ToString(null);
+                if(name.EndsWith(".vsnd",StringComparison.OrdinalIgnoreCase)||name.EndsWith(".vsnd_c",StringComparison.OrdinalIgnoreCase))
+                    yield return Line(name);
+            }
+        }
+        IEnumerable<string> Keys(string name,KVObject value)
+        {
+            yield return Line(name);
+            if(value.TryGetValue("vsnd_files",out var files))
+                foreach(var clip in Clips(files))yield return clip;
+        }
+        var byLine=sources.SelectMany(p=>Keys(p.Key,p.Value).Distinct().Where(k=>k.Length>0).Select(k=>(Key:k,p.Value)))
+            .ToLookup(p=>p.Key,p=>p.Value,StringComparer.Ordinal);
+        var result=new Dictionary<string,KVObject>(StringComparer.Ordinal);
+        foreach(var (name,value) in targets)
+        {
+            foreach(var key in Keys(name,value))
+            {
+                var matches=byLine[key].Distinct().Take(2).ToArray();
+                if(matches.Length!=1)continue;
+                result[name]=matches[0];
+                break;
+            }
+        }
+        if(result.Count==0)
+            throw new InvalidDataException($"The Good Old Days: no matching lines (alternate={sources.Length}, targets={targets.Length}); alternate examples: {string.Join(", ",sources.Take(5).Select(p=>p.Key))}; target examples: {string.Join(", ",targets.Take(5).Select(p=>p.Key))}");
         return result;
     }
     internal static void Write(Resource resource,string input,string output)
@@ -74,15 +125,18 @@ internal static class PersonaVoices
             var mapped=voice.Owned||voice.Style=="good-old-days"?new Dictionary<string,KVObject>(StringComparer.Ordinal):Map(root,voice.Profiles,voice.Events);
             if(voice.Style=="good-old-days")
             {
-                var prefixes=root.Keys.Select(key=>Regex.Match(key,@"^invoker_(?:kidvoker_?happy|happy_?kidvoker)_"))
-                    .Where(match=>match.Success).Select(match=>match.Value).Distinct().ToArray();
-                if(prefixes.Length!=1)throw new InvalidDataException("Could not identify The Good Old Days events in the Invoker voice bank");
-                // The alternate recordings follow the kid's response categories.
-                // Resolve them against the kid first, then reuse the adult aliases.
-                var kid=Map(root,[new("invoker_kidvoker_",prefixes[0])],new());
-                foreach(var (name,value) in kid)root[name]=value;
-                if(!voice.Owned)mapped=Map(root,voice.Profiles,voice.Events);
-                foreach(var (name,value) in kid)mapped[name]=value;
+                var happy=MapGoodOldDays(root,voice.Owned);
+                if(!voice.Owned)
+                {
+                    foreach(var (name,value) in happy.Where(p=>p.Key.StartsWith("invoker_kidvoker_",StringComparison.Ordinal)))
+                        root[name]=value;
+                    mapped=Map(root,voice.Profiles,voice.Events,allowEmpty:true);
+                    var alternateClips=happy.Values.ToHashSet();
+                    if(!happy.Keys.Any(name=>name.StartsWith("invoker_invo_",StringComparison.Ordinal))&&
+                       !mapped.Values.Any(alternateClips.Contains))
+                        throw new InvalidDataException("The Good Old Days: matched kid lines, but none could be assigned to adult Invoker events");
+                }
+                foreach(var (name,value) in happy)mapped[name]=value;
             }
             foreach(var (name,value) in mapped){binary.Data.Root[name]=value;if(!aliases.TryAdd(name,value))throw new InvalidDataException("Conflicting persona voice event: "+name);}
             Write(resource,voice.Input,voice.Output);reports.Add(new {hero=voice.Hero,replacedEvents=mapped.Count});

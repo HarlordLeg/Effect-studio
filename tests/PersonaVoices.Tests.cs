@@ -14,6 +14,17 @@ internal static class PersonaVoiceTests
   var pick=Parse("{ hero_old_move_01 = { type = \"dota_src1_2d\" volume = 0.5 vsnd_files = \"old\" vsnd_duration = 9.0 vsnd_old_field = true } other_move_01 = { vsnd_files = \"untouched\" } }");
   Check(PersonaVoices.ApplyPick(pick,mapped)==1,"Pick merge count");var selected=pick["hero_old_move_01"];Check(selected["type"].ToString(null)=="dota_src1_2d"&&selected["volume"].ToDouble(null)==0.5,"Pick routing changed");Check(selected["vsnd_files"].ToString(null)=="new1"&&!selected.ContainsKey("vsnd_old_field"),"Pick audio not replaced");Check(pick["other_move_01"]["vsnd_files"].ToString(null)=="untouched","Other hero changed");
   try{PersonaVoices.Map(root,[new("missing_","missing_persona_")],new());throw new Exception("Missing persona accepted");}catch(InvalidDataException){}
+  var invoker=Parse("""
+  {
+    invoker_kidvoker_move_01 = { vsnd_files = "sounds/vo/invoker/kidvoker_move_01.vsnd" }
+    invoker_invo_move_01 = { vsnd_files = "sounds/vo/invoker/invo_move_01.vsnd" }
+    invoker_happy_kidvoker_event_9 = { vsnd_files = ["sounds/vo/invoker/happy/kidvoker_move_01.vsnd"] }
+    invoker_kidvoker_attack_01 = { vsnd_files = "sounds/vo/invoker/kidvoker_attack_01.vsnd" }
+  }
+  """);
+  var happy=PersonaVoices.MapGoodOldDays(invoker,false);
+  Check(happy.Count==2&&happy.ContainsKey("invoker_invo_move_01")&&happy.ContainsKey("invoker_kidvoker_move_01"),"Happy voice audio basename fallback failed");
+  Check(PersonaVoices.MapGoodOldDays(invoker,true).Count==1,"Owned persona must not replace adult voices");
   Console.WriteLine("[OK] Persona event aliases, categories, authored overrides and isolated hero-pick merge");return 0;
  }
 }

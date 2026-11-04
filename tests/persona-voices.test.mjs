@@ -30,3 +30,24 @@ test('old patcher and missing voice source fail clearly instead of silently buil
  builder.run=async()=>JSON.stringify({personaVoicesV1:true});await assert.rejects(applyPersonaVoices(builder,[{hero}],new Map(),dir,'patcher',{}),/файл реплик/);assert.deepEqual(fs.readdirSync(dir),[]);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('Good Old Days rejects the old voice matcher before staging sound files',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'des-invoker-voice-'));try{
+  const voice=personaVoiceDefinition({id:'invoker'},{VoiceFile:'soundevents/invoker.vsndevts'});
+  const hero={id:'invoker_persona',isPersona:true,personaVoice:{...voice,style:'good-old-days'}};
+  let current=false;
+  const builder={root:dir,store:{read:n=>n===voice.file?Buffer.from('voice bank'):null},run:async(_,args)=>{
+   if(args[0]==='--capabilities')return JSON.stringify({personaVoicesV1:true,personaVoiceStylesV1:true,personaVoiceStylesV2:current});
+   assert.equal(args[0],'--persona-voices');
+   const {voices}=JSON.parse(fs.readFileSync(args[1]));
+   assert.equal(voices[0].style,'good-old-days');
+   fs.writeFileSync(voices[0].output,'alternate voice');
+   return '{}';
+  }};
+  const packed=new Map();
+  await assert.rejects(applyPersonaVoices(builder,[{hero}],packed,dir,'patcher',{}),/personaVoiceStylesV2/);
+  assert.deepEqual(fs.readdirSync(dir),[]);
+  current=true;
+  await applyPersonaVoices(builder,[{hero}],packed,dir,'patcher',{});
+  assert.equal(packed.get(voice.file).toString(),'alternate voice');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
