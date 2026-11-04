@@ -8,7 +8,7 @@ using ValveResourceFormat.ResourceTypes;
 internal static class PersonaVoices
 {
     internal sealed record Profile(string BasePrefix,string PersonaPrefix);
-    private sealed record Voice(string Input,string Output,string Hero,Profile[] Profiles,Dictionary<string,string> Events);
+    private sealed record Voice(string Input,string Output,string Hero,Profile[] Profiles,Dictionary<string,string> Events,string? Style=null,bool Owned=false);
     private sealed record Pick(string Input,string Output);
     private sealed record Request(Voice[] Voices,Pick? Pick);
     private static string Group(string suffix)=>Regex.Replace(suffix,@"\d+$","");
@@ -70,7 +70,17 @@ internal static class PersonaVoices
         {
             using var resource=new Resource{FileName=voice.Input};resource.Read(voice.Input);
             if(resource.DataBlock is not BinaryKV3 binary)throw new InvalidDataException("Unsupported voice resource: "+voice.Hero);
-            var mapped=Map(binary.Data.Root,voice.Profiles,voice.Events);
+            var root=binary.Data.Root;
+            var mapped=voice.Owned?new Dictionary<string,KVObject>(StringComparer.Ordinal):Map(root,voice.Profiles,voice.Events);
+            if(voice.Style=="good-old-days")
+            {
+                var prefixes=root.Keys.Select(key=>Regex.Match(key,@"^invoker_(?:kidvoker_?happy|happy_?kidvoker)_"))
+                    .Where(match=>match.Success).Select(match=>match.Value).Distinct().ToArray();
+                if(prefixes.Length!=1)throw new InvalidDataException("Could not identify The Good Old Days events in the Invoker voice bank");
+                var target=voice.Owned?"invoker_kidvoker_":"invoker_invo_";
+                foreach(var (name,value) in Map(root,[new(target,prefixes[0])],new()))
+                    mapped[name]=value;
+            }
             foreach(var (name,value) in mapped){binary.Data.Root[name]=value;if(!aliases.TryAdd(name,value))throw new InvalidDataException("Conflicting persona voice event: "+name);}
             Write(resource,voice.Input,voice.Output);reports.Add(new {hero=voice.Hero,replacedEvents=mapped.Count});
         }
