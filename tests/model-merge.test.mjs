@@ -138,9 +138,8 @@ test('Kunkka merge carries stable source identities through staged files and rej
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test('Naga immortal head and Tinker laser use authored animated hero profiles, suppressing only their base part',()=>{
+test('Tinker laser uses authored animated hero profiles, suppressing only their base part',()=>{
  for(const [id,model,base,profile,slot] of [
-  ['naga_siren','models/items/siren/naga_ti10_immortal_head/naga_ti10_immortal_head.vmdl_c','models/heroes/siren/siren_hair.vmdl_c','naga-ti10-head','head'],
   ['tinker','models/items/tinker/tinker_ti10_immortal_laser/tinker_ti10_immortal_laser.vmdl_c','models/heroes/tinker/tinker_right_arm.vmdl_c','tinker-ti10-laser','weapon']]){
   const h=hero(id);h.model=id==='naga_siren'?'models/heroes/siren/siren.vmdl_c':h.model;h.defaultSlotModels={[slot]:base};h.items=[{id:'selected',slot,model},{id:'ordinary',slot,model:'models/items/'+id+'/ordinary.vmdl_c'}];
   configureModelMerging({heroes:[h]},{read:()=>null});assert.equal(h.items[0].mergeProfile,profile);assert.equal(h.items[0].mergeTarget,h.model);assert.deepEqual(h.items[0].mergeSuppress,[base]);assert.equal(h.items[1].mergeProfile,undefined);
@@ -151,6 +150,18 @@ test('Naga immortal head and Tinker laser use authored animated hero profiles, s
 
 test('animated profiles fail clearly when a manually installed server template is missing',()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-missing-profile-'));
- try{for(const profile of ['naga-ti10-head','tinker-ti10-laser'])assert.throws(()=>profileSources({root},[{hero:{id:'test'},item:{mergeProfile:profile}}]),error=>error.message.includes('data'+path.sep+'model-merge-templates'+path.sep+profile+'.vpk'));}
+ try{for(const profile of ['tinker-ti10-laser'])assert.throws(()=>profileSources({root},[{hero:{id:'test'},item:{mergeProfile:profile}}]),error=>error.message.includes('data'+path.sep+'model-merge-templates'+path.sep+profile+'.vpk'));}
  finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
+
+test('Naga immortal head uses the original wearable instead of a server template',()=>{
+ const h=hero('naga_siren'),base='models/heroes/siren/siren_hair.vmdl_c';
+ const item={id:'immortal',slot:'head',model:'models/items/siren/naga_ti10_immortal_head/naga_ti10_immortal_head.vmdl_c',mergeProfile:'naga-ti10-head',mergeTarget:h.model,mergeSuppress:[base]};
+ h.defaultSlotModels={head:base};h.items=[item];
+ configureModelMerging({heroes:[h]},{read:()=>null});
+ assert.equal(item.replacesModel,base);
+ assert.equal(item.mergeTarget,undefined);
+ assert.equal(item.mergeSuppress,undefined);
+ assert.equal(profileSources({root:'unused'},[{hero:h,item}]).size,0);
 });
