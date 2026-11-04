@@ -105,3 +105,13 @@ test('explicit default head never replaces the arcana head or its authored body 
  mergeArcanaFiles(packed,{files:new Map([[body,arcanaBody],[head,arcanaHorns]])},[{hero,item:{slot:'head',isDefault:true,replacesModel:head,nativeOverrides:{entries:[{type:'model',target:body}]}}}]);
  assert.deepEqual(packed.get(body),arcanaBody);assert.deepEqual(packed.get(head),arcanaHorns);assert.deepEqual(packed.get(arcanaHead),arcanaHorns);
 });
+
+test('arcana overlay keeps the selected Metamorphosis model at the transformation path',()=>{
+ const target='models/heroes/terrorblade/demon.vmdl_c',selected=Buffer.from('selected demon'),template=Buffer.from('template demon');
+ const packed=new Map([[target,selected],[hero.model,Buffer.from('ordinary body')]]);
+ mergeArcanaFiles(packed,{files:new Map([[target,template]])},[{hero,item:{slot:'demon'}}]);
+ assert.equal(packed.get(target),selected);
+ assert.equal(packed.get(hero.model).toString(),'ordinary body');
+ mergeArcanaFiles(packed,{files:new Map([[target,template]])},[]);
+ assert.equal(packed.get(target),template);
+});

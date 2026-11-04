@@ -24,3 +24,13 @@ test('Beastmaster snapshot carriers are processed without requiring a wearable r
  try{await applyTesterHosts(builder,rows,files,new Set(),[],dir,'native',{});for(const n of names)assert(files.get(n).equals(resource));}finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('Pudge bare arm invisiblebox stays metadata-only without accepting arbitrary cube roots',()=>{const row=choice('arms',{model:'models/development/invisiblebox.vmdl_c'});assert.equal(testerHostPlan([row],contents([row])).groups.get(host)[0].metadataOnly,true);const real=choice('arms',{model:'models/items/test/cube.vmdl_c'});assert.equal(testerHostPlan([real],contents([real])).groups.get(host)[0].metadataOnly,undefined);});
+
+test('Terrorblade Metamorphosis stays on its transformation model path',()=>{
+ const hero={id:'terrorblade',model:'models/heroes/terrorblade/terrorblade.vmdl_c'};
+ const demon={...choice('demon',{replacesModel:'models/heroes/terrorblade/demon.vmdl_c'}),hero};
+ const weapon={...choice('weapon',{replacesModel:'models/heroes/terrorblade/weapon.vmdl_c'}),hero};
+ const plan=testerHostPlan([demon,weapon],contents([demon,weapon]));
+ assert.deepEqual(plan.groups.get(hero.model).map(d=>d.slot),['weapon']);
+ assert.equal(plan.coverage[0].kind,'transformation-model');
+ assert.throws(()=>testerHostPlan([demon],new Map()),/Metamorphosis/);
+});

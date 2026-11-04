@@ -194,7 +194,7 @@ internal static class ModelMerge
     }
     public static void Run(string manifest){
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty mesh merge manifest");
-        if(request.Donors.Length is <1 or >32)throw new InvalidDataException("Choose 1–32 merge donors");
+        if(request.Donors.Length==0)throw new InvalidDataException("Choose at least one merge donor");
         var temporary=new List<string>();
         try{
             request=request with{Input=EmbedExternalMeshes(request.Input,request.Meshes,temporary),Donors=request.Donors.Select(d=>d.MetadataOnly?d:d with{Input=EmbedExternalMeshes(d.Input,request.Meshes,temporary)}).ToArray()};
