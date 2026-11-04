@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Numerics;using System.Text.Json;using ValveKeyValue;using ValveKeyValue.KeyValues3;using ValveResourceFormat;using ValveResourceFormat.Blocks;using ValveResourceFormat.ResourceTypes;
 // Added-effect geometry only. Never delete bones from an animated game model.
 internal static class ItemEffectScope {
@@ -24,7 +25,40 @@ internal static class ItemEffectScope {
   weights??=Enumerable.Repeat(new Vector4(1,0,0,0),count).ToArray();if(weights.Length!=count)throw new InvalidDataException("Unsupported item skin weight layout");return(indices,weights);
  }
  static int? RigidBone(Model model,Mesh mesh,int index){var names=model.Skeleton.Bones.Select(b=>b.Name).ToArray();if(names.Length==1)return 0;var remap=model.GetRemapTable(index);if(remap?.Distinct().ToArray() is {Length:1} unique)return unique[0];if(mesh.Data.TryGetValue("m_skeleton",out var sk)&&sk.TryGetValue("m_bones",out var rows)){var used=rows.Values.Where(b=>b.TryGetValue("m_flSphereRadius",out var r)&&r.ToSingle(null)>0).ToArray();if(used.Length==1){var found=Array.FindIndex(names,n=>string.Equals(n,used[0]["m_boneName"].ToString(null),StringComparison.OrdinalIgnoreCase));if(found>=0)return found;}}return null;}
- internal static List<Point> Geometry(Model model,Model host,IReadOnlyDictionary<string,Mesh>? external=null){
+ // Only follow actual rendered triangle edges. Nearby disconnected pieces
+ // must not create an effect bridge across empty space.
+ static void SampleDrawEdges(Mesh mesh,int vertexBufferIndex,KVObject call,Point?[] vertices,List<Point> points){
+  if(!call.TryGetValue("m_vertexBuffers",out var bindings)||!call.TryGetValue("m_indexBuffer",out var indexBinding)||
+     !call.TryGetValue("m_nStartIndex",out var start)||!call.TryGetValue("m_nIndexCount",out var count))return;
+  if(!bindings.Values.Any(b=>b["m_hBuffer"].ToInt32(null)==vertexBufferIndex&&
+      (!b.TryGetValue("m_nBindOffsetBytes",out var offset)||offset.ToInt32(null)==0)))return;
+  if(indexBinding.TryGetValue("m_nBindOffsetBytes",out var indexOffset)&&indexOffset.ToInt32(null)!=0)return;
+  var indexBufferId=indexBinding["m_hBuffer"].ToInt32(null);
+  if((uint)indexBufferId>=mesh.VBIB.IndexBuffers.Count)return;
+  var index=mesh.VBIB.IndexBuffers[indexBufferId];
+  int size=(int)index.ElementSizeInBytes,length=count.ToInt32(null),first=start.ToInt32(null),baseVertex=call["m_nBaseVertex"].ToInt32(null);
+  if(size is not (2 or 4)||first<0||length<0||length%3!=0||(long)first+length>index.Data.Length/size)return;
+  int Vertex(int i){
+   var data=index.Data.AsSpan((first+i)*size,size);
+   return checked(baseVertex+(size==2?BinaryPrimitives.ReadUInt16LittleEndian(data):(int)BinaryPrimitives.ReadUInt32LittleEndian(data)));
+  }
+  var edges=new HashSet<(int,int)>();
+  void Edge(int a,int b){
+   if((uint)a>=vertices.Length||(uint)b>=vertices.Length||a==b||!edges.Add(a<b?(a,b):(b,a)))return;
+   if(vertices[a] is { } from&&vertices[b] is { } to)points.AddRange(SampleEdge(from,to));
+  }
+  for(int i=0;i<length;i+=3){int a=Vertex(i),b=Vertex(i+1),c=Vertex(i+2);Edge(a,b);Edge(b,c);Edge(c,a);}
+ }
+ internal static IEnumerable<Point> SampleEdge(Point a,Point b){
+  var boneA=a.Bones[Array.IndexOf(a.Weights,a.Weights.Max())];
+  var boneB=b.Bones[Array.IndexOf(b.Weights,b.Weights.Max())];
+  if(boneA!=boneB)yield break;
+  var length=Vector3.Distance(a.Position,b.Position);
+  if(!float.IsFinite(length)||length<=5f)yield break;
+  var segments=(int)MathF.Min(256,MathF.Ceiling(length/5f));
+  for(int i=1;i<segments;i++)yield return a with {Position=Vector3.Lerp(a.Position,b.Position,(float)i/segments)};
+ }
+ internal static List<Point> Geometry(Model model,Model host,IReadOnlyDictionary<string,Mesh>? external=null,bool sampleEdges=false){
   var names=model.Skeleton.Bones.Select(b=>b.Name).ToArray();var canonical=host.Skeleton.Bones.GroupBy(b=>b.Name,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()==1).ToDictionary(g=>g.Key,g=>g.First().Name,StringComparer.OrdinalIgnoreCase);
   var targetPoses=Poses(model,Poses(host));var sourcePoses=Poses(model);var points=new List<Point>();var masks=model.Data["m_refMeshGroupMasks"].Values.ToArray();var selected=Mask(model.Data["m_nDefaultMeshGroupMask"]);
   var meshes=model.GetEmbeddedMeshesForLod(0).Select(v=>(Mesh:v.Item1,Index:v.Item2)).ToList();
@@ -32,16 +66,18 @@ internal static class ItemEffectScope {
   foreach(var(mesh,index)in meshes){
    if(index<masks.Length&&(Mask(masks[index])&selected)==0)continue;
    var inverse=new Dictionary<string,Matrix4x4>(StringComparer.OrdinalIgnoreCase);foreach(var(name,pose)in sourcePoses){if(!Matrix4x4.Invert(pose,out var inv))throw new InvalidDataException("Singular item bind pose");inverse[name]=inv;}if(mesh.Data.TryGetValue("m_skeleton",out var meshSkin)&&meshSkin.TryGetValue("m_bones",out var meshBones))foreach(var bone in meshBones.Values)if(bone.TryGetValue("m_invBindPose",out var inv))inverse[bone["m_boneName"].ToString(null)]=MeshInverse(inv);
-   var ranges=new List<(int Start,int Count)>();if(mesh.Data.TryGetValue("m_sceneObjects",out var scenes))foreach(var scene in scenes.Values)if(scene.TryGetValue("m_drawCalls",out var calls))foreach(var call in calls.Values)if(call.TryGetValue("m_nVertexCount",out var count)&&call.TryGetValue("m_nBaseVertex",out var start))ranges.Add((start.ToInt32(null),count.ToInt32(null)));
+   var ranges=new List<(int Start,int Count)>();var drawCalls=new List<KVObject>();if(mesh.Data.TryGetValue("m_sceneObjects",out var scenes))foreach(var scene in scenes.Values)if(scene.TryGetValue("m_drawCalls",out var calls))foreach(var call in calls.Values)if(call.TryGetValue("m_nVertexCount",out var count)&&call.TryGetValue("m_nBaseVertex",out var start)){ranges.Add((start.ToInt32(null),count.ToInt32(null)));drawCalls.Add(call);}
    if(ranges.Count==0||ranges.Any(r=>r.Start<0||r.Count<0))throw new InvalidDataException("Item mesh has no readable visible draw ranges");
-   foreach(var buffer in mesh.VBIB.VertexBuffers){var fields=buffer.InputLayoutFields;var position=fields.FirstOrDefault(f=>f.SemanticName=="POSITION");if(position.SemanticName!="POSITION")continue;
+   for(int bufferIndex=0;bufferIndex<mesh.VBIB.VertexBuffers.Count;bufferIndex++){var buffer=mesh.VBIB.VertexBuffers[bufferIndex];var fields=buffer.InputLayoutFields;var position=fields.FirstOrDefault(f=>f.SemanticName=="POSITION");if(position.SemanticName!="POSITION")continue;
     var positions=VBIB.GetVector3AttributeArray(buffer,position);var joints=fields.FirstOrDefault(f=>f.SemanticName=="BLENDINDICES");var weights=fields.FirstOrDefault(f=>f.SemanticName=="BLENDWEIGHT");
     var (indices,values)=Skin(positions.Length,joints.SemanticName=="BLENDINDICES"?VBIB.GetBlendIndicesArray(buffer,joints,model.GetRemapTable(index)):null,weights.SemanticName=="BLENDWEIGHT"?VBIB.GetBlendWeightsArray(buffer,weights):null,RigidBone(model,mesh,index));
     var visible=Enumerable.Range(0,positions.Length).Where(i=>ranges.Any(r=>i>=r.Start&&(long)i<((long)r.Start+r.Count))).ToArray();var stride=Math.Max(1,(int)Math.Ceiling(visible.Length/2048d));
-    foreach(var i in visible.Where((_,index)=>index%stride==0)){var n=new string[4];var w=new[]{values[i].X,values[i].Y,values[i].Z,values[i].W};var sum=w.Sum();if(!float.IsFinite(sum)||sum<=0)continue;
+    var edgeVertices=sampleEdges?new Point?[positions.Length]:null;
+    foreach(var (i,order) in visible.Select((vertex,order)=>(vertex,order))){if(!sampleEdges&&order%stride!=0)continue;var n=new string[4];var w=new[]{values[i].X,values[i].Y,values[i].Z,values[i].W};var sum=w.Sum();if(!float.IsFinite(sum)||sum<=0)continue;
      for(int j=0;j<4;j++){if(!float.IsFinite(w[j])||w[j]<0)throw new InvalidDataException("Invalid skin weight");if(w[j]==0){n[j]="";continue;}var bone=indices[i*4+j];if(bone>=names.Length)throw new InvalidDataException("Invalid mesh bone remap");n[j]=canonical.GetValueOrDefault(names[bone],names[bone]);w[j]/=sum;}
-     var p=positions[i];if(!float.IsFinite(p.X)||!float.IsFinite(p.Y)||!float.IsFinite(p.Z))throw new InvalidDataException("Invalid mesh point");points.Add(new(RebasePoint(p,n,w,inverse,targetPoses),n,w));
+     var p=positions[i];if(!float.IsFinite(p.X)||!float.IsFinite(p.Y)||!float.IsFinite(p.Z))throw new InvalidDataException("Invalid mesh point");var point=new Point(RebasePoint(p,n,w,inverse,targetPoses),n,w);if(edgeVertices is not null)edgeVertices[i]=point;if(order%stride==0)points.Add(point);
     }
+    if(edgeVertices is not null)foreach(var call in drawCalls)SampleDrawEdges(mesh,bufferIndex,call,edgeVertices,points);
    }
   }
   const int maxSnapshotPoints=32768;

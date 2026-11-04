@@ -44,3 +44,24 @@ test('Monkey King arcana keeps body style and replaces its optional crown with t
  const b=builder(),hero=b.catalog.heroes.find(h=>h.id==='monkey_king');hero.items.push({id:'custom-head',slot:'head',name:'Custom head',model:'models/items/mk/custom_head.vmdl_c'});
  const rows=adminArcanaChoices(b,'monkey_king',{style:3,items:{head:'custom-head'}});assert.equal(rows.length,2);assert.equal(rows[0].item.nativeOverrides.skin,4);assert.equal(rows[1].item.id,'custom-head');assert.equal(rows[1].item.replacesModel,hero.defaultSlotModels.head);assert.ok(!rows.some(r=>r.item.id==='admin-arcana:monkey_king:head'));
 });
+
+test('Monkey King Demon Trickster refits inherit the arcana style without changing catalog defaults',()=>{
+ const b=builder(),hero=b.catalog.heroes.find(h=>h.id==='monkey_king');
+ const prefix='models/items/monkey_king/mk_ti9_immortal_weapon/';
+ const normal=prefix+'mk_ti9_immortal_weapon.vmdl',refit=prefix+'mk_ti9_immortal_arcana_weapon.vmdl';
+ const original=b.store.read('scripts/items/items_game.txt').toString();
+ const item=hero.items.find(i=>i.id==='weapon');
+ const previous=item.model;
+ assert.ok(original.includes(previous.replace(/_c$/,'')));
+ item.model=normal+'_c';
+ b.store.read=()=>Buffer.from(original.replaceAll(previous.replace(/_c$/,''),normal));
+ const authored=b.store.read().toString();
+ const match=authored.match(/"asset"\s*"[^"]*mk_ti9_immortal_weapon\.vmdl"\s*"modifier"\s*"([^"]+)"/);
+ assert.ok(match);
+ b.store.read=()=>Buffer.from(authored.replace(match[1],refit));
+ for(let style=0;style<4;style++){
+  const row=adminArcanaChoices(b,'monkey_king',{style,items:{weapon:item.id}}).find(r=>r.item.id===item.id);
+  assert.equal(row.item.model,refit+'_c');
+  assert.equal(row.item.nativeOverrides.skin,style);
+ }
+});
