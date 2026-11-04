@@ -1,3 +1,12 @@
+export function enableDarkBlend(root,rgb){
+ if(Math.max(...rgb)>16)return;
+ for(const renderer of root.m_Renderers??[]){
+  if(!['C_OP_RenderSprites','C_OP_RenderTrails','C_OP_RenderRopes'].includes(renderer._class)||renderer.m_nOutputBlendMode==='PARTICLE_OUTPUT_BLEND_MODE_MOD2X')continue;
+  if(renderer.m_nOutputBlendMode==='PARTICLE_OUTPUT_BLEND_MODE_ADD')delete renderer.m_nOutputBlendMode;
+  if(Object.hasOwn(renderer,'m_flAddSelfAmount'))renderer.m_flAddSelfAmount=0;
+ }
+}
+
 // Explicit RGB recolor must include later color operators and renderer constants.
 export function forceParticleColor(root,rgb){
  const bytes=old=>[...rgb,...(Array.isArray(old)&&old.length>3?[old[3]]:[])],vector=(old,scale=null)=>rgb.map(c=>c/255*(scale??Math.max(...old.slice(0,3).map(Math.abs))));

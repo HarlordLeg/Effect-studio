@@ -121,7 +121,10 @@ internal static class TerrorbladeArcana
                 if(file.ExcludedChildren is not null&&particle.Data.TryGetValue("m_Children",out var children)){
                     var retained=KVObject.Array();foreach(var child in children.Values)if(!child.TryGetValue("m_ChildRef",out var reference)||!file.ExcludedChildren.Contains(reference.ToString(CultureInfo.InvariantCulture),StringComparer.Ordinal))retained.Add(child);particle.Data["m_Children"]=retained;
                 }
-                if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}if(!file.RestoreOnly)Recolor(particle.Data,request.Color,file.SourceColor??(file.InferSourceColor?ParticleSourceColor(particle.Data):null));using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
+                if(file.ReferenceInput is not null){using var reference=new Resource{FileName=file.ReferenceInput};reference.Read(file.ReferenceInput);if(reference.DataBlock is not ParticleSystem baseline)throw new InvalidDataException("Invalid arcana color reference");ReferenceColors(particle.Data,baseline.Data);}if(!file.RestoreOnly){
+                    Recolor(particle.Data,request.Color,file.SourceColor??(file.InferSourceColor?ParticleSourceColor(particle.Data):null));
+                    ParticleRecolor.EnableDarkBlend(particle.Data,request.Color);
+                }using var output=File.Create(file.Output);Program.SerializePatchedResource(resource,bytes,output,true,preserveMetadata:true);}
             else throw new InvalidDataException("Unsupported arcana resource: "+file.Input);
             using var check=new Resource{FileName=file.Output};check.Read(file.Output);
         }

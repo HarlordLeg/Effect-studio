@@ -49,7 +49,7 @@ internal static class EditorResources
     else if(outputColor&&key=="m_InputValue")ColorInput(node[key]);
     else if(key!="m_Children")Visit(node[key]);}}}
 
-  Visit(root);if(!root.ContainsKey("m_ConstantColor")){var color=KVObject.Array();foreach(var c in rgb)color.Add(new KVObject((float)(c*brightness)));root["m_ConstantColor"]=color;}
+  Visit(root);ParticleRecolor.EnableDarkBlend(root,rgb);if(!root.ContainsKey("m_ConstantColor")){var color=KVObject.Array();foreach(var c in rgb)color.Add(new KVObject((float)(c*brightness)));root["m_ConstantColor"]=color;}
  }
  internal static void Apply(KVObject root,Edit e,bool particle){
   if(e.Path.Length<1||e.Path.Length>40)throw new InvalidDataException("Invalid edit path");var key=e.Path[^1];

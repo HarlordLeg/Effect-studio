@@ -30,6 +30,13 @@ internal static class ModelRootProfiles
             donorPath == "models/items/invoker/covenant_of_the_depths_belt_v2/covenant_of_the_depths_belt_v2.vmdl" &&
             roots.Contains("root_0", StringComparer.Ordinal))
             return new Dictionary<string, string>(StringComparer.Ordinal) { ["invoker_body_model"] = "root_0" };
+        if (host is ("models/heroes/invoker/invoker.vmdl_c" or "models/heroes/invoker/invoker.vmdl") &&
+            donorPath == "models/items/invoker/crimson_taoist_head/crimson_taoist_head.vmdl")
+        {
+            var head = names.SingleOrDefault(n => string.Equals(n, "Head_1", StringComparison.OrdinalIgnoreCase));
+            if (head is not null)
+                return new Dictionary<string, string>(StringComparer.Ordinal) { ["topKnot_0"] = head };
+        }
         if(roots.Length!=1)return null;
         var profiles=new (string[] Heroes,string[] Bones)[]{
             (new[]{"windrunner","windranger"},new[]{"wr_root"}),

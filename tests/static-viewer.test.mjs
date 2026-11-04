@@ -69,9 +69,10 @@ test('legacy Morphling publications discard folder-scan reference bodies without
 });
 test('published arcana body and RGB load from static recipes while selected gear replaces its default slot',async()=>{
  const hero={id:'terrorblade',items:[]},seed={parts:[{role:'hero',key:'arcana-body'},{role:'default',slot:'head',key:'horns'},{role:'default',slot:'weapon',key:'weapon'}],native:'arcana-fx',referenceColor:[0,255,0]},recipes={items:{w:{slot:'weapon',parts:[{role:'hero',key:'ordinary'},{role:'item',key:'new-weapon'}]}}};
- const manifest={heroes:{terrorblade:'r'},arcanas:{terrorblade:{'base:normal':'arcana'}}},load=async ref=>({r:recipes,arcana:seed,'arcana-fx':{effects:[{effectId:'ambient',packet:{definitions:{}}}]}}[ref]);
+ const manifest={heroes:{terrorblade:'r'},arcanas:{terrorblade:{'base:normal':'arcana','base:demon':'demon'}}},load=async ref=>({r:recipes,demon:{...seed,parts:[{role:'hero',key:'demon-body'},{role:'default',slot:'demon',key:'demon'},{role:'default',slot:'weapon',key:'weapon'}]},arcana:seed,'arcana-fx':{effects:[{effectId:'ambient',packet:{definitions:{}}}]}}[ref]);
  const selections=[{heroId:hero.id,slot:'arcana',arcana:{mode:'base',color:[255,60,40]}},{heroId:hero.id,itemId:'w'}];
- const result=await assembleStaticPreview({selections},{heroes:[hero]},manifest,load);assert.deepEqual(result.parts.map(p=>p.key),['arcana-body','horns','new-weapon']);assert.deepEqual(result.arcanaTint.color,[1,60/255,40/255]);assert.equal(result.effects[0].packet.arcanaRgb,true);assert.equal(seed.parts[0].key,'arcana-body');
+ const result=await assembleStaticPreview({selections},{heroes:[hero]},manifest,load);assert.deepEqual(result.parts.map(p=>p.key),['arcana-body','horns','new-weapon']);assert.equal(result.arcanaTint,undefined);assert.equal(result.effects[0].packet.arcanaRgb,true);assert.equal(seed.parts[0].key,'arcana-body');
+ const demon=await assembleStaticPreview({selections,previewForm:'demon'},{heroes:[hero]},manifest,load);assert.deepEqual(demon.arcanaTint.keys,['demon-body','demon']);
  selections[0].arcana.color=[40,80,255];assert.deepEqual((await assembleStaticPreview({selections},{heroes:[hero]},manifest,load)).effects[0].color,[40/255,80/255,1]);
 });
 test('Techies original particle colors are preserved until custom RGB is enabled',async()=>{

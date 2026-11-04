@@ -8,3 +8,18 @@ test('only colored effect copies receive neutral sprite textures and changed ren
 });
 
 test('arcana tint retains its existing texture/rendering path',()=>{const packet={root:'a.vpcf',arcanaRgb:true,definitions:{'a.vpcf_c':fixture()}},data=effectSource(new SceneSource(),[{packet,color:[0,1,0]}]);assert.equal(data.systems['studio/0/a'].m_Renderers[0].m_bStudioRecolor,undefined);assert.equal(data.systems['studio/0/a'].m_Renderers[0].m_flAddSelfAmount,2);});
+
+test('black sprites darken the background in both recolor preview paths',()=>{
+ const original=fixture();
+ original.m_Renderers[0].m_nOutputBlendMode='PARTICLE_OUTPUT_BLEND_MODE_ADD';
+ const packet={root:'a.vpcf',definitions:{'a.vpcf_c':original}};
+ const data=effectSource(new SceneSource(),[
+  {packet,color:[0,0,0]},{packet:{...packet,arcanaRgb:true},color:[0,0,0]},{packet},
+ ]);
+ for(const key of ['studio/0/a','studio/1/a']){
+  const renderer=data.systems[key].m_Renderers[0];
+  assert.equal(renderer.m_nOutputBlendMode,undefined);
+  assert.equal(renderer.m_flAddSelfAmount,0);
+ }
+ assert.equal(data.systems['studio/2/a'].m_Renderers[0].m_nOutputBlendMode,'PARTICLE_OUTPUT_BLEND_MODE_ADD');
+});
