@@ -218,7 +218,7 @@ internal static class ModelMerge
         var mergedMask=1UL<<meshGroups.Count;meshGroups.Add(new KVObject("harlord_merged"));root["m_meshGroups"]=Array(meshGroups);
         root["m_nDefaultMeshGroupMask"]=new KVObject((root.TryGetValue("m_nDefaultMeshGroupMask",out var maskValue)?Mask(maskValue):ulong.MaxValue)|mergedMask);
         var morphBlock=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
-        var mergedMorph=morphBlock is null?null:Read(host,original,morphBlock);var morphEdited=false;
+        var mergedMorph=morphBlock is null?null:Read(host,original,morphBlock);var morphEdited=false;int? importedControllerBlock=null;byte importedControllerVersion=0;
         var originalSkeleton=Values(root["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();
         foreach(var entry in request.Donors){
             var bytes=File.ReadAllBytes(entry.Input);using var donor=new Resource{FileName=entry.Input};donor.Read(entry.Input);if(donor.DataBlock is not Model)throw new InvalidDataException("Merge donor must be a model");
@@ -229,10 +229,15 @@ internal static class ModelMerge
             if(!entry.MetadataOnly&&Values(source,"m_ExtParts").Length>0)throw new InvalidDataException("Donor external parts require a dedicated merge profile");
             if(entry.MetadataOnly&&!entry.SkipParticleMetadata)foreach(var block in donor.Blocks.Where(b=>b.Type==BlockType.MDAT))
                 independentEffectSets.AddRange(ScopedHitboxTransfer.Collect(Read(donor,bytes,block).Data.Root,root["m_modelSkeleton"]));
-            var normalizedMorphs=new Dictionary<int,byte[]>();
+            var normalizedMorphs=new Dictionary<int,byte[]>();int? controllerSeed=null;
             if(!entry.MetadataOnly){
-                var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);var hostMorph=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
-                if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
+                var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
+                if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);if(mergedMorph is null&&!entry.NeutralizeOriginalMorph){
+                    mergedMorph=Read(donor,bytes,donorMorph);
+                    controllerSeed=donor.Blocks.IndexOf(donorMorph);
+                    importedControllerVersion=bytes[(int)donorMorph.Offset];
+                }
+                var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
             int[] boneMap;
             try{boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,ModelRootProfiles.Attachments(request.HostModel??Text(root["m_name"]),entry.SourceModel??Text(source["m_name"]))??(request.TesterImporterRoots?ModelRootProfiles.TesterAttachments(request.HostModel??Text(root["m_name"]),entry.SourceModel??Text(source["m_name"]),root["m_modelSkeleton"]):null));}
@@ -246,7 +251,7 @@ internal static class ModelMerge
             var sourceRows=Values(sourceCtrl,"embedded_meshes").Where(r=>!entry.MetadataOnly).Where(r=>MeshIndex(r)>=sourceGroups.Length||(Mask(sourceGroups[MeshIndex(r)])&sourceDefault)!=0).Where(r=>entry.MeshNames is null||entry.MeshNames.Contains(MeshName(r),StringComparer.Ordinal)).ToArray();
             if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true)throw new InvalidDataException("Requested donor mesh not found: "+(entry.SourceModel??Text(source["m_name"]))+" (default mask: "+sourceDefault+"; available: "+string.Join(", ",Values(sourceCtrl,"embedded_meshes").Select(MeshName))+")");
             var blocks=new Dictionary<int,int>();
-            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=normalizedMorphs.TryGetValue(index,out var normalized)?normalized:bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&(renamedBones.Count>0||attachmentPrefix is not null)){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);TesterAttachmentProfiles.NamespaceMesh(mesh.Data.Root,attachmentPrefix);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;return mapped;}
+            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=normalizedMorphs.TryGetValue(index,out var normalized)?normalized:bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&(renamedBones.Count>0||attachmentPrefix is not null)){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);TesterAttachmentProfiles.NamespaceMesh(mesh.Data.Root,attachmentPrefix);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;if(index==controllerSeed)importedControllerBlock=mapped;return mapped;}
             var nextIndex=new[]{meshRows.Max(MeshIndex)+1,starts.Count,Values(root,"m_refMeshes").Length,Values(root,"m_refMeshGroupMasks").Length}.Max();
             foreach(var row in sourceRows){
                 var oldIndex=MeshIndex(row);var newIndex=nextIndex++;var name=MeshName(row);imported.Add(name);
@@ -293,6 +298,8 @@ internal static class ModelMerge
             ScopedHitboxTransfer.Append(mesh.Data.Root,independentEffectSets);
             var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
         }
+        if(morphEdited&&mergedMorph is not null&&importedControllerBlock is int controllerIndex)
+            chunks[controllerIndex]=new Chunk(BlockType.MRPH,Serialize(mergedMorph,importedControllerVersion));
         if(morphEdited&&mergedMorph is not null&&morphBlock is not null)chunks[host.Blocks.IndexOf(morphBlock)]=new Chunk(BlockType.MRPH,Serialize(mergedMorph,original[(int)morphBlock.Offset]));
         if(request.TesterImporterRoots&&request.HostModel=="models/heroes/ursa/ursa.vmdl_c")ModelSelectionBounds.Apply(root,host.Blocks.Where(b=>b.Type==BlockType.MDAT).Select(b=>Read(host,original,b).Data.Root));
         control["embedded_meshes"]=Array(meshRows);
