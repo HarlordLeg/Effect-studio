@@ -53,18 +53,18 @@ const back=document.createElement('button');back.type='button';back.className='s
  back.addEventListener('click',()=>chooseView(true));workspace.classList.add('choosing-hero');
  const hero=()=>catalog.heroes.find(h=>h.id===$('set-hero').value),say=(text,error=false)=>{$('set-message').hidden=!error;$('set-message').textContent=text;$('set-message').classList.toggle('error',error);basketStatus.textContent=text;basketStatus.classList.toggle('error',error);},query=token?'?token='+encodeURIComponent(token):'';
  const available=catalog.heroes.filter(h=>setSlots(h).length);for(const h of available){const o=document.createElement('option');o.value=h.id;o.textContent=h.name;$('set-hero').append(o);}for(let n=1;n<=99;n++){const o=document.createElement('option');o.value=n;o.textContent='pak'+String(n).padStart(2,'0')+'_dir.vpk';$('set-vpk').append(o);}
- if(hero()?.isPersona)selected=initialSetSelection(hero());heroStates.set($('set-hero').value,{selected,effects:slotEffects});initHeroPicker($('set-hero'),available,{inline:true});
+ if(hero()?.isPersona)selected=initialSetSelection(hero());heroStates.set($('set-hero').value,{selected,effects:slotEffects});const heroPicker=initHeroPicker($('set-hero'),available,{inline:true});
  function withSavedOptions(payload){payload.selections=payload.selections.map(row=>{const saved=heroStates.get(row.heroId)?.savedRows?.get(row.slot);return {...saved,...row,...(saved?.effectColors?{effectColors:Object.fromEntries(Object.entries(saved.effectColors).filter(([id])=>row.effectIds?.includes(id)))}:{}),personaOwned:heroStates.get(row.heroId)?.personaOwned===true};});return payload;}
  function editorSnapshot(){const h=hero();if(!h||choosingHero)return null;return{heroId:h.id,heroName:h.name,payload:withSavedOptions(setPayload(h,selected,{preview:true,effects:slotEffects,arcana:heroStates.get(h.id)?.arcana,stanceId:heroStates.get(h.id)?.stanceId,previewForm:heroStates.get(h.id)?.previewForm??'normal'}))};}
  function collectionPayload(){return withSavedOptions(combinedSetPayload(catalog.heroes,heroStates));}
- if(!editorMode)registerSetBasket(()=>({...collectionPayload(),ready:!pendingPriorities(),presetHeroes:[...heroStates].filter(([,state])=>state.presetId).map(([id])=>id)}),row=>{const state=heroStates.get(row.heroId);if(row.arcana)state.arcana=null;if(row.stanceId)state.stanceId=null;state.selected.delete(row.slot);state.effects.delete(row.slot);draw();if(hero().id===row.heroId&&!choosingHero)schedulePreview();},restoreRows);
+ if(!editorMode)registerSetBasket(()=>({...collectionPayload(),ready:!pendingPriorities()}),row=>{const state=heroStates.get(row.heroId);if(row.arcana)state.arcana=null;if(row.stanceId)state.stanceId=null;state.selected.delete(row.slot);state.effects.delete(row.slot);draw();if(hero().id===row.heroId&&!choosingHero)schedulePreview();},restoreRows);
  function restoreRows(rows){
  revision++;pending=false;heroStates.clear();
  for(const row of rows){let state=heroStates.get(row.heroId);if(!state){state={selected:new Map(),effects:new Map(),savedRows:new Map()};heroStates.set(row.heroId,state);}state.savedRows.set(row.slot,row);state.personaOwned=row.personaOwned===true;if(row.arcana)state.arcana=row.arcana;else if(row.stanceId)state.stanceId=row.stanceId;else{if(row.itemId)state.selected.set(row.slot,row.itemId);state.effects.set(row.slot,row.effectIds??[]);}}
  const id=rows[0]?.heroId??available[0]?.id;if(id){$('set-hero').value=id;if(!standalone)document.getElementById('mode-set').click();$('set-hero').dispatchEvent(new Event('change'));}else{chooseView(true);draw();}
  }
  function drawCollection(){
- const rows=collectionPayload().selections;$('set-collection').replaceChildren();$('set-basket-empty').hidden=!!rows.length;
+ const rows=collectionPayload().selections;heroPicker?.setPresetHeroes(rows.filter(row=>heroStates.get(row.heroId)?.presetId).map(row=>row.heroId));$('set-collection').replaceChildren();$('set-basket-empty').hidden=!!rows.length;
  for(const row of rows){
   const h=catalog.heroes.find(h=>h.id===row.heroId),item=h.items.find(i=>i.id===row.itemId)??h.items.find(i=>i.isDefault&&i.slot===row.slot),line=document.createElement('div'),open=document.createElement('button'),remove=document.createElement('button');
   line.className='basket-item';open.className='basket-open';open.disabled=working;

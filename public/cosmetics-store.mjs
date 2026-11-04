@@ -26,5 +26,3 @@ export function restoreBuild(payload,cosmetics){
  for(const row of payload.cosmetics){const item=cosmetics.find(i=>i.id===row.id);if(!item)continue;const terrain=cosmetics.find(i=>i.id===row.terrainId);selected.set(item.category,{...item,...row,terrainName:terrain?.name});}
  globalThis.dispatchEvent?.(new Event('build-restored'));globalThis.dispatchEvent?.(new Event('cosmetics-change'));notifyBasket();
 }
-
-export function basketPresetHeroes(){return new Set(setProvider().presetHeroes??[]);}
