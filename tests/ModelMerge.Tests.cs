@@ -40,6 +40,14 @@ internal static class ModelMergeTests
   }
   {var fixtureHost=Skeleton(new[]{"Root0_JNT"},new[]{-1});var weapon=Skeleton(new[]{"uprweapon0_jnt","LwrWeapon0_JNT","RtLegEnd_JNT"},new[]{-1,-1,-1});var set=Skeleton(new[]{"Root0_JNT","uprweapon0_jnt","LwrWeapon0_JNT","RtLeg3_JNT","RtLegEnd_JNT"},new[]{-1,0,0,0,3});Check(TesterWearableHost.DonorOrder(fixtureHost,new[]{weapon,set}).SequenceEqual(new[]{1,0}));Check(TesterWearableHost.DonorOrder(fixtureHost,new[]{set,weapon}).SequenceEqual(new[]{0,1}));Check(weapon["m_nParent"][2].ToInt32(null)==-1);}
   {Check(TesterWearableHost.IndependentCloth("models/heroes/drow/drow_base.vmdl_c","models/items/drow/ti6_immortal_cape/drow_ti6_immortal_arcana_refit.vmdl_c"));Check(!TesterWearableHost.IndependentCloth("models/heroes/test/test.vmdl_c","models/items/drow/ti6_immortal_cape/drow_ti6_immortal_arcana_refit.vmdl_c"));}
+  foreach(var suffix in new[]{".vmdl",".vmdl_c"})foreach(var rootName in new[]{"Root_JNT","Root0_JNT"}){
+   const string item="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms";
+   var h=Skeleton(new[]{rootName},new[]{-1});var d=Skeleton(new[]{"ember_spirit_base"},new[]{-1});
+   var profile=ModelRootProfiles.TesterAttachments("models/heroes/ember_spirit/ember_spirit"+suffix,item+suffix,h);
+   Check(profile?["ember_spirit_base"]==rootName);ModelMerge.MergeSkeleton(h,d,rootAttachments:profile);Check(h["m_nParent"][1].ToInt32(null)==0);
+   Check(ModelRootProfiles.TesterAttachments("models/heroes/axe/axe"+suffix,item+suffix,h) is null);
+   Check(ModelRootProfiles.TesterAttachments("models/heroes/ember_spirit/ember_spirit"+suffix,"models/items/ember_spirit/unrelated/item"+suffix,h) is null);
+  }
   foreach(var part in new[]{"weapon_fx_l","weapon_fx_r","weapon_feathers_fx_l","weapon_feathers_fx_r"}){
    var root=KVObject.Collection();root["m_hSnapshot"]=new KVObject("particles/models/items/beastmaster/bm_2021_immortal/bm_2021_immortal/bm_2021_immortal_"+part+".vsnap");root["m_nSnapshotControlPoint"]=new KVObject(part.Contains("feathers")?5:6);var skin=KVObject.Collection();skin["_class"]=new KVObject("C_INIT_InitSkinnedPositionFromCPSnapshot");skin["m_bRigid"]=new KVObject(true);root["m_Initializers"]=Array(skin);var rigid=KVObject.Collection();rigid["_class"]=new KVObject("C_OP_SnapshotRigidSkinToBones");root["m_Operators"]=Array(rigid);Check(NativeImmortalParticles.Patch(root)==1);Check(!skin["m_bRigid"].ToBoolean(null));Check(root["m_Initializers"][0]["m_nInputMax"].ToInt32(null)==(part.Contains("feathers")?13:39));Check(root["m_Operators"].Values.Last()["_class"].ToString(null)=="C_OP_MovementSkinnedPositionFromCPSnapshot");Check(NativeImmortalParticles.Patch(root)==0);
   }
