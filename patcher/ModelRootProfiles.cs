@@ -57,6 +57,9 @@ internal static class ModelRootProfiles
         if(host.StartsWith("harlord/",StringComparison.Ordinal))host=host[8..];if(donor.StartsWith("harlord/",StringComparison.Ordinal))donor=donor[8..];
         if(host.EndsWith("_c",StringComparison.Ordinal))host=host[..^2];if(donor.EndsWith("_c",StringComparison.Ordinal))donor=donor[..^2];
         Dictionary<string,string> Map(string parent,params string[] roots)=>roots.ToDictionary(r=>r,_=>parent,StringComparer.Ordinal);
+        // Unchained Entity's Heart has a separate gem root. Preserve its
+        // authored bind pose when attaching it to Ancient Apparition.
+        if(host=="models/heroes/ancient_apparition/ancient_apparition.vmdl"&&donor=="models/items/ancient_apparition/unchained_entitys_heart/unchained_entitys_heart.vmdl")return Map("root","gem_large_01_JNT");
         // Original Stormwrought Arbiter files retain independent importer roots.
         // Actual hero joints (including ankle_l/ankle_L) are matched first.
         if(host=="models/heroes/sven/sven.vmdl"&&donor=="models/items/sven/arbiter_back/arbiter_back.vmdl")return Map("root","sven_body","sven_shoulder","sven_gauntlet","sven_sword","sven_helmet","new_sven_model","new_sven_model1","1","11","smdimport001","smdimport0011","002","smdimport","smdimport002","smdimport003","smdimport0013","smdimport004","smdimport0041");

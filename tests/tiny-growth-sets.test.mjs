@@ -7,7 +7,7 @@ function fixture(missing=null){
  items[5]={name:'Frostmoot Tree',item_slot:'weapon',model_player:'models/items/tiny/tree/tree.vmdl',used_by_heroes:{npc_dota_hero_tiny:'1'}};
  items[6]={name:'Frostmoot',bundle:Object.fromEntries([...Array.from({length:4},(_,i)=>['Frostmoot '+(i+1),'1']),['Frostmoot Tree','1']])};
  const kv=v=>typeof v==='object'?'{ '+Object.entries(v).map(([k,x])=>JSON.stringify(k)+' '+kv(x)).join(' ')+' }':JSON.stringify(v);
- return catalogFromGame({heroText:'"DOTAHeroes" { "npc_dota_hero_tiny" {"Model" "models/heroes/tiny_01/tiny_01.vmdl"} }',itemText:'"items_game" '+kv({items}),effects:[],exists:p=>p!==missing})[0];
+ return catalogFromGame({heroText:'"DOTAHeroes" { "npc_dota_hero_tiny" {"Model" "models/heroes/tiny_01/tiny_01.vmdl"} }',itemText:'"items_game" '+kv({items}),effects:[],exists:p=>p!==missing&&!p.startsWith('models/heroes/tiny/tiny_0')})[0];
 }
 test('Tiny discovers four entity-only growth forms without mounted NPC variant definitions',()=>{
  const hero=fixture();assert.equal(hero.items.filter(i=>i.entityKind==='growth'&&!i.isDefault).length,4);
@@ -36,4 +36,27 @@ test('Tiny growth preview composes only the selected full body and weapon, not t
  const job={id:'growth',owner:'test'};await service.exportTinyGrowth({hero,selections:rows,partsOnly:true},job,rows[0]);
  assert.equal(calls.length,2);assert.ok(calls.every(r=>r.hero.model===source(3)));assert.ok(calls.every(r=>r.hero.defaultModels.length===1));assert.deepEqual(job.parts.map(p=>p.role),['hero','item']);assert.deepEqual(job.selectedItems.map(i=>i.id),[form.id,tree.id]);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+
+test('Tiny growth replaces current nested hosts when legacy modular hosts also exist',async()=>{
+ const {addSetEntities}=await import('../lib/set-entities.mjs');
+ const {tinyGrowthHiddenParts}=await import('../lib/tiny-growth.mjs');
+ const hero={id:'tiny',npcName:'npc_dota_hero_tiny',model:'models/heroes/tiny/tiny_01/tiny_01.vmdl_c',defaultSlotModels:{},items:[]};
+ const items=Object.fromEntries([1,2,3,4].map(n=>[n,{name:'Growth '+n,item_slot:'growth'+n,used_by_heroes:{npc_dota_hero_tiny:'1'},visuals:{entity:{type:'entity_model',asset:'npc_dota_hero_tiny_variant_'+(n-1),modifier:source(n).replace(/_c$/,'')}}}]));
+ addSetEntities([hero],{items},{},()=>true);
+ for(let n=1;n<=4;n++){
+  const item=hero.items.find(i=>i.id==='game-'+n),target=`models/heroes/tiny/tiny_0${n}/tiny_0${n}.vmdl_c`;
+  assert.equal(replacementTarget(hero,item),target);
+  assert.deepEqual(item.entityReplacements,[{source:source(n),target}]);
+  assert.deepEqual(tinyGrowthHiddenParts({read:()=>Buffer.from('mounted')},hero,item),['head','body','left_arm','right_arm'].map(part=>`models/heroes/tiny_0${n}/tiny_0${n}_${part}.vmdl_c`));
+ }
+});
+
+test('Tiny tree remains an ability-controlled model instead of merging into the first growth stage',async()=>{
+ const {testerHostPlan}=await import('../lib/tester/build.mjs');
+ const target='models/heroes/tiny/tiny_tree/tiny_tree.vmdl_c',hero={id:'tiny',model:'models/heroes/tiny/tiny_01/tiny_01.vmdl_c',defaultSlotModels:{weapon:target}};
+ const item={id:'tree',slot:'weapon',model:'models/items/tiny/tree/tree.vmdl_c'},choice={hero,item};
+ const files=new Map([[target,resource(1)]]),plan=testerHostPlan([choice],files);
+ assert.equal(plan.groups.size,0);assert.equal(plan.coverage[0].kind,'entity-model');
+ assert.throws(()=>testerHostPlan([choice],new Map()),/дерева Tiny/);
 });
