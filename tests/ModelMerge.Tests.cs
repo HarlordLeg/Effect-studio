@@ -43,6 +43,12 @@ internal static class ModelMergeTests
   foreach(var suffix in new[]{".vmdl",".vmdl_c"})foreach(var rootName in new[]{"Root_JNT","Root0_JNT"}){
    const string item="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms";
    var h=Skeleton(new[]{rootName},new[]{-1});var d=Skeleton(new[]{"ember_spirit_base"},new[]{-1});
+   // Root attachment validates real bind transforms, not scalar placeholders.
+   foreach(var sk in new[]{h,d}){
+    sk["m_bonePosParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f)));
+    sk["m_boneRotParent"]=Array(Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f)));
+    sk["m_boneScaleParent"]=Array(new KVObject(1f));
+   }
    var profile=ModelRootProfiles.TesterAttachments("models/heroes/ember_spirit/ember_spirit"+suffix,item+suffix,h);
    Check(profile?["ember_spirit_base"]==rootName);ModelMerge.MergeSkeleton(h,d,rootAttachments:profile);Check(h["m_nParent"][1].ToInt32(null)==0);
    Check(ModelRootProfiles.TesterAttachments("models/heroes/axe/axe"+suffix,item+suffix,h) is null);
