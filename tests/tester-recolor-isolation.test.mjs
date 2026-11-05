@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {isolationPlan,isolateRecolorGroups} from '../lib/tester/recolor-isolation.mjs';
+import {isolationPlan,isolateRecolorGroups,remapRecolorChoice} from '../lib/tester/recolor-isolation.mjs';
 import {recolorBuildProject,recolorScopeOptions} from '../lib/tester/recolor.mjs';
 import {references} from '../lib/vpk.mjs';
 function resource(refs=[]){const strings=refs.map(n=>Buffer.from(n.replace(/_c$/,'')+'\0')),size=8+refs.length*16+strings.reduce((n,b)=>n+b.length,0),b=Buffer.alloc(28+size);b.writeUInt32LE(b.length);b.writeUInt32LE(8,8);b.writeUInt32LE(1,12);b.write('RERL',16);b.writeUInt32LE(8,20);b.writeUInt32LE(size,24);b.writeUInt32LE(8,28);b.writeUInt32LE(refs.length,32);let off=36+refs.length*16;for(let i=0;i<refs.length;i++){b.writeBigUInt64LE(BigInt(i+1),36+i*16);b.writeBigInt64LE(BigInt(off-(44+i*16)),44+i*16);strings[i].copy(b,off);off+=strings[i].length;}return b;}
@@ -34,4 +34,11 @@ test('two real dependency graphs keep separate model references and untouched so
   assert.deepEqual(references(out.get('models/shoulder.vmdl_c')),[a]);assert.deepEqual(references(out.get('models/arms.vmdl_c')),[b]);
   assert.deepEqual(source,before);assert.equal(choices[0].item.model,'models/shoulder.vmdl_c');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('resource relocation cannot redirect the hero, item identity or skeleton profile',()=>{
+ const choice={hero:{id:'faceless_void',model:'models/heroes/faceless_void/faceless_void.vmdl_c',defaultSlotModels:{arms:'models/arms.vmdl_c'}},item:{model:'models/arms.vmdl_c',nativeOverrides:{particles:['particles/shared.vpcf_c']}},effects:[]};
+ const paths={'models/heroes/faceless_void/faceless_void.vmdl':'harlord/recolor/red/models/heroes/faceless_void/faceless_void.vmdl','particles/shared.vpcf':'harlord/recolor/red/particles/shared.vpcf'};
+ const result=remapRecolorChoice(choice,paths);
+ assert.equal(result.hero,choice.hero);assert.equal(result.item.model,choice.item.model);assert.equal(result.item.nativeOverrides.particles[0],'harlord/recolor/red/particles/shared.vpcf_c');
 });
