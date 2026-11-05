@@ -24,3 +24,17 @@ test('tester editor pipeline packs both independently edited particles into the 
 test('recolor APIs and scripts require tester login; public and admin entries do not enable the widget',async()=>{
  const app=await startServer({port:0,testerAuth:{verify(){throw Object.assign(Error('Нужен вход тестера'),{status:401});}}});try{for(const route of ['/api/tester/recolor/inventory','/api/tester/recolor/build'])assert.equal((await fetch(app.url+route,{method:'POST',body:'{}'})).status,401);assert.equal((await fetch(app.url+'/tester/assets/tester/catalog-recolor.mjs')).status,401);assert.equal((await fetch(app.url+'/api/recolor/inventory',{method:'POST',body:'{}'})).status,404);for(const file of ['public/app.mjs','public/admin.mjs'])assert(!fs.readFileSync(path.join(app.builder.root,file),'utf8').includes('onRecolorItem:'));}finally{app.previews.dispose();await new Promise(r=>app.server.close(r));}
 });
+
+
+test('tester entry static imports load before authentication, protected editor stays private',async()=>{
+ const app=await startServer({port:0,testerAuth:{verify(){throw Object.assign(Error('Need tester login'),{status:401});}}});
+ try{
+  const entry=await fetch(app.url+'/tester/app.mjs');assert.equal(entry.status,200);
+  const source=await entry.text();
+  const imports=[...source.matchAll(/import\s+[^;]+?from\s+['"](\.[^'"]+)['"]/g)].map(m=>m[1]);
+  assert.ok(imports.includes('./recolor-request.mjs'));
+  for(const dependency of imports){const response=await fetch(new URL(dependency,app.url+'/tester/app.mjs'));assert.equal(response.status,200,dependency);assert.match(response.headers.get('content-type'),/javascript/);}
+  assert.equal((await fetch(app.url+'/api/tester/me')).status,401);
+  assert.equal((await fetch(app.url+'/tester/assets/tester/catalog-recolor.mjs')).status,401);
+ }finally{app.previews.dispose();await new Promise(r=>app.server.close(r));}
+});
