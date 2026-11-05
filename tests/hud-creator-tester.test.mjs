@@ -32,3 +32,19 @@ test('tester zoom buttons change display camera only and clamp at fit and 800%',
   camera.reset();assert.equal(canvas.style.transform,'translate(0px,0px) scale(0.5)');camera.dispose();assert.equal(listeners.size,0);
  }finally{globalThis.ResizeObserver=Original;}
 });
+
+import {quickParts} from '../lib/hud-creator/tester-parts.mjs';
+import {declarations} from '../lib/hud-creator/tester-css.mjs';
+import {validateProject} from '../lib/hud-creator/model.mjs';
+import {panelRule} from '../lib/hud-creator/export-css.mjs';
+test('tester quick selection exposes real innate, facet, teleport and dashboard controls',()=>{
+ const nodes=[{target:'innate',kind:'DOTAInnateDisplay'},{target:'facet',kind:'DOTAFacetIcon'},{target:'inventory_tpscroll_container',kind:'Panel'}].map(n=>({...n,attributes:{id:n.target},children:[]}));
+ const packet={scene:'hud',roots:{base:'hud'},documents:[{layout:'hud',tree:[{target:'root',kind:'DOTAHud',children:nodes}],panels:nodes.map(n=>({id:n.target,kind:n.kind}))}]};
+ assert.deepEqual(quickParts(packet).filter(p=>p.key!=='hud-whole').map(p=>p.target),nodes.map(n=>n.target));
+ packet.scene='menu';packet.documents[0].tree=[{target:'InboxButton',kind:'Button',attributes:{id:'InboxButton'},children:[]},{target:'Plus',kind:'DOTAPlusButton',attributes:{id:'Plus'},children:[]}];packet.documents[0].panels=packet.documents[0].tree.map(n=>({id:n.target,kind:n.kind}));assert.equal(quickParts(packet).length,2);
+});
+test('whole-block scale remains a validated native CSS declaration in export',()=>{
+ assert.equal(declarations('pre-transform-scale2d:0.5;'),'--p-pre-scale:0.5;');
+ const e={id:'innate',scene:'hud',layout:'panorama/layout/hud/hud_reborn.vxml_c',target:'innate',kind:'Panel',x:0,y:0,width:80,height:80,css:'pre-transform-scale2d:0.5;'};
+ validateProject({version:1,name:'Scale',elements:[e]});assert.match(panelRule([{target:'innate',kind:'DOTAInnateDisplay',attributes:{id:'innate'},children:[]}],e),/pre-transform-scale2d:0.5;/);
+});
