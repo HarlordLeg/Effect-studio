@@ -1,3 +1,4 @@
+import {testerRecolorRoute} from './lib/tester/recolor.mjs';
 import {productionBuilderConfig} from './lib/production-builder.mjs';
 import {createTesterPortal} from './lib/tester/routes.mjs';
 import {createAdminSetBuilder,requiresMountedArchivePreview} from './lib/admin-unreleased-sets.mjs';
@@ -186,6 +187,17 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth,te
       const allowed=localAdmin||session||adminStudioOwner;
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=adminStudioOwner??(session?session.id+':'+session.nonce:'local');previews.touch(owner);
+      if(url.pathname.startsWith('/api/recolor/')){
+        if(req.method==='POST'&&session)auth.consume(session,url.pathname==='/api/recolor/build'?undefined:'preview');
+        if(url.pathname.startsWith('/api/recolor/editor/')){
+          const name=url.pathname.slice('/api/recolor/editor/'.length);
+          if(req.method!=='POST'||!['resource','texture','particle-preview'].includes(name))return json(res,404,{error:'Нет такого действия перекраски'});
+          const mapped=new URL(url);mapped.pathname='/api/admin/editor/'+name;
+          if(await editorRoute({req,res,url:mapped,owner,projects:editorProjects,builds:editorBuilds,body:r=>body(r,24*1024*1024),json,root}))return;
+        }
+        if(await testerRecolorRoute({req,res,url,context:{builder,editorBuilds},owner,body,json,prefix:'/api/recolor/'}))return;
+      }
+
       if(url.pathname==='/api/model-metadata'&&req.method==='POST'){const data=await body(req);if(session)auth.consume(session,'preview');return json(res,200,await viewerMetadata.get(data.models,data.animationModels??[],data.preferred??[]));}
       if(req.method==='GET'&&(!adminStudioOwner||/^\/api\/(item-icon|set-icon)$/.test(url.pathname))&&staticViewer.api(req,res,url))return;
       if(!adminStudioOwner&&staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
@@ -270,7 +282,7 @@ choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='de
         const file=job.partFiles?.[Number(adminStaticPart[2])];if(!file||!fs.existsSync(file))return json(res,404,{error:'Static model missing on server. Re-export/sync the static catalog.'});
         return serveViewerModel(req,res,file);
       }
-      const staticMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);if(staticMatch&&staticJobs.has(staticMatch[1])){const job=staticJobs.get(staticMatch[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});if(!staticMatch[2])countModel(job);return json(res,200,staticMatch[2]?{effects:adminStudioOwner?bindViewerEffects(job.effects,builder):job.effects}:Object.fromEntries(Object.entries(publicPreview(job)).filter(([key])=>key!=='effects')));}
+      const staticMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);if(staticMatch&&staticJobs.has(staticMatch[1])){const job=staticJobs.get(staticMatch[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});if(!staticMatch[2])countModel(job);return json(res,200,staticMatch[2]?{effects:bindViewerEffects(job.effects,builder)}:Object.fromEntries(Object.entries(publicPreview(job)).filter(([key])=>key!=='effects')));}
       const previewMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/);
       if(previewMatch){
         const job=previews.jobs.get(previewMatch[1]);if(!job||job.owner!==owner)return json(res,404,{error:'Предпросмотр не найден'});

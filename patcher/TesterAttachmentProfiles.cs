@@ -30,7 +30,7 @@ internal static class TesterAttachmentProfiles
         }
         // These are now hero-launched roots. A wearable-parent CP handoff
         // would overwrite their explicit, namespaced hero bindings.
-        if(root&&data.TryGetValue("m_PreEmissionOperators",out var operators)){var keep=operators.Values.Where(o=>!o.TryGetValue("_class",out var c)||c.ToString(null)!="C_OP_SetParentControlPointsToChildCP").ToArray();changed+=operators.Count-keep.Length;data["m_PreEmissionOperators"]=KVObject.Array(keep);}
+        if((root||heroOwned)&&data.TryGetValue("m_PreEmissionOperators",out var operators)){var keep=operators.Values.Where(o=>!o.TryGetValue("_class",out var c)||c.ToString(null)!="C_OP_SetParentControlPointsToChildCP").ToArray();changed+=operators.Count-keep.Length;data["m_PreEmissionOperators"]=KVObject.Array(keep);}
         if(heroOwned)foreach(var config in configs.Values)if(config.TryGetValue("m_drivers",out var drivers))foreach(var driver in drivers.Values)if(driver.TryGetValue("m_entityName",out var e)&&e.ToString(null)=="parent"){driver["m_entityName"]=new KVObject("self");changed++;}
         return changed;
     }

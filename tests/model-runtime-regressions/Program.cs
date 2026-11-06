@@ -47,3 +47,10 @@ Console.WriteLine("Material variants: Tellurian Full Throttle fallback, ordinary
  if(Keep("models/heroes/axe/axe.vmdl_c","models/heroes/tidehunter/tidehunter_bracer.vmdl_c")||Keep("models/heroes/huskar/huskar.vmdl_c","models/items/huskar/unrelated/weapon.vmdl_c"))throw new Exception("Runtime profile leaked to unrelated models");
  Console.WriteLine("Reported Tide chain and Huskar authored LOD runtime profiles passed.");
 }
+
+{
+ var root=KVObject.Collection();var config=KVObject.Collection();var driver=KVObject.Collection();driver["m_entityName"]=new KVObject("parent");config["m_drivers"]=KVObject.Array(new[]{driver});root["m_controlPointConfigurations"]=KVObject.Array(new[]{config});var handoff=KVObject.Collection();handoff["_class"]=new KVObject("C_OP_SetParentControlPointsToChildCP");root["m_PreEmissionOperators"]=KVObject.Array(new[]{handoff});
+ var patch=assembly.GetType("TesterAttachmentProfiles")!.GetMethod("PatchForHost",BindingFlags.Static|BindingFlags.NonPublic)!;
+ patch.Invoke(null,new object?[]{root,null,false});if(root["m_PreEmissionOperators"].Count!=1)throw new Exception("Child handoff removed");
+ patch.Invoke(null,new object?[]{root,null,true});if(root["m_PreEmissionOperators"].Count!=0||driver["m_entityName"].ToString(null)!="self")throw new Exception("Hero-launched effect still inherits wearable CPs");
+}
