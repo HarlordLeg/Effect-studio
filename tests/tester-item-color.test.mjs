@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {coatItemPixels,detailItemPixels,itemPreviewSlot} from '../public/tester/item-color.mjs';
+import {coatItemPixels,detailItemPixels,itemPreviewSlot,restoreItemTexturePreview} from '../public/tester/item-color.mjs';
 test('whole item coating gives black metal a visible hue, preserves relief and exact alpha',()=>{
  const src=new Uint8ClampedArray([0,0,0,255,128,128,128,127,255,255,255,0]),before=src.slice();
  const out=coatItemPixels(src,[180,0,255]);
@@ -26,4 +26,15 @@ test('brightness above one survives and dark palette colors still darken the tex
 test('only diffuse texture slots can replace the preview base-color map',()=>{
  for(const slot of ['g_tColor','g_tColor2','g_tDiffuse','g_tAlbedo'])assert.equal(itemPreviewSlot(slot),true);
  for(const slot of ['g_tSelfIllum','g_tDetail','g_tEmissiveColor','g_tNormal','g_tMasks'])assert.equal(itemPreviewSlot(slot),false);
+});
+
+test('ordinary preview restores the baked diffuse PNG and ignores the later glow map',()=>{
+ const patches=[],files=new Map(),viewer={source:{files,materialMetadata:new Map([['mount',{materialPath:'materials/mount.vmat'}],['rider',{materialPath:'materials/rider.vmat'}]])},applyScenePatch(p){patches.push(p);}};
+ const record=(slot,data)=>({texture:{data,surfaces:[{data}],bindings:[{material:'materials/mount.vmat_c',slot}]}});
+ assert.equal(restoreItemTexturePreview(viewer,record('g_tColor','COLORED_PNG')),1);
+ assert.equal(restoreItemTexturePreview(viewer,record('g_tSelfIllum','WHITE_GLOW_PNG')),0);
+ assert.equal(restoreItemTexturePreview(viewer,record('g_tDetail','DETAIL_PNG')),0);
+ assert.equal(patches.length,1);assert.equal(patches[0].id,'mount');
+ assert.deepEqual(patches[0].value.baseColor,[1,1,1,1]);
+ assert.equal(files.get('textures/tester-stored-mount'),'data:image/png;base64,COLORED_PNG');
 });

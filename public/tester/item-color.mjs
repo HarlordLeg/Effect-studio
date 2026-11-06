@@ -26,3 +26,19 @@ export function detailItemPixels(input,rgb,brightness=1){
 }
 // Do not display a self-illumination/detail texture as the diffuse surface.
 export function itemPreviewSlot(slot){return /(?:color|colour|diffuse|albedo)/i.test(slot)&&!/detail|selfillum|emiss|mask|normal/i.test(slot);}
+
+// Reapply the already rendered PNG. Its brightness and chosen color are baked
+// into the pixels: neither may be multiplied into baseColor a second time.
+export function restoreItemTexturePreview(viewer,record){
+ const t=record.texture,surface=(t?.surfaces??[t])[0];
+ if(!viewer?.source||!surface?.data)return 0;
+ let count=0;const normalize=p=>String(p??'').replace(/_c$/,'');
+ for(const binding of t.bindings??[]){
+  if(!itemPreviewSlot(binding.slot))continue;
+  for(const[id,meta]of viewer.source.materialMetadata){
+   if(normalize(meta.materialPath??meta.name)!==normalize(binding.material))continue;
+   const key='tester-stored-'+id;viewer.source.files.set('textures/'+key,'data:image/png;base64,'+surface.data);
+   viewer.applyScenePatch({kind:'material',id,value:{color:key,baseColor:[1,1,1,1]}});count++;
+  }
+ }return count;
+}
