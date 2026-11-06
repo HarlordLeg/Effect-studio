@@ -89,7 +89,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth,te
         if(access?.session){res.setHeader('Set-Cookie',ADMIN_SET_COOKIE+'='+access.token+'; Path=/api/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
         if(access){adminStudioOwner=access.owner;url.pathname=access.pathname;({builder,previews,editorBuilds}=adminContext());}
       }catch(error){return json(res,error.status??401,{error:error.message});}
-      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|model-metadata|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|visit|widget\/session)/.test(url.pathname);
+      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|model-metadata|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|recolor(?:\/|$)|visit|widget\/session)/.test(url.pathname);
       if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
         res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
         if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}

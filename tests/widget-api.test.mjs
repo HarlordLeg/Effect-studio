@@ -4,6 +4,13 @@ test('widget API CORS, origin binding, token renewal and admin isolation',async(
  try{
   const origin='https://site.example';
   const pre=await fetch(url+'/api/catalog',{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Headers':'authorization, content-type'}});assert.equal(pre.status,204);assert.equal(pre.headers.get('Access-Control-Allow-Origin'),origin);
+  for(const path of ['/api/recolor/inventory','/api/recolor/editor/texture','/api/recolor/editor/resource','/api/recolor/editor/particle-preview','/api/recolor/build','/api/recolor/jobs/'+ 'a'.repeat(32)]){
+   const response=await fetch(url+path,{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization, content-type'}});
+   assert.equal(response.status,204,path);assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin,path);
+   assert.match(response.headers.get('Access-Control-Allow-Headers'),/authorization/);
+  }
+  const blocked=await fetch(url+'/api/recolor/inventory',{method:'OPTIONS',headers:{Origin:'https://unknown.example'}});assert.equal(blocked.headers.get('Access-Control-Allow-Origin'),null);
+  const unauthenticated=await fetch(url+'/api/recolor/inventory',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}'});assert.equal(unauthenticated.status,401);assert.equal(unauthenticated.headers.get('Access-Control-Allow-Origin'),origin);
   const issue=async(data,site=origin)=>{const r=await fetch(url+'/api/widget/session',{method:'POST',headers:{Origin:site,'Content-Type':'application/json'},body:JSON.stringify(data)});return {r,data:await r.json()};};
   const first=await issue({key:'test-site'});assert.equal(first.r.status,200);
   const denied=await fetch(url+'/viewer');assert.equal(denied.status,401);
