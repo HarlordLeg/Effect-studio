@@ -41,7 +41,7 @@ async function nativeDownloadNavigation(request){
  if(typeof data.downloadPath!=='string'||target.origin!==base.origin||target.pathname!==url.pathname||!target.searchParams.get('download_ticket')||target.username||target.password)throw Error('Invalid download link');
  return Response.redirect(target.href,302);
 }
-async function route(request,event){const url=new URL(request.url),name=url.pathname;if(name.startsWith('/ethereal-media/'))return proxy(request,{authenticated:false});if(/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name)&&url.searchParams.has('download_ticket'))return fetch(request);if(request.mode==='navigate'&&request.method==='GET'&&/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(name))return nativeDownloadNavigation(request);if((await config()).staticViewerEnabled===false)return proxy(request,{authenticated:!name.startsWith('/kinetic-media/')});
+async function route(request,event){const url=new URL(request.url),name=url.pathname;if(name.startsWith('/ethereal-media/'))return proxy(request,{authenticated:false});if(/^\/api\/(?:recolor\/)?jobs\/[a-f0-9]{32}\/download$/.test(name)&&url.searchParams.has('download_ticket'))return fetch(request);if(request.mode==='navigate'&&request.method==='GET'&&/^\/api\/(?:recolor\/)?jobs\/[a-f0-9]{32}\/download$/.test(name))return nativeDownloadNavigation(request);if((await config()).staticViewerEnabled===false)return proxy(request,{authenticated:!name.startsWith('/kinetic-media/')});
  if(name==='/manifest.json')return publication(request.url,event,{manifest:true});
  if(/^\/assets\/[a-f0-9]{64}\.json$/.test(name))return publication(request.url,event);
  if(name.startsWith('/images/')&&!name.startsWith('/images/personas/'))return fetch(request);
@@ -49,6 +49,7 @@ async function route(request,event){const url=new URL(request.url),name=url.path
  if(name.startsWith('/kinetic-media/'))return proxy(request,{authenticated:false});
  if(request.method==='GET'&&name==='/api/catalog'){const {base,manifest}=await assets(event),response=await publication(new URL(manifest.catalogIndex??manifest.catalog,base),event);if(!response.ok)return response;const catalog=await response.json();catalog.staticPreview={manifest:new URL('manifest.json',base).href};return json(catalog);}
  if(request.method==='GET'&&name==='/api/drow-wardrobe')return proxy(request);
+ if(name.startsWith('/api/recolor/'))return proxy(request);
  if(request.method==='GET'&&(name.startsWith('/api/')||name.startsWith('/images/'))){
   const {base,manifest}=await assets(event);let ref;
   if(name==='/api/hero-catalog')ref=manifest.heroCatalogs?.[url.searchParams.get('heroId')];

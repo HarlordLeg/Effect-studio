@@ -175,10 +175,10 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth,te
         if(!auth.sites().some(s=>!s.disabled&&s.origins.includes(origin)))return json(res,403,{error:'Origin не разрешён'});
         res.writeHead(204,{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'content-type','Vary':'Origin'});return res.end();
       }
-      const ticketDownload=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})\/download$/);
+      const ticketDownload=url.pathname.match(/^\/api\/(?:recolor\/)?jobs\/([a-f0-9]{32})\/download$/);
       if(ticketDownload&&url.searchParams.has('download_ticket')&&['GET','HEAD'].includes(req.method)){
         let ticket;try{ticket=downloadTickets.verify(url.searchParams.get('download_ticket'),ticketDownload[1],auth.sites());}catch(error){return json(res,401,{error:error.message});}
-        const job=builder.jobs.get(ticketDownload[1]);if(!job||job.owner!==ticket.owner)return json(res,404,{error:'Build not found or expired'});if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});return serveDownload(req,res,job);
+        const job=url.pathname.startsWith('/api/recolor/')?editorBuilds.jobs.get(ticketDownload[1]):builder.jobs.get(ticketDownload[1]);if(!job||job.owner!==ticket.owner)return json(res,404,{error:'Build not found or expired'});if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});return serveDownload(req,res,job);
       }
       let session=null;
       const token=req.headers.authorization?.replace(/^Bearer /,'')??url.searchParams.get('token');
@@ -188,6 +188,16 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth,te
       if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
       const owner=adminStudioOwner??(session?session.id+':'+session.nonce:'local');previews.touch(owner);
       if(url.pathname.startsWith('/api/recolor/')){
+        const recolorTicket=/^\/api\/recolor\/jobs\/([a-f0-9]{32})\/download-ticket$/.exec(url.pathname);
+        if(recolorTicket&&req.method==='GET'){
+          const job=editorBuilds.jobs.get(recolorTicket[1]);
+          if(!job||job.owner!==owner)return json(res,404,{error:'Build not found'});
+          if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});
+          if(!fs.existsSync(job.file))return json(res,410,{error:'Build file expired'});
+          const ticket=downloadTickets.issue(job,session);
+          return json(res,200,{downloadPath:'/api/recolor/jobs/'+job.id+'/download?download_ticket='+encodeURIComponent(ticket),filename:job.filename??vpkFilename(),expiresIn:600});
+        }
+
         if(req.method==='POST'&&session)auth.consume(session,url.pathname==='/api/recolor/build'?undefined:'preview');
         if(url.pathname.startsWith('/api/recolor/editor/')){
           const name=url.pathname.slice('/api/recolor/editor/'.length);

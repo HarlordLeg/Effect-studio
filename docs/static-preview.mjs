@@ -10,7 +10,7 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  if(!heroId||inputRows.some(r=>r.heroId!==heroId))throw Error('Preview supports one hero at a time');
  const entitySlot=data.previewForm?.startsWith('entity:')?data.previewForm.slice(7):null;
  const arcanaRow=inputRows.find(r=>r.arcana);if(arcanaRow&&entitySlot)throw Error('Arcana summon previews have not been prepublished. VPK building remains available.');if(data.previewForm&&data.previewForm!=='normal'&&!entitySlot&&!(arcanaRow&&data.previewForm==='demon'&&heroId==='terrorblade'))throw Error('This custom arcana/form preview has not been prepublished. VPK building remains available.');
- let rows=inputRows.filter(r=>!r.stanceId&&!r.arcana&&!(heroId==='drow_ranger'&&arcanaRow&&r.slot==='weapon')&&!(publicArcanaDefinitions[heroId]&&arcanaRow&&arcanaOccupiedSlots(publicArcanaDefinitions[heroId]).includes(r.slot)));const stanceRow=inputRows.find(r=>r.stanceId),preferredAnimations=[];
+ let rows=inputRows.filter(r=>!(r.slot==='hero_base'&&r.itemId==null)&&!r.stanceId&&!r.arcana&&!(heroId==='drow_ranger'&&arcanaRow&&r.slot==='weapon')&&!(publicArcanaDefinitions[heroId]&&arcanaRow&&arcanaOccupiedSlots(publicArcanaDefinitions[heroId]).includes(r.slot)));const stanceRow=inputRows.find(r=>r.stanceId),preferredAnimations=[];
  if(stanceRow){
   if(!manifest.stances?.[heroId])throw Error('Kinetic preview metadata has not been prepublished');
   const options=(await load(manifest.stances[heroId])).options??[],selection=stanceRow.stanceId;
@@ -34,8 +34,9 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  // parts. Treat those as defaults rather than attaching them once per selection.
  const classify=(part,selection)=>{
   const item=hero.items?.find(item=>item.id===part.id);
-  const slot=item?.slot??part.slot;
-  const implicitDefault=part.role==='item'&&item?.isDefault&&slot!==selection.recipe.slot;
+  const legacyDefault=String(part.id??'').startsWith('default:');
+  const slot=item?.slot??part.slot??(legacyDefault?part.id.slice(8):undefined);
+  const implicitDefault=part.role==='item'&&(item?.isDefault||legacyDefault)&&slot!==selection.recipe.slot;
   return {...part,slot,role:implicitDefault?'default':part.role};
  };
  const baseSelection=arcanaRecipe?{row:{itemId:'arcana:'+heroId},recipe:arcanaRecipe}:selected.find(s=>s.recipe.complexMerge)??selected[0];
@@ -56,7 +57,7 @@ export async function assembleStaticPreview(data,catalog,manifest,load){
  for(const {row,recipe}of selected){const groupId=row.itemId??'default:'+recipe.slot;for(const part of recipe.parts){const p=classify(part,{row,recipe});if(p.role==='item')parts.push({...p,id:groupId});}if(recipe.native){const packet=await load(recipe.native);for(const entry of packet.effects??[]){const owner=hero.items?.find(item=>item.id===entry.itemId);if(owner?.isDefault&&owner.slot!==recipe.slot)continue;const nativeKey=groupId+':'+entry.effectId;if(seen.has(nativeKey))continue;seen.add(nativeKey);effects.push({...entry,itemId:groupId,...(arcanaColor?{color:arcanaColor,packet:{...entry.packet,arcanaRgb:true}}:{})});}}
  for(const id of row.effectIds??[]){if(!id)continue;const e=catalog.effects.find(e=>e.id===id);if(!e)continue;const color=effectColor(e,row),key=(e.scope==='hero'?id:groupId+':'+id)+':'+JSON.stringify(color);if(seen.has(key))continue;seen.add(key);if(!manifest.effects[id])throw Error('Effect has not been prepublished: '+id);effects.push({itemId:groupId,effectId:id,scope:e.scope??'item',ghost:!!e.ghost,color:previewColor(e,color),defaultColor:previewColor(e),packet:await load(manifest.effects[id])});}}
  if(heroId==='legion_commander'&&arcanaRow&&!preferredAnimations.length)preferredAnimations.push('lc_questidle','ARCANA_dualwield_legion_commander_loadout');
- return {heroId,...(arcanaColor&&arcanaRecipe?.referenceColor?{arcanaTint:{source:arcanaRecipe.referenceColor.map(n=>n/255),color:arcanaColor,keys:arcanaRecipe.parts.map(p=>p.key)}}:{}),parts:parts.map((p,index)=>({...p,index})),character:true,partsOnly:true,status:'ready',selectedItems:selected.map(({row,recipe})=>({id:row.itemId,name:recipe.name,slot:recipe.slot})),preferredAnimations,effects};
+ return {heroId,...(arcanaColor&&arcanaRecipe?.referenceColor&&(heroId!=='terrorblade'||data.previewForm==='demon')?{arcanaTint:{source:arcanaRecipe.referenceColor.map(n=>n/255),color:arcanaColor,keys:arcanaRecipe.parts.filter(p=>heroId!=='terrorblade'||p.role==='hero'||p.slot==='demon').map(p=>p.key)}}:{}),parts:parts.map((p,index)=>({...p,index})),character:true,partsOnly:true,status:'ready',selectedItems:selected.map(({row,recipe})=>({id:row.itemId,name:recipe.name,slot:recipe.slot})),preferredAnimations,effects};
 }
 export class StaticPreviewClient {
  constructor(catalog,{onView=()=>{}}={}){this.catalog=catalog;this.onView=onView;this.jobs=new Map();this.manifest=null;this.lastManifestRefresh=0;this.base=new URL(catalog.staticPreview.manifest);}

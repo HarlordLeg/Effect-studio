@@ -9,7 +9,7 @@ export async function resolveNativeDownload(downloadUrl,serverUrl,fetcher=global
 }
 export function installNativeDownloads(config,doc=document){
  const pending=new Set();
- doc.addEventListener('click',async event=>{const link=event.target.closest?.('a[href]');if(!link)return;const url=new URL(link.href,doc.baseURI);if(url.searchParams.has('download_ticket')||url.origin!==new URL(doc.baseURI).origin||!/^\/api\/jobs\/[a-f0-9]{32}\/download$/.test(url.pathname))return;
+ doc.addEventListener('click',async event=>{const link=event.target.closest?.('a[href]');if(!link)return;const url=new URL(link.href,doc.baseURI);if(url.searchParams.has('download_ticket')||url.origin!==new URL(doc.baseURI).origin||!/^\/api\/(?:recolor\/)?jobs\/[a-f0-9]{32}\/download$/.test(url.pathname))return;
  event.preventDefault();if(pending.has(url.href))return;pending.add(url.href);link.setAttribute('aria-busy','true');
  try{const target=await resolveNativeDownload(url,config.serverUrl),a=doc.createElement('a');a.href=target;a.rel='noreferrer';a.hidden=true;doc.body.append(a);a.click();a.remove();}
  catch(error){const ru=doc.documentElement.lang==='ru',message=error.name==='AbortError'||error instanceof TypeError?(ru?'Не удалось начать скачивание. Нажми «Скачать» ещё раз — пересобирать пак не нужно.':'Unable to start download. Click Download again; rebuilding is not required.'):error.message;doc.defaultView?.alert(message);}
