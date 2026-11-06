@@ -35,5 +35,12 @@ internal static class ItemHitboxScope {
   }else File.Copy(q.Input,q.Output,true);
   foreach(var(p,r,bytes)in particles){using(var output=File.Create(p.Output))Program.SerializePatchedResource(r,bytes,output,true,preserveMetadata:true);using var check=new Resource{FileName=p.Output};check.Read(p.Output);}
   File.WriteAllText(q.Report,JsonSerializer.Serialize(new{version=2,applied=changed>0,initializers=changed,pointCount,boxCount,bones,hitboxSet=q.HitboxSet,sourceKind="item-hitboxes"}));
+ }catch(ItemEffectScope.NoVisibleGeometryException error){
+  // No volume can be authored for an economy-hidden/non-rendering wearable.
+  // Preserve original particle bindings byte-for-byte; do not publish the
+  // in-memory patches that refer to a hitbox set which does not exist.
+  File.Copy(q.Input,q.Output,true);foreach(var particle in q.Particles)File.Copy(particle.Input,particle.Output,true);
+  File.WriteAllText(q.Report,JsonSerializer.Serialize(new{version=2,applied=false,hitboxSet=q.HitboxSet,pointCount=0,boxCount=0,bones=System.Array.Empty<string>(),reason="no-visible-geometry",warning="Нет видимой геометрии: сохранена стандартная привязка эффекта",diagnostic=error.Message}));
+  Console.WriteLine("[WARN] Empty item effect surface; original binding preserved: "+error.Message);
  }finally{foreach(var r in resources)r.Dispose();foreach(var f in temporary)File.Delete(f);}}
 }

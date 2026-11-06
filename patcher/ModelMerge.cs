@@ -307,7 +307,11 @@ internal static class ModelMerge
         if(host.ExternalReferences is { } references){using var buffer=new MemoryStream();references.Serialize(buffer);chunks[host.Blocks.IndexOf(references)]=new Chunk(references.Type,buffer.ToArray());}
         Write(original,chunks,request.Output);
         using var check=new Resource{FileName=request.Output};check.Read(request.Output);var combined=check.DataBlock as Model??throw new InvalidDataException("Merged resource is not a model");var names=Values(combined.Data["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();if(!names.Take(originalSkeleton.Length).SequenceEqual(originalSkeleton))throw new InvalidDataException("Host bone indices changed");
-        var decodedMeshes=combined.GetEmbeddedMeshes().ToArray();if(decodedMeshes.Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
+        try{
+            var decodedMeshes=combined.GetEmbeddedMeshes().ToArray();if(decodedMeshes.Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
+        }catch(ArgumentException error){
+            throw new InvalidDataException("Merged mesh decoding failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donors: "+string.Join(", ",request.Donors.Where(d=>!d.MetadataOnly).Select(d=>d.SourceModel??d.Input))+"; "+error.Message,error);
+        }
         var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL||(morphEdited&&b==morphBlock)||editedHostMeshes.Contains(i))continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
         File.WriteAllText(request.Output+".merge.json",JsonSerializer.Serialize(new{meshes=imported,bones=names.Length,preservedHostBlocks=host.Blocks.Count}));Console.WriteLine("[OK] Embedded model merge: "+imported.Count+" meshes, "+names.Length+" bones; host animations and physics preserved");
     }

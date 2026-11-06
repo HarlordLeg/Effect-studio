@@ -6,3 +6,12 @@ for(const mode of ['old','missing'])test('item effect scope rejects '+mode+' nat
 test('effects without model-sampling initializers pass through unchanged',async()=>{const f=fixture('passthrough');try{const r=await scopeItemSurfaceEffects(f.builder,f.rows);assert.deepEqual(r.choices.map(r=>r.effect),f.rows.map(r=>r.effect));assert.deepEqual(r.builder.itemEffectScopeReports,[]);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
 
 test('merge templates cannot overwrite already scoped selected models',async()=>{const {profileSources}=await import('../lib/model-merge.mjs');const f=fixture();try{const dir=path.join(f.root,'data','model-merge-templates');fs.mkdirSync(dir,{recursive:true});const name=f.rows[0].item.model,scoped=Buffer.from('scoped-volume'),template=Buffer.from('template-without-volume'),other='models/items/untouched.vmdl_c';fs.writeFileSync(path.join(dir,'arc-warden-ti9.vpk'),packVpk(new Map([[name,template],[other,template]])));const b={root:f.root,itemEffectScopedModels:new Map([[name,scoped]])};const head={hero:{id:'arc_warden'},item:{arcWardenHead:true}},shoulder={hero:head.hero,item:{mergeProfile:'arc-warden-ti9'}};const result=profileSources(b,[head,shoulder]);assert.deepEqual(result.get(name),scoped);assert.deepEqual(result.get(other),template);}finally{fs.rmSync(f.root,{force:true,recursive:true});}});
+
+test('empty visible surface preserves the selected effect and records fallback for this item',async()=>{
+ const f=fixture();const run=f.builder.run;f.builder.run=async(exe,args)=>{
+  if(args[0]!=='--item-hitbox-scope')return run(exe,args);
+  const q=JSON.parse(fs.readFileSync(args[1]));fs.copyFileSync(q.input,q.output);for(const p of q.particles)fs.copyFileSync(p.input,p.output);
+  fs.writeFileSync(q.report,JSON.stringify({version:2,hitboxSet:q.hitboxSet,applied:false,reason:'no-visible-geometry',warning:'Original binding retained',pointCount:0,bones:[]}));return '';
+ };
+ try{const result=await scopeItemSurfaceEffects(f.builder,f.rows);assert.deepEqual(result.choices.map(r=>r.effect),f.rows.map(r=>r.effect));assert.equal(result.builder.itemEffectScopedModels.size,0);assert.equal(result.builder.itemEffectScopeReports.length,2);assert.equal(result.builder.itemEffectScopeReports[0].reason,'no-visible-geometry');}finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});
