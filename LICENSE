@@ -1,21 +1,68 @@
-MIT License
+Dota Effect Studio — Proprietary Source Terms
+Copyright (c) 2026 HarlordLeg. All rights reserved.
 
-Copyright (c) 2026 HarlordLeg
+1. Scope
+These terms apply only to original copyrightable contributions controlled by
+HarlordLeg and first published under these terms. This includes eligible new
+source code and documentation for the VPK builder, resource patching, resource
+relocation, recoloring, application integration, and related tooling.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+These terms do not withdraw or replace any license already granted for an
+earlier version or portion of the code. Material previously distributed under
+the MIT License remains available under that license. The former project MIT
+text is retained at licenses/Effect-Studio-legacy-MIT.txt. Repository history and
+file-specific notices determine which portions were previously licensed.
+These terms do not purport to relicense another contributor's work without
+authorization from its copyright holder.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. Permitted end-user use
+You may access the official hosted service and run official application
+releases for your personal, non-commercial use, including creating and using
+local cosmetic mod packages. You may make the technical copies of the official
+application reasonably necessary for that use, including ordinary browser
+loading and caching. This does not authorize operating another hosted service,
+redistributing application releases, or incorporating restricted code into
+another product. Any separate express permission granted by the author remains
+valid within its stated scope.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. Restricted source and distribution rights
+Except for Section 2, mandatory law, applicable platform terms, and the
+exceptions in Section 4, no permission is granted to copy, modify, adapt,
+distribute, sublicense, sell, or incorporate the restricted contributions into
+another application, library, hosted service, or other product. Obtain prior
+written permission from HarlordLeg for those activities. Public visibility of
+the repository is not an open-source license. Platform permissions to view or
+fork a repository are not restricted by these terms; such permissions do not
+independently authorize downstream reuse of restricted contributions.
+
+4. Third-party and previously licensed material
+Third-party components, upstream code, and their notices remain subject to
+their own licenses. These terms impose no additional restrictions on rights
+granted under those licenses. See THIRD_PARTY_NOTICES.md and the notices in
+vendor/, licenses/, public/viewer/licenses/, and docs/viewer/licenses/.
+Where a file contains both previously licensed and new material, these terms
+apply only to eligible new material; they do not claim exclusive rights over
+the underlying third-party or previously MIT-licensed portions.
+
+5. Game resources, formats, and generated packages
+Valve and other game-asset owners retain their rights in models, textures,
+particles, sounds, icons, and other game content. These terms do not grant
+rights in that content. Output files such as VPK or GLB do not automatically
+inherit these source-code restrictions merely because the application created
+them; the rights in their actual contents and any applicable separate notices
+determine their use. No ownership of the VPK, GLB, glTF, or Source 2 formats is
+claimed. No exclusive copyright in ideas, algorithms, processes, or methods of
+operation, or in an independent implementation, is claimed by these terms.
+
+6. Disclaimer
+To the extent permitted by applicable law, the restricted contributions and
+application are provided AS IS, without warranties of merchantability, fitness
+for a particular purpose, non-infringement, or compatibility with game updates.
+To that extent, the copyright holder is not liable for damages arising from
+use of the restricted contributions or application.
+
+7. Permission requests
+Contact HarlordLeg through https://t.me/harlord_mods for written permission.
+This is a proprietary notice and limited permission, not the GNU GPL or MIT
+License for the restricted contributions. Rights required by mandatory law
+are unaffected.

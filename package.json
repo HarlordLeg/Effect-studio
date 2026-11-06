@@ -22,5 +22,6 @@
   "dependencies": {
     "dota-loadout": "0.1.0",
     "three": "0.186.1"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE"
 }
