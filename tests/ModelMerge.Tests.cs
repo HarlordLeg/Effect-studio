@@ -60,11 +60,11 @@ internal static class ModelMergeTests
     var count=sk["m_boneName"].Count;sk["m_bonePosParent"]=Array(Enumerable.Range(0,count).Select(_=>Array(new KVObject(sk==h?2f:10f),new KVObject(0f),new KVObject(0f))).ToArray());
     sk["m_boneRotParent"]=Array(Enumerable.Range(0,count).Select(_=>Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f))).ToArray());sk["m_boneScaleParent"]=Array(Enumerable.Range(0,count).Select(_=>new KVObject(1f)).ToArray());
    }
-   const string host="models/heroes/ember_spirit/ember_spirit.vmdl_c",donor="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms.vmdl_c";
-   var profile=ModelRootProfiles.SharedAttachments(host,donor,h);Check(profile?["item_head"]=="Root_JNT");ModelMerge.MergeSkeleton(h,d,rootAttachments:profile);
+   const string emberHostPath="models/heroes/ember_spirit/ember_spirit.vmdl_c",emberDonorPath="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms.vmdl_c";
+   var profile=ModelRootProfiles.SharedAttachments(emberHostPath,emberDonorPath,h);Check(profile?["item_head"]=="Root_JNT");ModelMerge.MergeSkeleton(h,d,rootAttachments:profile);
    for(int i=1;i<3;i++){Check(h["m_nParent"][i].ToInt32(null)==0);Check(Math.Abs(h["m_bonePosParent"][i][0].ToSingle(null)-8f)<.0001f);}
-   Check(ModelRootProfiles.SharedAttachments("models/heroes/axe/axe.vmdl_c",donor,h) is null);
-   Check(ModelRootProfiles.SharedAttachments(host,"models/items/ember_spirit/unrelated/item.vmdl_c",h) is null);
+   Check(ModelRootProfiles.SharedAttachments("models/heroes/axe/axe.vmdl_c",emberDonorPath,h) is null);
+   Check(ModelRootProfiles.SharedAttachments(emberHostPath,"models/items/ember_spirit/unrelated/item.vmdl_c",h) is null);
    try{ModelMerge.MergeSkeleton(h,Skeleton(new[]{"unknown_import_root"},new[]{-1}),rootAttachments:profile);throw new Exception("Unknown root accepted");}catch(InvalidDataException){}
   }
   foreach(var part in new[]{"weapon_fx_l","weapon_fx_r","weapon_feathers_fx_l","weapon_feathers_fx_r"}){
