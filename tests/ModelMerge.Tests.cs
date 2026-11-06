@@ -54,6 +54,19 @@ internal static class ModelMergeTests
    Check(ModelRootProfiles.TesterAttachments("models/heroes/axe/axe"+suffix,item+suffix,h) is null);
    Check(ModelRootProfiles.TesterAttachments("models/heroes/ember_spirit/ember_spirit"+suffix,"models/items/ember_spirit/unrelated/item"+suffix,h) is null);
   }
+  { // Both observed importer roots attach outside the tester-only path.
+   var h=Skeleton(new[]{"Root_JNT"},new[]{-1});var d=Skeleton(new[]{"ember_spirit_base","item_head"},new[]{-1,-1});
+   foreach(var sk in new[]{h,d}){
+    var count=sk["m_boneName"].Count;sk["m_bonePosParent"]=Array(Enumerable.Range(0,count).Select(_=>Array(new KVObject(sk==h?2f:10f),new KVObject(0f),new KVObject(0f))).ToArray());
+    sk["m_boneRotParent"]=Array(Enumerable.Range(0,count).Select(_=>Array(new KVObject(0f),new KVObject(0f),new KVObject(0f),new KVObject(1f))).ToArray());sk["m_boneScaleParent"]=Array(Enumerable.Range(0,count).Select(_=>new KVObject(1f)).ToArray());
+   }
+   const string host="models/heroes/ember_spirit/ember_spirit.vmdl_c",donor="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms.vmdl_c";
+   var profile=ModelRootProfiles.SharedAttachments(host,donor,h);Check(profile?["item_head"]=="Root_JNT");ModelMerge.MergeSkeleton(h,d,rootAttachments:profile);
+   for(int i=1;i<3;i++){Check(h["m_nParent"][i].ToInt32(null)==0);Check(Math.Abs(h["m_bonePosParent"][i][0].ToSingle(null)-8f)<.0001f);}
+   Check(ModelRootProfiles.SharedAttachments("models/heroes/axe/axe.vmdl_c",donor,h) is null);
+   Check(ModelRootProfiles.SharedAttachments(host,"models/items/ember_spirit/unrelated/item.vmdl_c",h) is null);
+   try{ModelMerge.MergeSkeleton(h,Skeleton(new[]{"unknown_import_root"},new[]{-1}),rootAttachments:profile);throw new Exception("Unknown root accepted");}catch(InvalidDataException){}
+  }
   foreach(var part in new[]{"weapon_fx_l","weapon_fx_r","weapon_feathers_fx_l","weapon_feathers_fx_r"}){
    var root=KVObject.Collection();root["m_hSnapshot"]=new KVObject("particles/models/items/beastmaster/bm_2021_immortal/bm_2021_immortal/bm_2021_immortal_"+part+".vsnap");root["m_nSnapshotControlPoint"]=new KVObject(part.Contains("feathers")?5:6);var skin=KVObject.Collection();skin["_class"]=new KVObject("C_INIT_InitSkinnedPositionFromCPSnapshot");skin["m_bRigid"]=new KVObject(true);root["m_Initializers"]=Array(skin);var rigid=KVObject.Collection();rigid["_class"]=new KVObject("C_OP_SnapshotRigidSkinToBones");root["m_Operators"]=Array(rigid);Check(NativeImmortalParticles.Patch(root)==1);Check(!skin["m_bRigid"].ToBoolean(null));Check(root["m_Initializers"][0]["m_nInputMax"].ToInt32(null)==(part.Contains("feathers")?13:39));Check(root["m_Operators"].Values.Last()["_class"].ToString(null)=="C_OP_MovementSkinnedPositionFromCPSnapshot");Check(NativeImmortalParticles.Patch(root)==0);
   }

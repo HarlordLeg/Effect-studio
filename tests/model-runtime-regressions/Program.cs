@@ -19,3 +19,31 @@ void CheckVariant(string identity,int skin,bool reject,bool alternate=false){
 foreach(var part in new[]{"arms","head","shoulder","weapon"})CheckVariant("models/items/slark/cavern_crawl_2020_slark_"+part+"/cavern_crawl_2020_slark_"+part+".vmdl",2,false);
 CheckVariant("models/heroes/test/model.vmdl",2,true);CheckVariant("models/heroes/test/model.vmdl",1,false,true);
 Console.WriteLine("Material variants: Tellurian Full Throttle fallback, ordinary alternate skins and invalid-group rejection passed.");
+
+// Pudge hook: the legacy CP7 resolves to the merged hero, overriding the
+// explicitly relocated hook. Unrelated renderers must retain their CP inputs.
+{
+ var data=KVObject.Collection();var rows=KVObject.Array();
+ KVObject Renderer(string model){var r=KVObject.Collection();r["_class"]=new KVObject("C_OP_RenderModels");r["m_nModelCP"]=new KVObject(7);r["m_modelInput"]=KVObject.Collection();r["m_EconSlotName"]=new KVObject("weapon");var entry=KVObject.Collection();entry["m_model"]=new KVObject(model);r["m_ModelList"]=KVObject.Array(new[]{entry});return r;}
+ const string privateModel="harlord/models/tester-wearables/hook.vmdl";
+ var hook=Renderer(privateModel+"_c");var other=Renderer("models/particle/other.vmdl");rows.Add(hook);rows.Add(other);data["m_Renderers"]=rows;
+ var patch=assembly.GetType("TesterWearableHost")!.GetMethod("UsePrivateModelList",BindingFlags.Static|BindingFlags.NonPublic)!;
+ patch.Invoke(null,new object[]{data,new HashSet<string>{privateModel}});
+ if(hook.TryGetValue("m_nModelCP",out _)||hook.TryGetValue("m_modelInput",out _)||hook["m_EconSlotName"].ToString(null)!="")throw new Exception("Private hook still selects the hero model");
+ if(!other.TryGetValue("m_nModelCP",out _)||!other.TryGetValue("m_modelInput",out _)||other["m_EconSlotName"].ToString(null)!="weapon")throw new Exception("Unrelated particle model binding changed");
+ patch.Invoke(null,new object[]{data,new HashSet<string>{privateModel}});
+ Console.WriteLine("Private wearable model renderers ignore hero CP overrides; unrelated bindings retained.");
+}
+
+// Reported Tide chain and Huskar LOD resources stay independent. The
+// native decision must not depend on a tester UI flag or broaden by hero.
+{
+ var preserve=assembly.GetType("TesterWearableHost")!.GetMethod("PreserveRuntimeModel",BindingFlags.Static|BindingFlags.NonPublic)!;
+ bool Keep(string h,string d)=>(bool)preserve.Invoke(null,new object[]{h,d})!;
+ foreach(var suffix in new[]{"","_c"}){
+  if(!Keep("models/heroes/tidehunter/tidehunter.vmdl"+suffix,"models/heroes/tidehunter/tidehunter_bracer.vmdl"+suffix))throw new Exception("Tide chain runtime was not preserved");
+  if(!Keep("models/heroes/huskar/huskar.vmdl"+suffix,"models/items/huskar/huskar_explosive_maniac_weapon/huskar_explosive_maniac_weapon.vmdl"+suffix))throw new Exception("Huskar weapon runtime was not preserved");
+ }
+ if(Keep("models/heroes/axe/axe.vmdl_c","models/heroes/tidehunter/tidehunter_bracer.vmdl_c")||Keep("models/heroes/huskar/huskar.vmdl_c","models/items/huskar/unrelated/weapon.vmdl_c"))throw new Exception("Runtime profile leaked to unrelated models");
+ Console.WriteLine("Reported Tide chain and Huskar authored LOD runtime profiles passed.");
+}

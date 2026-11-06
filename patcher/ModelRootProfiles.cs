@@ -2,10 +2,26 @@
 // models. Never accept an arbitrary unknown root on an unrelated wearable.
 internal static class ModelRootProfiles
 {
+    // Shared build repair, restricted to the reported Sindur Sensei models.
+    // These are independent importer/container roots, not arbitrary hero joints.
+    internal static IReadOnlyDictionary<string,string>? SharedAttachments(string host,string donor,ValveKeyValue.KVObject skeleton)
+    {
+        host=host.Replace("\\","/");donor=donor.Replace("\\","/");
+        if(host.StartsWith("harlord/",StringComparison.Ordinal))host=host[8..];if(donor.StartsWith("harlord/",StringComparison.Ordinal))donor=donor[8..];
+        if(host.EndsWith("_c",StringComparison.Ordinal))host=host[..^2];if(donor.EndsWith("_c",StringComparison.Ordinal))donor=donor[..^2];
+        if(host!="models/heroes/ember_spirit/ember_spirit.vmdl")return null;
+        var arms=donor=="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms.vmdl";
+        if(!arms&&donor!="models/items/ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder.vmdl")return null;
+        var names=skeleton["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();var parents=skeleton["m_nParent"].Values.Select(v=>v.ToInt32(null)).ToArray();
+        var roots=names.Where((_,i)=>parents[i]<0).ToArray();if(roots.Length!=1||roots[0] is not ("Root_JNT" or "Root0_JNT"))return null;
+        var result=new Dictionary<string,string>(StringComparer.Ordinal){{"ember_spirit_base",roots[0]}};
+        if(arms)result["item_head"]=roots[0];return result;
+    }
     // Tester-only importer roots reported by the first tester batch. Each
     // profile is limited to matching hero namespaces and a unique host root.
     internal static IReadOnlyDictionary<string,string>? TesterAttachments(string host,string donor,ValveKeyValue.KVObject skeleton)
     {
+        var shared=SharedAttachments(host,donor,skeleton);if(shared is not null)return shared;
         host=host.Replace("\\","/");donor=donor.Replace("\\","/");
         if(host.StartsWith("harlord/",StringComparison.Ordinal))host=host[8..];if(donor.StartsWith("harlord/",StringComparison.Ordinal))donor=donor[8..];
         var names=skeleton["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
@@ -20,7 +36,7 @@ internal static class ModelRootProfiles
         if(host.StartsWith("models/heroes/dark_willow/",StringComparison.Ordinal)&&(donor=="models/items/dark_willow/the_naughty_witch_from_dark_woods_head/the_naughty_witch_from_dark_woods_head.vmdl_c"||donor=="models/items/dark_willow/the_naughty_witch_from_dark_woods_head/the_naughty_witch_from_dark_woods_head.vmdl")){
             var head=names.SingleOrDefault(n=>string.Equals(n,"head",StringComparison.OrdinalIgnoreCase));if(head is not null)return new Dictionary<string,string>(StringComparer.Ordinal){{"cat_head_base",head}};
         }
-        if(host.StartsWith("models/heroes/ember_spirit/",StringComparison.Ordinal)&&(donor=="models/items/ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder.vmdl_c"||donor=="models/items/ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder.vmdl"||donor=="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms.vmdl_c"||donor=="models/items/ember_spirit/ember_sindur_sensei_arms/ember_sindur_sensei_arms.vmdl")&&roots.Length==1&&roots[0] is "Root_JNT" or "Root0_JNT")return new Dictionary<string,string>(StringComparer.Ordinal){{"ember_spirit_base",roots[0]}};
+
         var donorPath = donor.EndsWith("_c", StringComparison.Ordinal) ? donor[..^2] : donor;
         if (host is ("models/heroes/omniknight/omniknight.vmdl_c" or "models/heroes/omniknight/omniknight.vmdl") &&
             donorPath == "models/items/omniknight/the_fist_of_frenzied_sun_shoulders/the_fist_of_frenzied_sun_shoulders.vmdl" &&
