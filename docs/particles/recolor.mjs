@@ -1,3 +1,20 @@
+const rgbAlpha='SPRITECARD_TEXTURE_CHANNEL_MIX_A_RGBALPHA';
+export function usesRgbAlpha(channels){
+ return channels==null||channels==='SPRITECARD_TEXTURE_CHANNEL_MIX_RGB'||channels==='SPRITECARD_TEXTURE_CHANNEL_MIX_RGBA';
+}
+export function enableDarkBlend(root,rgb){
+ if(Math.max(...rgb)>16)return;
+ for(const renderer of root.m_Renderers??[]){
+  if(!['C_OP_RenderSprites','C_OP_RenderTrails','C_OP_RenderRopes'].includes(renderer._class)||renderer.m_nOutputBlendMode==='PARTICLE_OUTPUT_BLEND_MODE_MOD2X')continue;
+  const additive=renderer.m_nOutputBlendMode==='PARTICLE_OUTPUT_BLEND_MODE_ADD';
+  if(additive)delete renderer.m_nOutputBlendMode;
+  if(additive||Object.hasOwn(renderer,'m_flAddSelfAmount')){
+   for(const texture of renderer.m_vecTexturesInput??[])if(usesRgbAlpha(texture.m_nTextureChannels))texture.m_nTextureChannels=rgbAlpha;
+  }
+  if(Object.hasOwn(renderer,'m_flAddSelfAmount'))renderer.m_flAddSelfAmount=0;
+ }
+}
+
 // Explicit RGB recolor must include later color operators and renderer constants.
 export function forceParticleColor(root,rgb){
  const bytes=old=>[...rgb,...(Array.isArray(old)&&old.length>3?[old[3]]:[])],vector=(old,scale=null)=>rgb.map(c=>c/255*(scale??Math.max(...old.slice(0,3).map(Math.abs))));
