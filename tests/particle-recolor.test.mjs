@@ -7,7 +7,7 @@ test('only colored effect copies receive neutral sprite textures and changed ren
  const original=fixture(),packet={root:'a.vpcf',definitions:{'a.vpcf_c':original}},data=effectSource(new SceneSource(),[{packet,color:[0,203/255,10/255]},{packet}]);assert.equal(data.systems['studio/0/a'].m_Renderers[0].m_bStudioRecolor,true);assert.equal(data.systems['studio/1/a'].m_Renderers[0].m_bStudioRecolor,undefined);assert.deepEqual(original.m_Renderers[0].m_vecColorScale.m_LiteralColor,[229,54,0]);
 });
 
-test('arcana tint retains its existing texture/rendering path',()=>{const packet={root:'a.vpcf',arcanaRgb:true,definitions:{'a.vpcf_c':fixture()}},data=effectSource(new SceneSource(),[{packet,color:[0,1,0]}]);assert.equal(data.systems['studio/0/a'].m_Renderers[0].m_bStudioRecolor,undefined);assert.equal(data.systems['studio/0/a'].m_Renderers[0].m_flAddSelfAmount,2);});
+test('arcana RGB overrides late colors through the same explicit recolor path',()=>{const packet={root:'a.vpcf',arcanaRgb:true,definitions:{'a.vpcf_c':fixture()}},data=effectSource(new SceneSource(),[{packet,color:[0,1,0]}]);assert.equal(data.systems['studio/0/a'].m_Renderers[0].m_bStudioRecolor,true);assert.equal(data.systems['studio/0/a'].m_Renderers[0].m_flAddSelfAmount,0);assert.deepEqual(data.systems['studio/0/a'].m_Initializers[1].m_vOutputMin,[0,1,0]);assert.equal(packet.definitions['a.vpcf_c'].m_Renderers[0].m_flAddSelfAmount,2);});
 
 test('black sprites darken the background in both recolor preview paths',()=>{
  const original=fixture();

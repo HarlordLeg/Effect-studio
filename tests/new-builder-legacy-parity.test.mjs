@@ -1,3 +1,5 @@
+
+function modelResource(label=''){const header=Buffer.alloc(16);header.writeUInt32LE(16+Buffer.byteLength(label));header.writeUInt16LE(12,4);header.writeUInt32LE(8,8);return Buffer.concat([header,Buffer.from(label)]);}
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {configureModelMerging} from '../lib/model-merge.mjs';
 import {testerHostPlan,applyTesterHosts} from '../lib/tester/build.mjs';
@@ -12,11 +14,11 @@ function fixture(id){
  configureModelMerging({heroes:[hero]},{read:()=>null});return {hero,head,host,target};
 }
 for(const id of ['primal_beast','arc_warden'])test(`new builder retains the legacy independent animated head: ${id}`,async()=>{
- const {hero,head,host,target}=fixture(id),dir=fs.mkdtempSync(path.join(os.tmpdir(),'legacy-head-')),choices=[{hero,item:head,effects:[]}],files=new Map([[target,Buffer.from('animated-head')]]),roots=[],targets=new Set(),job={};
+ const {hero,head,host,target}=fixture(id),dir=fs.mkdtempSync(path.join(os.tmpdir(),'legacy-head-')),choices=[{hero,item:head,effects:[]}],files=new Map([[target,modelResource('animated-head')]]),roots=[],targets=new Set(),job={};
  const plan=testerHostPlan(choices,files);assert.equal(plan.groups.get(host)[0].independentRuntime,true);assert.equal(plan.coverage[0].kind,'independent-runtime');
- let calls=0;const builder={root:dir,config:{testerBuildV1:true},store:{read:()=>Buffer.from('hero')},run:async(_,args)=>{
+ let calls=0;const builder={root:dir,config:{testerBuildV1:true},store:{read:()=>modelResource('hero')},run:async(_,args)=>{
   if(args[0]==='--capabilities')return JSON.stringify({testerWearableHostV2:true,testerRuntimeBindingsV3:true,testerImporterRootProfilesV4:true,immortalRuntimeFixesV1:true,testerRuntimeWearablesV1:true});
-  calls++;const q=JSON.parse(fs.readFileSync(args[1]));const donor=q.hosts[0].donors[0];assert.equal(donor.independentRuntime,true);assert.equal(fs.readFileSync(donor.input).toString(),'animated-head');
+  calls++;const q=JSON.parse(fs.readFileSync(args[1]));const donor=q.hosts[0].donors[0];assert.equal(donor.independentRuntime,true);assert.deepEqual(fs.readFileSync(donor.input),modelResource('animated-head'));
   fs.writeFileSync(q.hosts[0].output,'hero-particles');fs.writeFileSync(donor.hidden,'animated-head-without-duplicate-particles');fs.writeFileSync(donor.visible,'private-animated-head');fs.writeFileSync(q.report,JSON.stringify({version:2,hosts:[{host,wearables:[target]}]}));return '';
  }};
  try{await applyTesterHosts(builder,choices,files,targets,roots,dir,'patcher',job);assert.equal(calls,1);assert.equal(files.get(target).toString(),'animated-head-without-duplicate-particles');assert.equal(job.testerBuilder.coverage[0].kind,'independent-runtime');assert.deepEqual(fs.readdirSync(dir),[]);}finally{fs.rmSync(dir,{recursive:true,force:true});}
