@@ -1,10 +1,10 @@
-param([Parameter(Mandatory=$true)][string]$ArtifactZip)
+param([Parameter(Mandatory=$true)][string]$ArtifactZip,[string]$DeployDirectory=$PSScriptRoot)
 $ErrorActionPreference='Stop'
-$settings=Get-Content (Join-Path $PSScriptRoot 'settings.json') -Raw | ConvertFrom-Json
+$settings=Get-Content (Join-Path $DeployDirectory 'settings.json') -Raw | ConvertFrom-Json
 $app=[IO.Path]::GetFullPath($settings.appDirectory).TrimEnd('\');$task=$settings.taskName
 $managed=@('public','lib','licenses','samples','runtime','patcher\publish','asset-bridge\publish','tools','server.mjs','desktop.cjs','package.json','config.example.json','start-local.bat','start-desktop.bat','configure-dota.bat','configure-pages.bat','data\catalog.json','data\effect-collections.json','data\frostbloom.json')
-$stage=Join-Path $PSScriptRoot ('stage-'+[guid]::NewGuid().ToString('N'))
-$backup=Join-Path $PSScriptRoot 'previous'
+$stage=Join-Path $DeployDirectory ('stage-'+[guid]::NewGuid().ToString('N'))
+$backup=Join-Path $DeployDirectory 'previous'
 function Copy-Managed([string]$from,[string]$to) {
   foreach($relative in $managed) {
     $source=Join-Path $from $relative;$target=Join-Path $to $relative
@@ -12,6 +12,7 @@ function Copy-Managed([string]$from,[string]$to) {
       New-Item -ItemType Directory -Force -Path $target | Out-Null
       # Manually installed Wiki previews are not part of Git/CI artifacts.
       $copyArgs=@($source,$target,'/MIR','/R:2','/W:1','/NFL','/NDL','/NJH','/NJS','/NP')
+      if ($relative -eq 'runtime' -and -not (Test-Path (Join-Path $source 'electron'))) { $copyArgs+=@('/XD','electron') }
       if ($relative -eq 'public') { $copyArgs+=@('/XD',(Join-Path $source 'ethereal-media'),(Join-Path $target 'ethereal-media')) }
       & robocopy @copyArgs | Out-Null
       if ($LASTEXITCODE -ge 8) { throw "Copy failed: $relative ($LASTEXITCODE)" }
@@ -48,6 +49,7 @@ try {
   } finally { $zip.Dispose() }
   [IO.Compression.ZipFile]::ExtractToDirectory([IO.Path]::GetFullPath($ArtifactZip),$stage)
   $incoming=Join-Path $stage 'DotaEffectStudio'
+  if (-not (Test-Path (Join-Path $incoming 'runtime\electron'))) { $managed=@($managed | Where-Object { $_ -ne 'start-desktop.bat' }) }
   foreach($relative in $managed) { if (-not (Test-Path (Join-Path $incoming $relative))) { throw "Incomplete artifact: $relative" } }
   foreach($relative in @('server.mjs','lib\request-access.mjs')) {
     & (Join-Path $incoming 'runtime\node.exe') --check (Join-Path $incoming $relative)
