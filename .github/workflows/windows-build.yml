@@ -36,6 +36,35 @@ jobs:
         run: node tools/build-native.mjs patcher
       - name: Build and validate asset bridge
         run: node tools/build-native.mjs assets
+      - name: Prepare server package
+        run: node tools/package-windows.mjs --server-only
+      - name: Zip server package
+        run: Compress-Archive -Path dist/server/DotaEffectStudio -DestinationPath dist/DotaEffectStudio-Server-Windows-x64.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DotaEffectStudio-Server-Windows-x64
+          path: dist/DotaEffectStudio-Server-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+  desktop:
+    needs: windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: DotaEffectStudio-Server-Windows-x64
+          path: dist
+      - name: Extract validated native binaries
+        run: |
+          Expand-Archive dist/DotaEffectStudio-Server-Windows-x64.zip dist/server
+          Copy-Item dist/server/DotaEffectStudio/patcher/publish patcher/publish -Recurse -Force
+          Copy-Item dist/server/DotaEffectStudio/asset-bridge/publish asset-bridge/publish -Recurse -Force
       - name: Install desktop runtime
         shell: pwsh
         timeout-minutes: 8
@@ -75,10 +104,11 @@ jobs:
     env:
       DEPLOY_DIRECTORY: ${{ vars.DES_DEPLOY_DIR }}
     steps:
-      - name: Download tested Windows app
+      - uses: actions/checkout@v6
+      - name: Download tested server package
         uses: actions/download-artifact@v8
         with:
-          name: DotaEffectStudio-Windows-x64
+          name: DotaEffectStudio-Server-Windows-x64
           path: deploy-artifact/${{ github.run_id }}-${{ github.run_attempt }}
       - name: Install and restart server
         shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '{0}'"
@@ -95,9 +125,9 @@ jobs:
           $head = Invoke-RestMethod -Uri "$env:GH_API/repos/$env:GH_REPOSITORY/commits/$branch" -Headers @{Authorization="Bearer $env:GH_TOKEN";Accept='application/vnd.github+json'}
           if ($head.sha -ne $env:GH_COMMIT) { Write-Host 'A newer commit exists. Skipping obsolete build.'; exit 0 }
           if (-not $env:DEPLOY_DIRECTORY) { throw 'Set DES_DEPLOY_DIR repository variable.' }
-          $script = Join-Path $env:DEPLOY_DIRECTORY 'update-server.ps1'
-          if (-not (Test-Path $script)) { throw 'Run deploy/install.ps1 on the server first.' }
-          & $script -ArtifactZip (Join-Path $env:ARTIFACT_DIRECTORY 'DotaEffectStudio-Windows-x64.zip')
+          $script = Join-Path $env:GITHUB_WORKSPACE 'deploy/update-server.ps1'
+          if (-not (Test-Path (Join-Path $env:DEPLOY_DIRECTORY 'settings.json'))) { throw 'Run deploy/install.ps1 on the server first.' }
+          & $script -DeployDirectory $env:DEPLOY_DIRECTORY -ArtifactZip (Join-Path $env:ARTIFACT_DIRECTORY 'DotaEffectStudio-Server-Windows-x64.zip')
           if (-not $?) { throw 'Server update failed.' }
           exit 0
       - name: Remove downloaded artifact
