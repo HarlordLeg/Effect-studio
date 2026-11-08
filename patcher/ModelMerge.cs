@@ -9,9 +9,15 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false,string? SourceModel=null,bool SkipParticleMetadata=false);
+    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false,string? SourceModel=null,bool SkipParticleMetadata=false)
+    {
+        public string OriginalInput { get; init; } = Input;
+    }
     private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null,string? HostModel=null,bool TesterImporterRoots=false);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
+    internal const string IncompatibleDonorInput = "IncompatibleWearableDonorInput";
+    const string UnattachedDonorRoot = "UnattachedWearableDonorRoot";
+
     static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
     internal static string MeshReference(KVObject value)=>value.ValueType==KVValueType.Null?string.Empty:value.ValueType==KVValueType.String?Text(value):throw new InvalidDataException("Mesh reference must be a resource string or null");
     static int Number(KVObject value)=>value.ToInt32(CultureInfo.InvariantCulture);
@@ -70,7 +76,11 @@ internal static class ModelMerge
                     profileParent=hostNames.IndexOf(parentName);
                     if(profileParent<0)throw new InvalidDataException("Wearable root profile requires host bone: "+parentName);
                 }
-                if(profileParent<0&&!sharkRoot&&((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1))throw new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
+                if(profileParent<0&&!sharkRoot&&((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1)){
+                    var error=new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
+                    error.Data[UnattachedDonorRoot]=true;
+                    throw error;
+                }
                 var parentRoot=profileParent>=0?profileParent:roots[0];
                 attachedRoots[i]=(parentRoot,RootLocalPose(host,parentRoot,donor,i));
             }index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
@@ -220,10 +230,17 @@ internal static class ModelMerge
         var morphBlock=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
         var mergedMorph=morphBlock is null?null:Read(host,original,morphBlock);var morphEdited=false;int? importedControllerBlock=null;byte importedControllerVersion=0;
         var originalSkeleton=Values(root["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();
-        foreach(var entry in request.Donors){
+        foreach(var requested in request.Donors){
+            var entry=requested;
             var bytes=File.ReadAllBytes(entry.Input);using var donor=new Resource{FileName=entry.Input};donor.Read(entry.Input);if(donor.DataBlock is not Model)throw new InvalidDataException("Merge donor must be a model");
             var source=Read(donor,bytes,donor.DataBlock).Data.Root;var sourceCtrl=Read(donor,bytes,donor.Blocks.Single(b=>b.Type==BlockType.CTRL)).Data.Root;
             if(Values(source,"m_refMeshes").Any(v=>MeshReference(v).Length>0))throw new InvalidDataException("External donor meshes must be embedded before merging");
+            // Draconic Requiem's misc model supplies metadata but no geometry.
+            if(request.HostModel=="models/heroes/death_prophet/death_prophet.vmdl_c"&&
+               entry.SourceModel=="models/items/death_prophet/scalefiends_hatred_misc/scalefiends_hatred_misc.vmdl_c"&&
+               entry.MeshNames is null&&Values(sourceCtrl,"embedded_meshes").Length==0)
+                entry=entry with{MetadataOnly=true};
+
             if(Values(source,"m_boneFlexDrivers").Length>0)throw new InvalidDataException("Donor bone flex drivers require a dedicated merge profile");
             if(!entry.MetadataOnly&&donor.Blocks.Any(b=>b.Type==BlockType.PHYS&&(b.ToString()?.Contains("m_cloth",StringComparison.OrdinalIgnoreCase)??false)))throw new InvalidDataException("Donor contains cloth physics; use a dedicated merge profile");
             if(!entry.MetadataOnly&&Values(source,"m_ExtParts").Length>0)throw new InvalidDataException("Donor external parts require a dedicated merge profile");
@@ -247,11 +264,15 @@ internal static class ModelMerge
                 var attachments=ModelRootProfiles.Attachments(hostName,donorName)
                     ??ModelRootProfiles.SharedAttachments(hostName,donorName,skeleton)
                     ??(request.TesterImporterRoots?ModelRootProfiles.TesterAttachments(hostName,donorName,skeleton):null);
-                if(!entry.MetadataOnly)attachments=WearableAuditRootProfiles.Resolve(hostName,donorName,skeleton,attachments);
+                if(!entry.MetadataOnly)attachments=WearableAuditRootProfiles.Resolve(hostName,donorName,skeleton,source["m_modelSkeleton"],attachments);
                 boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(skeleton,source["m_modelSkeleton"],
                     entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,attachments);
             }
-            catch(InvalidDataException error){throw new InvalidDataException("Model merge failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donor: "+(entry.SourceModel??Text(source["m_name"]))+"; "+error.Message,error);}
+            catch(InvalidDataException error){
+                var failure=new InvalidDataException("Model merge failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donor: "+(entry.SourceModel??Text(source["m_name"]))+"; "+error.Message,error);
+                if(error.Data.Contains(UnattachedDonorRoot))failure.Data[IncompatibleDonorInput]=entry.OriginalInput;
+                throw failure;
+            }
 
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
             var attachmentPrefix=request.TesterImporterRoots?TesterAttachmentProfiles.Prefix(entry.SourceModel??Text(source["m_name"])):null;
@@ -259,7 +280,11 @@ internal static class ModelMerge
             var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");
             var sourceGroups=Values(source,"m_refMeshGroupMasks");var sourceDefault=source.TryGetValue("m_nDefaultMeshGroupMask",out var sourceMask)?Mask(sourceMask):ulong.MaxValue;
             var sourceRows=Values(sourceCtrl,"embedded_meshes").Where(r=>!entry.MetadataOnly).Where(r=>MeshIndex(r)>=sourceGroups.Length||(Mask(sourceGroups[MeshIndex(r)])&sourceDefault)!=0).Where(r=>entry.MeshNames is null||entry.MeshNames.Contains(MeshName(r),StringComparer.Ordinal)).ToArray();
-            if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true)throw new InvalidDataException("Requested donor mesh not found: "+(entry.SourceModel??Text(source["m_name"]))+" (default mask: "+sourceDefault+"; available: "+string.Join(", ",Values(sourceCtrl,"embedded_meshes").Select(MeshName))+")");
+            if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true){
+                var error=new InvalidDataException("Requested donor mesh not found: "+(entry.SourceModel??Text(source["m_name"]))+" (default mask: "+sourceDefault+"; available: "+string.Join(", ",Values(sourceCtrl,"embedded_meshes").Select(MeshName))+")");
+                if(entry.MeshNames is null&&Values(sourceCtrl,"embedded_meshes").Length>0)error.Data[IncompatibleDonorInput]=entry.OriginalInput;
+                throw error;
+            }
             var blocks=new Dictionary<int,int>();
             int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=normalizedMorphs.TryGetValue(index,out var normalized)?normalized:bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&(renamedBones.Count>0||attachmentPrefix is not null)){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);TesterAttachmentProfiles.NamespaceMesh(mesh.Data.Root,attachmentPrefix);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;if(index==controllerSeed)importedControllerBlock=mapped;return mapped;}
             var nextIndex=new[]{meshRows.Max(MeshIndex)+1,starts.Count,Values(root,"m_refMeshes").Length,Values(root,"m_refMeshGroupMasks").Length}.Max();

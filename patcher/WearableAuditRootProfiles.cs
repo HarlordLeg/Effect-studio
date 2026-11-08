@@ -592,8 +592,105 @@ internal static class WearableAuditRootProfiles
         [("models/heroes/zeus/zeus.vmdl", "models/items/zeus/zeus_cosmic/zeus_cosmic_head.vmdl")] = [("beard_2", "char_origin")],
     };
 
+    private static readonly Dictionary<(string Host, string Donor), string[]> MultiRootProfiles = new()
+    {
+        [("models/heroes/invoker/invoker.vmdl", "models/items/invoker/frostivus2018_invoker_keeper_of_magic_arms/frostivus2018_invoker_keeper_of_magic_arms.vmdl")] = ["orbs_root"],
+        [("models/heroes/invoker/invoker.vmdl", "models/items/invoker/frostivus2018_invoker_keeper_of_magic_back/frostivus2018_invoker_keeper_of_magic_back.vmdl")] = ["orbs_root"],
+        [("models/heroes/invoker/invoker.vmdl", "models/items/invoker/frostivus2018_invoker_keeper_of_magic_belt/frostivus2018_invoker_keeper_of_magic_belt.vmdl")] = ["orbs_root"],
+        [("models/heroes/invoker/invoker.vmdl", "models/items/invoker/frostivus2018_invoker_keeper_of_magic_shoulder/frostivus2018_invoker_keeper_of_magic_shoulder.vmdl")] = ["orbs_root"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/embrace_force_blue_shoulder/embrace_force_blue_shoulder.vmdl")] = ["dmxio_scene"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/forgotten_cloak/forgotten_cloak.vmdl")] = ["rubick_model_skinned_model_only1"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/forgotten_greatstaff/forgotten_greatstaff.vmdl")] = ["rubick_model_skinned_model_only1"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/forgotten_mask/forgotten_mask.vmdl")] = ["rubick_model_skinned_model_only1"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/gemini_juggler_back/gemini_juggler_back.vmdl")] = ["back_lod0"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/gemini_juggler_head/gemini_juggler_head.vmdl")] = ["head_lod0"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/gemini_juggler_shoulder/gemini_juggler_shoulder.vmdl")] = ["shoulder_lod0"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/gemini_juggler_weapon/gemini_juggler_weapon.vmdl")] = ["weapon_lod0"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/golden_ornithomancer_mantle/golden_ornithomancer_mantle.vmdl")] = ["back_lod0"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/set_of_defiance_shoulder/set_of_defiance_shoulder.vmdl")] = ["shoulders"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/set_of_defiance_weapon/set_of_defiance_weapon.vmdl")] = ["weapon"],
+        [("models/heroes/rubick/rubick.vmdl", "models/items/rubick/spell_devourer/spell_devourer.vmdl")] = ["rubick_staff_model"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/mh_palico_techies/mesh/mh_techies_palico_tank.vmdl")] = ["L_tread_JNT_02"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/mh_palico_techies/mesh/mh_techies_palico_tank_rainbow.vmdl")] = ["L_tread_JNT_02"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/pirate_of_treasures_bight_back/pirate_of_treasures_bight_back.vmdl")] = ["handle_L_00"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/techies_mad_tex_mount/techies_mad_tex_mount.vmdl")] = ["techies_mad_tex_mount_root"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/techies_ti9_immortal_cart/techies_ti9_immortal_cart.vmdl")] = ["root5"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/ti8_techies_subterranean_sapper_squad_back/ti8_techies_subterranean_sapper_squad_back.vmdl")] = ["root5"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/ti8_techies_subterranean_sapper_squad_mount/ti8_techies_subterranean_sapper_squad_mount.vmdl")] = ["root5"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/ti8_techies_subterranean_sapper_squad_shoulder/ti8_techies_subterranean_sapper_squad_shoulder.vmdl")] = ["root5"],
+        [("models/heroes/techies/techies.vmdl", "models/items/techies/ti8_techies_subterranean_sapper_squad_weapon/ti8_techies_subterranean_sapper_squad_weapon.vmdl")] = ["root5"],
+        [("models/heroes/tidehunter/tidehunter.vmdl", "models/heroes/tidehunter/tidehunter_belt.vmdl")] = ["chain_1"],
+        [("models/heroes/tidehunter/tidehunter.vmdl", "models/items/tidehunter/tidehunter_arcana/tidehunter_arcana_belt.vmdl")] = ["chain_1"],
+        [("models/heroes/windrunner/windrunner.vmdl", "models/items/windrunner/deadly_feather_swing_back/deadly_feather_swing_back.vmdl")] = ["back_lod0"],
+        [("models/heroes/windrunner/windrunner.vmdl", "models/items/windrunner/deadly_feather_swing_head/deadly_feather_swing_head.vmdl")] = ["head2_lod0"],
+        [("models/heroes/windrunner/windrunner.vmdl", "models/items/windrunner/deadly_feather_swing_offhand/deadly_feather_swing_offhand.vmdl")] = ["quiver_lod0"],
+        [("models/heroes/windrunner/windrunner.vmdl", "models/items/windrunner/deadly_feather_swing_shoulder/deadly_feather_swing_shoulder.vmdl")] = ["shoulder_lod0"],
+        [("models/heroes/windrunner/windrunner.vmdl", "models/items/windrunner/deadly_feather_swing_weapon/deadly_feather_swing_weapon.vmdl")] = ["bow_lp_lod0"],
+        [("models/heroes/windrunner/windrunner.vmdl", "models/items/windrunner/reincarnation_of_the_soul_finch_shoulders/reincarnation_of_the_soul_finch_shoulders.vmdl")] = ["wr_root"],
+    };
+
+    private static int TopRoot(int bone, int[] parents)
+    {
+        for (var count = 0; count < parents.Length && bone >= 0 && bone < parents.Length; count++)
+        {
+            if (parents[bone] < 0) return bone;
+            bone = parents[bone];
+        }
+        return -1;
+    }
+
+    private static void AddMultiRootAttachments(
+        string host, string[] reportedBones, KVObject skeleton, KVObject donorSkeleton,
+        Dictionary<string, string> result)
+    {
+        var hostNames = skeleton["m_boneName"].Values.Select(value => value.ToString(null)).ToArray();
+        var donorNames = donorSkeleton["m_boneName"].Values.Select(value => value.ToString(null)).ToArray();
+        var hostParents = skeleton["m_nParent"].Values.Select(value => value.ToInt32(null)).ToArray();
+        var donorParents = donorSkeleton["m_nParent"].Values.Select(value => value.ToInt32(null)).ToArray();
+        if (hostNames.Length != hostParents.Length || donorNames.Length != donorParents.Length) return;
+
+        // Infer the branch independently for each donor root from its shared descendants.
+        // A branch with conflicting evidence stays unresolved.
+        foreach (var bone in reportedBones)
+        {
+            var root = Array.IndexOf(donorNames, bone);
+            if (root < 0 || donorParents[root] >= 0 || result.ContainsKey(bone)) continue;
+
+            var candidates = new HashSet<int>();
+            for (var i = 0; i < donorNames.Length; i++)
+            {
+                if (i == root || TopRoot(i, donorParents) != root) continue;
+                var matchingBone = Array.IndexOf(hostNames, donorNames[i]);
+                var candidate = TopRoot(matchingBone, hostParents);
+                if (candidate >= 0) candidates.Add(candidate);
+            }
+
+            if (candidates.Count == 1)
+            {
+                result.TryAdd(bone, hostNames[candidates.Single()]);
+                continue;
+            }
+            if (candidates.Count > 1) continue;
+
+            // These hero models have a separate origin or hawk hierarchy.
+            // The audited wearables are body equipment.
+            var bodyRoot = host switch
+            {
+                "models/heroes/rubick/rubick.vmdl" => "Root_0",
+                "models/heroes/windrunner/windrunner.vmdl" => "root",
+                _ => null
+            };
+            if (bodyRoot is not null)
+            {
+                var index = Array.IndexOf(hostNames, bodyRoot);
+                if (index >= 0 && hostParents[index] < 0) result.TryAdd(bone, bodyRoot);
+            }
+        }
+    }
+
     internal static IReadOnlyDictionary<string, string>? Resolve(
-        string host, string donor, KVObject skeleton, IReadOnlyDictionary<string, string>? existing)
+        string host, string donor, KVObject skeleton, KVObject donorSkeleton,
+        IReadOnlyDictionary<string, string>? existing)
     {
         static string Normalize(string path)
         {
@@ -602,19 +699,26 @@ internal static class WearableAuditRootProfiles
             return path.EndsWith("_c", StringComparison.Ordinal) ? path[..^2] : path;
         }
 
-        if (!Profiles.TryGetValue((Normalize(host), Normalize(donor)), out var profile)) return existing;
-        var parents = skeleton["m_nParent"].Values.Select(value => value.ToInt32(null)).ToArray();
-        var roots = skeleton["m_boneName"].Values
-            .Where((_, index) => parents[index] < 0)
-            .Select(value => value.ToString(null))
-            .ToArray();
-        if (roots.Length != 1) return existing;
+        host = Normalize(host);
+        var pair = (host, Normalize(donor));
+        Profiles.TryGetValue(pair, out var profile);
+        MultiRootProfiles.TryGetValue(pair, out var multiRoot);
+        if (profile is null && multiRoot is null) return existing;
 
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         if (existing is not null)
             foreach (var (bone, parent) in existing) result.Add(bone, parent);
-        foreach (var (bone, parent) in profile)
-            if (parent == roots[0]) result.TryAdd(bone, parent);
+
+        var parents = skeleton["m_nParent"].Values.Select(value => value.ToInt32(null)).ToArray();
+        var roots = skeleton["m_boneName"].Values
+            .Where((_, index) => index < parents.Length && parents[index] < 0)
+            .Select(value => value.ToString(null))
+            .ToArray();
+        if (profile is not null && roots.Length == 1)
+            foreach (var (bone, parent) in profile)
+                if (parent == roots[0]) result.TryAdd(bone, parent);
+        if (multiRoot is not null && roots.Length > 1)
+            AddMultiRootAttachments(host, multiRoot, skeleton, donorSkeleton, result);
         return result.Count > 0 ? result : existing;
     }
 }

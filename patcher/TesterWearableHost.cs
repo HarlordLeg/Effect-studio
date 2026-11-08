@@ -50,9 +50,39 @@ internal static class TesterWearableHost {
  foreach(var host in q.Hosts){var active=new List<Donor>();foreach(var d in host.Donors){using var resource=new Resource{FileName=d.Input};resource.Read(d.Input);if(resource.DataBlock is not Model model)throw new InvalidDataException("Wearable must be a model");var preserveRuntime=PreserveRuntimeModel(host.Host,d.SourceModel);var independent=preserveRuntime||d.IndependentRuntime||HasCloth(resource)||IndependentCloth(host.Host,d.SourceModel);active.Add(d with {IndependentRuntime=independent,MetadataOnly=independent||MetadataOnly(d.MetadataOnly,model.Data),RetainParticles=preserveRuntime||HasCloth(resource)||IndependentCloth(host.Host,d.SourceModel)||d.IndependentRuntime&&(d.SourceModel=="models/items/chaos_knight/oda_nobunaga_off_hand/oda_nobunaga_off_hand.vmdl_c"||d.SourceModel=="models/items/invoker_kid/dark_artistry_kid/invoker_kid_dark_artistry_back.vmdl_c"||d.SourceModel=="models/items/dawnbreaker/dawnbreaker_lady_of_blaze_weapon/dawnbreaker_lady_of_blaze_weapon.vmdl_c"||d.SourceModel=="models/items/dawnbreaker/judgement_of_light_armor/judgement_of_light_armor.vmdl_c"||d.SourceModel=="models/items/axe/demon_blood/demon_blood_weapon.vmdl_c"||d.SourceModel=="models/items/dark_seer/imperious_tactician_back/imperious_tactician_back.vmdl_c"||d.SourceModel=="models/items/dragon_knight/aurora_warrior_set_weapon/aurora_warrior_set_weapon.vmdl_c"||d.SourceModel=="models/items/shredder/timbersaw_ti9_immortal_offhand/timbersaw_ti9_immortal_offhand.vmdl_c"||d.SourceModel=="models/items/earth_spirit/jade_reckoning_v2/mesh/jade_reckoning_v2.vmdl_c")});}
  if(active.Count==0)continue;foreach(var d in active)if(d.SourceModel is not null){identities[d.PrivatePath]=d.SourceModel;identities[Plain(d.Target)]=d.SourceModel;}
  using(var hostResource=new Resource{FileName=host.Input}){hostResource.Read(host.Input);var hostSkeleton=(hostResource.DataBlock as Model??throw new InvalidDataException("Expected host model")).Data["m_modelSkeleton"];var skeletons=new List<KVObject>();foreach(var d in active){using var donorResource=new Resource{FileName=d.Input};donorResource.Read(d.Input);skeletons.Add((donorResource.DataBlock as Model??throw new InvalidDataException("Expected donor model")).Data["m_modelSkeleton"]);}active=DonorOrder(hostSkeleton,skeletons).Select(i=>active[i]).ToList();}
- var merge=host.Output+".merge.json";try{File.WriteAllText(merge,JsonSerializer.Serialize(new{input=host.Input,output=host.Output,hostModel=host.Host,testerImporterRoots=true,meshes=q.Meshes,donors=active.Select(d=>new{input=d.Input,sourceModel=d.SourceModel,metadataOnly=d.MetadataOnly,skipParticleMetadata=d.RetainParticles,matchBoneCase=true,overrideAttachments=true})}));ModelMerge.Run(merge);}finally{File.Delete(merge);}
+ var merge=host.Output+".merge.json";
+ var fallback=new HashSet<string>(StringComparer.Ordinal);
+ try {
+  while(true){
+   var donors=active.Where(d=>!fallback.Contains(d.Input)).ToArray();
+   if(donors.Length==0){
+    File.Copy(host.Input,host.Output,true);
+    break;
+   }
+   File.WriteAllText(merge,JsonSerializer.Serialize(new{
+    input=host.Input,output=host.Output,hostModel=host.Host,testerImporterRoots=true,meshes=q.Meshes,
+    donors=donors.Select(d=>new{input=d.Input,sourceModel=d.SourceModel,metadataOnly=d.MetadataOnly,
+     skipParticleMetadata=d.RetainParticles,matchBoneCase=true,overrideAttachments=true})
+   }));
+   try {
+    ModelMerge.Run(merge);
+    break;
+   } catch(InvalidDataException error) when(error.Data[ModelMerge.IncompatibleDonorInput] is string input &&
+    donors.Any(d=>d.Input==input&&!d.MetadataOnly&&!string.Equals(Plain(d.Target),Plain(host.Host),StringComparison.OrdinalIgnoreCase))){
+    fallback.Add(input);
+    var donor=donors.Single(d=>d.Input==input);
+    notes.Add(host.Host+": kept original wearable runtime at "+donor.Target+". "+error.Message);
+   }
+  }
+ } finally { File.Delete(merge); }
  using var original=new Resource{FileName=host.Input};original.Read(host.Input);using var combined=new Resource{FileName=host.Output};combined.Read(host.Output);var particleText=(combined.DataBlock as Model)!.Data["m_modelInfo"]["m_keyValueText"].ToString(null);foreach(Match match in Regex.Matches(particleText,"name\\s*=\\s*resource:\"([^\"]+\\.vpcf)\""))launched.Add(match.Groups[1].Value);var originalBones=(original.DataBlock as Model??throw new InvalidDataException("Expected original model")).Skeleton.Bones.Select(b=>b.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);var extras=(combined.DataBlock as Model??throw new InvalidDataException("Expected merged model")).Skeleton.Bones.Where(b=>!originalBones.Contains(b.Name)).Select(b=>b.Name).ToArray();if(extras.Length>0)notes.Add(host.Host+": дополнительные кости сохранены без импорта анимационных слоёв; нужна проверка в игре: "+string.Join(", ",extras));
- foreach(var d in active){CopyModel(d,!d.IndependentRuntime&&!IndependentCloth(host.Host,d.SourceModel),d.Hidden,d.RetainParticles);CopyModel(d,false);var key=d.Target.EndsWith("_c")?d.Target[..^2]:d.Target;if(map.TryGetValue(key,out var old)&&old!=d.PrivatePath)throw new InvalidDataException("Conflicting private wearable model");map[key]=d.PrivatePath;slots.Add(d.Slot);}reports.Add(new{host=host.Host,wearables=active.Select(d=>d.Target),independentWearables=active.Where(d=>d.IndependentRuntime).Select(d=>d.SourceModel??d.Target),extraBones=extras});
+ foreach(var d in active){
+  if(fallback.Contains(d.Input)){
+   File.Copy(d.Input,d.Hidden,true);
+   File.Copy(d.Input,d.Visible,true);
+   continue;
+  }
+  CopyModel(d,!d.IndependentRuntime&&!IndependentCloth(host.Host,d.SourceModel),d.Hidden,d.RetainParticles);CopyModel(d,false);var key=d.Target.EndsWith("_c")?d.Target[..^2]:d.Target;if(map.TryGetValue(key,out var old)&&old!=d.PrivatePath)throw new InvalidDataException("Conflicting private wearable model");map[key]=d.PrivatePath;slots.Add(d.Slot);}reports.Add(new{host=host.Host,wearables=active.Select(d=>d.Target),fallbackTargets=active.Where(d=>fallback.Contains(d.Input)).Select(d=>d.Target),independentWearables=active.Where(d=>d.IndependentRuntime||fallback.Contains(d.Input)).Select(d=>d.SourceModel??d.Target),extraBones=extras});
  }
  if(map.Count>0&&q.Particles.Length>0){var relocate=manifest+".relocate.json";try{File.WriteAllText(relocate,JsonSerializer.Serialize(new{paths=map,files=q.Particles.Select(p=>new{input=p.Input,output=p.Output})}));ResourceRelocator.Run(relocate);}finally{File.Delete(relocate);}
  foreach(var file in q.Particles){var bytes=File.ReadAllBytes(file.Output);using var r=new Resource{FileName=file.Output};r.Read(file.Output);if(r.DataBlock is not ParticleSystem p)throw new InvalidDataException("Expected particle");bool changed=NativeImmortalParticles.Patch(p.Data)>0;changed|=TesterAttachmentProfiles.PatchForHost(p.Data,identities,file.Name is not null&&launched.Contains(Plain(file.Name)))>0;changed|=UsePrivateModelList(p.Data,map.Values.ToHashSet(StringComparer.Ordinal))>0;
