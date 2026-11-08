@@ -240,7 +240,17 @@ internal static class ModelMerge
                 var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
             int[] boneMap;
-            try{boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(root["m_modelSkeleton"],source["m_modelSkeleton"],entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,ModelRootProfiles.Attachments(request.HostModel??Text(root["m_name"]),entry.SourceModel??Text(source["m_name"]))??ModelRootProfiles.SharedAttachments(request.HostModel??Text(root["m_name"]),entry.SourceModel??Text(source["m_name"]),root["m_modelSkeleton"])??(request.TesterImporterRoots?ModelRootProfiles.TesterAttachments(request.HostModel??Text(root["m_name"]),entry.SourceModel??Text(source["m_name"]),root["m_modelSkeleton"]):null));}
+            try{
+                var hostName=request.HostModel??Text(root["m_name"]);
+                var donorName=entry.SourceModel??Text(source["m_name"]);
+                var skeleton=root["m_modelSkeleton"];
+                var attachments=ModelRootProfiles.Attachments(hostName,donorName)
+                    ??ModelRootProfiles.SharedAttachments(hostName,donorName,skeleton)
+                    ??(request.TesterImporterRoots?ModelRootProfiles.TesterAttachments(hostName,donorName,skeleton):null);
+                if(!entry.MetadataOnly)attachments=WearableAuditRootProfiles.Resolve(hostName,donorName,skeleton,attachments);
+                boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(skeleton,source["m_modelSkeleton"],
+                    entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,attachments);
+            }
             catch(InvalidDataException error){throw new InvalidDataException("Model merge failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donor: "+(entry.SourceModel??Text(source["m_name"]))+"; "+error.Message,error);}
 
             var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
