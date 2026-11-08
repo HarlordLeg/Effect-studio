@@ -37,7 +37,19 @@ jobs:
       - name: Build and validate asset bridge
         run: node tools/build-native.mjs assets
       - name: Install desktop runtime
-        run: npm install --no-audit --no-fund
+        shell: pwsh
+        timeout-minutes: 8
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            & npm.cmd ci --no-audit --no-fund
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($attempt -lt 3) {
+              Write-Warning "Desktop runtime install attempt $attempt failed. Retrying."
+              Start-Sleep -Seconds (15 * $attempt)
+            }
+          }
+          throw 'Desktop runtime install failed after three attempts.'
       - name: Prepare portable app
         run: node tools/package-windows.mjs
       - name: Zip portable app
