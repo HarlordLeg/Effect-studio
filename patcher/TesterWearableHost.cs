@@ -84,6 +84,11 @@ internal static class TesterWearableHost {
   }
   CopyModel(d,!d.IndependentRuntime&&!IndependentCloth(host.Host,d.SourceModel),d.Hidden,d.RetainParticles);CopyModel(d,false);var key=d.Target.EndsWith("_c")?d.Target[..^2]:d.Target;if(map.TryGetValue(key,out var old)&&old!=d.PrivatePath)throw new InvalidDataException("Conflicting private wearable model");map[key]=d.PrivatePath;slots.Add(d.Slot);}reports.Add(new{host=host.Host,wearables=active.Select(d=>d.Target),fallbackTargets=active.Where(d=>fallback.Contains(d.Input)).Select(d=>d.Target),independentWearables=active.Where(d=>d.IndependentRuntime||fallback.Contains(d.Input)).Select(d=>d.SourceModel??d.Target),extraBones=extras});
  }
+ // The manifest promises an output for every particle even if all donors
+ // keep their original runtime and no particle model paths need rewriting.
+ if(map.Count==0){
+  foreach(var particle in q.Particles)File.Copy(particle.Input,particle.Output,true);
+ }
  if(map.Count>0&&q.Particles.Length>0){var relocate=manifest+".relocate.json";try{File.WriteAllText(relocate,JsonSerializer.Serialize(new{paths=map,files=q.Particles.Select(p=>new{input=p.Input,output=p.Output})}));ResourceRelocator.Run(relocate);}finally{File.Delete(relocate);}
  foreach(var file in q.Particles){var bytes=File.ReadAllBytes(file.Output);using var r=new Resource{FileName=file.Output};r.Read(file.Output);if(r.DataBlock is not ParticleSystem p)throw new InvalidDataException("Expected particle");bool changed=NativeImmortalParticles.Patch(p.Data)>0;changed|=TesterAttachmentProfiles.PatchForHost(p.Data,identities,file.Name is not null&&launched.Contains(Plain(file.Name)))>0;changed|=UsePrivateModelList(p.Data,map.Values.ToHashSet(StringComparer.Ordinal))>0;
  if(changed){var temp=file.Output+".patched";using(var s=File.Create(temp))Program.SerializePatchedResource(r,bytes,s,true,preserveMetadata:true);using(var check=new Resource{FileName=temp})check.Read(temp);r.Dispose();File.Move(temp,file.Output,true);}}
