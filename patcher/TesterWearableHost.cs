@@ -21,7 +21,10 @@ internal static class TesterWearableHost {
   static string Normalize(string value){value=value.Replace('\\','/');if(value.StartsWith("harlord/",StringComparison.Ordinal))value=value[8..];return value.EndsWith("_c",StringComparison.Ordinal)?value[..^2]:value;}
   host=Normalize(host);source=source is null?null:Normalize(source);
   return host=="models/heroes/tidehunter/tidehunter.vmdl"&&source=="models/heroes/tidehunter/tidehunter_bracer.vmdl"
-   ||host=="models/heroes/huskar/huskar.vmdl"&&source=="models/items/huskar/huskar_explosive_maniac_weapon/huskar_explosive_maniac_weapon.vmdl";
+   ||host=="models/heroes/huskar/huskar.vmdl"&&source=="models/items/huskar/huskar_explosive_maniac_weapon/huskar_explosive_maniac_weapon.vmdl"
+   // Magus Accord: launched from the merged hero, its hand ambient left a
+   // glowing dome at Invoker's feet. As its own wearable it binds like in game.
+   ||host=="models/heroes/invoker/invoker.vmdl"&&source=="models/items/invoker/immortal_arms_ti7/immortal_arms_ti7.vmdl";
  }
  internal static bool HasCloth(Resource resource)=>resource.Blocks.Any(b=>b.Type==ValveResourceFormat.BlockType.PHYS&&(b.ToString()?.Contains("m_cloth",StringComparison.OrdinalIgnoreCase)??false));
  internal static int[] DonorOrder(KVObject host,IReadOnlyList<KVObject> donors){
