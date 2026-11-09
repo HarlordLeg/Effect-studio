@@ -198,6 +198,8 @@ export const translations = {
   "Бег": "Run",
   "Появление героя": "Spawn",
   "Атака": "Attack",
+ "Другие эффекты героя": "Other hero effects",
+ "Иконка: ": "Icon: ",
   "Применение первой способности": "Cast first ability",
   "Применение второй способности": "Cast second ability",
   "Применение третьей способности": "Cast third ability",
