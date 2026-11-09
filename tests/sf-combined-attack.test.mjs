@@ -17,10 +17,16 @@ test('Arms of Desolation combined override selects the attack root without repla
   const fixed=preferEquippedArcanaParticles(rows),plan=particleOverridePlan(fixed);
   assert.equal(plan.get(base).source,combined);assert.ok(!plan.has(fire));
   assert.equal(fixed.find(c=>c.item.slot==='hero_base').item.nativeOverrides.particleReplacements[fire],undefined);
-  assert.equal(plan.get('particles/items_fx/desolator_projectile.vpcf_c').source,'particles/econ/items/shadow_fiend/sf_desolation/sf_base_attack_desolation_desolator.vpcf_c');
+  // One Desolator projectile serves every hero; a VPK swap cannot keep it on SF.
+  assert.ok(!plan.has('particles/items_fx/desolator_projectile.vpcf_c'));
  }
  assert.equal(JSON.stringify([arc,arms]),before);
 });
 test('Arms of Desolation without an arcana keeps the ordinary attack and does not globally install a combined substitution',()=>{
  const plan=particleOverridePlan(preferEquippedArcanaParticles([arms]));assert.equal(plan.get(base).source,ordinary);assert.ok(!plan.has(fire));
+});
+test('a cosmetic Desolator projectile is never written over the shared item file',()=>{
+ const maraxiform=nativeOverrides({deso:{type:'particle',asset:'particles/items_fx/desolator_projectile.vpcf',modifier:'particles/econ/items/clinkz/clinkz_maraxiform/clinkz_maraxiform_searing_arrow_deso.vpcf'},own:{type:'particle',asset:'particles/units/heroes/hero_clinkz/clinkz_base_attack.vpcf',modifier:'particles/econ/items/clinkz/clinkz_maraxiform/clinkz_maraxiform_base_attack.vpcf'}});
+ assert.deepEqual(maraxiform.entries.map(e=>e.target),['particles/units/heroes/hero_clinkz/clinkz_base_attack.vpcf_c']);
+ assert.ok(maraxiform.unsupported.some(m=>m.startsWith('shared item projectile: particles/items_fx/desolator_projectile.vpcf')));
 });

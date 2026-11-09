@@ -28,7 +28,7 @@ import {TerrorbladeIconPreviews,iconPreviewRequest} from './lib/terrorblade-icon
 import {kineticBuildChoices} from './lib/kinetic-build.mjs';
 import {readMediaManifest,serveKineticMedia} from './lib/kinetic-media-cache.mjs';
 import {itemActivityRules} from './lib/hero-activities.mjs';
-import {heroStances} from './lib/hero-stances.mjs';
+import {heroStances,prepareSelectionStances} from './lib/hero-stances.mjs';
 import {hasTerrorbladeArcana} from './lib/terrorblade-arcana.mjs';
 import {ItemIcons} from './lib/item-icons.mjs';
 import {previewDiagnostics} from './lib/diagnostics.mjs';
@@ -115,7 +115,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth,te
             staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);
             const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);
           }
-          const rows=normalizeSelections(builder,data);if(!rows.length)throw Error('Set has no previewable items');
+          await prepareSelectionStances(builder,data);const rows=normalizeSelections(builder,data);if(!rows.length)throw Error('Set has no previewable items');
           const job=previews.create({...rows[0],selections:rows,partsOnly:true,previewForm:data.previewForm},adminOwner);return json(res,202,publicPreview(job));
         }
         const adminPreview=url.pathname.match(/^\/api\/admin\/set-previews\/([a-f0-9]{32})(\/(effect|parts\/\d+))?$/);
@@ -211,7 +211,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth,te
       if(url.pathname==='/api/model-metadata'&&req.method==='POST'){const data=await body(req);if(session)auth.consume(session,'preview');return json(res,200,await viewerMetadata.get(data.models,data.animationModels??[],data.preferred??[]));}
       if(req.method==='GET'&&(!adminStudioOwner||/^\/api\/(item-icon|set-icon)$/.test(url.pathname))&&staticViewer.api(req,res,url))return;
       if(!adminStudioOwner&&staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
-      if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
+      if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);await prepareSelectionStances(builder,data);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
       if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits',{source:session?.origin??'local'});return json(res,200,{ok:true});}
       if(url.pathname==='/api/techies-icon'&&req.method==='GET'){
         let options;try{options=techiesIconRequest(url.searchParams);}catch(error){return json(res,400,{error:error.message});}
@@ -262,7 +262,7 @@ export function startServer({root:serverRoot=root,port:overridePort,adminAuth,te
       if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),rubickArcana:true,linaArcana:true,monkeyKingArcana:true,drowArcana:true,terrorbladeArcana:hasTerrorbladeArcana(root),techiesArcana:hasTechiesArcana(root),webParticles:false});
       if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
         if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req);for(const heroId of new Set((data.selections??[]).filter(row=>row.stanceId!=null).map(row=>row.heroId)))await heroStances(builder,heroId);const cosmetics=cosmeticChoices(builder,data.cosmetics??[],{admin:!!testerAccess});const choices=Array.isArray(data.selections)&&!data.selections.length&&cosmetics.length?[]:normalizeSelections(builder,data),choice=choices[0];if(!cosmetics.length&&data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
+        const data=await body(req);await prepareSelectionStances(builder,data,{strict:true});const cosmetics=cosmeticChoices(builder,data.cosmetics??[],{admin:!!testerAccess});const choices=Array.isArray(data.selections)&&!data.selections.length&&cosmetics.length?[]:normalizeSelections(builder,data),choice=choices[0];if(!cosmetics.length&&data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
         if(url.pathname==='/api/inspect'){if(!choice)return json(res,400,{error:'Select a hero item to inspect'});const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
         vpkFilename(data.vpkNumber??1);
         if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));

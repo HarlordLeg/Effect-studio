@@ -32,3 +32,16 @@ test('missing installed Tyrian hit uses the available ordinary TI9 hit with an e
  const repaired=resolveNativeSnapshots({has:p=>p===fallback,read:()=>null},item);assert.equal(repaired.entries[0].source,fallback);assert.deepEqual(repaired.particles,[ambient]);assert.equal(item.nativeOverrides.entries[0].source,missing);assert.equal(repaired.warnings.length,1);
  assert.equal(resolveNativeSnapshots({has:()=>true,read:()=>null},item).entries[0].source,missing);assert.equal(resolveNativeSnapshots({has:()=>false,read:()=>null},item).entries[0].source,missing);assert.equal(resolveNativeSnapshots({has:p=>p===fallback,read:()=>null},{...item,model:'models/items/other.vmdl_c'}).entries[0].source,missing);
 });
+
+test('Tyrian Fan of Blades falls back to the ordinary TI9 chakram hit Valve never shipped in Tyrian',()=>{
+ const prefix='particles/econ/items/timbersaw/timbersaw_ti9/',missing=prefix+'timbersaw_ti9_tyrian_chakram_hit.vpcf_c',fallback=prefix+'timbersaw_ti9_chakram_hit.vpcf_c',tyrian=prefix+'timbersaw_ti9_tyrian_chakram.vpcf_c';
+ const present=new Set([fallback,tyrian,prefix+'timbersaw_ti9_chakram.vpcf_c']);
+ const item={model:'models/items/shredder/timbersaw_ti9_immortal_offhand/timbersaw_ti9_immortal_offhand.vmdl_c',nativeOverrides:{entries:[
+  {type:'particle',target:'particles/units/heroes/hero_shredder/shredder_chakram_hit.vpcf_c',source:missing},
+  {type:'particle',target:'particles/units/heroes/hero_shredder/shredder_chakram.vpcf_c',source:tyrian}],particles:[],unsupported:[]}};
+ const native=resolveNativeSnapshots({has:name=>present.has(name),read:name=>present.has(name)?resource():null},item);
+ assert.deepEqual(native.entries.map(e=>e.source),[fallback,tyrian]);
+ assert.equal(native.warnings.length,1);
+ const absent=resolveNativeSnapshots({has:name=>name===tyrian,read:name=>name===tyrian?resource():null},item);
+ assert.equal(absent.entries[0].source,missing,'without a real sibling the missing file is still reported');
+});

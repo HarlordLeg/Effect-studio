@@ -345,10 +345,29 @@ internal static class ModelMerge
         try{
             var decodedMeshes=combined.GetEmbeddedMeshes().ToArray();if(decodedMeshes.Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
         }catch(ArgumentException error){
-            throw new InvalidDataException("Merged mesh decoding failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donors: "+string.Join(", ",request.Donors.Where(d=>!d.MetadataOnly).Select(d=>d.SourceModel??d.Input))+"; "+error.Message,error);
+            // VRF cannot decode every buffer the game can: the Spectre Arcana
+            // template's head meshes carry m_nMeshoptMeshletEncodeVersion and
+            // fail with "Tail size incorrect" before anything is merged. Host
+            // meshes keep their bytes (checked below), so a host that already
+            // failed on its own is not evidence against the merge. Then every
+            // donor must still decode by itself, and the row count must hold.
+            if(!DecodesAlone(host))
+            {
+                foreach(var donor in request.Donors.Where(d=>!d.MetadataOnly))
+                {
+                    using var alone=new Resource{FileName=donor.Input};alone.Read(donor.Input);
+                    if(!DecodesAlone(alone))throw new InvalidDataException("Donor mesh decoding failed: "+(donor.SourceModel??donor.Input)+"; "+error.Message,error);
+                }
+                if(Values(Read(check,File.ReadAllBytes(request.Output),check.Blocks.Single(b=>b.Type==BlockType.CTRL)).Data.Root,"embedded_meshes").Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
+            }
+            else throw new InvalidDataException("Merged mesh decoding failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donors: "+string.Join(", ",request.Donors.Where(d=>!d.MetadataOnly).Select(d=>d.SourceModel??d.Input))+"; "+error.Message,error);
         }
         var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL||(morphEdited&&b==morphBlock)||editedHostMeshes.Contains(i))continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
         File.WriteAllText(request.Output+".merge.json",JsonSerializer.Serialize(new{meshes=imported,bones=names.Length,preservedHostBlocks=host.Blocks.Count}));Console.WriteLine("[OK] Embedded model merge: "+imported.Count+" meshes, "+names.Length+" bones; host animations and physics preserved");
+    }
+    static bool DecodesAlone(Resource resource){
+        if(resource.DataBlock is not Model model)return false;
+        try{model.GetEmbeddedMeshes().ToArray();return true;}catch(ArgumentException){return false;}
     }
     // The Wilding Tiger appends a zero-default "orig" shape controller which
     // the base hero never drives. Keep its atlas/shape indices, but evaluate
