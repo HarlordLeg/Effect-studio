@@ -105,6 +105,40 @@ internal static class ModelMerge
         // poses under their mapped parent; vertex inverse bind matrices stay raw.
         return map;
     }
+    static System.Numerics.Matrix4x4 BindWorld(KVObject skeleton,int index){
+        var parents=Values(skeleton,"m_nParent");var positions=Values(skeleton,"m_bonePosParent");var rotations=Values(skeleton,"m_boneRotParent");var scales=Values(skeleton,"m_boneScaleParent");
+        var matrix=System.Numerics.Matrix4x4.Identity;var visited=new HashSet<int>();
+        while(index>=0){
+            if(index>=parents.Length||!visited.Add(index))throw new InvalidDataException("Invalid bind hierarchy");
+            var p=positions[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();var r=rotations[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();var s=scales.Length==0?1f:scales[index].ToSingle(CultureInfo.InvariantCulture);
+            matrix*=System.Numerics.Matrix4x4.CreateScale(s)*System.Numerics.Matrix4x4.CreateFromQuaternion(System.Numerics.Quaternion.Normalize(new System.Numerics.Quaternion(r[0],r[1],r[2],r[3])))*System.Numerics.Matrix4x4.CreateTranslation(p[0],p[1],p[2]);
+            index=Number(parents[index]);
+        }
+        return matrix;
+    }
+    // A shared bone keeps the host's bind pose. The donor's meshes do not care
+    // (they carry their own inverse bind matrices), but skinned particle
+    // snapshots are evaluated against the model skeleton's bind pose. Sullen
+    // Harvest's sickle1 sits ~100 units and ~100 degrees away from Necrophos'
+    // own sickle1, so its palm snapshot drew the ambient line off to the side
+    // of the hero, which players took for a second scythe. Meshes keep their
+    // own inverse binds (the scythe itself sat in the hand all along), so a
+    // shared bone that is a leaf on the host, a socket like a weapon bone,
+    // takes the donor's bind pose. Bones with host children are never moved,
+    // animation tracks are untouched, and the first donor to claim one wins.
+    internal static int RebindSharedSocketBones(KVObject host,KVObject donor,int[] boneMap,int hostBoneCount,IReadOnlySet<int> hostParentBones,ISet<int> rebound){
+        var changed=0;var hostParents=Values(host,"m_nParent");
+        for(var i=0;i<boneMap.Length;i++){
+            var target=boneMap[i];if(target>=hostBoneCount||hostParentBones.Contains(target)||rebound.Contains(target))continue;
+            var parent=Number(hostParents[target]);if(parent<0)continue;
+            var difference=BindWorld(host,target)-BindWorld(donor,i);
+            if(new[]{difference.M11,difference.M12,difference.M13,difference.M21,difference.M22,difference.M23,difference.M31,difference.M32,difference.M33}.All(v=>Math.Abs(v)<0.001f)&&new[]{difference.M41,difference.M42,difference.M43}.All(v=>Math.Abs(v)<0.01f))continue;
+            var pose=RootLocalPose(host,parent,donor,i);
+            foreach(var (key,value) in pose){var values=Values(host,key).ToList();if(values.Count==0&&key=="m_boneScaleParent")continue;if(values.Count!=hostParents.Length)throw new InvalidDataException("Incomplete skeleton field: "+key);values[target]=value;host[key]=Array(values);}
+            rebound.Add(target);changed++;
+        }
+        return changed;
+    }
     internal static void RenameMeshBones(KVObject mesh,IReadOnlyDictionary<string,string> names){
         if(mesh.TryGetValue("m_skeleton",out var skeleton))foreach(var bone in Values(skeleton,"m_bones"))foreach(var key in new[]{"m_boneName","m_parentName"})if(bone.TryGetValue(key,out var value)&&names.TryGetValue(Text(value),out var renamed))bone[key]=new KVObject(renamed);
         foreach(var set in Values(mesh,"m_hitboxsets"))if(set.TryGetValue("value",out var boxSet))foreach(var box in Values(boxSet,"m_HitBoxes"))if(box.TryGetValue("m_sBoneName",out var bone)&&names.TryGetValue(Text(bone),out var renamed)){box["m_sBoneName"]=new KVObject(renamed);box["m_nBoneNameHash"]=new KVObject(ValveResourceFormat.Utils.StringToken.Get(renamed));}
@@ -230,6 +264,7 @@ internal static class ModelMerge
         var morphBlock=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
         var mergedMorph=morphBlock is null?null:Read(host,original,morphBlock);var morphEdited=false;int? importedControllerBlock=null;byte importedControllerVersion=0;
         var originalSkeleton=Values(root["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();
+        var hostParentBones=Values(root["m_modelSkeleton"],"m_nParent").Select(Number).Where(p=>p>=0).ToHashSet();var reboundBones=new HashSet<int>();
         foreach(var requested in request.Donors){
             var entry=requested;
             var bytes=File.ReadAllBytes(entry.Input);using var donor=new Resource{FileName=entry.Input};donor.Read(entry.Input);if(donor.DataBlock is not Model)throw new InvalidDataException("Merge donor must be a model");
@@ -267,6 +302,7 @@ internal static class ModelMerge
                 if(!entry.MetadataOnly)attachments=WearableAuditRootProfiles.Resolve(hostName,donorName,skeleton,source["m_modelSkeleton"],attachments);
                 boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(skeleton,source["m_modelSkeleton"],
                     entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,attachments);
+                if(!entry.MetadataOnly)RebindSharedSocketBones(skeleton,source["m_modelSkeleton"],boneMap,originalSkeleton.Length,hostParentBones,reboundBones);
             }
             catch(InvalidDataException error){
                 var failure=new InvalidDataException("Model merge failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donor: "+(entry.SourceModel??Text(source["m_name"]))+"; "+error.Message,error);
