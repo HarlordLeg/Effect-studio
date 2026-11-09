@@ -363,3 +363,6 @@ main:has(>#cosmetics-studio:not([hidden]))>.shared-basket{margin-top:0}
 .set-archive-missing{margin-top:18px;padding:12px;border-top:1px solid #354556}.set-archive-missing summary{cursor:pointer;color:#9db1c7;font-size:13px}.set-archive-missing-row.set-preset-option{display:block;width:100%;min-height:0;padding:10px;text-align:left;opacity:1;background:transparent;border:0;border-bottom:1px solid #283746}.set-archive-missing-row b{font-size:13px}.set-archive-missing-row small{font-size:12px;color:#93a5b5}
 
 .hero-picker-inline .hero-card.has-set-preset { outline: 2px solid var(--accent, #f3a35c); outline-offset: -2px; }
+
+.build-error-text{display:block;overflow-wrap:anywhere}
+.bug-report{display:inline-block;margin-top:8px;padding:6px 12px;font-size:11px;line-height:1.4;text-decoration:none;white-space:nowrap}

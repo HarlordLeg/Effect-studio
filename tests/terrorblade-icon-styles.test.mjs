@@ -47,7 +47,9 @@ test('individual TB ability styles preserve other abilities and hero image choic
  assert.equal(terrorbladeIconStyle(arcana,'abilities','sunder'),'classic');assert.equal(terrorbladeIconStyle(arcana,'abilities','reflection'),'colored');assert.equal(arcana.iconStyles.topbar,'colored');
  assert.equal(terrorbladeIconChoices('abilities',true).length,4);assert.equal(terrorbladeIconChoices('portrait',true).length,3);
  const normalized=normalizeTerrorbladeIconStyles(arcana.iconStyles);assert.deepEqual(normalized.abilityOverrides,{sunder:'classic'});normalized.abilityOverrides.sunder='arcana';assert.equal(arcana.iconStyles.abilityOverrides.sunder,'classic');
- for(const overrides of [{unknown:'classic'},{sunder:'nope'},[],null])assert.throws(()=>normalizeTerrorbladeIconStyles({abilityOverrides:overrides}),/Invalid/);
+ for(const overrides of [{sunder:'nope'},{dark_unity:'nope'},[],null])assert.throws(()=>normalizeTerrorbladeIconStyles({abilityOverrides:overrides}),/Invalid/);
+ // Dark Unity has no Arcana icon style; a saved build that names it still builds.
+ assert.deepEqual(normalizeTerrorbladeIconStyles({abilityOverrides:{dark_unity:'arcana',sunder:'classic'}}).abilityOverrides,{sunder:'classic'});
 });
 
 test('unrelated Immortal source icons are not treated as additional Arcana destinations',()=>{const f=fixture();f.game.set('panorama/images/spellicons/terrorblade_sunder_ti8_png.vtex_c',Buffer.from('immortal'));const plan=terrorbladeIconPlan(f.store,f.template,{});assert.ok(!plan.some(r=>r.target.includes('_ti8_')));});
