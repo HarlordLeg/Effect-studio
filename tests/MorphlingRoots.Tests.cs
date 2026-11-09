@@ -10,10 +10,9 @@ internal static class MorphlingRootsTests
    KVObject Box(string bone){var b=KVObject.Collection();b["m_sBoneName"]=new KVObject(bone);b["m_nBoneNameHash"]=new KVObject(0u);return b;}
    KVObject Set(string key,params KVObject[] boxes){var s=KVObject.Collection();s["key"]=new KVObject(key);var v=KVObject.Collection();v["m_HitBoxes"]=Array(boxes);s["value"]=v;return s;}
    var mesh=KVObject.Collection();mesh["m_hitboxsets"]=Array(Set("harlord_fx_a",Box("weapon_3"),Box("HEAD")),Set("harlord_fx_b",Box("weapon_3")),Set("default",Box("weapon_3")));
-   var dropped=new List<string>();var sets=ScopedHitboxTransfer.Collect(mesh,Skeleton(["root","head","Head2","head2"],[-1,0,0,0]),dropped);
+   var sets=ScopedHitboxTransfer.Collect(mesh,Skeleton(["root","head","Head2","head2"],[-1,0,0,0]));
    Check(sets.Length==1&&sets[0]["key"].ToString(null)=="harlord_fx_a");
    var boxes=sets[0]["value"]["m_HitBoxes"].Values.ToArray();Check(boxes.Length==1&&boxes[0]["m_sBoneName"].ToString(null)=="head");
-   Check(dropped.SequenceEqual(new[]{"weapon_3","weapon_3"}));
    Check(ScopedHitboxTransfer.HostBone(["Head2","head2"],"head2")=="head2"&&ScopedHitboxTransfer.HostBone(["Head2","head2"],"HEAD2") is null);
  }
  public static int Main(){

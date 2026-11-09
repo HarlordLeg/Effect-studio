@@ -14,13 +14,13 @@ internal static class ScopedHitboxTransfer {
  // skeleton) cannot follow anything on the host, so it is left out of the
  // host copy. The independent wearable keeps its own copy of the set. Throwing
  // here failed the whole set build over one effect volume.
- internal static KVObject[] Collect(KVObject mesh,KVObject skeleton,ICollection<string>? dropped=null){
+ internal static KVObject[] Collect(KVObject mesh,KVObject skeleton){
   if(!mesh.TryGetValue("m_hitboxsets",out var sets))return [];
   var names=skeleton["m_boneName"].Values.Select(v=>v.ToString(null)).ToArray();
   var result=new List<KVObject>();
   foreach(var set in sets.Values){if(!set["key"].ToString(null).StartsWith("harlord_fx_",StringComparison.Ordinal))continue;
    var kept=new List<KVObject>();
-   foreach(var box in set["value"]["m_HitBoxes"].Values){var bone=box["m_sBoneName"].ToString(null);var target=HostBone(names,bone);if(target is null){dropped?.Add(bone);continue;}if(target!=bone){box["m_sBoneName"]=new KVObject(target);box["m_nBoneNameHash"]=new KVObject(ValveResourceFormat.Utils.StringToken.Get(target));}kept.Add(box);}
+   foreach(var box in set["value"]["m_HitBoxes"].Values){var bone=box["m_sBoneName"].ToString(null);var target=HostBone(names,bone);if(target is null)continue;if(target!=bone){box["m_sBoneName"]=new KVObject(target);box["m_nBoneNameHash"]=new KVObject(ValveResourceFormat.Utils.StringToken.Get(target));}kept.Add(box);}
    if(kept.Count==0)continue;
    set["value"]["m_HitBoxes"]=KVObject.Array(kept);
    result.Add(set);

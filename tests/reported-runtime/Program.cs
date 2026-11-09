@@ -30,8 +30,10 @@ var transferred=(KVObject[])collectScope.Invoke(null,new object[]{sourceScope,sc
 Check(transferred.Length==1,"Independent wearable copied non-effect hitboxes");
 var targetScope=R(("m_hitboxsets",A(ScopeSet("select_high"))));
 appendScope.Invoke(null,new object[]{targetScope,transferred});Check(targetScope["m_hitboxsets"].Count==2&&targetScope["m_hitboxsets"][0]["key"].ToString(null)=="select_high","Selection box overwritten by effect transfer");
-try{collectScope.Invoke(null,new object[]{sourceScope,R(("m_boneName",A(new KVObject("other"))))});throw new Exception("Unknown effect bone accepted");}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException){}
-Console.WriteLine("Independent effect hitboxes: only private volumes transferred; host selection and unknown-bone rejection passed.");
+// A volume on a bone the host lacks (the reported weapon_3) stays on the
+// independent wearable: it is not copied to the host, and the set still builds.
+Check(((KVObject[])collectScope.Invoke(null,new object[]{sourceScope,R(("m_boneName",A(new KVObject("other"))))})!).Length==0,"Unknown effect bone copied to the host");
+Console.WriteLine("Independent effect hitboxes: only private volumes transferred; host selection kept, unknown-bone volumes left on the wearable.");
 
 var healthyBake=Method("HeroHealthyLocomotion","Bake");
 foreach(var key in new[]{"m_animArray","m_localS1SeqDescArray"}){var field=key=="m_animArray"?"m_name":"m_sName";KVObject Clip(string name,string payload)=>R((field,new KVObject(name)),("m_activityArray",A()),("payload",new KVObject(payload)));var data=R((key,A(Clip("run_anim","healthy"),Clip("run_new_injured_anim","injured"),Clip("attack_injured","attack"))));Check((int)healthyBake.Invoke(null,new object[]{data,key})! ==1,"Centaur run alias missing");Check(data[key][1]["payload"].ToString(null)=="healthy"&&data[key][1][field].ToString(null)=="run_new_injured_anim","Healthy locomotion changed sequence identity");Check(data[key][2]["payload"].ToString(null)=="attack","Healthy locomotion replaced injured attack");}
