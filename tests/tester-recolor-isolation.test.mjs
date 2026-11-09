@@ -36,6 +36,21 @@ test('two real dependency graphs keep separate model references and untouched so
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
+// Legion Commander and Muerta ship materials that point at textures the game lacks.
+test('a reference the game does not ship is left as is instead of failing the build',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'recolor-scope-'));
+ try{
+  const source=new Map([['models/shoulder.vmdl_c',resource(['particles/shared.vpcf'])],['models/arms.vmdl_c',resource(['particles/shared.vpcf'])],['particles/shared.vpcf_c',resource(['particles/child.vpcf'])]]);
+  const before=new Map([...source].map(([n,b])=>[n,Buffer.from(b)])),choices=rows.map(r=>({hero:{id:'void'},item:{id:r.itemId,slot:r.slot,model:`models/${r.slot}.vmdl_c`,nativeOverrides:{entries:[],particles:['particles/shared.vpcf_c']}},effects:[]}));
+  const service={builder:{root:dir,config:{patcher:'fake'},store:{read:n=>source.get(n)},run:async(_exe,args)=>{assert.equal(args[0],'--relocate');const q=JSON.parse(fs.readFileSync(args[1]));for(const f of q.files){const old=fs.readFileSync(f.input);fs.writeFileSync(f.output,resource(references(old).map(n=>q.paths[n.replace(/_c$/,'')]??n)));}}},particles:{apply:async r=>resource([r.edits[0].value[2]?'particles/child.vpcf':'particles/child.vpcf'])}};
+  const out=await isolateRecolorGroups(service,choices,recolorScopeOptions({selections:rows}).scopedResourceGroups,dir);
+  const a=choices[0].item.nativeOverrides.particles[0],b=choices[1].item.nativeOverrides.particles[0];
+  assert.notEqual(a,b);assert.deepEqual(out.missing,['particles/child.vpcf_c']);assert.ok(out.has(a)&&out.has(b));
+  assert.deepEqual(references(out.get('models/shoulder.vmdl_c')),[a]);assert.deepEqual(references(out.get('models/arms.vmdl_c')),[b]);
+  assert.deepEqual(source,before);assert.equal(choices[0].item.model,'models/shoulder.vmdl_c');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
 test('resource relocation cannot redirect the hero, item identity or skeleton profile',()=>{
  const choice={hero:{id:'faceless_void',model:'models/heroes/faceless_void/faceless_void.vmdl_c',defaultSlotModels:{arms:'models/arms.vmdl_c'}},item:{model:'models/arms.vmdl_c',nativeOverrides:{particles:['particles/shared.vpcf_c']}},effects:[]};
  const paths={'models/heroes/faceless_void/faceless_void.vmdl':'harlord/recolor/red/models/heroes/faceless_void/faceless_void.vmdl','particles/shared.vpcf':'harlord/recolor/red/particles/shared.vpcf'};
