@@ -27,6 +27,47 @@ test('arcana RGB cache persists across requests, isolates owned mode and coalesc
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 
+test('arcana rejects legacy tints on ordinary gear and recolors Rictus and the selected demon',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-tb-palette-'));
+ try{
+  const folder='materials/models/items/terrorblade/';
+  const ordinary=folder+'older_head/head.vmat_c',ordinaryTexture=folder+'older_head/head_color.vtex_c';
+  const rictus=folder+'dreadhunt_armor/armor.vmat_c',demon=folder+'new_demon/demon.vmat_c';
+  const model='models/items/terrorblade/new_demon/demon.vmdl_c';
+  const bytes=tag=>{const b=Buffer.alloc(20);b.writeUInt32LE(20);b.writeUInt32LE(tag,16);return b;};
+  const stock=bytes(1),template=bytes(2),colored=bytes(3);
+  const templates=path.join(root,'data','arcana-templates');
+  fs.mkdirSync(templates,{recursive:true});
+  const templateFiles=new Map([[ordinary,template],[ordinaryTexture,template],[rictus,template]]);
+  fs.writeFileSync(path.join(templates,'terrorblade-arcana-base.vpk'),packVpk(templateFiles));
+  fs.writeFileSync(path.join(root,'patcher'),'native');
+
+  const builder={root,config:{patcher:'patcher'},store:{
+   archives:[],read:()=>stock,
+   closure:([source])=>({files:source===model
+    ?new Map([[demon,stock]]) : new Map([[ordinary,stock],[ordinaryTexture,stock]])}),
+  },run:async(_,args)=>{
+   if(args[0]==='--capabilities')return '{"terrorbladeArcanaV4":true}';
+   const req=JSON.parse(fs.readFileSync(args[1]));
+   assert.deepEqual(req.files.map(row=>row.name).sort(),[rictus,demon].sort());
+   for(const row of req.files)fs.writeFileSync(row.output,colored);
+  }};
+  const selections=[
+   {hero,item:{slot:'head',model:'models/items/terrorblade/older_head/head.vmdl_c'}},
+   {hero,item:{slot:'demon',model}},
+  ];
+  const result=await prepareTerrorbladeArcana(builder,{hero,arcana:row.arcana},selections);
+  assert.deepEqual(result.files.get(ordinary),stock);
+  assert.deepEqual(result.files.get(ordinaryTexture),stock);
+  assert.deepEqual(result.tintMaterials,new Set([rictus,demon]));
+  const packed=new Map([[ordinary,bytes(4)],[rictus,stock],[demon,stock]]);
+  mergeArcanaFiles(packed,result,selections);
+  assert.deepEqual(packed.get(ordinary),bytes(4));
+  assert.deepEqual(packed.get(rictus),colored);
+  assert.deepEqual(packed.get(demon),colored);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
 test('arcana does not overwrite selected cosmetic native icons and particle replacements',()=>{
  const particle='particles/units/heroes/hero_terrorblade/terrorblade_ambient_eyes.vpcf_c',icon='panorama/images/spellicons/terrorblade_reflection_png.vtex_c';const packed=new Map([[particle,Buffer.from('selected-null')],[icon,Buffer.from('rictus-icon')]]);const entries=[{target:particle,source:'particles/error/null.vpcf_c'},{target:icon,source:'rictus-icon.vtex_c'}];mergeArcanaFiles(packed,{files:new Map([[particle,Buffer.from('arcana-eyes')],[icon,Buffer.from('arcana-icon')]])},[{hero,item:{slot:'head',nativeOverrides:{entries}}}]);assert.equal(packed.get(particle).toString(),'selected-null');assert.equal(packed.get(icon).toString(),'rictus-icon');
 });
