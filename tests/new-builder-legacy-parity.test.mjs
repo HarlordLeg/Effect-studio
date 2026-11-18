@@ -30,6 +30,27 @@ test('independent heads fail before mutation with an old native patcher',async()
 test('unrelated heads still merge into the hero',()=>{
  const hero={id:'primal_beast',model:'models/heroes/primal_beast/primal_beast_base.vmdl_c'},item={id:'ordinary',slot:'head',model:'models/items/primal_beast/ordinary.vmdl_c',replacesModel:'models/heroes/primal_beast/armor.vmdl_c'},plan=testerHostPlan([{hero,item}],new Map([[item.replacesModel,Buffer.from('head')]]));assert.equal(plan.groups.get(hero.model)[0].independentRuntime,undefined);assert.equal(plan.coverage[0].kind,'merged-wearable');
 });
+test('Demon Eater and Arms of Desolation merge while keeping visible copies in the game slots',async()=>{
+ const prefix='models/heroes/shadow_fiend/shadow_fiend';
+ const hero={id:'nevermore',model:`${prefix}.vmdl_c`};
+ const arcana={slot:'hero_base',model:`${prefix}_arcana.vmdl_c`,replacesModel:hero.model};
+ const wearables=['head','shoulder','arms'].map(slot=>({slot,
+  model:slot==='arms'?'models/items/shadow_fiend/arms_deso/arms_deso.vmdl_c':`${prefix}_arcana_${slot}.vmdl_c`,
+  replacesModel:`${prefix}_${slot}.vmdl_c`
+ }));
+ const choices=[{hero,stance:true},...[arcana,...wearables].map(item=>({hero,item}))];
+ const files=new Map(choices.filter(choice=>choice.item).map(({item})=>[item.replacesModel,modelResource(item.slot)]));
+ const plan=testerHostPlan(choices,files);
+ assert.deepEqual(plan.coverage.map(row=>row.kind),['activity','base-model','merged-wearable','merged-wearable','merged-wearable']);
+ assert.deepEqual(plan.groups.get(hero.model).map(({slot,keepSlotGeometry,independentRuntime,metadataOnly})=>[slot,keepSlotGeometry,independentRuntime,metadataOnly]),
+  wearables.map(({slot})=>[slot,true,undefined,undefined]));
+ const ordinary=testerHostPlan(choices.slice(2),files);
+ assert.deepEqual(ordinary.groups.get(hero.model).filter(donor=>donor.keepSlotGeometry).map(donor=>donor.slot),['arms']);
+ const builder={root:'unused',config:{testerBuildV1:true},run:async()=>JSON.stringify({testerWearableHostV2:true,testerImporterRootProfilesV4:true,immortalRuntimeFixesV1:true})};
+ const before=new Map(files);
+ await assert.rejects(applyTesterHosts(builder,choices,files,new Set(),[],'unused','patcher',{}),/testerVisibleSlotCopiesV1/);
+ assert.deepEqual(files,before);
+});
 test('Hydrakan keeps the legacy external weapon animation program; other Slark weapons still merge',()=>{
  const hero={id:'slark',model:'models/heroes/slark/slark.vmdl_c'},item={id:'hydrakan',slot:'weapon',model:'models/items/slark/hydrakan_latch/mesh/hydrkan_latch_model.vmdl_c',replacesModel:'models/heroes/slark/slark_weapon.vmdl_c'};
  assert.equal(independentWearableRuntime(hero,item),'slark-weapon-animations');const plan=testerHostPlan([{hero,item}],new Map([[item.replacesModel,Buffer.from('weapon')]]));assert.equal(plan.groups.get(hero.model)[0].independentRuntime,true);assert.equal(independentWearableRuntime(hero,{...item,model:'models/items/slark/other.vmdl_c'}),null);

@@ -2,7 +2,7 @@ using System.Text.Json;using System.Text.RegularExpressions;using ValveKeyValue;
 // Tester-only: merge visible wearables into hero, preserve independent visible
 // copies for model-rendering particles, keep host locomotion bytes untouched.
 internal static class TesterWearableHost {
- private sealed record Donor(string Input,string Target,string Slot,string Hidden,string Visible,string PrivatePath,string? SourceModel=null,bool MetadataOnly=false,bool IndependentRuntime=false,bool RetainParticles=false);
+ private sealed record Donor(string Input,string Target,string Slot,string Hidden,string Visible,string PrivatePath,string? SourceModel=null,bool MetadataOnly=false,bool IndependentRuntime=false,bool RetainParticles=false,bool KeepSlotGeometry=false);
  private sealed record HostEntry(string Host,string Input,string Output,Donor[] Donors);
  private sealed record Particle(string Input,string Output,string? Name=null);
  private sealed record Request(HostEntry[] Hosts,Particle[] Particles,Dictionary<string,string>? Meshes,string Report);
@@ -85,7 +85,9 @@ internal static class TesterWearableHost {
    File.Copy(d.Input,d.Visible,true);
    continue;
   }
-  CopyModel(d,!d.IndependentRuntime&&!IndependentCloth(host.Host,d.SourceModel),d.Hidden,d.RetainParticles);CopyModel(d,false);var key=d.Target.EndsWith("_c")?d.Target[..^2]:d.Target;if(map.TryGetValue(key,out var old)&&old!=d.PrivatePath)throw new InvalidDataException("Conflicting private wearable model");map[key]=d.PrivatePath;slots.Add(d.Slot);}reports.Add(new{host=host.Host,wearables=active.Select(d=>d.Target),fallbackTargets=active.Where(d=>fallback.Contains(d.Input)).Select(d=>d.Target),independentWearables=active.Where(d=>d.IndependentRuntime||fallback.Contains(d.Input)).Select(d=>d.SourceModel??d.Target),extraBones=extras});
+  var hideSlotGeometry=!d.KeepSlotGeometry&&!d.IndependentRuntime&&!IndependentCloth(host.Host,d.SourceModel);
+  CopyModel(d,hideSlotGeometry,d.Hidden,d.RetainParticles);
+  CopyModel(d,false);var key=d.Target.EndsWith("_c")?d.Target[..^2]:d.Target;if(map.TryGetValue(key,out var old)&&old!=d.PrivatePath)throw new InvalidDataException("Conflicting private wearable model");map[key]=d.PrivatePath;slots.Add(d.Slot);}reports.Add(new{host=host.Host,wearables=active.Select(d=>d.Target),fallbackTargets=active.Where(d=>fallback.Contains(d.Input)).Select(d=>d.Target),independentWearables=active.Where(d=>d.IndependentRuntime||fallback.Contains(d.Input)).Select(d=>d.SourceModel??d.Target),extraBones=extras});
  }
  // The manifest promises an output for every particle even if all donors
  // keep their original runtime and no particle model paths need rewriting.
