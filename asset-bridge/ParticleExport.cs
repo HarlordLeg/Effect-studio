@@ -9,6 +9,14 @@ using SkiaSharp;
 
 internal static class ParticleExport
 {
+    internal static bool IsParticleAssetPath(string? path)
+    {
+        return path is { Length: > 0 and <= 1024 }
+            && (path.EndsWith(".vpcf", StringComparison.Ordinal) || path.EndsWith(".vpcf_c", StringComparison.Ordinal))
+            && !path.Any(character => char.IsControl(character) || "\\:\"<>|?*".Contains(character))
+            && path.Split('/').All(part => part.Length > 0 && !part.EndsWith('.') && !part.EndsWith(' '));
+    }
+
     private static object? JsonValue(KVObject value)
     {
         if (value.IsArray) return value.Values.Select(JsonValue).ToArray();

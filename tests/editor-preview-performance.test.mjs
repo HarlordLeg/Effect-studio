@@ -9,3 +9,23 @@ test('three-component Storm colors default to opaque alpha instead of NaN',()=>{
 test('blob renderers construct an actual surface instead of being silently skipped',()=>{const lib=new Library({systems:{},textures:{},snapshots:{},url:p=>p}),sim=new Simulation({m_ConstantColor:[255,0,0],m_nMaxParticles:2,m_Renderers:[{_class:'C_OP_RenderBlobs',m_renderRadius:4,m_cutoffRadius:13}]},lib);assert.equal(sim.renderers.length,1);assert(lib.group.children.some(o=>o.isMarchingCubes));assert([...lib.unsupported].some(s=>s.includes('approximate')));sim.dispose();lib.dispose();});
 test('preview caches native export across child selection and never compiles unrelated edits',async()=>{const root=fs.mkdtempSync(path.join(os.tmpdir(),'editor-preview-')),files=new Map([['particles/root.vpcf_c',resource(['particles/child.vpcf'])],['particles/child.vpcf_c',resource()]]);let calls=0,applied=0;const builder={root,config:{archives:[],assetBridge:'bridge.exe'},store:{read:n=>files.get(n)},run:async(exe,args)=>{calls++;const request=JSON.parse(fs.readFileSync(args[0],'utf8'));fs.writeFileSync(request.output,JSON.stringify(packet));}};const pipeline=new ParticlePipeline(builder);pipeline.apply=async()=>{applied++;throw Error('Unrelated edit compiled');};try{const edits=[{path:'materials/unused.vmat_c',sha256:'a'.repeat(64),edits:[{op:'set'}]}];await pipeline.preview(packet.root,edits,{selected:packet.root});const child=await pipeline.preview(packet.root,edits,{selected:'particles/child.vpcf_c'});assert.equal(child.visibleSystems[0],'particles/child.vpcf_c');assert.equal(calls,1);assert.equal(applied,0);files.set('particles/child.vpcf_c',resource(['F_CHANGED']));await pipeline.preview(packet.root,edits,{selected:'particles/child.vpcf_c'});assert.equal(calls,2);}finally{fs.rmSync(root,{recursive:true,force:true});}});
 test('concurrent material descriptions share one native call and return independent copies',async()=>{let calls=0;const builder={root:'.',config:{patcher:'native'},store:{read:()=>resource()},run:async()=>{calls++;return JSON.stringify({resources:[{tree:{type:'Collection',value:{}},kind:'material'}]});}},pipeline=new ResourcePipeline(builder);const[a,b]=await Promise.all([pipeline.describe('materials/a.vmat_c'),pipeline.describe('materials/a.vmat_c')]);a.tree.value.changed=true;assert.equal(b.tree.value.changed,undefined);assert.equal(calls,1);});
+test('editor previews compiled particles under mounted namespaces', async () => {
+ const names = [
+  'harlord/particles/econ/seasonal/seasonal_ambient_silver.vpcf_c',
+  'maps/cavern_assets/particles/cavern_drip_glow.vpcf_c',
+ ];
+ const files = new Map(names.map(name => [name, resource()]));
+ const exported = [];
+ const pipeline = new ParticlePipeline({
+  root: '.', config: {archives: []}, store: {read: name => files.get(name)},
+  async run(_exe, [manifest]) {
+   const {particle,output} = JSON.parse(fs.readFileSync(manifest,'utf8'));
+   exported.push(particle);
+   fs.writeFileSync(output,JSON.stringify({root: particle, definitions: {[particle]: {}}}));
+  },
+ });
+ for (const name of names) assert.equal((await pipeline.preview(name)).root, name);
+ for (const name of ['/maps/glow.vpcf_c', 'maps/../glow.vpcf_c', 'maps/.. /glow.vpcf_c', 'maps/glow.vmat_c'])
+  await assert.rejects(() => pipeline.preview(name), /Invalid particle path|Недопустимый путь ресурса/);
+ assert.deepEqual(exported, names);
+});
