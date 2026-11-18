@@ -7,7 +7,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {Builder} from '../lib/build.mjs';
 import {Vpk} from '../lib/vpk.mjs';
-import {normalizeSelections} from '../lib/namespace.mjs';
+import {MAX_SET_BUILD_ITEMS,normalizeSelections} from '../lib/namespace.mjs';
 import {combinedSetPayload} from '../public/set-studio.mjs';
 import {heroImage} from '../public/hero-picker.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -20,12 +20,12 @@ test('reported missing portraits are bundled and old/display hero names resolve 
  for(const [alias,id] of [['magnus','magnataur'],['outworld_destroyer','obsidian_destroyer'],['windranger','windrunner']])assert.equal(heroImage({id:alias}),heroImage({id}));
 });
 
-test('VPK selection accepts 128 equipment slots and rejects 129',()=>{
- const rows=Array.from({length:129},(_,i)=>({heroId:'hero-'+i,itemId:'item-'+i}));
+test('VPK selection can include the full catalog of equipment slots and still has a limit',()=>{
+ const rows=Array.from({length:MAX_SET_BUILD_ITEMS+1},(_,i)=>({heroId:'hero-'+i,itemId:'item-'+i}));
  const builder={
   catalog:{effects:[]},
   cosmeticChoice:(heroId,itemId)=>({hero:{id:heroId},item:{id:itemId,slot:'weapon'}})
  };
- for(const count of [33,128])assert.equal(normalizeSelections(builder,{mode:'set',selections:rows.slice(0,count)}).length,count);
- assert.throws(()=>normalizeSelections(builder,{mode:'set',selections:rows}),/1–128 items/);
+ for(const count of [129,713,MAX_SET_BUILD_ITEMS])assert.equal(normalizeSelections(builder,{mode:'set',selections:rows.slice(0,count)}).length,count);
+ assert.throws(()=>normalizeSelections(builder,{mode:'set',selections:rows}),new RegExp(`1–${MAX_SET_BUILD_ITEMS} items`));
 });

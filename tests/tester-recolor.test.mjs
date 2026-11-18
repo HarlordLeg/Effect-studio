@@ -14,20 +14,40 @@ import {startServer} from '../server.mjs';
 import {EditorBuildService} from '../lib/editor/build-service.mjs';
 import {AssetStore,Vpk,packVpk} from '../lib/vpk.mjs';
 import {digest} from '../lib/editor/project-service.mjs';
-import {MAX_BUILD_ITEMS} from '../lib/namespace.mjs';
-test('recolor builds accept 112 selections and report which project limit was exceeded', () => {
- const selections = Array.from({length: MAX_BUILD_ITEMS + 1}, (_, index) => ({
+import {MAX_SET_BUILD_ITEMS} from '../lib/namespace.mjs';
+test('recolor builds accept 112 selections with over 2048 edited effects', async () => {
+ const selections = Array.from({length: 112}, (_, index) => ({
+  ...row, heroId: 'hero-' + index,
+  recolor: {resources: Array.from({length: 19}, (_, effect) => ({
+   path: `particles/hero-${index}/effect-${effect}.vpcf_c`, sha256: sha,
+   edits: [{op: 'color', path: ['m_ConstantColor'], value: [255, 0, 0]}],
+  }))},
+ }));
+ const service = {create(_owner, project, options) {
+  assert.equal(project.selections.length, 112);
+  assert.equal(project.resources.length, 2128);
+  assert.equal(options.filename, 'pak47_dir.vpk');
+  return {id: 'a'.repeat(32), status: 'queued', filename: options.filename};
+ }};
+ await testerRecolorRoute({
+  req: {method: 'POST'}, res: {}, url: new URL('https://example/api/recolor/build'),
+  prefix: '/api/recolor/', context: {builder: {}, editorBuilds: service}, owner: 'player',
+  body: async () => ({selections, vpkNumber: 47}),
+  json: (_res, status, job) => {assert.equal(status, 202);assert.equal(job.filename, 'pak47_dir.vpk');},
+ });
+});
+test('recolor builds report which project limit was exceeded', () => {
+ const selections = Array.from({length: MAX_SET_BUILD_ITEMS + 1}, (_, index) => ({
   ...row, heroId: 'hero-' + index,
  }));
- assert.equal(recolorBuildProject({selections: selections.slice(0, 112)}).selections.length, 112);
- assert.throws(() => recolorBuildProject({selections}), new RegExp(`${MAX_BUILD_ITEMS + 1}.*${MAX_BUILD_ITEMS}`));
+ assert.equal(recolorBuildProject({selections: selections.slice(0, 713)}).selections.length, 713);
+ assert.throws(() => recolorBuildProject({selections}), new RegExp(`${MAX_SET_BUILD_ITEMS + 1}.*${MAX_SET_BUILD_ITEMS}`));
 
- const resources = Array.from({length: 2049}, (_, index) => ({
+ const resources = Array.from({length: 16385}, (_, index) => ({
   path: `particles/edited-${index}.vpcf_c`, sha256: sha, edits: [],
  }));
  const withResources = resources => ({selections: [{...row, recolor: {resources}}]});
- assert.equal(recolorBuildProject(withResources(resources.slice(0, 2048))).resources.length, 2048);
- assert.throws(() => recolorBuildProject(withResources(resources)), /2049.*2048/);
+ assert.throws(() => recolorBuildProject(withResources(resources)), /16385.*16384/);
 });
 function binary(tag=''){const b=Buffer.alloc(16+tag.length);b.writeUInt32LE(b.length);b.writeUInt32LE(8,8);b.write(tag,16);return b;}
 test('tester editor pipeline packs both independently edited particles into the requested VPK',async()=>{
