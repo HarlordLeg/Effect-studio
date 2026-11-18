@@ -87,19 +87,60 @@ internal static class GlobalCosmetics
             foreach(var field in fields)target[key][field.Key]=field.Value;count++;
         }return count;
     }
-    internal static int CosmeticSkin(KVObject groups,int skin){
-        if(skin<=0)return skin;var values=groups.Values.ToArray();
-        for(var i=0;i<values.Length;i++)if(values[i].TryGetValue("m_name",out var name)&&name.ToString(null)==skin.ToString(CultureInfo.InvariantCulture))return i;
-        if(skin<values.Length)return skin;
-        // A standalone courier model can have its requested material baked into its only group.
-        if(values.Length==1)return 0;
-        throw new InvalidDataException("Courier material group missing: "+skin+"; available: "+values.Length);
+    internal static int CosmeticSkin(KVObject? groups, int skin)
+    {
+        if (skin <= 0) return skin;
+        if (groups is not null && !groups.IsArray)
+            throw new InvalidDataException("Invalid cosmetic material group table");
+
+        // Some styles select a separate model with baked materials and no
+        // switchable groups (for example, Eimer Hillburrow's final style).
+        if (groups is null || groups.Count <= 1) return 0;
+
+        var values = groups.Values.ToArray();
+        var name = skin.ToString(CultureInfo.InvariantCulture);
+        for (var i = 0; i < values.Length; i++)
+            if (values[i].TryGetValue("m_name", out var groupName) && groupName.ToString(null) == name)
+                return i;
+        if (skin < values.Length) return skin;
+        throw new InvalidDataException("Courier material group missing: " + skin + "; available: " + values.Length);
     }
     private static void Reference(Resource resource,string name){if(resource.ExternalReferences is not {} refs)return;if(!refs.ResourceRefInfoList.Any(r=>r.Name==name))refs.ResourceRefInfoList.Add(new ResourceExtRefList.ResourceReferenceInfo{Name=name,Id=Program.ComputeResourceId(name)});}
     public static void Run(string manifest){
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty cosmetics request");
         var matched=0;var unmatched=new List<string>();var warnings=new List<string>();
-        foreach(var model in request.Models??[]){var args=new List<string>{"--input",model.Input,"--output",model.Output,"--no-backup"};if(model.Particles.Length==0)args.Add("--model-only");foreach(var particle in model.Particles){args.Add("--particle");args.Add(particle);}if(model.Skin>0){using var input=new Resource{FileName=model.Input};input.Read(model.Input);if(input.DataBlock is not Model donor)throw new InvalidDataException("Expected cosmetic model");if(!donor.Data.TryGetValue("m_materialGroups",out var groups))throw new InvalidDataException("Cosmetic model has no material groups");var skin=CosmeticSkin(groups,model.Skin);if(skin==0&&groups.Count==1)warnings.Add("У модели один вариант материала: использован встроенный материал вместо skin "+model.Skin);if(skin>0){args.Add("--skin");args.Add(skin.ToString(CultureInfo.InvariantCulture));}}if(model.Replacements is not null){args.Add("--particle-replacements");args.Add(model.Replacements);}if(Program.Main(args.ToArray())!=0)throw new InvalidDataException("Cosmetic model patch failed: "+model.Input);}
+        foreach (var model in request.Models ?? [])
+        {
+            var args = new List<string> { "--input", model.Input, "--output", model.Output, "--no-backup" };
+            if (model.Particles.Length == 0) args.Add("--model-only");
+            foreach (var particle in model.Particles)
+            {
+                args.Add("--particle");
+                args.Add(particle);
+            }
+            if (model.Skin > 0)
+            {
+                using var input = new Resource { FileName = model.Input };
+                input.Read(model.Input);
+                if (input.DataBlock is not Model donor) throw new InvalidDataException("Expected cosmetic model");
+                donor.Data.TryGetValue("m_materialGroups", out var groups);
+                var skin = CosmeticSkin(groups, model.Skin);
+                if (skin == 0 && groups?.Count == 1)
+                    warnings.Add("У модели один вариант материала: использован встроенный материал вместо skin " + model.Skin);
+                if (skin > 0)
+                {
+                    args.Add("--skin");
+                    args.Add(skin.ToString(CultureInfo.InvariantCulture));
+                }
+            }
+            if (model.Replacements is not null)
+            {
+                args.Add("--particle-replacements");
+                args.Add(model.Replacements);
+            }
+            if (Program.Main(args.ToArray()) != 0)
+                throw new InvalidDataException("Cosmetic model patch failed: " + model.Input);
+        }
         foreach(var file in request.Particles??[]){
             var bytes=File.ReadAllBytes(file.Input);using var resource=new Resource{FileName=file.Input};resource.Read(file.Input);if(resource.DataBlock is not ParticleSystem particle)throw new InvalidDataException("Not a particle: "+file.Input);
             if(file.Original is not null&&file.Effect is not null){

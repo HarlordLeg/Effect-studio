@@ -14,6 +14,21 @@ import {startServer} from '../server.mjs';
 import {EditorBuildService} from '../lib/editor/build-service.mjs';
 import {AssetStore,Vpk,packVpk} from '../lib/vpk.mjs';
 import {digest} from '../lib/editor/project-service.mjs';
+import {MAX_BUILD_ITEMS} from '../lib/namespace.mjs';
+test('recolor builds accept 112 selections and report which project limit was exceeded', () => {
+ const selections = Array.from({length: MAX_BUILD_ITEMS + 1}, (_, index) => ({
+  ...row, heroId: 'hero-' + index,
+ }));
+ assert.equal(recolorBuildProject({selections: selections.slice(0, 112)}).selections.length, 112);
+ assert.throws(() => recolorBuildProject({selections}), new RegExp(`${MAX_BUILD_ITEMS + 1}.*${MAX_BUILD_ITEMS}`));
+
+ const resources = Array.from({length: 2049}, (_, index) => ({
+  path: `particles/edited-${index}.vpcf_c`, sha256: sha, edits: [],
+ }));
+ const withResources = resources => ({selections: [{...row, recolor: {resources}}]});
+ assert.equal(recolorBuildProject(withResources(resources.slice(0, 2048))).resources.length, 2048);
+ assert.throws(() => recolorBuildProject(withResources(resources)), /2049.*2048/);
+});
 function binary(tag=''){const b=Buffer.alloc(16+tag.length);b.writeUInt32LE(b.length);b.writeUInt32LE(8,8);b.write(tag,16);return b;}
 test('tester editor pipeline packs both independently edited particles into the requested VPK',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'tester-paint-'));try{const originals=new Map([['particles/a.vpcf_c',binary('a')],['particles/b.vpcf_c',binary('b')]]),store=new AssetStore();store.read=n=>originals.get(n);const item={id:'hat',slot:'head',effects:[]},hero={id:'hero'},builder={root,store,catalog:{effects:[]},config:{},cosmeticChoice:()=>({hero,item,effects:[],effect:{id:'native-only'}}),async build(choices,job){const dir=path.join(root,'output',job.id);fs.mkdirSync(dir,{recursive:true});job.file=path.join(dir,'pak01_dir.vpk');fs.writeFileSync(job.file,packVpk(new Map([...originals.keys()].map(n=>[n,this.store.read(n)]))));job.status='ready';}};

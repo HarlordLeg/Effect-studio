@@ -1,3 +1,4 @@
+#nullable enable
 using System.Reflection;using ValveKeyValue;
 static KVObject Event(string name){var row=KVObject.Collection();var list=KVObject.Array();list.Add(new KVObject(name));row["type"]=new KVObject("dota_update_vo_switch");row["vsnd_files"]=list;return row;}
 var target=KVObject.Collection();var fallback=Event("sounds/vo/announcer/announcer_welcome_02.vsnd");target["announcer_announcer_welcome_01"]=Event("sounds/vo/announcer/announcer_welcome_01.vsnd");target["announcer_announcer_welcome_02"]=fallback;target["announcer_killing_spree_announcer_kill_double_01"]=Event("sounds/vo/announcer_killing_spree/announcer_kill_double_01.vsnd");
@@ -36,3 +37,24 @@ var courierDefinition=Definition(authoredDrivers);bind.Invoke(null,new object[]{
 var fallbackDefinition=Definition(new[]{Driver(1,"self_with_wearables","attach_eye_fx")},"default");bind.Invoke(null,new object[]{fallbackDefinition,bindingJson.RootElement,true});var preview=fallbackDefinition["m_controlPointConfigurations"].Values.Single(c=>c["m_name"].ToString(null)=="preview");if(preview["m_drivers"].Count!=3)throw new Exception("Default config lost when adding preview");
 var implicitDriver=Driver(0,"self_with_wearables","attach_attack2");implicitDriver.Remove("m_iControlPoint");var implicitDefinition=Definition(new[]{implicitDriver});bind.Invoke(null,new object[]{implicitDefinition,bindingJson.RootElement,true});if(implicitDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Count!=2)throw new Exception("Implicit CP0 duplicated");
 Console.WriteLine("Wearable CP preservation, fallback, idempotence, implicit CP0 and courier compatibility passed.");
+
+var cosmeticSkin = method.DeclaringType!.GetMethod("CosmeticSkin", BindingFlags.NonPublic | BindingFlags.Static)!;
+int Skin(KVObject? groups, int requested) => (int)cosmeticSkin.Invoke(null, new object?[] { groups, requested })!;
+var baseGroup = KVObject.Collection();
+baseGroup["m_name"] = new KVObject("0");
+var namedVariant = KVObject.Collection();
+namedVariant["m_name"] = new KVObject("6");
+var groups = KVObject.Array(new[] { baseGroup, namedVariant });
+if (Skin(null, 6) != 0 || Skin(KVObject.Array(), 6) != 0 || Skin(KVObject.Array(new[] { baseGroup }), 6) != 0)
+    throw new Exception("Courier with baked materials must use the model's default materials");
+if (Skin(groups, 6) != 1 || Skin(groups, 1) != 1 || Skin(groups, 0) != 0)
+    throw new Exception("Courier skin resolution must preserve named groups and positional indices");
+try
+{
+    Skin(groups, 7);
+    throw new Exception("Nonexistent group on a multi-style courier must still be rejected");
+}
+catch (TargetInvocationException error) when (error.InnerException is InvalidDataException)
+{
+}
+Console.WriteLine("Baked courier materials, named styles and invalid style rejection passed.");
