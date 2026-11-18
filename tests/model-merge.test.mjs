@@ -8,6 +8,27 @@ test('schema-declared empty wearable slots merge into the actual existing base, 
  const unused=hero();configureModelMerging({heroes:[unused]},{read:()=>resource(1)});assert.equal(unused.items[0].mergeTarget,unused.model);
  const unrelated=hero();delete unrelated.embeddedWearableSlots;configureModelMerging({heroes:[unrelated]},{read:()=>null});assert.equal(unrelated.items[0].mergeTarget,undefined);
 });
+test('Widow of the Undermount Gloom hides the stock body only with both replacement parts',async()=>{
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'des-brood-widow-'));
+ try{
+  const h=hero('broodmother');
+  const head={id:'widow-head',slot:'head',model:'models/items/broodmother/strangling_gloom_head/strangling_gloom_head.vmdl_c'};
+  const anterior={id:'widow-anterior',slot:'misc',model:'models/items/broodmother/strangling_gloom_misc/strangling_gloom_misc.vmdl_c',mergeTarget:h.model};
+  const stage=stagedMergeTarget(h,anterior);
+  for(const includeHead of [false,true]){
+   const rows=(includeHead?[head,anterior]:[anterior]).map(item=>({hero:h,item}));
+   const files=new Map([[h.model,resource(1)],[stage,resource(2)]]);
+   const builder={root:temp,store:{read:()=>null},run:async(_,args)=>{
+    if(args[0]==='--capabilities')return JSON.stringify({modelMergeV5:true,modelMergeHideHostMeshesV1:true});
+    const request=JSON.parse(fs.readFileSync(args[1]));
+    assert.deepEqual(request.hideHostMeshes,includeHead?['base','base_lod1','base_triangle','base_sternum','base_sternum_lod1']:undefined);
+    fs.writeFileSync(request.output,resource(3));
+   }};
+   await finalizeModelMerges(builder,rows,files,[],temp,'patcher',{});
+   assert.deepEqual(files.get(h.model),resource(3));
+  }
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
 test('Arc Warden head replaces shoulders while the shoulders merge into the hero and the old head is suppressed',()=>{
  const h=hero('arc_warden');h.items[1].slot='shoulder';h.defaultSlotModels={head:'models/heroes/arc_warden/head.vmdl_c',shoulder:'models/heroes/arc_warden/shoulder.vmdl_c'};
  configureModelMerging({heroes:[h]},{read:()=>null});assert.equal(h.items[0].replacesModel,h.defaultSlotModels.shoulder);assert.deepEqual(h.items[0].mergeSuppress,[h.defaultSlotModels.head]);assert.equal(h.items[1].mergeTarget,h.model);assert.deepEqual(h.items[1].mergeSuppress,[h.defaultSlotModels.shoulder]);

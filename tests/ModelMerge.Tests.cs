@@ -5,6 +5,16 @@ internal static class ModelMergeTests
  static KVObject Skeleton(string[] names,int[] parents){var s=KVObject.Collection();s["m_boneName"]=Array(names.Select(n=>new KVObject(n)).ToArray());s["m_nParent"]=Array(parents.Select(n=>new KVObject(n)).ToArray());foreach(var key in new[]{"m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"})s[key]=Array(names.Select(_=>new KVObject(1)).ToArray());return s;}
  static void Check(bool condition){if(!condition)throw new Exception("Model merge regression");}
  public static int Main(){
+  { // A stock mesh is disabled at its own index, without altering other meshes or the default group.
+   var model=KVObject.Collection();
+   model["m_refMeshGroupMasks"]=Array(new KVObject(1UL),new KVObject(16UL),new KVObject(32UL));
+   model["m_nDefaultMeshGroupMask"]=new KVObject(49UL);
+   var legacy=KVObject.Collection();legacy["name"]=new KVObject("base");legacy["mesh_index"]=new KVObject(0);
+   var modern=KVObject.Collection();modern["m_Name"]=new KVObject("base_triangle");modern["m_nMeshIndex"]=new KVObject(1);
+   ModelMerge.HideHostMeshes(model,[modern,legacy],["base","base_triangle"]);
+   Check(model["m_refMeshGroupMasks"].Values.Select(mask=>mask.ToUInt64(null)).SequenceEqual(new ulong[]{0,0,32}));
+   Check(model["m_nDefaultMeshGroupMask"].ToUInt64(null)==49);
+  }
   { // Original skeletons collected from the user's installed Dota archives.
    var fixture=Path.Combine(Directory.GetCurrentDirectory(),"tests","fixtures","sven-arbiter-skeletons.json");
    if(!File.Exists(fixture))throw new Exception("Run native tests from the repository root");

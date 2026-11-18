@@ -13,7 +13,7 @@ internal static class ModelMerge
     {
         public string OriginalInput { get; init; } = Input;
     }
-    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null,string? HostModel=null,bool TesterImporterRoots=false);
+    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null,string? HostModel=null,bool TesterImporterRoots=false,string[]? HideHostMeshes=null);
     private sealed record Chunk(BlockType Type,byte[] Bytes);
     internal const string IncompatibleDonorInput = "IncompatibleWearableDonorInput";
     const string UnattachedDonorRoot = "UnattachedWearableDonorRoot";
@@ -32,6 +32,20 @@ internal static class ModelMerge
     static ulong Mask(KVObject value){var text=Text(value);return text.StartsWith('-')?unchecked((ulong)long.Parse(text,CultureInfo.InvariantCulture)):ulong.Parse(text,CultureInfo.InvariantCulture);}
     static int MeshIndex(KVObject row)=>Number(row[Field(row,"m_nMeshIndex","mesh_index")]);
     static string MeshName(KVObject row)=>Text(row[Field(row,"m_Name","name")]);
+    internal static void HideHostMeshes(KVObject model, IReadOnlyList<KVObject> meshes, string[] names)
+    {
+        var byName = meshes.ToLookup(MeshName, StringComparer.Ordinal);
+        var masks = Values(model, "m_refMeshGroupMasks");
+        foreach (var name in names)
+        {
+            var matching = byName[name].ToArray();
+            if (matching.Length != 1) throw new InvalidDataException("Missing or ambiguous host mesh: " + name);
+            var index = MeshIndex(matching[0]);
+            if (index < 0 || index >= masks.Length) throw new InvalidDataException("Host mesh index is out of range: " + name);
+            masks[index] = new KVObject(0UL);
+        }
+        model["m_refMeshGroupMasks"] = Array(masks);
+    }
     static readonly HashSet<string> BlockFields=["m_nDataBlock","m_nMorphBlock","m_nVBIBBlock","m_nToolsVBBlock","m_nBlockIndex","tools_vb_block","data_block","vbib_block","morph_block"];
     static void BlockReferences(KVObject value,Action<KVObject,string,int> action){
         if(value.ValueType is not (KVValueType.Collection or KVValueType.Array))return;
@@ -257,6 +271,7 @@ internal static class ModelMerge
             if(Values(root["m_modelSkeleton"],"m_boneName").Where((_,i)=>Number(Values(root["m_modelSkeleton"],"m_nParent")[i])<0).Any(n=>!knownRootBones.Contains(Text(n))))throw new InvalidDataException("Host roots are absent from hero skeleton reference");
         }
         var meshRows=Values(control,"embedded_meshes").ToList();var attachmentOverrides=new Dictionary<string,KVObject>(StringComparer.Ordinal);var editedHostMeshes=new HashSet<int>();if(meshRows.Count==0)throw new InvalidDataException("Merge host has no embedded meshes");
+        if (request.HideHostMeshes is { Length: > 0 } hidden) HideHostMeshes(root, meshRows, hidden);
         var chunks=host.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();var imported=new List<string>();var independentEffectSets=new List<KVObject>();
         var meshGroups=Values(root,"m_meshGroups").ToList();if(meshGroups.Count>=63)throw new InvalidDataException("Host has no free mesh group bit");
         var mergedMask=1UL<<meshGroups.Count;meshGroups.Add(new KVObject("harlord_merged"));root["m_meshGroups"]=Array(meshGroups);
