@@ -1,5 +1,9 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {AssetStore,packVpk,Vpk} from '../lib/vpk.mjs';import {cosmeticCatalog,cosmeticChoices,applyCosmetics,buildCosmeticsOnly} from '../lib/global-cosmetics.mjs';import {finishCosmeticPackage} from '../lib/cosmetic-terrain.mjs';import {cosmeticClosure} from '../lib/cosmetic-resources.mjs';
+import {Builder} from '../lib/build.mjs';
+import {EditorBuildService} from '../lib/editor/build-service.mjs';
+import {digest} from '../lib/editor/project-service.mjs';
+import {testerRecolorRoute} from '../lib/tester/recolor.mjs';
 const bytes=tag=>{const b=Buffer.alloc(16);b.writeUInt32LE(16);b.writeUInt32LE(8,8);b[6]=tag;return b;};
 function fixture(){const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-cosmetics-upgrade-')),map=new Map();for(const n of ['base','base_fly','style0','style1','hero1','hero2'])map.set('models/'+n+'.vmdl_c',bytes(n.length));for(const n of ['ground','flying','style1','emblem','lava'])map.set('particles/'+n+'.vpcf_c',bytes(n.length));
 map.set('particles/ui_mouseactions/selected_ring.vpcf_c',bytes(9));map.set('particles/econ/attack/attack_modifier_empty.vpcf_c',bytes(2));
@@ -37,6 +41,45 @@ test('missing auxiliary portrait shader does not block verified map shader and i
 test('courier RGB is validated and recolors only isolated copies of the extra effect closure',async()=>{const f=fixture();try{const choices=cosmeticChoices(f.builder,[{id:'2',effectIds:['lava'],courierColor:[20,40,250]}]);const packed=new Map();await applyCosmetics(f.builder,choices,packed,f.root,'patcher',{});const requests=f.requests.filter(r=>r.command==='--relocate').flatMap(r=>r.req.files);const colored=requests.filter(r=>r.color);assert.ok(colored.length>0);assert.ok(colored.every(r=>r.color.join(',')==='20,40,250'&&r.name.includes('courier_rgb_20_40_250')));assert.ok(!requests.filter(r=>!r.name.includes('courier_rgb_')).some(r=>r.color));assert.throws(()=>cosmeticChoices(f.builder,[{id:'2',courierColor:[256,0,0]}]),/RGB/);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
 
 function unzip(bytes){const files=new Map();for(let at=0;bytes.readUInt32LE(at)===0x04034b50;){const length=bytes.readUInt16LE(at+26),extra=bytes.readUInt16LE(at+28),size=bytes.readUInt32LE(at+18),start=at+30+length+extra;files.set(bytes.toString('utf8',at+30,at+30+length),bytes.subarray(start,start+size));at=start+size;}return files;}
+test('shared recolor build returns a ZIP with edited gear, terrain and a separate attack layer',async()=>{
+ const f=fixture();
+ try{
+  const builder=Object.setPrototypeOf(f.builder,Builder.prototype);
+  fs.writeFileSync(path.join(f.root,'patcher'),'fixture');
+  const hero=builder.catalog.heroes[0],model='models/heroes/a/hat.vmdl_c',material='materials/dev/test.vmat_c';
+  hero.defaultSlotModels={head:model};
+  hero.items=[{id:'hat',slot:'head',model:'models/style1.vmdl_c'}];
+  const terrain=packVpk(new Map([['maps/dota.vmap_c',bytes(1)]]));
+  const dest=path.join(f.root,'data/cosmetic-templates/terrain/4/maps/dota.vpk');
+  fs.mkdirSync(path.dirname(dest),{recursive:true});
+  fs.writeFileSync(dest,terrain);
+  const run=builder.run;
+  builder.run=async(exe,args,opts)=>args[0]==='--capabilities'?JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,globalCosmeticsV1:true}):run(exe,args,opts);
+  const editorBuilds=new EditorBuildService(builder);
+  editorBuilds.materials.apply=async()=>bytes(19);
+  const payload={vpkNumber:47,cosmetics:[{id:'4'},{id:'18571:attack'}],selections:[{heroId:'a',itemId:'hat',slot:'head',recolor:{resources:[{path:material,sha256:digest(builder.store.read(material)),edits:[{op:'set',path:['x'],value:1}]}]}}]};
+  let response;
+  const request=(method,route)=>testerRecolorRoute({req:{method},res:{},url:new URL('https://example.test/api/recolor/'+route),context:{builder,editorBuilds},owner:'owner',prefix:'/api/recolor/',body:async()=>payload,json:(_,code,result)=>{response={code,result};}});
+  await request('POST','build');
+  assert.equal(response.code,202);
+  const {id}=response.result;
+  await editorBuilds.queue;
+  await request('GET','jobs/'+id);
+  assert.equal(response.result.status,'ready',response.result.error);
+  assert.equal(response.result.filename,'pak47_dir.zip');
+  assert.equal(response.result.packageType,'cosmetics-zip');
+  const job=editorBuilds.jobs.get(id),files=unzip(fs.readFileSync(job.file));
+  assert.deepEqual([...files.keys()],['pak47_dir.vpk','pak48_dir.vpk','maps/dota.vpk','INSTALL.txt']);
+  assert.deepEqual(files.get('maps/dota.vpk'),terrain);
+  assert.deepEqual(fs.readdirSync(path.dirname(job.file)),['pak47_dir.zip']);
+  const inspect=name=>{const file=path.join(f.root,name);fs.writeFileSync(file,files.get(name));return new Vpk(file);};
+  const main=inspect('pak47_dir.vpk'),attack=inspect('pak48_dir.vpk');
+  assert.ok(main.has(model));
+  assert.deepEqual(main.read(material),bytes(19));
+  assert.ok(attack.has('particles/econ/attack/attack_modifier_empty.vpcf_c'));
+  assert.ok(!attack.has(model));
+ }finally{fs.rmSync(f.root,{recursive:true,force:true});}
+});
 test('RGB attack layer is isolated from main cosmetics and ZIP contains two distinct VPKs plus Russian instructions',async()=>{const f=fixture();try{const choices=cosmeticChoices(f.builder,[{id:'21',effectIds:['lava']},{id:'18571:attack',color:[30,80,220]}]),job={id:'layers',filename:'pak99_dir.vpk'};await buildCosmeticsOnly(f.builder,choices,job);assert.equal(job.status,'ready');assert.equal(job.packageType,'cosmetics-zip');assert.ok(!('_attackVpk' in job));const files=unzip(fs.readFileSync(job.file));assert.deepEqual([...files.keys()],['pak99_dir.vpk','pak98_dir.vpk','INSTALL.txt']);assert.ok(files.get('INSTALL.txt').includes(Buffer.from('Атаки эмблем')));const main=path.join(f.root,'main.vpk'),attack=path.join(f.root,'attack.vpk');fs.writeFileSync(main,files.get('pak99_dir.vpk'));fs.writeFileSync(attack,files.get('pak98_dir.vpk'));assert.ok(new Vpk(main).entries.has('models/base.vmdl_c'));assert.ok(!new Vpk(attack).entries.has('models/base.vmdl_c'));assert.ok(!new Vpk(main).entries.has('particles/econ/attack/attack_modifier_empty.vpcf_c'));assert.ok(new Vpk(attack).entries.has('particles/econ/attack/attack_modifier_empty.vpcf_c'));const tinted=f.requests.filter(r=>r.command==='--relocate').flatMap(r=>r.req.files).filter(r=>r.color);assert.ok(tinted.some(r=>r.color.join(',')==='30,80,220'));assert.ok(!tinted.some(r=>r.name.endsWith('/lava.vpcf_c')));assert.throws(()=>cosmeticChoices(f.builder,[{id:'18571:attack',color:[256,0,0]}]),/RGB/);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
 test('Aghanim shader accepts RGB only for the supported shader and gates the native capability',async()=>{const f=fixture();try{const choices=cosmeticChoices(f.builder,[{id:'18713',color:[50,100,200]}]);await applyCosmetics(f.builder,choices,new Map(),f.root,'patcher',{});const request=f.requests.find(r=>r.command==='--cosmetic-shader-rgb');assert.deepEqual(request.req.files[0].color,[50,100,200]);assert.equal(request.req.files[0].name,'materials/dev/deferred_post_process.vmat_c');assert.throws(()=>cosmeticChoices(f.builder,[{id:'23',color:[1,2,3]}]),/RGB/);const originalRun=f.builder.run;f.builder.run=async(exe,args,options)=>args[0]==='--capabilities'?JSON.stringify({globalCosmeticsV1:true}):originalRun(exe,args,options);await assert.rejects(applyCosmetics(f.builder,choices,new Map(),f.root,'patcher',{}),/cosmeticShaderRgbV1/);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
 test('attack packaging preserves a separate terrain map too',()=>{const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-packaging-'));try{const main=path.join(root,'pak01_dir.vpk'),attack=path.join(root,'attacks.vpk');fs.writeFileSync(main,Buffer.from('main'));fs.writeFileSync(attack,Buffer.from('attack'));const job={file:main,filename:'pak01_dir.vpk',_attackVpk:attack};finishCosmeticPackage(job,Buffer.from('terrain'));const files=unzip(fs.readFileSync(job.file));assert.equal(files.get('maps/dota.vpk').toString(),'terrain');assert.equal(files.get('pak01_dir.vpk').toString(),'main');assert.equal(files.get('pak02_dir.vpk').toString(),'attack');}finally{fs.rmSync(root,{recursive:true,force:true});}});

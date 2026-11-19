@@ -12,7 +12,7 @@ test('edited tester build preserves VPK number and project owner on job download
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {startServer} from '../server.mjs';
 import {EditorBuildService} from '../lib/editor/build-service.mjs';
-import {AssetStore,Vpk,packVpk} from '../lib/vpk.mjs';
+import {AssetStore,Vpk} from '../lib/vpk.mjs';
 import {digest} from '../lib/editor/project-service.mjs';
 import {MAX_SET_BUILD_ITEMS} from '../lib/namespace.mjs';
 test('recolor builds accept 112 selections with over 2048 edited effects', async () => {
@@ -51,7 +51,7 @@ test('recolor builds report which project limit was exceeded', () => {
 });
 function binary(tag=''){const b=Buffer.alloc(16+tag.length);b.writeUInt32LE(b.length);b.writeUInt32LE(8,8);b.write(tag,16);return b;}
 test('tester editor pipeline packs both independently edited particles into the requested VPK',async()=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'tester-paint-'));try{const originals=new Map([['particles/a.vpcf_c',binary('a')],['particles/b.vpcf_c',binary('b')]]),store=new AssetStore();store.read=n=>originals.get(n);const item={id:'hat',slot:'head',effects:[]},hero={id:'hero'},builder={root,store,catalog:{effects:[]},config:{},cosmeticChoice:()=>({hero,item,effects:[],effect:{id:'native-only'}}),async build(choices,job){const dir=path.join(root,'output',job.id);fs.mkdirSync(dir,{recursive:true});job.file=path.join(dir,'pak01_dir.vpk');fs.writeFileSync(job.file,packVpk(new Map([...originals.keys()].map(n=>[n,this.store.read(n)]))));job.status='ready';}};
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'tester-paint-'));try{const originals=new Map([['particles/a.vpcf_c',binary('a')],['particles/b.vpcf_c',binary('b')]]),store=new AssetStore();store.read=n=>originals.get(n);const item={id:'hat',slot:'head',effects:[]},hero={id:'hero'},builder={root,store,catalog:{effects:[]},config:{},cosmeticChoice:()=>({hero,item,effects:[],effect:{id:'native-only'}}),async assemble(){return new Map([...originals.keys()].map(n=>[n,this.store.read(n)]));}};
  const service=new EditorBuildService(builder);service.particles.apply=async r=>binary(r.edits[0].value.join(','));const resources=[...originals].map(([name,bytes],i)=>({path:name,sha256:digest(bytes),edits:[{op:'color',path:['m_ConstantColor'],value:i?[0,0,255]:[255,0,0]}]}));const job=service.create('tester:a',{schemaVersion:1,selections:[row],resources},{filename:'pak47_dir.vpk',resourceColorPriority:true});while(['queued','building'].includes(job.status))await new Promise(r=>setTimeout(r,2));assert.equal(job.status,'ready',job.error);const vpk=new Vpk(job.file);assert.equal(path.basename(job.file),'pak47_dir.vpk');assert.equal(vpk.read('particles/a.vpcf_c').subarray(16).toString(),'255,0,0');assert.equal(vpk.read('particles/b.vpcf_c').subarray(16).toString(),'0,0,255');
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
