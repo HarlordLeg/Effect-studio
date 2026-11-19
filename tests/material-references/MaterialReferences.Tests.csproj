@@ -5,7 +5,7 @@
     <StartupObject>MaterialFix</StartupObject><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ValveResourceFormat" Version="20.0.6980" />
+    <PackageReference Include="ValveResourceFormat" Version="20.1.7467" />
     <Compile Include="../../patcher/*.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>
