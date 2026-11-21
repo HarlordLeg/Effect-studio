@@ -78,3 +78,21 @@ test('Mace activity patch runs on the replaced weapon, while Unleashed packs its
  if(kind==='mace'){assert.equal(calls,1);assert.equal(vpk.read(hero.model),null);assert.deepEqual(vpk.read(hero.defaultSlotModels.weapon),patched);}else{assert.equal(calls,0);assert.deepEqual(vpk.read(hero.model),body);assert.deepEqual(vpk.read(hero.defaultSlotModels.weapon),bytes);assert.equal(vpk.read(sourceBody),null);}
  }finally{fs.rmSync(root,{recursive:true,force:true});}}
 });
+// Kinetic gems are inspected on the stock model. Pudge's Feast of Abscession
+// body has only part of a gem's sequences: those apply, the rest are reported.
+test('a kinetic gem on a replaced hero body requires only the sequences that body has',async()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-stance-body-'));try{
+ const {hero,item}=fixture(),body='models/items/test/feast_body.vmdl_c',original=Buffer.alloc(16);original.writeUInt32LE(16);original.writeUInt32LE(8,8);const changed=Buffer.concat([original,Buffer.from('stance')]);
+ hero.items.push({id:'feast',name:'Feast body',slot:'hero_base',model:body,replacesModel:hero.model,nativeOverrides:{entries:[{type:'model',source:body,target:hero.model}],particles:[],unsupported:[],warnings:[]}});
+ fs.writeFileSync(path.join(root,'game.vpk'),packVpk(new Map([[hero.model,original],[body,original],[item.model,original]])));fs.writeFileSync(path.join(root,'patcher'),'binary');fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify({heroes:[hero],effects:[]}));
+ const requests=[];const run=async(_,args)=>{
+ if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,heroActivitiesV4:true,activityRulesV1:true,activityRulesV4:true,activityRulesV8:true,activityRulesV9:true});
+ const request=JSON.parse(fs.readFileSync(args[1]));if(args[0]==='--relocate'){for(const row of request.files)fs.copyFileSync(row.input,row.output);return '';}
+ assert.equal(args[0],'--activity-rules');requests.push(request);fs.writeFileSync(request.output,changed);fs.writeFileSync(request.output+'.activities.json',JSON.stringify({reports:[{block:'ASEQ',selected:1}]}));return '';
+ };
+ const builder=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false},run);
+ const choices=normalizeSelections(builder,{mode:'set',selections:[{heroId:hero.id,itemId:'feast'},{heroId:hero.id,stanceId:item.id}]}),job={id:'stance-body'};await builder.build(choices,job);assert.equal(job.status,'ready');
+ const heroRequest=requests.find(r=>r.rules.some(rule=>rule.priority===100));assert.ok(heroRequest);assert.equal(heroRequest.model,body);assert.equal(heroRequest.requireActivity,true);
+ assert.ok(heroRequest.rules.filter(r=>r.priority===100).every(r=>r.required===false));
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
