@@ -165,7 +165,10 @@ internal static class HeroActivityRules
     {
         var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty activities request");
         var bytes=File.ReadAllBytes(request.Input);using var resource=new Resource{FileName=request.Input};resource.Read(request.Input);
-        if(resource.DataBlock is not Model model||Text(model.Data,"m_name")!=(request.Model.EndsWith("_c",StringComparison.Ordinal)?request.Model[..^2]:request.Model))throw new InvalidDataException("Hero model does not match activity request");
+        var requestedModel=request.Model.EndsWith("_c",StringComparison.Ordinal)?request.Model[..^2]:request.Model;
+        if(resource.DataBlock is not Model model)throw new InvalidDataException("Hero model does not match activity request: input is not a model, requested "+requestedModel);
+        var inputModel=Text(model.Data,"m_name");
+        if(inputModel!=requestedModel)throw new InvalidDataException("Hero model does not match activity request: input "+inputModel+", requested "+requestedModel);
         var sequence=resource.Blocks.SingleOrDefault(b=>b.Type.ToString()=="ASEQ");
         if(sequence is null)throw new InvalidDataException("Hero has no embedded sequence activity table");
         var known=request.KnownModifiers.ToHashSet(StringComparer.Ordinal);
