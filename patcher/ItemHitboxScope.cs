@@ -4,6 +4,12 @@ using System.Numerics;using System.Text.Json;using ValveKeyValue;using ValveReso
 internal static class ItemHitboxScope {
  record Particle(string Input,string Output);
  record Request(string Input,string Output,string HitboxSet,string Report,Particle[] Particles,Dictionary<string,string>? Meshes=null);
+ // Verified Crownfall (Featherfall) profile. The feathers are models with their own motion and a
+ // glow driven by the particle normal. C_OP_LockToBone would pin them to the bone, so keep the stock
+ // operators and align the normal to the control point instead. The particle is recognised by its
+ // feather model: relocation renames only .vpcf paths, so model paths are still the originals here.
+ const string FeatherModel="models/particle/crownfall_feather.vmdl";
+ static bool IsFeatherParticle(KVObject data)=>data.TryGetValue("m_Renderers",out var renderers)&&renderers.Values.Any(r=>r.TryGetValue("m_ModelList",out var models)&&models.Values.Any(m=>m.TryGetValue("m_model",out var model)&&model.ToString(null)==FeatherModel));
  static KVObject A(IEnumerable<KVObject>x)=>KVObject.Array(x);
  static KVObject R(params(string,KVObject)[] fields){var r=KVObject.Collection();foreach(var(k,v)in fields)r[k]=v;return r;}
  static KVObject V(Vector3 v)=>A(new[]{new KVObject(v.X),new KVObject(v.Y),new KVObject(v.Z)});
@@ -21,6 +27,11 @@ internal static class ItemHitboxScope {
    op["m_bUseMesh"]=new KVObject(false);op["m_bUseBones"]=new KVObject(false);op["m_HitboxSetName"]=new KVObject(set);changed++;
   }
   if(changed==0)return 0;
+  if(IsFeatherParticle(data)){
+   if(!inits.Values.Any(op=>op.TryGetValue("_class",out var c)&&c.ToString(null)=="C_INIT_NormalAlignToCP"))
+    data["m_Initializers"]=A(inits.Values.Concat(new[]{R(("_class",new KVObject("C_INIT_NormalAlignToCP")),("m_nControlPointNumber",new KVObject(0)))}));
+   return changed;
+  }
   var ops=data.TryGetValue("m_Operators",out var old)?old:KVObject.Array();
   var keep=ops.Values.Where(op=>!op.TryGetValue("_class",out var c)||c.ToString(null) is not("C_OP_SnapshotSkinToBones" or "C_OP_SnapshotRigidSkinToBones" or "C_OP_MovementRigidAttachToCP" or "C_OP_LockToBone"));
   data["m_Operators"]=A(keep.Concat(new[]{R(("_class",new KVObject("C_OP_LockToBone")),("m_HitboxSetName",new KVObject(set)),("m_bUseBones",new KVObject(false)),("m_bRigid",new KVObject(true)),("m_flLifeTimeFadeStart",new KVObject(1f)),("m_flLifeTimeFadeEnd",new KVObject(1f)),("m_flJumpThreshold",new KVObject(100000f)),("m_flPrevPosScale",new KVObject(1f)),("m_nFieldOutput",new KVObject(0)),("m_nFieldOutputPrev",new KVObject(2)))}));return changed;
