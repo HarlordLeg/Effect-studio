@@ -4,39 +4,519 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const layout='panorama/layout/dashboard.vxml_c';
-const node=(kind,id,children=[],attributes={})=>({kind,target:id,attributes:{id,...attributes},children});
-const packet={version:2,scene:'menu',roots:{base:layout},bindings:{},documents:[{layout,panels:[],tree:[node('DOTADashboard','Dashboard',[node('Panel','TopBar',[node('Label','Heroes',[],{text:'ГЕРОИ'}),node('Label','Armory',[],{text:'АРСЕНАЛ'})]),node('Panel','FriendMenuContainer',[node('DOTAFriendMenu','FriendMenu',[node('Label','Profile',[],{text:'ПРОФИЛЬ И ДРУЗЬЯ'})],{class:'Hidden'})]),node('Panel','EventCard')])]}],styles:[{name:'panorama/styles/dashboard.vcss_c',css:'DOTADashboard{width:100%;height:100%;} #TopBar{width:100%;height:80px;flow-children:right;} #TopBar Label{width:200px;height:60px;} #FriendMenuContainer{width:366px;height:910px;margin-left:32px;margin-top:80px;} DOTAFriendMenu{width:366px;height:100%;} DOTAFriendMenu.Hidden{opacity:0;} #EventCard{width:330px;height:450px;horizontal-align:right;margin-right:32px;margin-top:100px;}'}]};
-const flatten=nodes=>nodes.flatMap(n=>[{id:n.target,label:n.target,kind:n.kind,text:n.attributes.text??'',style:''},...flatten(n.children??[])]);packet.documents[0].panels=flatten(packet.documents[0].tree);
-const script=`import {PanoramaPreview} from '/modules/renderer.mjs';window.preview=new PanoramaPreview(document.querySelector('main'));preview.setPacket(${JSON.stringify(packet)});preview.render({elements:[]});window.ready=true;`;
-const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost');
- if(url.pathname==='/'){res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'");res.setHeader('Content-Type','text/html');return res.end('<main></main><script src="/fixture.mjs" type="module"></script>');}
- if(url.pathname==='/ui'){res.setHeader('Content-Security-Policy',"default-src 'self';script-src 'self';style-src 'self';img-src 'self' data: blob:;object-src 'none'");res.setHeader('Content-Type','text/html');return res.end('<main></main><script type="module" src="/ui-fixture.mjs"></script>');}
- if(url.pathname==='/ui-fixture.mjs'){res.setHeader('Content-Type','text/javascript');return res.end(`import {initHudCreator} from '/modules/ui.mjs';window.disposeUi=await initHudCreator(document.querySelector('main'),async(route,data)=>route.endsWith('catalog')?{layouts:[{name:${JSON.stringify(layout)},scene:'menu'}]}:route.endsWith('scene')?${JSON.stringify(packet)}:{projects:[]});window.uiReady=true;`);}
- if(url.pathname==='/color-picker.mjs'){res.setHeader('Content-Type','text/javascript');return res.end('export function colorPickerButton(input){const button=document.createElement("button");button.textContent="Palette";button.type="button";return button;}');}
- if(url.pathname==='/api/admin/editor/hud/ui.css'){res.setHeader('Content-Type','text/css');return res.end(fs.readFileSync(path.join(root,'lib/hud-creator/ui.css')));}
- if(url.pathname==='/fixture.mjs'){res.setHeader('Content-Type','text/javascript');return res.end(script);}
- if(url.pathname.startsWith('/modules/')){const name=path.basename(url.pathname);if(!/^[a-z-]+\.mjs$/.test(name)){res.writeHead(404);return res.end();}let content=fs.readFileSync(path.join(root,'lib/hud-creator',name));if(name==='renderer.mjs'&&process.env.HUD_BEFORE_RENDERER)content=fs.readFileSync(process.env.HUD_BEFORE_RENDERER);res.setHeader('Content-Type','text/javascript');return res.end(content);}
- res.writeHead(404);res.end();
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const layout = 'panorama/layout/dashboard.vxml_c';
+const node = (kind, id, children = [], attributes = {}) => ({
+  kind,
+  target: id,
+  attributes: { id, ...attributes },
+  children
 });
-await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const {chromium}=await import(process.env.HUD_PLAYWRIGHT_MODULE??'playwright');
+const packet = {
+  version: 2,
+  scene: 'menu',
+  roots: { base: layout },
+  bindings: {},
+  documents: [
+    {
+      layout,
+      panels: [],
+      tree: [
+        node('DOTADashboard', 'Dashboard', [
+          node('Panel', 'TopBar', [
+            node('Label', 'Heroes', [], { text: 'ГЕРОИ' }),
+            node('Label', 'Armory', [], { text: 'АРСЕНАЛ' })
+          ]),
+          node('Panel', 'FriendMenuContainer', [
+            node('DOTAFriendMenu', 'FriendMenu', [node('Label', 'Profile', [], { text: 'ПРОФИЛЬ И ДРУЗЬЯ' })], {
+              class: 'Hidden'
+            })
+          ]),
+          node('Panel', 'EventCard')
+        ])
+      ]
+    }
+  ],
+  styles: [
+    {
+      name: 'panorama/styles/dashboard.vcss_c',
+      css: 'DOTADashboard{width:100%;height:100%;} #TopBar{width:100%;height:80px;flow-children:right;} #TopBar Label{width:200px;height:60px;} #FriendMenuContainer{width:366px;height:910px;margin-left:32px;margin-top:80px;} DOTAFriendMenu{width:366px;height:100%;} DOTAFriendMenu.Hidden{opacity:0;} #EventCard{width:330px;height:450px;horizontal-align:right;margin-right:32px;margin-top:100px;}'
+    }
+  ]
+};
+const flatten = nodes =>
+  nodes.flatMap(n => [
+    { id: n.target, label: n.target, kind: n.kind, text: n.attributes.text ?? '', style: '' },
+    ...flatten(n.children ?? [])
+  ]);
+packet.documents[0].panels = flatten(packet.documents[0].tree);
+const script = `import {PanoramaPreview} from '/modules/renderer.mjs';window.preview=new PanoramaPreview(document.querySelector('main'));preview.setPacket(${JSON.stringify(packet)});preview.render({elements:[]});window.ready=true;`;
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://localhost');
+  if (url.pathname === '/') {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'"
+    );
+    res.setHeader('Content-Type', 'text/html');
+    return res.end('<main></main><script src="/fixture.mjs" type="module"></script>');
+  }
+  if (url.pathname === '/ui') {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self';script-src 'self';style-src 'self';img-src 'self' data: blob:;object-src 'none'"
+    );
+    res.setHeader('Content-Type', 'text/html');
+    return res.end('<main></main><script type="module" src="/ui-fixture.mjs"></script>');
+  }
+  if (url.pathname === '/ui-fixture.mjs') {
+    res.setHeader('Content-Type', 'text/javascript');
+    return res.end(
+      `import {initHudCreator} from '/modules/ui.mjs';window.disposeUi=await initHudCreator(document.querySelector('main'),async(route,data)=>route.endsWith('catalog')?{layouts:[{name:${JSON.stringify(layout)},scene:'menu'}]}:route.endsWith('scene')?${JSON.stringify(packet)}:{projects:[]});window.uiReady=true;`
+    );
+  }
+  if (url.pathname === '/color-picker.mjs') {
+    res.setHeader('Content-Type', 'text/javascript');
+    return res.end(
+      'export function colorPickerButton(input){const button=document.createElement("button");button.textContent="Palette";button.type="button";return button;}'
+    );
+  }
+  if (url.pathname === '/api/admin/editor/hud/ui.css') {
+    res.setHeader('Content-Type', 'text/css');
+    return res.end(fs.readFileSync(path.join(root, 'lib/hud-creator/ui.css')));
+  }
+  if (url.pathname === '/fixture.mjs') {
+    res.setHeader('Content-Type', 'text/javascript');
+    return res.end(script);
+  }
+  if (url.pathname.startsWith('/modules/')) {
+    const name = path.basename(url.pathname);
+    if (!/^[a-z-]+\.mjs$/.test(name)) {
+      res.writeHead(404);
+      return res.end();
+    }
+    let content = fs.readFileSync(path.join(root, 'lib/hud-creator', name));
+    if (name === 'renderer.mjs' && process.env.HUD_BEFORE_RENDERER)
+      content = fs.readFileSync(process.env.HUD_BEFORE_RENDERER);
+    res.setHeader('Content-Type', 'text/javascript');
+    return res.end(content);
+  }
+  res.writeHead(404);
+  res.end();
+});
+await new Promise(r => server.listen(0, '127.0.0.1', r));
+const { chromium } = await import(process.env.HUD_PLAYWRIGHT_MODULE ?? 'playwright');
 let browser;
-try{browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});const page=await browser.newPage({viewport:{width:1920,height:1080}});const violations=[],errors=[];page.on('pageerror',e=>errors.push(e.message));await page.addInitScript(()=>{window.cspViolations=[];document.addEventListener('securitypolicyviolation',e=>window.cspViolations.push({directive:e.effectiveDirective,blocked:e.blockedURI}));});await page.goto('http://127.0.0.1:'+server.address().port);await page.waitForFunction(()=>window.ready);await page.waitForTimeout(250);const state=await page.evaluate(()=>{const q=id=>preview.shadow.querySelector('#'+id),rect=id=>{const n=q(id);return {x:parseFloat(n.style.left),y:parseFloat(n.style.top),w:parseFloat(n.style.width),h:parseFloat(n.style.height)};};return {event:rect('EventCard'),rail:rect('FriendMenuContainer'),armory:rect('Armory'),flow:getComputedStyle(q('TopBar')).getPropertyValue('--p-flow').trim(),sheets:preview.shadow.adoptedStyleSheets.length,violations:window.cspViolations};});console.log(JSON.stringify(state));assert.equal(state.flow,'right');assert.equal(state.event.w,330);assert.equal(state.event.x,1558);assert.equal(state.rail.x,32);assert.equal(state.rail.y,80);assert.equal(state.armory.x,200);assert.equal(state.sheets,1);assert.deepEqual(state.violations,[]);assert.deepEqual(errors,[]);
- await page.evaluate(()=>{preview.packet.scene='hud';preview.render({elements:[]});const n=preview.shadow.querySelector('#TopBar');preview.select(n.dataset.pEditorId);window.dragged=null;preview.onMove=(id,pos)=>{if(pos)window.dragged={id,...pos};};});
- await page.mouse.move(80,25);await page.mouse.down();await page.mouse.move(180,95,{steps:5});await page.mouse.up();const dragged=await page.evaluate(()=>window.dragged);assert.equal(dragged.x,100);assert.equal(dragged.y,70);
- const custom=await page.evaluate(()=>{const edit={id:'test',layout:preview.packet.roots.base,target:'TopBar',kind:'Panel',moved:true,x:100,y:70,resized:true,width:1920,height:80,css:'position:400px 200px 0px;width:600px;height:90px;'};preview.render({elements:[edit]});const n=preview.shadow.querySelector('#TopBar');return {x:n.style.left,y:n.style.top,w:n.style.width,h:n.style.height};});assert.deepEqual(custom,{x:'400px',y:'200px',w:'600px',h:'90px'});
- const movedRoot=await page.evaluate(()=>{preview.render({elements:[{id:'root',layout:preview.packet.roots.base,target:'Dashboard',kind:'Panel',moved:true,x:125,y:75}]});const n=preview.shadow.querySelector('#Dashboard');return {x:n.style.left,y:n.style.top};});assert.deepEqual(movedRoot,{x:'125px',y:'75px'});console.log('HUD parent drag, root movement and CSS precedence passed');
- const shrink=await page.evaluate(()=>{preview.render({elements:[{id:'parent',layout:preview.packet.roots.base,target:'TopBar',kind:'Panel',css:'width:100px;height:80px;flow-children:none;'},{id:'label',layout:preview.packet.roots.base,target:'Heroes',kind:'Label',text:'Очень длинная подпись режима игры',css:'width:100%;height:40px;font-size:24px;text-overflow:shrink;'}]});const n=preview.shadow.querySelector('#Heroes');return {size:parseFloat(getComputedStyle(n).fontSize),scroll:n.scrollWidth,width:n.clientWidth,space:getComputedStyle(n).whiteSpace};});assert(shrink.size<24);assert(shrink.scroll<=shrink.width+2);assert.equal(shrink.space,'nowrap');console.log('Native text-overflow shrink passed',JSON.stringify(shrink));
+try {
+  browser = await chromium.launch({
+    executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
+    headless: true,
+    args: ['--no-sandbox', '--disable-dev-shm-usage']
+  });
+  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  const violations = [],
+    errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.addInitScript(() => {
+    window.cspViolations = [];
+    document.addEventListener('securitypolicyviolation', e =>
+      window.cspViolations.push({ directive: e.effectiveDirective, blocked: e.blockedURI })
+    );
+  });
+  await page.goto('http://127.0.0.1:' + server.address().port);
+  await page.waitForFunction(() => window.ready);
+  await page.waitForTimeout(250);
+  const state = await page.evaluate(() => {
+    const q = id => preview.shadow.querySelector('#' + id),
+      rect = id => {
+        const n = q(id);
+        return {
+          x: parseFloat(n.style.left),
+          y: parseFloat(n.style.top),
+          w: parseFloat(n.style.width),
+          h: parseFloat(n.style.height)
+        };
+      };
+    return {
+      event: rect('EventCard'),
+      rail: rect('FriendMenuContainer'),
+      armory: rect('Armory'),
+      flow: getComputedStyle(q('TopBar')).getPropertyValue('--p-flow').trim(),
+      sheets: preview.shadow.adoptedStyleSheets.length,
+      violations: window.cspViolations
+    };
+  });
+  console.log(JSON.stringify(state));
+  assert.equal(state.flow, 'right');
+  assert.equal(state.event.w, 330);
+  assert.equal(state.event.x, 1558);
+  assert.equal(state.rail.x, 32);
+  assert.equal(state.rail.y, 80);
+  assert.equal(state.armory.x, 200);
+  assert.equal(state.sheets, 1);
+  assert.deepEqual(state.violations, []);
+  assert.deepEqual(errors, []);
+  await page.evaluate(() => {
+    preview.packet.scene = 'hud';
+    preview.render({ elements: [] });
+    const n = preview.shadow.querySelector('#TopBar');
+    preview.select(n.dataset.pEditorId);
+    window.dragged = null;
+    preview.onMove = (id, pos) => {
+      if (pos) window.dragged = { id, ...pos };
+    };
+  });
+  await page.mouse.move(80, 25);
+  await page.mouse.down();
+  await page.mouse.move(180, 95, { steps: 5 });
+  await page.mouse.up();
+  const dragged = await page.evaluate(() => window.dragged);
+  assert.equal(dragged.x, 100);
+  assert.equal(dragged.y, 70);
+  const custom = await page.evaluate(() => {
+    const edit = {
+      id: 'test',
+      layout: preview.packet.roots.base,
+      target: 'TopBar',
+      kind: 'Panel',
+      moved: true,
+      x: 100,
+      y: 70,
+      resized: true,
+      width: 1920,
+      height: 80,
+      css: 'position:400px 200px 0px;width:600px;height:90px;'
+    };
+    preview.render({ elements: [edit] });
+    const n = preview.shadow.querySelector('#TopBar');
+    return { x: n.style.left, y: n.style.top, w: n.style.width, h: n.style.height };
+  });
+  assert.deepEqual(custom, { x: '400px', y: '200px', w: '600px', h: '90px' });
+  const movedRoot = await page.evaluate(() => {
+    preview.render({
+      elements: [
+        {
+          id: 'root',
+          layout: preview.packet.roots.base,
+          target: 'Dashboard',
+          kind: 'Panel',
+          moved: true,
+          x: 125,
+          y: 75
+        }
+      ]
+    });
+    const n = preview.shadow.querySelector('#Dashboard');
+    return { x: n.style.left, y: n.style.top };
+  });
+  assert.deepEqual(movedRoot, { x: '125px', y: '75px' });
+  console.log('HUD parent drag, root movement and CSS precedence passed');
+  const shrink = await page.evaluate(() => {
+    preview.render({
+      elements: [
+        {
+          id: 'parent',
+          layout: preview.packet.roots.base,
+          target: 'TopBar',
+          kind: 'Panel',
+          css: 'width:100px;height:80px;flow-children:none;'
+        },
+        {
+          id: 'label',
+          layout: preview.packet.roots.base,
+          target: 'Heroes',
+          kind: 'Label',
+          text: 'Очень длинная подпись режима игры',
+          css: 'width:100%;height:40px;font-size:24px;text-overflow:shrink;'
+        }
+      ]
+    });
+    const n = preview.shadow.querySelector('#Heroes');
+    return {
+      size: parseFloat(getComputedStyle(n).fontSize),
+      scroll: n.scrollWidth,
+      width: n.clientWidth,
+      space: getComputedStyle(n).whiteSpace
+    };
+  });
+  assert(shrink.size < 24);
+  assert(shrink.scroll <= shrink.width + 2);
+  assert.equal(shrink.space, 'nowrap');
+  console.log('Native text-overflow shrink passed', JSON.stringify(shrink));
 
- const rows=await page.evaluate(()=>{const layout='panorama/layout/hud/dota_hud_scoreboard_player.vxml_c',row=i=>({kind:'DOTAScoreboardPlayer',target:'row',attributes:{id:'Row'+i,class:'EmptyPlayerRow'},children:[]});preview.setPacket({version:2,bindings:{},scene:'hud',roots:{base:layout},documents:[{layout,panels:[],tree:[{kind:'Panel',target:'list',attributes:{id:'List'},children:[row(1),row(2)]}]}],styles:[{name:'panorama/styles/hud/dota_hud_scoreboard_player.vcss_c',css:'#List{width:300px;height:200px;flow-children:down;} DOTAScoreboardPlayer{width:300px;height:40px;background-color:#112233;}'}]});preview.render({elements:[{id:'shift',kind:'Panel',layout,target:'row',moved:true,x:7,y:3}]});return preview.nodes.filter(n=>n.dataset.pTag==='DOTAScoreboardPlayer').map(n=>({y:n.style.top,transform:n.style.transform,moved:n.pEdit.moved}));});assert.deepEqual(rows.map(r=>r.y),['0px','40px']);assert(rows.every(r=>r.transform==='translateX(7px) translateY(3px)'&&!r.moved));console.log('Repeated scoreboard rows preserve native flow under movement');
- const mapState=await page.evaluate(()=>{const layout='panorama/layout/hud/hud_reborn.vxml_c',panel=(kind,id,children=[])=>({kind,target:id,attributes:{id},children});preview.setPacket({version:2,scene:'hud',roots:{base:layout},documents:[{layout,panels:[],tree:[panel('DOTAHud','root',[panel('Panel','minimap_container',[panel('Panel','minimap_block',[panel('DOTAMinimap','minimap')]),panel('Panel','HUDSkinMinimap')])])]}],styles:[{name:'panorama/styles/hud/hud_reborn.vcss_c',css:'DOTAHud{width:100%;height:100%;} #minimap_container{width:100%;height:fit-children;vertical-align:bottom;} #minimap_block{width:244px;height:244px;vertical-align:bottom;} #minimap{width:260px;height:260px;} #HUDSkinMinimap{width:265px;height:311px;vertical-align:bottom;visibility:collapse;z-index:1;}'}]});preview.render({elements:[{id:'frame',scene:'hud',kind:'Panel',layout,target:'minimap_block',image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',moved:true,x:-15,y:5,resized:true,width:268,height:277}]});const q=id=>preview.shadow.querySelector('#'+id);return {mapWidth:q('minimap').style.width,blockWidth:q('minimap_block').style.width,frameHeight:q('HUDSkinMinimap').style.height,frameZ:getComputedStyle(q('HUDSkinMinimap')).zIndex,blockImage:getComputedStyle(q('minimap_block')).backgroundImage.split(',').map(x=>x.trim()).every(x=>x==='none')};});assert.deepEqual(mapState,{mapWidth:'260px',blockWidth:'244px',frameHeight:'311px',frameZ:'-2',blockImage:true});console.log('Legacy frame upload leaves live minimap geometry intact');const fitted=await page.evaluate(()=>{preview.render({elements:[{id:'frame',scene:'hud',kind:'Panel',layout:preview.packet.roots.base,target:'HUDSkinMinimap',image:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',mapWindow:{x:45/640,y:155/739,width:532/640,height:531/739}}]});const q=id=>preview.shadow.querySelector('#'+id),value=(id,key)=>parseFloat(q(id).style[key]);return {frameWidth:value('HUDSkinMinimap','width'),frameHeight:value('HUDSkinMinimap','height'),mapWidth:value('minimap_block','width'),left:value('minimap_block','left'),top:value('minimap_block','top')};});assert.equal(fitted.mapWidth,244);assert(Math.abs(fitted.frameWidth-244*640/532)<1);assert(Math.abs(fitted.left-244*45/532)<1);assert(fitted.top>70);const windowBounds=await page.evaluate(async()=>{const {detectMapWindow}=await import('/modules/ui.mjs');const canvas=document.createElement('canvas');canvas.width=100;canvas.height=100;const ctx=canvas.getContext('2d');ctx.fillStyle='#bb9900';ctx.fillRect(0,0,100,100);ctx.fillStyle='#000';ctx.fillRect(20,30,60,60);return detectMapWindow(canvas.toDataURL());});assert.deepEqual(windowBounds,{x:.2,y:.3,width:.6,height:.6});console.log('Frame opening detection and native map inset alignment passed');const numeric=await page.evaluate(()=>{const layout=preview.packet.roots.base;preview.packet.documents[0].tree[0].children.push({kind:'Label',target:'HealthLabel',attributes:{id:'HealthLabel',text:'1848 / 2200',style:'width:130px;height:26px;font-size:18px;'},children:[]});preview.setPacket(preview.packet);preview.render({elements:[]});const n=preview.shadow.querySelector('#HealthLabel');return {space:getComputedStyle(n).whiteSpace,height:n.clientHeight,scroll:n.scrollHeight,text:n.textContent};});assert.equal(numeric.space,'nowrap');assert(numeric.scroll<=numeric.height);assert.match(numeric.text,/1848 \/ 2200/);console.log('Health numbers stay on one line inside their native bar');
- await page.evaluate(()=>{preview.render({elements:[]});preview.render({elements:[]});});assert.equal(await page.evaluate(()=>preview.shadow.adoptedStyleSheets.length),1);await page.evaluate(()=>preview.dispose());assert.equal(await page.evaluate(()=>preview.shadow.adoptedStyleSheets.length),0);const camera=await page.evaluate(async()=>{const {previewViewport}=await import('/modules/viewport.mjs');const box=document.createElement('div'),canvas=document.createElement('div');box.style.cssText='position:fixed;top:200px;left:100px;width:960px;overflow:hidden';canvas.style.cssText='width:1920px;height:1080px;transform-origin:0 0';box.append(canvas);document.body.append(box);window.testCamera=previewViewport(box,canvas);window.testBox=box;const r=box.getBoundingClientRect();box.dispatchEvent(new WheelEvent('wheel',{altKey:false,deltaY:-200,cancelable:true}));const plain=testCamera.read();box.dispatchEvent(new WheelEvent('wheel',{altKey:true,deltaY:-200,clientX:r.left+240,clientY:r.top+135,cancelable:true}));const zoom=testCamera.read();const anchor={x:(240-zoom.x)/(.5*zoom.zoom),y:(135-zoom.y)/(.5*zoom.zoom)};testCamera.reset();const reset=testCamera.read();return {plain,zoom,anchor,reset};});assert.equal(camera.plain.zoom,1);assert(camera.zoom.zoom>1);assert(Math.abs(camera.anchor.x-480)<.01);assert(Math.abs(camera.anchor.y-270)<.01);assert.deepEqual(camera.reset,{zoom:1,x:0,y:0});await page.evaluate(()=>{testCamera.dispose();testBox.remove();});console.log('Alt zoom anchor, ordinary scrolling and reset passed');
-await page.goto('http://127.0.0.1:'+server.address().port+'/ui');await page.waitForFunction(()=>window.uiReady);await page.locator('.hc-layers button').filter({hasText:'EventCard'}).click();
- const cssEditor=page.locator('.hc-block-css');await cssEditor.locator('summary').click();const cssCode=cssEditor.locator('textarea');assert.match(await cssCode.inputValue(),/width: 330px/);await cssCode.fill((await cssCode.inputValue()).replace('330px','360px'));await cssEditor.getByRole('button',{name:'Применить CSS',exact:true}).click();assert.equal(await page.locator('.hc-canvas').evaluate(host=>host.shadowRoot.querySelector('#EventCard').style.width),'360px');await cssEditor.getByRole('button',{name:'Сбросить CSS',exact:true}).click();assert.match(await cssCode.inputValue(),/width: 330px/);assert.equal(await page.locator('.hc-canvas').evaluate(host=>host.shadowRoot.querySelector('#EventCard').style.width),'330px');console.log('CSS inspector preloads Dota declarations, edits and resets the existing rule');
- const opacity=page.locator('.hc-properties .hc-field').filter({hasText:'Непрозрачность, %'});await opacity.locator('input').fill('60');assert.equal(await page.locator('.hc-canvas').evaluate(host=>getComputedStyle(host.shadowRoot.querySelector('#EventCard')).opacity),'0.6');await opacity.getByRole('button',{name:'Сбросить',exact:true}).click();assert.equal(await page.locator('.hc-canvas').evaluate(host=>getComputedStyle(host.shadowRoot.querySelector('#EventCard')).opacity),'1');
- const fill=page.locator('.hc-properties .hc-field').filter({hasText:'Заливка'});await fill.locator('input').evaluate(n=>{n.value='#bc5252';n.dispatchEvent(new Event('change',{bubbles:true}));});assert.equal(await page.locator('.hc-canvas').evaluate(host=>getComputedStyle(host.shadowRoot.querySelector('#EventCard')).backgroundColor),'rgb(188, 82, 82)');await fill.getByRole('button',{name:'Сбросить',exact:true}).click();assert.equal(await page.locator('.hc-canvas').evaluate(host=>getComputedStyle(host.shadowRoot.querySelector('#EventCard')).backgroundColor),'rgba(0, 0, 0, 0)');await page.evaluate(()=>disposeUi());console.log('Actual editor percent opacity and independent fill/opacity reset passed');
-console.log('CSP, native geometry, repeated rendering and cleanup passed');
-}finally{await browser?.close();await new Promise(r=>server.close(r));}
+  const rows = await page.evaluate(() => {
+    const layout = 'panorama/layout/hud/dota_hud_scoreboard_player.vxml_c',
+      row = i => ({
+        kind: 'DOTAScoreboardPlayer',
+        target: 'row',
+        attributes: { id: 'Row' + i, class: 'EmptyPlayerRow' },
+        children: []
+      });
+    preview.setPacket({
+      version: 2,
+      bindings: {},
+      scene: 'hud',
+      roots: { base: layout },
+      documents: [
+        {
+          layout,
+          panels: [],
+          tree: [{ kind: 'Panel', target: 'list', attributes: { id: 'List' }, children: [row(1), row(2)] }]
+        }
+      ],
+      styles: [
+        {
+          name: 'panorama/styles/hud/dota_hud_scoreboard_player.vcss_c',
+          css: '#List{width:300px;height:200px;flow-children:down;} DOTAScoreboardPlayer{width:300px;height:40px;background-color:#112233;}'
+        }
+      ]
+    });
+    preview.render({ elements: [{ id: 'shift', kind: 'Panel', layout, target: 'row', moved: true, x: 7, y: 3 }] });
+    return preview.nodes
+      .filter(n => n.dataset.pTag === 'DOTAScoreboardPlayer')
+      .map(n => ({ y: n.style.top, transform: n.style.transform, moved: n.pEdit.moved }));
+  });
+  assert.deepEqual(
+    rows.map(r => r.y),
+    ['0px', '40px']
+  );
+  assert(rows.every(r => r.transform === 'translateX(7px) translateY(3px)' && !r.moved));
+  console.log('Repeated scoreboard rows preserve native flow under movement');
+  const mapState = await page.evaluate(() => {
+    const layout = 'panorama/layout/hud/hud_reborn.vxml_c',
+      panel = (kind, id, children = []) => ({ kind, target: id, attributes: { id }, children });
+    preview.setPacket({
+      version: 2,
+      scene: 'hud',
+      roots: { base: layout },
+      documents: [
+        {
+          layout,
+          panels: [],
+          tree: [
+            panel('DOTAHud', 'root', [
+              panel('Panel', 'minimap_container', [
+                panel('Panel', 'minimap_block', [panel('DOTAMinimap', 'minimap')]),
+                panel('Panel', 'HUDSkinMinimap')
+              ])
+            ])
+          ]
+        }
+      ],
+      styles: [
+        {
+          name: 'panorama/styles/hud/hud_reborn.vcss_c',
+          css: 'DOTAHud{width:100%;height:100%;} #minimap_container{width:100%;height:fit-children;vertical-align:bottom;} #minimap_block{width:244px;height:244px;vertical-align:bottom;} #minimap{width:260px;height:260px;} #HUDSkinMinimap{width:265px;height:311px;vertical-align:bottom;visibility:collapse;z-index:1;}'
+        }
+      ]
+    });
+    preview.render({
+      elements: [
+        {
+          id: 'frame',
+          scene: 'hud',
+          kind: 'Panel',
+          layout,
+          target: 'minimap_block',
+          image:
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',
+          moved: true,
+          x: -15,
+          y: 5,
+          resized: true,
+          width: 268,
+          height: 277
+        }
+      ]
+    });
+    const q = id => preview.shadow.querySelector('#' + id);
+    return {
+      mapWidth: q('minimap').style.width,
+      blockWidth: q('minimap_block').style.width,
+      frameHeight: q('HUDSkinMinimap').style.height,
+      frameZ: getComputedStyle(q('HUDSkinMinimap')).zIndex,
+      blockImage: getComputedStyle(q('minimap_block'))
+        .backgroundImage.split(',')
+        .map(x => x.trim())
+        .every(x => x === 'none')
+    };
+  });
+  assert.deepEqual(mapState, {
+    mapWidth: '260px',
+    blockWidth: '244px',
+    frameHeight: '311px',
+    frameZ: '-2',
+    blockImage: true
+  });
+  console.log('Legacy frame upload leaves live minimap geometry intact');
+  const fitted = await page.evaluate(() => {
+    preview.render({
+      elements: [
+        {
+          id: 'frame',
+          scene: 'hud',
+          kind: 'Panel',
+          layout: preview.packet.roots.base,
+          target: 'HUDSkinMinimap',
+          image:
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==',
+          mapWindow: { x: 45 / 640, y: 155 / 739, width: 532 / 640, height: 531 / 739 }
+        }
+      ]
+    });
+    const q = id => preview.shadow.querySelector('#' + id),
+      value = (id, key) => parseFloat(q(id).style[key]);
+    return {
+      frameWidth: value('HUDSkinMinimap', 'width'),
+      frameHeight: value('HUDSkinMinimap', 'height'),
+      mapWidth: value('minimap_block', 'width'),
+      left: value('minimap_block', 'left'),
+      top: value('minimap_block', 'top')
+    };
+  });
+  assert.equal(fitted.mapWidth, 244);
+  assert(Math.abs(fitted.frameWidth - (244 * 640) / 532) < 1);
+  assert(Math.abs(fitted.left - (244 * 45) / 532) < 1);
+  assert(fitted.top > 70);
+  const windowBounds = await page.evaluate(async () => {
+    const { detectMapWindow } = await import('/modules/ui.mjs');
+    const canvas = document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#bb9900';
+    ctx.fillRect(0, 0, 100, 100);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(20, 30, 60, 60);
+    return detectMapWindow(canvas.toDataURL());
+  });
+  assert.deepEqual(windowBounds, { x: 0.2, y: 0.3, width: 0.6, height: 0.6 });
+  console.log('Frame opening detection and native map inset alignment passed');
+  const numeric = await page.evaluate(() => {
+    const layout = preview.packet.roots.base;
+    preview.packet.documents[0].tree[0].children.push({
+      kind: 'Label',
+      target: 'HealthLabel',
+      attributes: { id: 'HealthLabel', text: '1848 / 2200', style: 'width:130px;height:26px;font-size:18px;' },
+      children: []
+    });
+    preview.setPacket(preview.packet);
+    preview.render({ elements: [] });
+    const n = preview.shadow.querySelector('#HealthLabel');
+    return {
+      space: getComputedStyle(n).whiteSpace,
+      height: n.clientHeight,
+      scroll: n.scrollHeight,
+      text: n.textContent
+    };
+  });
+  assert.equal(numeric.space, 'nowrap');
+  assert(numeric.scroll <= numeric.height);
+  assert.match(numeric.text, /1848 \/ 2200/);
+  console.log('Health numbers stay on one line inside their native bar');
+  await page.evaluate(() => {
+    preview.render({ elements: [] });
+    preview.render({ elements: [] });
+  });
+  assert.equal(await page.evaluate(() => preview.shadow.adoptedStyleSheets.length), 1);
+  await page.evaluate(() => preview.dispose());
+  assert.equal(await page.evaluate(() => preview.shadow.adoptedStyleSheets.length), 0);
+  const camera = await page.evaluate(async () => {
+    const { previewViewport } = await import('/modules/viewport.mjs');
+    const box = document.createElement('div'),
+      canvas = document.createElement('div');
+    box.style.cssText = 'position:fixed;top:200px;left:100px;width:960px;overflow:hidden';
+    canvas.style.cssText = 'width:1920px;height:1080px;transform-origin:0 0';
+    box.append(canvas);
+    document.body.append(box);
+    window.testCamera = previewViewport(box, canvas);
+    window.testBox = box;
+    const r = box.getBoundingClientRect();
+    box.dispatchEvent(new WheelEvent('wheel', { altKey: false, deltaY: -200, cancelable: true }));
+    const plain = testCamera.read();
+    box.dispatchEvent(
+      new WheelEvent('wheel', {
+        altKey: true,
+        deltaY: -200,
+        clientX: r.left + 240,
+        clientY: r.top + 135,
+        cancelable: true
+      })
+    );
+    const zoom = testCamera.read();
+    const anchor = { x: (240 - zoom.x) / (0.5 * zoom.zoom), y: (135 - zoom.y) / (0.5 * zoom.zoom) };
+    testCamera.reset();
+    const reset = testCamera.read();
+    return { plain, zoom, anchor, reset };
+  });
+  assert.equal(camera.plain.zoom, 1);
+  assert(camera.zoom.zoom > 1);
+  assert(Math.abs(camera.anchor.x - 480) < 0.01);
+  assert(Math.abs(camera.anchor.y - 270) < 0.01);
+  assert.deepEqual(camera.reset, { zoom: 1, x: 0, y: 0 });
+  await page.evaluate(() => {
+    testCamera.dispose();
+    testBox.remove();
+  });
+  console.log('Alt zoom anchor, ordinary scrolling and reset passed');
+  await page.goto('http://127.0.0.1:' + server.address().port + '/ui');
+  await page.waitForFunction(() => window.uiReady);
+  await page.locator('.hc-layers button').filter({ hasText: 'EventCard' }).click();
+  const cssEditor = page.locator('.hc-block-css');
+  await cssEditor.locator('summary').click();
+  const cssCode = cssEditor.locator('textarea');
+  assert.match(await cssCode.inputValue(), /width: 330px/);
+  await cssCode.fill((await cssCode.inputValue()).replace('330px', '360px'));
+  await cssEditor.getByRole('button', { name: 'Применить CSS', exact: true }).click();
+  assert.equal(
+    await page.locator('.hc-canvas').evaluate(host => host.shadowRoot.querySelector('#EventCard').style.width),
+    '360px'
+  );
+  await cssEditor.getByRole('button', { name: 'Сбросить CSS', exact: true }).click();
+  assert.match(await cssCode.inputValue(), /width: 330px/);
+  assert.equal(
+    await page.locator('.hc-canvas').evaluate(host => host.shadowRoot.querySelector('#EventCard').style.width),
+    '330px'
+  );
+  console.log('CSS inspector preloads Dota declarations, edits and resets the existing rule');
+  const opacity = page.locator('.hc-properties .hc-field').filter({ hasText: 'Непрозрачность, %' });
+  await opacity.locator('input').fill('60');
+  assert.equal(
+    await page
+      .locator('.hc-canvas')
+      .evaluate(host => getComputedStyle(host.shadowRoot.querySelector('#EventCard')).opacity),
+    '0.6'
+  );
+  await opacity.getByRole('button', { name: 'Сбросить', exact: true }).click();
+  assert.equal(
+    await page
+      .locator('.hc-canvas')
+      .evaluate(host => getComputedStyle(host.shadowRoot.querySelector('#EventCard')).opacity),
+    '1'
+  );
+  const fill = page.locator('.hc-properties .hc-field').filter({ hasText: 'Заливка' });
+  await fill.locator('input').evaluate(n => {
+    n.value = '#bc5252';
+    n.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  assert.equal(
+    await page
+      .locator('.hc-canvas')
+      .evaluate(host => getComputedStyle(host.shadowRoot.querySelector('#EventCard')).backgroundColor),
+    'rgb(188, 82, 82)'
+  );
+  await fill.getByRole('button', { name: 'Сбросить', exact: true }).click();
+  assert.equal(
+    await page
+      .locator('.hc-canvas')
+      .evaluate(host => getComputedStyle(host.shadowRoot.querySelector('#EventCard')).backgroundColor),
+    'rgba(0, 0, 0, 0)'
+  );
+  await page.evaluate(() => disposeUi());
+  console.log('Actual editor percent opacity and independent fill/opacity reset passed');
+  console.log('CSP, native geometry, repeated rendering and cleanup passed');
+} finally {
+  await browser?.close();
+  await new Promise(r => server.close(r));
+}

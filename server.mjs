@@ -1,351 +1,1107 @@
-import {testerRecolorRoute} from './lib/tester/recolor.mjs';
-import {productionBuilderConfig} from './lib/production-builder.mjs';
-import {createTesterPortal} from './lib/tester/routes.mjs';
-import {createAdminSetBuilder,requiresMountedArchivePreview} from './lib/admin-unreleased-sets.mjs';
-import {EditorProjectService} from './lib/editor/project-service.mjs';
-import {EditorBuildService} from './lib/editor/build-service.mjs';
-import {editorRoute} from './lib/editor/routes.mjs';
-import {serveViewerModel} from './lib/viewer-transfer.mjs';
-import {ViewerMetadata} from './lib/viewer-metadata.mjs';
-import {adminSetAccess,ADMIN_SET_COOKIE} from './lib/admin-set-session.mjs';
-import {adminSetCatalog,adminSetPayload} from './lib/admin-set-preview.mjs';
-import {DownloadTickets,serveDownload} from './lib/downloads.mjs';
-import {liveDrowWardrobe} from './lib/drow-wardrobe.mjs';
-import {publicArcanaIcons} from './lib/public-arcanas.mjs';
-import {adminArcanaCatalog,adminArcanaChoices} from './lib/admin-arcanas.mjs';
-import {Notifications} from './lib/notifications.mjs';
-import {drowArcanaChoices,drowArcanaCatalog,drowArcanaIcons} from './lib/drow-arcana.mjs';
-import {assembleStaticPreview} from './public/static-preview.mjs';
-import {createStaticViewer} from './lib/static-viewer.mjs';
-import {createHash,randomBytes} from 'node:crypto';
-import {cosmeticCatalog,browserCosmeticCatalog,cosmeticChoices} from './lib/global-cosmetics.mjs';
-import {techiesArcanaNative} from './lib/techies-icons.mjs';
-import {hasTechiesArcana} from './lib/techies-arcana.mjs';
-import {TechiesIconPreviews,techiesIconRequest} from './lib/techies-icon-previews.mjs';
-import {abilityCatalog} from './lib/ability-catalog.mjs';
-import {immortalEffectCandidates,immortalIconEntry} from './lib/immortal-effects.mjs';
-import {TerrorbladeIconPreviews,iconPreviewRequest} from './lib/terrorblade-icon-previews.mjs';
-import {kineticBuildChoices} from './lib/kinetic-build.mjs';
-import {readMediaManifest,serveKineticMedia} from './lib/kinetic-media-cache.mjs';
-import {itemActivityRules} from './lib/hero-activities.mjs';
-import {heroStances,prepareSelectionStances} from './lib/hero-stances.mjs';
-import {hasTerrorbladeArcana} from './lib/terrorblade-arcana.mjs';
-import {ItemIcons} from './lib/item-icons.mjs';
-import {previewDiagnostics} from './lib/diagnostics.mjs';
-import {normalizeSelections} from './lib/namespace.mjs';
+import { testerRecolorRoute } from './lib/tester/recolor.mjs';
+import { productionBuilderConfig } from './lib/production-builder.mjs';
+import { createTesterPortal } from './lib/tester/routes.mjs';
+import { createAdminSetBuilder, requiresMountedArchivePreview } from './lib/admin-unreleased-sets.mjs';
+import { EditorProjectService } from './lib/editor/project-service.mjs';
+import { EditorBuildService } from './lib/editor/build-service.mjs';
+import { editorRoute } from './lib/editor/routes.mjs';
+import { serveViewerModel } from './lib/viewer-transfer.mjs';
+import { ViewerMetadata } from './lib/viewer-metadata.mjs';
+import { adminSetAccess, ADMIN_SET_COOKIE } from './lib/admin-set-session.mjs';
+import { adminSetCatalog, adminSetPayload } from './lib/admin-set-preview.mjs';
+import { DownloadTickets, serveDownload } from './lib/downloads.mjs';
+import { liveDrowWardrobe } from './lib/drow-wardrobe.mjs';
+import { publicArcanaIcons } from './lib/public-arcanas.mjs';
+import { adminArcanaCatalog, adminArcanaChoices } from './lib/admin-arcanas.mjs';
+import { Notifications } from './lib/notifications.mjs';
+import { drowArcanaChoices, drowArcanaCatalog, drowArcanaIcons } from './lib/drow-arcana.mjs';
+import { assembleStaticPreview } from './public/static-preview.mjs';
+import { createStaticViewer } from './lib/static-viewer.mjs';
+import { createHash, randomBytes } from 'node:crypto';
+import { cosmeticCatalog, browserCosmeticCatalog, cosmeticChoices } from './lib/global-cosmetics.mjs';
+import { techiesArcanaNative } from './lib/techies-icons.mjs';
+import { hasTechiesArcana } from './lib/techies-arcana.mjs';
+import { TechiesIconPreviews, techiesIconRequest } from './lib/techies-icon-previews.mjs';
+import { abilityCatalog } from './lib/ability-catalog.mjs';
+import { immortalEffectCandidates, immortalIconEntry } from './lib/immortal-effects.mjs';
+import { TerrorbladeIconPreviews, iconPreviewRequest } from './lib/terrorblade-icon-previews.mjs';
+import { kineticBuildChoices } from './lib/kinetic-build.mjs';
+import { readMediaManifest, serveKineticMedia } from './lib/kinetic-media-cache.mjs';
+import { itemActivityRules } from './lib/hero-activities.mjs';
+import { heroStances, prepareSelectionStances } from './lib/hero-stances.mjs';
+import { hasTerrorbladeArcana } from './lib/terrorblade-arcana.mjs';
+import { ItemIcons } from './lib/item-icons.mjs';
+import { previewDiagnostics } from './lib/diagnostics.mjs';
+import { normalizeSelections } from './lib/namespace.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import {fileURLToPath} from 'node:url';
-import {Builder} from './lib/build.mjs';
-import {PreviewService,publicPreview,previewParticleBinding} from './lib/preview.mjs';
-import {WidgetAuth} from './lib/auth.mjs';
-import {requestAccess} from './lib/request-access.mjs';
-import {AdminAuth,Statistics,selectionStatistics,vpkFilename} from './lib/admin.mjs';
-export const root=path.dirname(fileURLToPath(import.meta.url));
-const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':res.getHeader('Cache-Control')??'no-store'});res.end(JSON.stringify(data));};
-const ownServerOrigin=(host,config)=>config.publicBaseUrl&&new URL(config.publicBaseUrl).host===host?new URL(config.publicBaseUrl).origin:`http://${host}`;
-async function body(req,maxBytes=16384){const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>maxBytes)throw Error('Слишком большой запрос');chunks.push(chunk);}return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}
-function publicJob(job){const {file,owner,_terrain,_attackVpk,...result}=job;return result;}
-export function startServer({root:serverRoot=root,port:overridePort,adminAuth,testerAuth}={}) {
-  const root=serverRoot;
-  const configPath=path.join(root,'config.json'),config={host:'127.0.0.1',port:8787,...JSON.parse(fs.readFileSync(fs.existsSync(configPath)?configPath:path.join(root,'config.example.json'),'utf8'))};
-  Object.assign(config,productionBuilderConfig(config));
-  const builder=new Builder(root,config),auth=new WidgetAuth(root),previews=new PreviewService(root,config,builder);
-  const itemIcons=new ItemIcons(root,config,builder.store),tbIconPreviews=new TerrorbladeIconPreviews(builder,itemIcons),techiesIconPreviews=new TechiesIconPreviews(builder,itemIcons);
-  const admin=adminAuth??new AdminAuth(root),statistics=new Statistics(root),notifications=new Notifications(root);
-  const staticViewer=createStaticViewer(root,config),staticJobs=new Map(),staticData=new Map();
-  const staticRead=ref=>{if(!/^assets\/[a-f0-9]{64}\.json$/.test(ref))throw Error('Invalid static reference');if(!staticData.has(ref))staticData.set(ref,JSON.parse(fs.readFileSync(path.join(staticViewer.directory,ref),'utf8')));while(staticData.size>96)staticData.delete(staticData.keys().next().value);return staticData.get(ref);};
-  const editorProjects=new EditorProjectService(root),editorBuilds=new EditorBuildService(builder);
-  const viewerMetadata=new ViewerMetadata(root,previews.config,builder.store,(...args)=>previews.run(...args));
-  const tracking=new WeakMap(),downloadTickets=new DownloadTickets();
-  const count=(key,context)=>{try{statistics.increment(key,context);}catch(e){console.error('Statistics: '+e.message);}};
-  builder.onReady=job=>count('vpks',tracking.get(job));
-  const countModel=job=>{if(!job.modelServed){job.modelServed=true;count('models',tracking.get(job));}};
-
-  const testerPortal=createTesterPortal({root,config,builder,previews,projects:editorProjects,body,json,auth:testerAuth});
-  const baseBuilder=builder,basePreviews=previews,baseEditorBuilds=editorBuilds;let adminSetContext=null;
-  const adminContext=()=>{if(!adminSetContext){const builder=createAdminSetBuilder(baseBuilder),previews=Object.create(basePreviews);previews.builder=builder;adminSetContext={builder,previews,editorBuilds:new EditorBuildService(builder)};}return adminSetContext;};
-  const server=http.createServer(async(req,res)=>{
-    let builder=baseBuilder,previews=basePreviews,editorBuilds=baseEditorBuilds;
-    res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
-    try {
-      const host=req.headers.host??'',url=new URL(req.url,'http://localhost');
-      const origin=req.headers.origin;
-      const expectedPort=server.address()?.port;
-      const {allowedHost,localAdmin}=requestAccess(req,config,expectedPort);
-      if(!allowedHost)return json(res,403,{error:'Host не разрешён. Укажи publicBaseUrl для серверного режима.'});
-      const testerAccess=await testerPortal.route(req,res,url);if(testerAccess===true)return;if(testerAccess){({builder,previews,editorBuilds}=testerAccess);}
-      if(staticViewer.route(req,res,url))return;
-      if(url.pathname==='/kinetic-media/manifest.json'&&req.method==='GET')return json(res,200,readMediaManifest(root));
-      if(url.pathname.startsWith('/kinetic-media/')&&['GET','HEAD'].includes(req.method))return serveKineticMedia(req,res,root,url.pathname);
-      if(url.pathname==='/api/notifications'&&req.method==='GET'){res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Cache-Control','public, max-age=60');return json(res,200,notifications.feed());}
-      if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{status:'ready'});
-      if(url.pathname.startsWith('/ethereal-media/'))res.setHeader('Access-Control-Allow-Origin','*');
-      if(url.pathname.startsWith('/images/personas/'))res.setHeader('Access-Control-Allow-Origin','*');
-      let adminStudioOwner=testerAccess?.owner??null;
-      try{
-        const access=testerAccess?null:adminSetAccess(req,url,admin,{host,publicBaseUrl:config.publicBaseUrl});
-        if(access?.session){res.setHeader('Set-Cookie',ADMIN_SET_COOKIE+'='+access.token+'; Path=/api/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
-        if(access){adminStudioOwner=access.owner;url.pathname=access.pathname;({builder,previews,editorBuilds}=adminContext());}
-      }catch(error){return json(res,error.status??401,{error:error.message});}
-      const integrationRoute=/^\/api\/(catalog|hero-catalog|catalog-search|model-metadata|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|recolor(?:\/|$)|visit|widget\/session)/.test(url.pathname);
-      if(integrationRoute&&origin&&auth.sites().some(s=>!s.disabled&&s.origins.includes(origin))){
-        res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');
-        if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type, authorization','Access-Control-Max-Age':'600'});return res.end();}
-      }
-      if(url.pathname.startsWith('/api/admin/')){
-        if(origin&&origin!==`http://${host}`&&origin!==config.publicBaseUrl)return json(res,403,{error:'Origin не разрешён'});
-        if(url.pathname==='/api/admin/login'&&req.method==='POST'){const data=await body(req);try{return json(res,200,{token:await admin.login(data.username,data.password)});}catch(e){return json(res,401,{error:e.message});}}
-        const tokenInUrl=req.method==='GET'&&/^\/api\/admin\/(cosmetic-icon|jobs\/[a-f0-9]{32}\/download)$/.test(url.pathname)?url.searchParams.get('token'):null;
-        const editorCookie=url.pathname.startsWith('/api/admin/editor/')?req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('studio-editor='))?.slice('studio-editor='.length):null;
-        const adminToken=req.headers.authorization?.replace(/^Bearer /,'')??tokenInUrl??editorCookie;
-        try{admin.verify(adminToken);}catch(e){return json(res,401,{error:e.message});}
-        ({builder,previews,editorBuilds}=adminContext());
-        const adminOwner='admin:'+createHash('sha256').update(adminToken).digest('hex');
-        if(url.pathname==='/api/admin/editor/session'&&req.method==='POST'){res.setHeader('Set-Cookie','studio-editor='+adminToken+'; Path=/api/admin/editor/; HttpOnly; SameSite=Strict'+(config.publicBaseUrl?.startsWith('https:')?'; Secure':''));return json(res,200,{ok:true});}
-        if(url.pathname.startsWith('/api/admin/editor/')&&await editorRoute({req,res,url,owner:'editor-admin',projects:editorProjects,builds:editorBuilds,body:req=>body(req,24*1024*1024),json,root}))return;
-        if(url.pathname==='/api/admin/set-catalog'&&req.method==='GET')return json(res,200,adminSetCatalog(builder.catalog));
-        if(url.pathname==='/api/admin/set-preview'&&req.method==='POST'){
-          const data=adminSetPayload(builder.catalog,await body(req));previews.touch(adminOwner);
-          if(staticViewer.enabled()&&!(testerAccess&&data.previewForm?.startsWith('entity:'))&&!requiresMountedArchivePreview(builder.catalog,data)){
-            const job=await assembleStaticPreview(data,builder.catalog,staticViewer.manifest(),staticRead),base=config.staticViewerBaseUrl??'/static-viewer/';
-            job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=adminOwner;job.created=Date.now();
-            for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);
-            staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);
-            const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);
-          }
-          await prepareSelectionStances(builder,data);const rows=normalizeSelections(builder,data);if(!rows.length)throw Error('Set has no previewable items');
-          const job=previews.create({...rows[0],selections:rows,partsOnly:true,previewForm:data.previewForm},adminOwner);return json(res,202,publicPreview(job));
-        }
-        const adminPreview=url.pathname.match(/^\/api\/admin\/set-previews\/([a-f0-9]{32})(\/(effect|parts\/\d+))?$/);
-        if(adminPreview&&req.method==='GET'){
-          const job=previews.jobs.get(adminPreview[1])??staticJobs.get(adminPreview[1]);if(!job||job.owner!==adminOwner)return json(res,404,{error:'Preview not found'});previews.touch(adminOwner);
-          if(!adminPreview[2]){const {effects,...metadata}=publicPreview(job);return json(res,200,metadata);}
-          if(job.status!=='ready')return json(res,409,{error:'Preview is not ready'});
-          if(adminPreview[3]==='effect'){
-            if(job.effects)return json(res,200,{effects:job.effects});
-            const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Effect unavailable'});
-            res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);
-          }
-          const index=Number(adminPreview[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part unavailable'});
-          res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);
-        }
-        if(url.pathname==='/api/admin/notifications'&&req.method==='GET')return json(res,200,notifications.feed());
-        if(url.pathname==='/api/admin/notifications'&&req.method==='POST')return json(res,201,{item:notifications.publish(await body(req))});
-        if(url.pathname==='/api/admin/notifications/delete'&&req.method==='POST'){notifications.remove((await body(req)).id);return json(res,200,{ok:true});}
-        const testArcana=url.pathname.match(/^\/api\/admin\/(build-)?test-arcana\/(lina|monkey_king)$/);
-        if(testArcana&&!testArcana[1]&&req.method==='GET')return json(res,200,adminArcanaCatalog(builder,testArcana[2]));
-        if(testArcana&&testArcana[1]&&req.method==='POST'){
-          const data=await body(req);vpkFilename(data.vpkNumber??1);
-          const choices=adminArcanaChoices(builder,testArcana[2],data),job=builder.create(choices,adminOwner,{vpkNumber:data.vpkNumber??1});
-          tracking.set(job,{selections:selectionStatistics(choices),source:'admin'});return json(res,202,publicJob(job));
-        }
-        if(url.pathname==='/api/admin/drow-arcana'&&req.method==='GET')return json(res,200,drowArcanaCatalog(builder));
-        if(url.pathname==='/api/admin/build-drow-arcana'&&req.method==='POST'){
-          const data=await body(req);vpkFilename(data.vpkNumber??1);
-          const choices=drowArcanaChoices(builder,data),job=builder.create(choices,adminOwner,{vpkNumber:data.vpkNumber??1});
-          tracking.set(job,{selections:selectionStatistics(choices),source:'admin'});return json(res,202,publicJob(job));
-        }
-        if(url.pathname==='/api/admin/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder,{admin:true}):cosmeticCatalog(builder,{admin:true}));
-        if(url.pathname==='/api/admin/cosmetic-heroes'&&req.method==='GET')return json(res,200,{heroes:builder.catalog.heroes.map(h=>({id:h.id,name:h.name,isPersona:h.isPersona}))});
-        if(url.pathname==='/api/admin/cosmetic-icon'&&req.method==='GET'){
-          const item=cosmeticCatalog(builder,{admin:true}).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
-          try{const style=item.styles?.find(s=>s.id===url.searchParams.get('styleId'));const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:style?.imageInventory??item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
-        }
-        if(url.pathname==='/api/admin/build-cosmetics'&&req.method==='POST'){
-          const data=await body(req),cosmetics=cosmeticChoices(builder,data.cosmetics??[],{admin:true});if(!cosmetics.length)throw new Error('Choose cosmetics');vpkFilename(data.vpkNumber??1);
-          const job=builder.create([],adminOwner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:[],source:'admin'});return json(res,202,publicJob(job));
-        }
-        const adminJob=url.pathname.match(/^\/api\/admin\/jobs\/([a-f0-9]{32})(\/download)?$/);
-        if(adminJob&&req.method==='GET'){
-          const job=builder.jobs.get(adminJob[1]);if(!job||job.owner!==adminOwner)return json(res,404,{error:'Build not found'});
-          if(!adminJob[2])return json(res,200,publicJob(job));if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});
-          res.writeHead(200,{'Content-Type':job.packageType?.endsWith('-zip')?'application/zip':'application/octet-stream','Cache-Control':'no-store','Content-Disposition':`attachment; filename="${job.filename??vpkFilename()}"`,'Referrer-Policy':'no-referrer'});return fs.createReadStream(job.file).pipe(res);
-        }
-        if(url.pathname==='/api/admin/statistics'&&req.method==='GET')return json(res,200,statistics.snapshot(Number(url.searchParams.get('days')??0)));
-        if(url.pathname==='/api/admin/logout'&&req.method==='POST'){admin.logout(adminToken);return json(res,200,{ok:true});}
-        return json(res,404,{error:'Маршрут не найден'});
-      }
-      if(url.pathname==='/api/widget/session'&&req.method==='POST') {
-        const data=await body(req);const token=auth.issue(data.key,origin,data.previousToken);
-        res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Expose-Headers','Content-Disposition');res.setHeader('Vary','Origin');return json(res,200,{token,expiresIn:1800});
-      }
-      if(url.pathname==='/api/widget/session'&&req.method==='OPTIONS') {
-        if(!auth.sites().some(s=>!s.disabled&&s.origins.includes(origin)))return json(res,403,{error:'Origin не разрешён'});
-        res.writeHead(204,{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST','Access-Control-Allow-Headers':'content-type','Vary':'Origin'});return res.end();
-      }
-      const ticketDownload=url.pathname.match(/^\/api\/(?:recolor\/)?jobs\/([a-f0-9]{32})\/download$/);
-      if(ticketDownload&&url.searchParams.has('download_ticket')&&['GET','HEAD'].includes(req.method)){
-        let ticket;try{ticket=downloadTickets.verify(url.searchParams.get('download_ticket'),ticketDownload[1],auth.sites());}catch(error){return json(res,401,{error:error.message});}
-        const job=url.pathname.startsWith('/api/recolor/')?editorBuilds.jobs.get(ticketDownload[1]):builder.jobs.get(ticketDownload[1]);if(!job||job.owner!==ticket.owner)return json(res,404,{error:'Build not found or expired'});if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});return serveDownload(req,res,job);
-      }
-      let session=null;
-      const token=req.headers.authorization?.replace(/^Bearer /,'')??url.searchParams.get('token');
-      if(token&&!adminStudioOwner)session=auth.verify(token);
-      if(session&&origin&&origin!==session.origin&&origin!==ownServerOrigin(host,config))return json(res,403,{error:'Origin токена не совпадает с сайтом'});
-      const allowed=localAdmin||session||adminStudioOwner;
-      if(url.pathname.startsWith('/api/')&&!allowed)return json(res,401,{error:'Нужна сессия виджета'});
-      const owner=adminStudioOwner??(session?session.id+':'+session.nonce:'local');previews.touch(owner);
-      if(url.pathname.startsWith('/api/recolor/')){
-        const recolorTicket=/^\/api\/recolor\/jobs\/([a-f0-9]{32})\/download-ticket$/.exec(url.pathname);
-        if(recolorTicket&&req.method==='GET'){
-          const job=editorBuilds.jobs.get(recolorTicket[1]);
-          if(!job||job.owner!==owner)return json(res,404,{error:'Build not found'});
-          if(job.status!=='ready')return json(res,409,{error:'Build is not ready'});
-          if(!fs.existsSync(job.file))return json(res,410,{error:'Build file expired'});
-          const ticket=downloadTickets.issue(job,session);
-          return json(res,200,{downloadPath:'/api/recolor/jobs/'+job.id+'/download?download_ticket='+encodeURIComponent(ticket),filename:job.filename??vpkFilename(),expiresIn:600});
-        }
-
-        if(req.method==='POST'&&session)auth.consume(session,url.pathname==='/api/recolor/build'?undefined:'preview');
-        if(url.pathname.startsWith('/api/recolor/editor/')){
-          const name=url.pathname.slice('/api/recolor/editor/'.length);
-          if(req.method!=='POST'||!['resource','texture','particle-preview'].includes(name))return json(res,404,{error:'Нет такого действия перекраски'});
-          const mapped=new URL(url);mapped.pathname='/api/admin/editor/'+name;
-          if(await editorRoute({req,res,url:mapped,owner,projects:editorProjects,builds:editorBuilds,body:r=>body(r,24*1024*1024),json,root}))return;
-        }
-        if(await testerRecolorRoute({req,res,url,context:{builder,editorBuilds},owner,body,json,prefix:'/api/recolor/'}))return;
-      }
-
-      if(url.pathname==='/api/model-metadata'&&req.method==='POST'){const data=await body(req);if(session)auth.consume(session,'preview');return json(res,200,await viewerMetadata.get(data.models,data.animationModels??[],data.preferred??[]));}
-      if(req.method==='GET'&&(!adminStudioOwner||/^\/api\/(item-icon|set-icon)$/.test(url.pathname))&&staticViewer.api(req,res,url))return;
-      if(!adminStudioOwner&&staticViewer.enabled()&&req.method==='GET'&&/^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname))return json(res,404,{error:'Resource has not been prepublished. Run publish-static-viewer.'});
-      if(url.pathname==='/api/preview-view'&&req.method==='POST'){const data=await body(req);await prepareSelectionStances(builder,data);const choices=normalizeSelections(builder,data);if(session)auth.consume(session,'preview');count('models',{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,200,{ok:true});}
-      if(url.pathname==='/api/visit'&&req.method==='POST'){count('visits',{source:session?.origin??'local'});return json(res,200,{ok:true});}
-      if(url.pathname==='/api/techies-icon'&&req.method==='GET'){
-        let options;try{options=techiesIconRequest(url.searchParams);}catch(error){return json(res,400,{error:error.message});}
-        try{const file=await techiesIconPreviews.get(options);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Techies icon preview unavailable'});}
-      }
-      if(url.pathname==='/api/terrorblade-icon'&&req.method==='GET'){
-        let options;try{options=iconPreviewRequest(url.searchParams);}catch(error){return json(res,400,{error:error.message});}
-        try{const file=await tbIconPreviews.get(options);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Icon preview unavailable'});}
-      }
-      if(url.pathname==='/api/set-icon'&&req.method==='GET'){
-        const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),set=hero?.sets?.find(s=>s.id===url.searchParams.get('setId'));if(!set)return json(res,404,{error:'Set not found'});
-        const item=hero.items.find(i=>set.items.some(row=>row.itemId===i.id));try{const file=await itemIcons.get({model:item?.model??hero.model,imageInventory:set.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Set image unavailable'});}
-      }
-      if(url.pathname==='/api/techies-cart-icon'&&req.method==='GET'){
-        try{const native=techiesArcanaNative(builder.store);const file=await itemIcons.get({model:'models/heroes/techies/techies_cart.vmdl_c',imageInventory:native?.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Arcana cart icon unavailable'});}
-      }
-      if(url.pathname==='/api/item-icon'){
-        const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId')),item=hero?.items.find(i=>i.id===url.searchParams.get('itemId'));if(!item)return json(res,404,{error:'Item not found'});
-        try{const file=await itemIcons.get(item);res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Inventory icon unavailable'});}
-      }
-      if(url.pathname.startsWith('/images/personas/')&&req.method==='GET'){
-        const id=url.pathname.match(/^\/images\/personas\/([a-z0-9_]+)\.png$/)?.[1],hero=builder.catalog.heroes.find(h=>h.id===id&&h.isPersona);
-        if(!hero)return json(res,404,{error:'Persona not found'});
-        try{const texture='panorama/images/heroes/'+hero.personaNpcName+'_png.vtex_c';const file=builder.store.read(texture)?await itemIcons.getTexture(texture,{model:hero.model}):await itemIcons.get({model:hero.model,imageInventory:hero.personaInventoryImage});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Persona portrait unavailable'});}
-      }
-      if(url.pathname==='/api/drow-wardrobe'&&req.method==='GET'){res.setHeader('Cache-Control','private, max-age=300');return json(res,200,liveDrowWardrobe(builder));}
-      if(url.pathname==='/api/arcana-icon'&&req.method==='GET'){
-        try{const id=url.searchParams.get('heroId'),raw=url.searchParams.get('style');if(!/^[0-3]$/.test(raw??''))throw Error('Invalid style');const texture=publicArcanaIcons(builder,id,Number(raw))[url.searchParams.get('icon')];if(!texture)throw Error('Unknown arcana icon');const file=await itemIcons.getTexture(texture,{model:builder.catalog.heroes.find(h=>h.id===id).model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Arcana icon unavailable'});}
-      }
-      if(url.pathname==='/api/drow-icon'&&req.method==='GET'){
-        try{const raw=url.searchParams.get('style');if(!['0','1'].includes(raw))throw Error('Invalid style');const texture=drowArcanaIcons(builder,Number(raw))[url.searchParams.get('icon')];if(!texture)throw Error('Unknown Drow icon');const file=await itemIcons.getTexture(texture,{model:builder.catalog.heroes.find(h=>h.id==='drow_ranger').model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Drow icon unavailable'});}
-      }
-      if(url.pathname==='/api/ability-icon'&&req.method==='GET'){
-        const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId'));
-        try{if(!hero)throw new Error('Unknown hero');const options=immortalEffectCandidates(hero),ability=abilityCatalog(builder,hero.id,options).find(a=>a.id===url.searchParams.get('abilityId'));if(!ability?.texture)throw new Error('Unknown ability');const file=await itemIcons.getTexture(ability.defaultTexture??ability.texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Ability icon unavailable'});}
-      }
-      if(url.pathname==='/api/immortal-icon'&&req.method==='GET'){
-        const hero=builder.catalog.heroes.find(h=>h.id===url.searchParams.get('heroId'));
-        const option=hero&&immortalEffectCandidates(hero).find(o=>o.id===url.searchParams.get('optionId'));
-        try{const entry=immortalIconEntry(option,url.searchParams.get('index'));const texture=url.searchParams.get('variant')==='classic'?entry.target:entry.source;const file=await itemIcons.getTexture(texture,{model:hero.model});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Immortal icon unavailable'});}
-      }
-      if(url.pathname==='/api/stances'&&req.method==='GET'){const heroId=url.searchParams.get('heroId'),result=await heroStances(builder,heroId);return json(res,200,{options:result.options,abilities:abilityCatalog(builder,heroId,result.options)});}
-      if(url.pathname==='/api/cosmetics'&&req.method==='GET')return json(res,200,url.searchParams.get('view')==='browser'?browserCosmeticCatalog(builder,{admin:!!testerAccess}):cosmeticCatalog(builder,{admin:!!testerAccess}));
-      if(url.pathname==='/api/cosmetic-icon'&&req.method==='GET'){
-        const item=cosmeticCatalog(builder,{admin:!!testerAccess}).items.find(i=>i.id===url.searchParams.get('id'));if(!item)return json(res,404,{error:'Unknown cosmetic'});
-        try{const style=item.styles?.find(s=>s.id===url.searchParams.get('styleId'));const file=await itemIcons.get({model:'models/heroes/techies/techies.vmdl_c',imageInventory:style?.imageInventory??item.imageInventory});res.writeHead(200,{'Content-Type':'image/png','Cache-Control':'private, max-age=86400'});return fs.createReadStream(file).pipe(res);}catch{return json(res,404,{error:'Cosmetic image unavailable'});}
-      }
-      if(url.pathname==='/api/catalog')return json(res,200,{...builder.catalog,mode:session?'widget':'local',patcherReady:fs.existsSync(path.resolve(root,config.patcher)),viewerReady:!!config.viewer&&fs.existsSync(path.resolve(root,config.viewer)),assetBridgeReady:fs.existsSync(path.resolve(root,config.assetBridge??'asset-bridge/publish/DotaAssetBridge.exe')),rubickArcana:true,linaArcana:true,monkeyKingArcana:true,drowArcana:true,terrorbladeArcana:hasTerrorbladeArcana(root),techiesArcana:hasTechiesArcana(root),webParticles:false});
-      if(url.pathname==='/api/inspect'||url.pathname==='/api/build') {
-        if(req.method!=='POST')return json(res,405,{error:'Use POST'});
-        const data=await body(req,url.pathname==='/api/build'?512*1024:undefined);await prepareSelectionStances(builder,data,{strict:true});const cosmetics=cosmeticChoices(builder,data.cosmetics??[],{admin:!!testerAccess});const choices=Array.isArray(data.selections)&&!data.selections.length&&cosmetics.length?[]:normalizeSelections(builder,data),choice=choices[0];if(!cosmetics.length&&data.mode==='set'&&choices.every(c=>!c.hero.isPersona&&!c.stance&&c.item.isDefault&&!c.effects.length))throw new Error('Choose at least one cosmetic');
-        if(url.pathname==='/api/inspect'){if(!choice)return json(res,400,{error:'Select a hero item to inspect'});const r=builder.inspect(choice);return json(res,200,{files:[...r.files].map(([name,bytes])=>({name,size:bytes.length})),missing:r.missing,replacementTarget:r.replacementTarget});}
-        vpkFilename(data.vpkNumber??1);
-        if(session)auth.consume(session);const job=builder.create(choices,owner,{vpkNumber:data.vpkNumber??1,cosmetics});tracking.set(job,{selections:selectionStatistics(choices),source:session?.origin??'local'});return json(res,202,publicJob(job));
-      }
-      if(url.pathname==='/api/preview'&&req.method==='POST') {
-        const data=await body(req);
-        if(staticViewer.enabled()&&!(testerAccess&&data.previewForm?.startsWith('entity:'))&&!requiresMountedArchivePreview(builder.catalog,data)){for(const [key,value]of staticJobs)if(Date.now()-value.created>30*60*1000)staticJobs.delete(key);if(session)auth.consume(session,'preview');const manifest=staticViewer.manifest();const job=await assembleStaticPreview(data,builder.catalog,manifest,staticRead);const base=config.staticViewerBaseUrl??'/static-viewer/';job.parts=job.parts.map(p=>({...p,url:base.replace(/\/?$/,'/')+p.url}));job.id=randomBytes(16).toString('hex');job.owner=owner;job.created=Date.now();if(adminStudioOwner){job.partFiles=job.parts.map(p=>{const name=path.basename(new URL(p.url,'http://static').pathname);if(!/^[a-f0-9]{64}\.glb$/.test(name))throw Error('Invalid static model path');return path.join(staticViewer.directory,'assets',name);});job.parts=job.parts.map((p,i)=>({...p,key:p.key??path.basename(job.partFiles[i],'.glb'),url:(testerAccess?'/api/tester/studio/previews/':'/api/admin/set-studio/previews/')+job.id+'/parts/'+i}));}tracking.set(job,{source:session?.origin??'local',selections:job.selectedItems.map(item=>({hero:{id:job.heroId,name:builder.catalog.heroes.find(h=>h.id===job.heroId)?.name??job.heroId},item,effects:[]}))});staticJobs.set(job.id,job);while(staticJobs.size>64)staticJobs.delete(staticJobs.keys().next().value);const {effects,...metadata}=publicPreview(job);return json(res,202,metadata);}
-        let setRows=data.mode==='set'?normalizeSelections(builder,data):null;
-        const stance=setRows?.find(c=>c.stance);if(setRows){setRows=setRows.filter(c=>!c.stance);if(!setRows.length&&stance){const slot=Object.keys(stance.hero.defaultSlotModels??{})[0];setRows=[builder.cosmeticChoice(stance.hero.id,null,slot)];}}
-        if(stance&&setRows)setRows=kineticBuildChoices(setRows,[stance]);
-        const choice=setRows?{...setRows[0]}:builder.choice(data.heroId,data.itemId,data.effectId,{preview:true,styleId:data.styleId});
-        if(stance&&stance.hero.id!==choice.hero.id)throw new Error('Preview supports one hero at a time');
-        if(stance){choice.stanceId=stance.stance.selection??stance.stance.id;const options=await heroStances(builder,choice.hero.id);choice.preferredAnimations=options.options.find(o=>o.id===(stance.stance.selection?.priorities?.ACT_DOTA_LOADOUT??stance.stance.selection?.ids?.find(id=>options.options.find(o=>o.id===id)?.rules?.some(r=>['ALL','ACT_DOTA_LOADOUT'].includes(r.asset??r.Asset)))??stance.stance.id))?.animations??[];}
-        else if((setRows??[choice]).some(c=>itemActivityRules(c.item).length)){
-          try{const options=await heroStances(builder,choice.hero.id,{audit:true});choice.preferredAnimations=options.options.find(o=>(setRows??[choice]).some(c=>c.item.id===o.id))?.animations??[];}catch{/* An unavailable animation table must not break an otherwise valid geometry preview. */}
-        }
-choice.partsOnly=data.partsOnly===true;choice.previewForm=data.previewForm==='demon'||(typeof data.previewForm==='string'&&data.previewForm.startsWith('entity:')&&choice.hero.entitySlots?.[data.previewForm.slice(7)])?data.previewForm:'normal';if(setRows){if(new Set(setRows.map(c=>c.hero.id)).size!==1)throw new Error('Preview supports one hero at a time');choice.selections=setRows;}else if(data.selections)choice.selections=normalizeSelections(builder,{selections:data.selections});
-        if(choice.item.previewUnsupported)return json(res,400,{error:choice.item.previewUnsupported});
-        let buildJob=null;
-        if(data.buildJobId){buildJob=builder.jobs.get(data.buildJobId);if(!buildJob||buildJob.owner!==owner||buildJob.status!=='ready')return json(res,404,{error:'Готовая сборка не найдена'});}
-        if(session)auth.consume(session,'preview');
-        if(choice.hero.id==='legion_commander'&&choice.selections?.some(row=>row.arcana)&&!choice.preferredAnimations?.length)choice.preferredAnimations=['lc_questidle','ARCANA_dualwield_legion_commander_loadout'];const job=previews.create(choice,owner,buildJob);job.preferredAnimations=choice.preferredAnimations??[];tracking.set(job,{selections:selectionStatistics(choice.selections??[choice]),source:session?.origin??'local'});return json(res,202,publicPreview(job));
-      }
-      const adminStaticPart=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})\/parts\/(\d+)$/);
-      if(adminStudioOwner&&adminStaticPart&&staticJobs.has(adminStaticPart[1])){
-        const job=staticJobs.get(adminStaticPart[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});
-        const file=job.partFiles?.[Number(adminStaticPart[2])];if(!file||!fs.existsSync(file))return json(res,404,{error:'Static model missing on server. Re-export/sync the static catalog.'});
-        return serveViewerModel(req,res,file);
-      }
-      const staticMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);if(staticMatch&&staticJobs.has(staticMatch[1])){const job=staticJobs.get(staticMatch[1]);if(job.owner!==owner)return json(res,404,{error:'Preview not found'});if(!staticMatch[2])countModel(job);return json(res,200,staticMatch[2]?{effects:bindViewerEffects(job.effects,builder)}:Object.fromEntries(Object.entries(publicPreview(job)).filter(([key])=>key!=='effects')));}
-      const previewMatch=url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/);
-      if(previewMatch){
-        const job=previews.jobs.get(previewMatch[1]);if(!job||job.owner!==owner)return json(res,404,{error:'Предпросмотр не найден'});
-        if(!previewMatch[2])return json(res,200,publicPreview(job));
-        if(job.status!=='ready')return json(res,409,{error:'Модель ещё не готова'});
-        if(previewMatch[3]?.startsWith('parts/')){const index=Number(previewMatch[3].slice(6)),file=job.partFiles?.[index];if(!file)return json(res,404,{error:'Scene part not found'});res.once('finish',()=>countModel(job));if(adminStudioOwner)return serveViewerModel(req,res,file);res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
-        if(previewMatch[3]==='diagnostics'){res.setHeader('Content-Disposition','attachment; filename=preview-diagnostics.json');return json(res,200,previewDiagnostics(job));}
-        if(previewMatch[3]==='effect'){const file=path.join(job.directory,'effect.json');if(!fs.existsSync(file))return json(res,404,{error:'Данные эффекта не экспортированы'});if(adminStudioOwner){const packet=JSON.parse(fs.readFileSync(file,'utf8'));return json(res,200,{...packet,effects:bindViewerEffects(packet.effects??[],builder)});}res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});return fs.createReadStream(file).pipe(res);}
-        const modelFile=previews.ensureModel(job);res.once('finish',()=>countModel(job));res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'no-store'});return fs.createReadStream(modelFile).pipe(res);
-      }
-      const match=url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})(\/download(?:-ticket)?)?$/);
-      if(match) {
-        const job=builder.jobs.get(match[1]);if(!job||job.owner!==owner)return json(res,404,{error:'Сборка не найдена'});
-        if(!match[2])return json(res,200,publicJob(job));
-        if(job.status!=='ready')return json(res,409,{error:'Сборка ещё не готова'});
-        if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET or HEAD'});
-        if(match[2]==='/download-ticket'){if(req.method!=='GET')return json(res,405,{error:'Use GET'});if(!fs.existsSync(job.file))return json(res,410,{error:'Build file expired. Build the package again.'});const ticket=downloadTickets.issue(job,session);return json(res,200,{downloadPath:'/api/jobs/'+job.id+'/download?download_ticket='+encodeURIComponent(ticket),filename:job.filename??vpkFilename(),expiresIn:600});}
-        return serveDownload(req,res,job);
-      }
-      if(url.pathname==='/api/repack'&&req.method==='POST') {
-        if(!localAdmin)return json(res,403,{error:'Только для локального приложения'});
-        const bytes=builder.repackSample();res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="pak01_dir.vpk"'});return res.end(bytes);
-      }
-      if(url.pathname==='/api/viewer'&&req.method==='POST') {
-        if(!localAdmin)return json(res,403,{error:'Просмотрщик доступен только локально'});
-        if(!config.viewer)throw new Error('Укажи путь к BetterSource2Viewer.exe в config.json');
-        const data=await body(req);let file=path.resolve(root,config.archives[0]);
-        if(data.jobId){const job=builder.jobs.get(data.jobId);if(!job||job.owner!=='local'||job.status!=='ready')throw new Error('Сборка не готова');file=job.file;}
-        // External native renderer; no claims of browser particle parity.
-        const {spawn}=await import('node:child_process');const child=spawn(path.resolve(root,config.viewer),[file],{detached:true,stdio:'ignore',shell:false});
-        await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();return json(res,200,{opened:true});
-      }
-      if(url.pathname==='/hero-pedestal.glb'&&['GET','HEAD'].includes(req.method)){const original=path.join(root,'hero-pedestal.glb'),file=fs.existsSync(original)?original:path.join(root,'public/viewer/assets/hero-pedestal.glb');if(!fs.existsSync(file))return json(res,404,{error:'Пьедестал отсутствует в установленном приложении. Требуется обновление файлов сервера.'});res.writeHead(200,{'Content-Type':'model/gltf-binary','Cache-Control':'public, max-age=86400'});if(req.method==='HEAD')return res.end();const stream=fs.createReadStream(file);stream.on('error',error=>res.destroy(error));res.once('close',()=>stream.destroy());return stream.pipe(res);}
-      if(url.pathname.startsWith('/api/'))return json(res,404,{error:'Маршрут не найден'});
-      if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Use GET'});
-      const isSection=/^\/(effects|sets|cosmetics|weather)\.html$/.test(url.pathname);
-      const isViewer=url.pathname==='/viewer',isWidget=url.pathname==='/widget'||isViewer,isAdmin=url.pathname==='/admin',isAdminSetCatalog=url.pathname==='/admin-set-catalog.html';
-      if(isWidget&&!session)return json(res,401,{error:'Нужна сессия виджета'});
-      const assetOrigin=config.staticViewerBaseUrl?.startsWith('https://')?new URL(config.staticViewerBaseUrl).origin:'';
-      const csp="default-src 'self'; script-src 'self'"+" 'wasm-unsafe-eval'"+"; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net "+assetOrigin+"; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self' "+'blob: '+assetOrigin+"; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors "+(isAdminSetCatalog?"'self'":(isWidget||isAdmin||isSection)&&session?session.origin:"'none'");
-      res.setHeader('Content-Security-Policy',csp);if(/\.(mjs|js)$/.test(url.pathname))res.setHeader('Access-Control-Allow-Origin','*');
-      let file;
-      {const rel=isViewer?'sdk-viewer.html':isAdmin?'admin.html':url.pathname==='/'||isWidget?'index.html':decodeURIComponent(url.pathname.slice(1));file=path.resolve(root,'public',rel);if(!file.startsWith(path.join(root,'public')+path.sep))return json(res,403,{error:'Forbidden'});}
-      if(!fs.existsSync(file)||!fs.statSync(file).isFile())return json(res,404,{error:'Файл не найден'});
-      if(url.pathname.startsWith('/ethereal-media/'))res.setHeader('Cache-Control','public, max-age=86400');
-      const ext=path.extname(file),mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.glb':'model/gltf-binary','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml'}[ext]??'application/octet-stream';
-      res.writeHead(200,{'Content-Type':mime});if(req.method==='HEAD')return res.end();
-      fs.createReadStream(file).pipe(res);
-    } catch(error){if(error.statusCode===429)res.setHeader('Retry-After',String(error.retryAfter));json(res,error.statusCode===429?429:400,{error:error.message,...(error.statusCode===429?{code:error.code,retryAfter:error.retryAfter}:{})});}
+import { fileURLToPath } from 'node:url';
+import { Builder } from './lib/build.mjs';
+import { PreviewService, publicPreview, previewParticleBinding } from './lib/preview.mjs';
+import { WidgetAuth } from './lib/auth.mjs';
+import { requestAccess } from './lib/request-access.mjs';
+import { AdminAuth, Statistics, selectionStatistics, vpkFilename } from './lib/admin.mjs';
+export const root = path.dirname(fileURLToPath(import.meta.url));
+const json = (res, code, data) => {
+  res.writeHead(code, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': res.getHeader('Cache-Control') ?? 'no-store'
   });
-  server.once('close',()=>{testerPortal.dispose();previews.dispose();builder.dispose();});
-  return new Promise((resolve,reject)=>{server.once('error',reject);server.listen(overridePort??config.port,config.host,()=>{const url=`http://${config.host}:${server.address().port}`;console.log(`Dota Effect Studio: ${url}`);resolve({server,builder,auth,previews,url});});});
+  res.end(JSON.stringify(data));
+};
+const ownServerOrigin = (host, config) =>
+  config.publicBaseUrl && new URL(config.publicBaseUrl).host === host
+    ? new URL(config.publicBaseUrl).origin
+    : `http://${host}`;
+async function body(req, maxBytes = 16384) {
+  const chunks = [];
+  let bytes = 0;
+  for await (const chunk of req) {
+    bytes += chunk.length;
+    if (bytes > maxBytes) throw Error('Слишком большой запрос');
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))startServer().then(({server,previews})=>{for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{previews.dispose();server.close();});}).catch(error=>{console.error(error.message);process.exitCode=1;});
+function publicJob(job) {
+  const { file, owner, _terrain, _attackVpk, ...result } = job;
+  return result;
+}
+export function startServer({ root: serverRoot = root, port: overridePort, adminAuth, testerAuth } = {}) {
+  const root = serverRoot;
+  const configPath = path.join(root, 'config.json'),
+    config = {
+      host: '127.0.0.1',
+      port: 8787,
+      ...JSON.parse(
+        fs.readFileSync(fs.existsSync(configPath) ? configPath : path.join(root, 'config.example.json'), 'utf8')
+      )
+    };
+  Object.assign(config, productionBuilderConfig(config));
+  const builder = new Builder(root, config),
+    auth = new WidgetAuth(root),
+    previews = new PreviewService(root, config, builder);
+  const itemIcons = new ItemIcons(root, config, builder.store),
+    tbIconPreviews = new TerrorbladeIconPreviews(builder, itemIcons),
+    techiesIconPreviews = new TechiesIconPreviews(builder, itemIcons);
+  const admin = adminAuth ?? new AdminAuth(root),
+    statistics = new Statistics(root),
+    notifications = new Notifications(root);
+  const staticViewer = createStaticViewer(root, config),
+    staticJobs = new Map(),
+    staticData = new Map();
+  const staticRead = ref => {
+    if (!/^assets\/[a-f0-9]{64}\.json$/.test(ref)) throw Error('Invalid static reference');
+    if (!staticData.has(ref))
+      staticData.set(ref, JSON.parse(fs.readFileSync(path.join(staticViewer.directory, ref), 'utf8')));
+    while (staticData.size > 96) staticData.delete(staticData.keys().next().value);
+    return staticData.get(ref);
+  };
+  const editorProjects = new EditorProjectService(root),
+    editorBuilds = new EditorBuildService(builder);
+  const viewerMetadata = new ViewerMetadata(root, previews.config, builder.store, (...args) => previews.run(...args));
+  const tracking = new WeakMap(),
+    downloadTickets = new DownloadTickets();
+  const count = (key, context) => {
+    try {
+      statistics.increment(key, context);
+    } catch (e) {
+      console.error('Statistics: ' + e.message);
+    }
+  };
+  builder.onReady = job => count('vpks', tracking.get(job));
+  const countModel = job => {
+    if (!job.modelServed) {
+      job.modelServed = true;
+      count('models', tracking.get(job));
+    }
+  };
 
-function bindViewerEffects(entries,builder){return (entries??[]).map(entry=>{if(entry.binding||!entry.packet?.root)return entry;const native=builder.catalog.heroes.flatMap(h=>h.items??[]).find(i=>i.id===entry.itemId)?.nativeOverrides??{};return {...entry,binding:previewParticleBinding(builder.store,native,entry.packet.root)};});}
+  const testerPortal = createTesterPortal({
+    root,
+    config,
+    builder,
+    previews,
+    projects: editorProjects,
+    body,
+    json,
+    auth: testerAuth
+  });
+  const baseBuilder = builder,
+    basePreviews = previews,
+    baseEditorBuilds = editorBuilds;
+  let adminSetContext = null;
+  const adminContext = () => {
+    if (!adminSetContext) {
+      const builder = createAdminSetBuilder(baseBuilder),
+        previews = Object.create(basePreviews);
+      previews.builder = builder;
+      adminSetContext = { builder, previews, editorBuilds: new EditorBuildService(builder) };
+    }
+    return adminSetContext;
+  };
+  const server = http.createServer(async (req, res) => {
+    let builder = baseBuilder,
+      previews = basePreviews,
+      editorBuilds = baseEditorBuilds;
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    try {
+      const host = req.headers.host ?? '',
+        url = new URL(req.url, 'http://localhost');
+      const origin = req.headers.origin;
+      const expectedPort = server.address()?.port;
+      const { allowedHost, localAdmin } = requestAccess(req, config, expectedPort);
+      if (!allowedHost)
+        return json(res, 403, { error: 'Host не разрешён. Укажи publicBaseUrl для серверного режима.' });
+      const testerAccess = await testerPortal.route(req, res, url);
+      if (testerAccess === true) return;
+      if (testerAccess) {
+        ({ builder, previews, editorBuilds } = testerAccess);
+      }
+      if (staticViewer.route(req, res, url)) return;
+      if (url.pathname === '/kinetic-media/manifest.json' && req.method === 'GET')
+        return json(res, 200, readMediaManifest(root));
+      if (url.pathname.startsWith('/kinetic-media/') && ['GET', 'HEAD'].includes(req.method))
+        return serveKineticMedia(req, res, root, url.pathname);
+      if (url.pathname === '/api/notifications' && req.method === 'GET') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=60');
+        return json(res, 200, notifications.feed());
+      }
+      if (url.pathname === '/api/health' && req.method === 'GET') return json(res, 200, { status: 'ready' });
+      if (url.pathname.startsWith('/ethereal-media/')) res.setHeader('Access-Control-Allow-Origin', '*');
+      if (url.pathname.startsWith('/images/personas/')) res.setHeader('Access-Control-Allow-Origin', '*');
+      let adminStudioOwner = testerAccess?.owner ?? null;
+      try {
+        const access = testerAccess
+          ? null
+          : adminSetAccess(req, url, admin, { host, publicBaseUrl: config.publicBaseUrl });
+        if (access?.session) {
+          res.setHeader(
+            'Set-Cookie',
+            ADMIN_SET_COOKIE +
+              '=' +
+              access.token +
+              '; Path=/api/; HttpOnly; SameSite=Strict' +
+              (config.publicBaseUrl?.startsWith('https:') ? '; Secure' : '')
+          );
+          return json(res, 200, { ok: true });
+        }
+        if (access) {
+          adminStudioOwner = access.owner;
+          url.pathname = access.pathname;
+          ({ builder, previews, editorBuilds } = adminContext());
+        }
+      } catch (error) {
+        return json(res, error.status ?? 401, { error: error.message });
+      }
+      const integrationRoute =
+        /^\/api\/(catalog|hero-catalog|catalog-search|model-metadata|cosmetics|cosmetic-icon|item-icon|set-icon|drow-wardrobe|arcana-icon|drow-icon|techies-cart-icon|techies-icon|terrorblade-icon|immortal-icon|ability-icon|stances|inspect|build|preview-view|preview|previews(?:\/|$)|jobs(?:\/|$)|recolor(?:\/|$)|visit|widget\/session)/.test(
+          url.pathname
+        );
+      if (integrationRoute && origin && auth.sites().some(s => !s.disabled && s.origins.includes(origin))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+        res.setHeader('Vary', 'Origin');
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204, {
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'content-type, authorization',
+            'Access-Control-Max-Age': '600'
+          });
+          return res.end();
+        }
+      }
+      if (url.pathname.startsWith('/api/admin/')) {
+        if (origin && origin !== `http://${host}` && origin !== config.publicBaseUrl)
+          return json(res, 403, { error: 'Origin не разрешён' });
+        if (url.pathname === '/api/admin/login' && req.method === 'POST') {
+          const data = await body(req);
+          try {
+            return json(res, 200, { token: await admin.login(data.username, data.password) });
+          } catch (e) {
+            return json(res, 401, { error: e.message });
+          }
+        }
+        const tokenInUrl =
+          req.method === 'GET' && /^\/api\/admin\/(cosmetic-icon|jobs\/[a-f0-9]{32}\/download)$/.test(url.pathname)
+            ? url.searchParams.get('token')
+            : null;
+        const editorCookie = url.pathname.startsWith('/api/admin/editor/')
+          ? req.headers.cookie
+              ?.split(';')
+              .map(x => x.trim())
+              .find(x => x.startsWith('studio-editor='))
+              ?.slice('studio-editor='.length)
+          : null;
+        const adminToken = req.headers.authorization?.replace(/^Bearer /, '') ?? tokenInUrl ?? editorCookie;
+        try {
+          admin.verify(adminToken);
+        } catch (e) {
+          return json(res, 401, { error: e.message });
+        }
+        ({ builder, previews, editorBuilds } = adminContext());
+        const adminOwner = 'admin:' + createHash('sha256').update(adminToken).digest('hex');
+        if (url.pathname === '/api/admin/editor/session' && req.method === 'POST') {
+          res.setHeader(
+            'Set-Cookie',
+            'studio-editor=' +
+              adminToken +
+              '; Path=/api/admin/editor/; HttpOnly; SameSite=Strict' +
+              (config.publicBaseUrl?.startsWith('https:') ? '; Secure' : '')
+          );
+          return json(res, 200, { ok: true });
+        }
+        if (
+          url.pathname.startsWith('/api/admin/editor/') &&
+          (await editorRoute({
+            req,
+            res,
+            url,
+            owner: 'editor-admin',
+            projects: editorProjects,
+            builds: editorBuilds,
+            body: req => body(req, 24 * 1024 * 1024),
+            json,
+            root
+          }))
+        )
+          return;
+        if (url.pathname === '/api/admin/set-catalog' && req.method === 'GET')
+          return json(res, 200, adminSetCatalog(builder.catalog));
+        if (url.pathname === '/api/admin/set-preview' && req.method === 'POST') {
+          const data = adminSetPayload(builder.catalog, await body(req));
+          previews.touch(adminOwner);
+          if (
+            staticViewer.enabled() &&
+            !(testerAccess && data.previewForm?.startsWith('entity:')) &&
+            !requiresMountedArchivePreview(builder.catalog, data)
+          ) {
+            const job = await assembleStaticPreview(data, builder.catalog, staticViewer.manifest(), staticRead),
+              base = config.staticViewerBaseUrl ?? '/static-viewer/';
+            job.parts = job.parts.map(p => ({ ...p, url: base.replace(/\/?$/, '/') + p.url }));
+            job.id = randomBytes(16).toString('hex');
+            job.owner = adminOwner;
+            job.created = Date.now();
+            for (const [key, value] of staticJobs)
+              if (Date.now() - value.created > 30 * 60 * 1000) staticJobs.delete(key);
+            staticJobs.set(job.id, job);
+            while (staticJobs.size > 64) staticJobs.delete(staticJobs.keys().next().value);
+            const { effects, ...metadata } = publicPreview(job);
+            return json(res, 202, metadata);
+          }
+          await prepareSelectionStances(builder, data);
+          const rows = normalizeSelections(builder, data);
+          if (!rows.length) throw Error('Set has no previewable items');
+          const job = previews.create(
+            { ...rows[0], selections: rows, partsOnly: true, previewForm: data.previewForm },
+            adminOwner
+          );
+          return json(res, 202, publicPreview(job));
+        }
+        const adminPreview = url.pathname.match(/^\/api\/admin\/set-previews\/([a-f0-9]{32})(\/(effect|parts\/\d+))?$/);
+        if (adminPreview && req.method === 'GET') {
+          const job = previews.jobs.get(adminPreview[1]) ?? staticJobs.get(adminPreview[1]);
+          if (!job || job.owner !== adminOwner) return json(res, 404, { error: 'Preview not found' });
+          previews.touch(adminOwner);
+          if (!adminPreview[2]) {
+            const { effects, ...metadata } = publicPreview(job);
+            return json(res, 200, metadata);
+          }
+          if (job.status !== 'ready') return json(res, 409, { error: 'Preview is not ready' });
+          if (adminPreview[3] === 'effect') {
+            if (job.effects) return json(res, 200, { effects: job.effects });
+            const file = path.join(job.directory, 'effect.json');
+            if (!fs.existsSync(file)) return json(res, 404, { error: 'Effect unavailable' });
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+            return fs.createReadStream(file).pipe(res);
+          }
+          const index = Number(adminPreview[3].slice(6)),
+            file = job.partFiles?.[index];
+          if (!file) return json(res, 404, { error: 'Scene part unavailable' });
+          res.writeHead(200, { 'Content-Type': 'model/gltf-binary', 'Cache-Control': 'no-store' });
+          return fs.createReadStream(file).pipe(res);
+        }
+        if (url.pathname === '/api/admin/notifications' && req.method === 'GET')
+          return json(res, 200, notifications.feed());
+        if (url.pathname === '/api/admin/notifications' && req.method === 'POST')
+          return json(res, 201, { item: notifications.publish(await body(req)) });
+        if (url.pathname === '/api/admin/notifications/delete' && req.method === 'POST') {
+          notifications.remove((await body(req)).id);
+          return json(res, 200, { ok: true });
+        }
+        const testArcana = url.pathname.match(/^\/api\/admin\/(build-)?test-arcana\/(lina|monkey_king)$/);
+        if (testArcana && !testArcana[1] && req.method === 'GET')
+          return json(res, 200, adminArcanaCatalog(builder, testArcana[2]));
+        if (testArcana && testArcana[1] && req.method === 'POST') {
+          const data = await body(req);
+          vpkFilename(data.vpkNumber ?? 1);
+          const choices = adminArcanaChoices(builder, testArcana[2], data),
+            job = builder.create(choices, adminOwner, { vpkNumber: data.vpkNumber ?? 1 });
+          tracking.set(job, { selections: selectionStatistics(choices), source: 'admin' });
+          return json(res, 202, publicJob(job));
+        }
+        if (url.pathname === '/api/admin/drow-arcana' && req.method === 'GET')
+          return json(res, 200, drowArcanaCatalog(builder));
+        if (url.pathname === '/api/admin/build-drow-arcana' && req.method === 'POST') {
+          const data = await body(req);
+          vpkFilename(data.vpkNumber ?? 1);
+          const choices = drowArcanaChoices(builder, data),
+            job = builder.create(choices, adminOwner, { vpkNumber: data.vpkNumber ?? 1 });
+          tracking.set(job, { selections: selectionStatistics(choices), source: 'admin' });
+          return json(res, 202, publicJob(job));
+        }
+        if (url.pathname === '/api/admin/cosmetics' && req.method === 'GET')
+          return json(
+            res,
+            200,
+            url.searchParams.get('view') === 'browser'
+              ? browserCosmeticCatalog(builder, { admin: true })
+              : cosmeticCatalog(builder, { admin: true })
+          );
+        if (url.pathname === '/api/admin/cosmetic-heroes' && req.method === 'GET')
+          return json(res, 200, {
+            heroes: builder.catalog.heroes.map(h => ({ id: h.id, name: h.name, isPersona: h.isPersona }))
+          });
+        if (url.pathname === '/api/admin/cosmetic-icon' && req.method === 'GET') {
+          const item = cosmeticCatalog(builder, { admin: true }).items.find(i => i.id === url.searchParams.get('id'));
+          if (!item) return json(res, 404, { error: 'Unknown cosmetic' });
+          try {
+            const style = item.styles?.find(s => s.id === url.searchParams.get('styleId'));
+            const file = await itemIcons.get({
+              model: 'models/heroes/techies/techies.vmdl_c',
+              imageInventory: style?.imageInventory ?? item.imageInventory
+            });
+            res.writeHead(200, {
+              'Content-Type': 'image/png',
+              'Cache-Control': 'no-store',
+              'Referrer-Policy': 'no-referrer'
+            });
+            return fs.createReadStream(file).pipe(res);
+          } catch {
+            return json(res, 404, { error: 'Cosmetic image unavailable' });
+          }
+        }
+        if (url.pathname === '/api/admin/build-cosmetics' && req.method === 'POST') {
+          const data = await body(req),
+            cosmetics = cosmeticChoices(builder, data.cosmetics ?? [], { admin: true });
+          if (!cosmetics.length) throw new Error('Choose cosmetics');
+          vpkFilename(data.vpkNumber ?? 1);
+          const job = builder.create([], adminOwner, { vpkNumber: data.vpkNumber ?? 1, cosmetics });
+          tracking.set(job, { selections: [], source: 'admin' });
+          return json(res, 202, publicJob(job));
+        }
+        const adminJob = url.pathname.match(/^\/api\/admin\/jobs\/([a-f0-9]{32})(\/download)?$/);
+        if (adminJob && req.method === 'GET') {
+          const job = builder.jobs.get(adminJob[1]);
+          if (!job || job.owner !== adminOwner) return json(res, 404, { error: 'Build not found' });
+          if (!adminJob[2]) return json(res, 200, publicJob(job));
+          if (job.status !== 'ready') return json(res, 409, { error: 'Build is not ready' });
+          res.writeHead(200, {
+            'Content-Type': job.packageType?.endsWith('-zip') ? 'application/zip' : 'application/octet-stream',
+            'Cache-Control': 'no-store',
+            'Content-Disposition': `attachment; filename="${job.filename ?? vpkFilename()}"`,
+            'Referrer-Policy': 'no-referrer'
+          });
+          return fs.createReadStream(job.file).pipe(res);
+        }
+        if (url.pathname === '/api/admin/statistics' && req.method === 'GET')
+          return json(res, 200, statistics.snapshot(Number(url.searchParams.get('days') ?? 0)));
+        if (url.pathname === '/api/admin/logout' && req.method === 'POST') {
+          admin.logout(adminToken);
+          return json(res, 200, { ok: true });
+        }
+        return json(res, 404, { error: 'Маршрут не найден' });
+      }
+      if (url.pathname === '/api/widget/session' && req.method === 'POST') {
+        const data = await body(req);
+        const token = auth.issue(data.key, origin, data.previousToken);
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+        res.setHeader('Vary', 'Origin');
+        return json(res, 200, { token, expiresIn: 1800 });
+      }
+      if (url.pathname === '/api/widget/session' && req.method === 'OPTIONS') {
+        if (!auth.sites().some(s => !s.disabled && s.origins.includes(origin)))
+          return json(res, 403, { error: 'Origin не разрешён' });
+        res.writeHead(204, {
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Methods': 'POST',
+          'Access-Control-Allow-Headers': 'content-type',
+          Vary: 'Origin'
+        });
+        return res.end();
+      }
+      const ticketDownload = url.pathname.match(/^\/api\/(?:recolor\/)?jobs\/([a-f0-9]{32})\/download$/);
+      if (ticketDownload && url.searchParams.has('download_ticket') && ['GET', 'HEAD'].includes(req.method)) {
+        let ticket;
+        try {
+          ticket = downloadTickets.verify(url.searchParams.get('download_ticket'), ticketDownload[1], auth.sites());
+        } catch (error) {
+          return json(res, 401, { error: error.message });
+        }
+        const job = url.pathname.startsWith('/api/recolor/')
+          ? editorBuilds.jobs.get(ticketDownload[1])
+          : builder.jobs.get(ticketDownload[1]);
+        if (!job || job.owner !== ticket.owner) return json(res, 404, { error: 'Build not found or expired' });
+        if (job.status !== 'ready') return json(res, 409, { error: 'Build is not ready' });
+        return serveDownload(req, res, job);
+      }
+      let session = null;
+      const token = req.headers.authorization?.replace(/^Bearer /, '') ?? url.searchParams.get('token');
+      if (token && !adminStudioOwner) session = auth.verify(token);
+      if (session && origin && origin !== session.origin && origin !== ownServerOrigin(host, config))
+        return json(res, 403, { error: 'Origin токена не совпадает с сайтом' });
+      const allowed = localAdmin || session || adminStudioOwner;
+      if (url.pathname.startsWith('/api/') && !allowed) return json(res, 401, { error: 'Нужна сессия виджета' });
+      const owner = adminStudioOwner ?? (session ? session.id + ':' + session.nonce : 'local');
+      previews.touch(owner);
+      if (url.pathname.startsWith('/api/recolor/')) {
+        const recolorTicket = /^\/api\/recolor\/jobs\/([a-f0-9]{32})\/download-ticket$/.exec(url.pathname);
+        if (recolorTicket && req.method === 'GET') {
+          const job = editorBuilds.jobs.get(recolorTicket[1]);
+          if (!job || job.owner !== owner) return json(res, 404, { error: 'Build not found' });
+          if (job.status !== 'ready') return json(res, 409, { error: 'Build is not ready' });
+          if (!fs.existsSync(job.file)) return json(res, 410, { error: 'Build file expired' });
+          const ticket = downloadTickets.issue(job, session);
+          return json(res, 200, {
+            downloadPath: '/api/recolor/jobs/' + job.id + '/download?download_ticket=' + encodeURIComponent(ticket),
+            filename: job.filename ?? vpkFilename(),
+            expiresIn: 600
+          });
+        }
+
+        if (req.method === 'POST' && session)
+          auth.consume(session, url.pathname === '/api/recolor/build' ? undefined : 'preview');
+        if (url.pathname.startsWith('/api/recolor/editor/')) {
+          const name = url.pathname.slice('/api/recolor/editor/'.length);
+          if (req.method !== 'POST' || !['resource', 'texture', 'particle-preview'].includes(name))
+            return json(res, 404, { error: 'Нет такого действия перекраски' });
+          const mapped = new URL(url);
+          mapped.pathname = '/api/admin/editor/' + name;
+          if (
+            await editorRoute({
+              req,
+              res,
+              url: mapped,
+              owner,
+              projects: editorProjects,
+              builds: editorBuilds,
+              body: r => body(r, 24 * 1024 * 1024),
+              json,
+              root
+            })
+          )
+            return;
+        }
+        if (
+          await testerRecolorRoute({
+            req,
+            res,
+            url,
+            context: { builder, editorBuilds },
+            owner,
+            body,
+            json,
+            prefix: '/api/recolor/'
+          })
+        )
+          return;
+      }
+
+      if (url.pathname === '/api/model-metadata' && req.method === 'POST') {
+        const data = await body(req);
+        if (session) auth.consume(session, 'preview');
+        return json(res, 200, await viewerMetadata.get(data.models, data.animationModels ?? [], data.preferred ?? []));
+      }
+      if (
+        req.method === 'GET' &&
+        (!adminStudioOwner || /^\/api\/(item-icon|set-icon)$/.test(url.pathname)) &&
+        staticViewer.api(req, res, url)
+      )
+        return;
+      if (
+        !adminStudioOwner &&
+        staticViewer.enabled() &&
+        req.method === 'GET' &&
+        /^\/api\/(item-icon|set-icon|cosmetic-icon|stances|cosmetics)$/.test(url.pathname)
+      )
+        return json(res, 404, { error: 'Resource has not been prepublished. Run publish-static-viewer.' });
+      if (url.pathname === '/api/preview-view' && req.method === 'POST') {
+        const data = await body(req);
+        await prepareSelectionStances(builder, data);
+        const choices = normalizeSelections(builder, data);
+        if (session) auth.consume(session, 'preview');
+        count('models', { selections: selectionStatistics(choices), source: session?.origin ?? 'local' });
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/visit' && req.method === 'POST') {
+        count('visits', { source: session?.origin ?? 'local' });
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === '/api/techies-icon' && req.method === 'GET') {
+        let options;
+        try {
+          options = techiesIconRequest(url.searchParams);
+        } catch (error) {
+          return json(res, 400, { error: error.message });
+        }
+        try {
+          const file = await techiesIconPreviews.get(options);
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Techies icon preview unavailable' });
+        }
+      }
+      if (url.pathname === '/api/terrorblade-icon' && req.method === 'GET') {
+        let options;
+        try {
+          options = iconPreviewRequest(url.searchParams);
+        } catch (error) {
+          return json(res, 400, { error: error.message });
+        }
+        try {
+          const file = await tbIconPreviews.get(options);
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Icon preview unavailable' });
+        }
+      }
+      if (url.pathname === '/api/set-icon' && req.method === 'GET') {
+        const hero = builder.catalog.heroes.find(h => h.id === url.searchParams.get('heroId')),
+          set = hero?.sets?.find(s => s.id === url.searchParams.get('setId'));
+        if (!set) return json(res, 404, { error: 'Set not found' });
+        const item = hero.items.find(i => set.items.some(row => row.itemId === i.id));
+        try {
+          const file = await itemIcons.get({ model: item?.model ?? hero.model, imageInventory: set.imageInventory });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Set image unavailable' });
+        }
+      }
+      if (url.pathname === '/api/techies-cart-icon' && req.method === 'GET') {
+        try {
+          const native = techiesArcanaNative(builder.store);
+          const file = await itemIcons.get({
+            model: 'models/heroes/techies/techies_cart.vmdl_c',
+            imageInventory: native?.imageInventory
+          });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Arcana cart icon unavailable' });
+        }
+      }
+      if (url.pathname === '/api/item-icon') {
+        const hero = builder.catalog.heroes.find(h => h.id === url.searchParams.get('heroId')),
+          item = hero?.items.find(i => i.id === url.searchParams.get('itemId'));
+        if (!item) return json(res, 404, { error: 'Item not found' });
+        try {
+          const file = await itemIcons.get(item);
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Inventory icon unavailable' });
+        }
+      }
+      if (url.pathname.startsWith('/images/personas/') && req.method === 'GET') {
+        const id = url.pathname.match(/^\/images\/personas\/([a-z0-9_]+)\.png$/)?.[1],
+          hero = builder.catalog.heroes.find(h => h.id === id && h.isPersona);
+        if (!hero) return json(res, 404, { error: 'Persona not found' });
+        try {
+          const texture = 'panorama/images/heroes/' + hero.personaNpcName + '_png.vtex_c';
+          const file = builder.store.read(texture)
+            ? await itemIcons.getTexture(texture, { model: hero.model })
+            : await itemIcons.get({ model: hero.model, imageInventory: hero.personaInventoryImage });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Persona portrait unavailable' });
+        }
+      }
+      if (url.pathname === '/api/drow-wardrobe' && req.method === 'GET') {
+        res.setHeader('Cache-Control', 'private, max-age=300');
+        return json(res, 200, liveDrowWardrobe(builder));
+      }
+      if (url.pathname === '/api/arcana-icon' && req.method === 'GET') {
+        try {
+          const id = url.searchParams.get('heroId'),
+            raw = url.searchParams.get('style');
+          if (!/^[0-3]$/.test(raw ?? '')) throw Error('Invalid style');
+          const texture = publicArcanaIcons(builder, id, Number(raw))[url.searchParams.get('icon')];
+          if (!texture) throw Error('Unknown arcana icon');
+          const file = await itemIcons.getTexture(texture, {
+            model: builder.catalog.heroes.find(h => h.id === id).model
+          });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Arcana icon unavailable' });
+        }
+      }
+      if (url.pathname === '/api/drow-icon' && req.method === 'GET') {
+        try {
+          const raw = url.searchParams.get('style');
+          if (!['0', '1'].includes(raw)) throw Error('Invalid style');
+          const texture = drowArcanaIcons(builder, Number(raw))[url.searchParams.get('icon')];
+          if (!texture) throw Error('Unknown Drow icon');
+          const file = await itemIcons.getTexture(texture, {
+            model: builder.catalog.heroes.find(h => h.id === 'drow_ranger').model
+          });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Drow icon unavailable' });
+        }
+      }
+      if (url.pathname === '/api/ability-icon' && req.method === 'GET') {
+        const hero = builder.catalog.heroes.find(h => h.id === url.searchParams.get('heroId'));
+        try {
+          if (!hero) throw new Error('Unknown hero');
+          const options = immortalEffectCandidates(hero),
+            ability = abilityCatalog(builder, hero.id, options).find(a => a.id === url.searchParams.get('abilityId'));
+          if (!ability?.texture) throw new Error('Unknown ability');
+          const file = await itemIcons.getTexture(ability.defaultTexture ?? ability.texture, { model: hero.model });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Ability icon unavailable' });
+        }
+      }
+      if (url.pathname === '/api/immortal-icon' && req.method === 'GET') {
+        const hero = builder.catalog.heroes.find(h => h.id === url.searchParams.get('heroId'));
+        const option = hero && immortalEffectCandidates(hero).find(o => o.id === url.searchParams.get('optionId'));
+        try {
+          const entry = immortalIconEntry(option, url.searchParams.get('index'));
+          const texture = url.searchParams.get('variant') === 'classic' ? entry.target : entry.source;
+          const file = await itemIcons.getTexture(texture, { model: hero.model });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Immortal icon unavailable' });
+        }
+      }
+      if (url.pathname === '/api/stances' && req.method === 'GET') {
+        const heroId = url.searchParams.get('heroId'),
+          result = await heroStances(builder, heroId);
+        return json(res, 200, { options: result.options, abilities: abilityCatalog(builder, heroId, result.options) });
+      }
+      if (url.pathname === '/api/cosmetics' && req.method === 'GET')
+        return json(
+          res,
+          200,
+          url.searchParams.get('view') === 'browser'
+            ? browserCosmeticCatalog(builder, { admin: !!testerAccess })
+            : cosmeticCatalog(builder, { admin: !!testerAccess })
+        );
+      if (url.pathname === '/api/cosmetic-icon' && req.method === 'GET') {
+        const item = cosmeticCatalog(builder, { admin: !!testerAccess }).items.find(
+          i => i.id === url.searchParams.get('id')
+        );
+        if (!item) return json(res, 404, { error: 'Unknown cosmetic' });
+        try {
+          const style = item.styles?.find(s => s.id === url.searchParams.get('styleId'));
+          const file = await itemIcons.get({
+            model: 'models/heroes/techies/techies.vmdl_c',
+            imageInventory: style?.imageInventory ?? item.imageInventory
+          });
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'private, max-age=86400' });
+          return fs.createReadStream(file).pipe(res);
+        } catch {
+          return json(res, 404, { error: 'Cosmetic image unavailable' });
+        }
+      }
+      if (url.pathname === '/api/catalog')
+        return json(res, 200, {
+          ...builder.catalog,
+          mode: session ? 'widget' : 'local',
+          patcherReady: fs.existsSync(path.resolve(root, config.patcher)),
+          viewerReady: !!config.viewer && fs.existsSync(path.resolve(root, config.viewer)),
+          assetBridgeReady: fs.existsSync(
+            path.resolve(root, config.assetBridge ?? 'asset-bridge/publish/DotaAssetBridge.exe')
+          ),
+          rubickArcana: true,
+          linaArcana: true,
+          monkeyKingArcana: true,
+          drowArcana: true,
+          terrorbladeArcana: hasTerrorbladeArcana(root),
+          techiesArcana: hasTechiesArcana(root),
+          webParticles: false
+        });
+      if (url.pathname === '/api/inspect' || url.pathname === '/api/build') {
+        if (req.method !== 'POST') return json(res, 405, { error: 'Use POST' });
+        const data = await body(req, url.pathname === '/api/build' ? 512 * 1024 : undefined);
+        await prepareSelectionStances(builder, data, { strict: true });
+        const cosmetics = cosmeticChoices(builder, data.cosmetics ?? [], { admin: !!testerAccess });
+        const choices =
+            Array.isArray(data.selections) && !data.selections.length && cosmetics.length
+              ? []
+              : normalizeSelections(builder, data),
+          choice = choices[0];
+        if (
+          !cosmetics.length &&
+          data.mode === 'set' &&
+          choices.every(c => !c.hero.isPersona && !c.stance && c.item.isDefault && !c.effects.length)
+        )
+          throw new Error('Choose at least one cosmetic');
+        if (url.pathname === '/api/inspect') {
+          if (!choice) return json(res, 400, { error: 'Select a hero item to inspect' });
+          const r = builder.inspect(choice);
+          return json(res, 200, {
+            files: [...r.files].map(([name, bytes]) => ({ name, size: bytes.length })),
+            missing: r.missing,
+            replacementTarget: r.replacementTarget
+          });
+        }
+        vpkFilename(data.vpkNumber ?? 1);
+        if (session) auth.consume(session);
+        const job = builder.create(choices, owner, { vpkNumber: data.vpkNumber ?? 1, cosmetics });
+        tracking.set(job, { selections: selectionStatistics(choices), source: session?.origin ?? 'local' });
+        return json(res, 202, publicJob(job));
+      }
+      if (url.pathname === '/api/preview' && req.method === 'POST') {
+        const data = await body(req);
+        if (
+          staticViewer.enabled() &&
+          !(testerAccess && data.previewForm?.startsWith('entity:')) &&
+          !requiresMountedArchivePreview(builder.catalog, data)
+        ) {
+          for (const [key, value] of staticJobs)
+            if (Date.now() - value.created > 30 * 60 * 1000) staticJobs.delete(key);
+          if (session) auth.consume(session, 'preview');
+          const manifest = staticViewer.manifest();
+          const job = await assembleStaticPreview(data, builder.catalog, manifest, staticRead);
+          const base = config.staticViewerBaseUrl ?? '/static-viewer/';
+          job.parts = job.parts.map(p => ({ ...p, url: base.replace(/\/?$/, '/') + p.url }));
+          job.id = randomBytes(16).toString('hex');
+          job.owner = owner;
+          job.created = Date.now();
+          if (adminStudioOwner) {
+            job.partFiles = job.parts.map(p => {
+              const name = path.basename(new URL(p.url, 'http://static').pathname);
+              if (!/^[a-f0-9]{64}\.glb$/.test(name)) throw Error('Invalid static model path');
+              return path.join(staticViewer.directory, 'assets', name);
+            });
+            job.parts = job.parts.map((p, i) => ({
+              ...p,
+              key: p.key ?? path.basename(job.partFiles[i], '.glb'),
+              url:
+                (testerAccess ? '/api/tester/studio/previews/' : '/api/admin/set-studio/previews/') +
+                job.id +
+                '/parts/' +
+                i
+            }));
+          }
+          tracking.set(job, {
+            source: session?.origin ?? 'local',
+            selections: job.selectedItems.map(item => ({
+              hero: { id: job.heroId, name: builder.catalog.heroes.find(h => h.id === job.heroId)?.name ?? job.heroId },
+              item,
+              effects: []
+            }))
+          });
+          staticJobs.set(job.id, job);
+          while (staticJobs.size > 64) staticJobs.delete(staticJobs.keys().next().value);
+          const { effects, ...metadata } = publicPreview(job);
+          return json(res, 202, metadata);
+        }
+        let setRows = data.mode === 'set' ? normalizeSelections(builder, data) : null;
+        const stance = setRows?.find(c => c.stance);
+        if (setRows) {
+          setRows = setRows.filter(c => !c.stance);
+          if (!setRows.length && stance) {
+            const slot = Object.keys(stance.hero.defaultSlotModels ?? {})[0];
+            setRows = [builder.cosmeticChoice(stance.hero.id, null, slot)];
+          }
+        }
+        if (stance && setRows) setRows = kineticBuildChoices(setRows, [stance]);
+        const choice = setRows
+          ? { ...setRows[0] }
+          : builder.choice(data.heroId, data.itemId, data.effectId, { preview: true, styleId: data.styleId });
+        if (stance && stance.hero.id !== choice.hero.id) throw new Error('Preview supports one hero at a time');
+        if (stance) {
+          choice.stanceId = stance.stance.selection ?? stance.stance.id;
+          const options = await heroStances(builder, choice.hero.id);
+          choice.preferredAnimations =
+            options.options.find(
+              o =>
+                o.id ===
+                (stance.stance.selection?.priorities?.ACT_DOTA_LOADOUT ??
+                  stance.stance.selection?.ids?.find(id =>
+                    options.options
+                      .find(o => o.id === id)
+                      ?.rules?.some(r => ['ALL', 'ACT_DOTA_LOADOUT'].includes(r.asset ?? r.Asset))
+                  ) ??
+                  stance.stance.id)
+            )?.animations ?? [];
+        } else if ((setRows ?? [choice]).some(c => itemActivityRules(c.item).length)) {
+          try {
+            const options = await heroStances(builder, choice.hero.id, { audit: true });
+            choice.preferredAnimations =
+              options.options.find(o => (setRows ?? [choice]).some(c => c.item.id === o.id))?.animations ?? [];
+          } catch {
+            /* An unavailable animation table must not break an otherwise valid geometry preview. */
+          }
+        }
+        choice.partsOnly = data.partsOnly === true;
+        choice.previewForm =
+          data.previewForm === 'demon' ||
+          (typeof data.previewForm === 'string' &&
+            data.previewForm.startsWith('entity:') &&
+            choice.hero.entitySlots?.[data.previewForm.slice(7)])
+            ? data.previewForm
+            : 'normal';
+        if (setRows) {
+          if (new Set(setRows.map(c => c.hero.id)).size !== 1) throw new Error('Preview supports one hero at a time');
+          choice.selections = setRows;
+        } else if (data.selections) choice.selections = normalizeSelections(builder, { selections: data.selections });
+        if (choice.item.previewUnsupported) return json(res, 400, { error: choice.item.previewUnsupported });
+        let buildJob = null;
+        if (data.buildJobId) {
+          buildJob = builder.jobs.get(data.buildJobId);
+          if (!buildJob || buildJob.owner !== owner || buildJob.status !== 'ready')
+            return json(res, 404, { error: 'Готовая сборка не найдена' });
+        }
+        if (session) auth.consume(session, 'preview');
+        if (
+          choice.hero.id === 'legion_commander' &&
+          choice.selections?.some(row => row.arcana) &&
+          !choice.preferredAnimations?.length
+        )
+          choice.preferredAnimations = ['lc_questidle', 'ARCANA_dualwield_legion_commander_loadout'];
+        const job = previews.create(choice, owner, buildJob);
+        job.preferredAnimations = choice.preferredAnimations ?? [];
+        tracking.set(job, {
+          selections: selectionStatistics(choice.selections ?? [choice]),
+          source: session?.origin ?? 'local'
+        });
+        return json(res, 202, publicPreview(job));
+      }
+      const adminStaticPart = url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})\/parts\/(\d+)$/);
+      if (adminStudioOwner && adminStaticPart && staticJobs.has(adminStaticPart[1])) {
+        const job = staticJobs.get(adminStaticPart[1]);
+        if (job.owner !== owner) return json(res, 404, { error: 'Preview not found' });
+        const file = job.partFiles?.[Number(adminStaticPart[2])];
+        if (!file || !fs.existsSync(file))
+          return json(res, 404, { error: 'Static model missing on server. Re-export/sync the static catalog.' });
+        return serveViewerModel(req, res, file);
+      }
+      const staticMatch = url.pathname.match(/^\/api\/previews\/([a-f0-9]{32})(\/effect)?$/);
+      if (staticMatch && staticJobs.has(staticMatch[1])) {
+        const job = staticJobs.get(staticMatch[1]);
+        if (job.owner !== owner) return json(res, 404, { error: 'Preview not found' });
+        if (!staticMatch[2]) countModel(job);
+        return json(
+          res,
+          200,
+          staticMatch[2]
+            ? { effects: bindViewerEffects(job.effects, builder) }
+            : Object.fromEntries(Object.entries(publicPreview(job)).filter(([key]) => key !== 'effects'))
+        );
+      }
+      const previewMatch = url.pathname.match(
+        /^\/api\/previews\/([a-f0-9]{32})(\/(model|effect|diagnostics|parts\/\d+))?$/
+      );
+      if (previewMatch) {
+        const job = previews.jobs.get(previewMatch[1]);
+        if (!job || job.owner !== owner) return json(res, 404, { error: 'Предпросмотр не найден' });
+        if (!previewMatch[2]) return json(res, 200, publicPreview(job));
+        if (job.status !== 'ready') return json(res, 409, { error: 'Модель ещё не готова' });
+        if (previewMatch[3]?.startsWith('parts/')) {
+          const index = Number(previewMatch[3].slice(6)),
+            file = job.partFiles?.[index];
+          if (!file) return json(res, 404, { error: 'Scene part not found' });
+          res.once('finish', () => countModel(job));
+          if (adminStudioOwner) return serveViewerModel(req, res, file);
+          res.writeHead(200, { 'Content-Type': 'model/gltf-binary', 'Cache-Control': 'no-store' });
+          return fs.createReadStream(file).pipe(res);
+        }
+        if (previewMatch[3] === 'diagnostics') {
+          res.setHeader('Content-Disposition', 'attachment; filename=preview-diagnostics.json');
+          return json(res, 200, previewDiagnostics(job));
+        }
+        if (previewMatch[3] === 'effect') {
+          const file = path.join(job.directory, 'effect.json');
+          if (!fs.existsSync(file)) return json(res, 404, { error: 'Данные эффекта не экспортированы' });
+          if (adminStudioOwner) {
+            const packet = JSON.parse(fs.readFileSync(file, 'utf8'));
+            return json(res, 200, { ...packet, effects: bindViewerEffects(packet.effects ?? [], builder) });
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          return fs.createReadStream(file).pipe(res);
+        }
+        const modelFile = previews.ensureModel(job);
+        res.once('finish', () => countModel(job));
+        res.writeHead(200, { 'Content-Type': 'model/gltf-binary', 'Cache-Control': 'no-store' });
+        return fs.createReadStream(modelFile).pipe(res);
+      }
+      const match = url.pathname.match(/^\/api\/jobs\/([a-f0-9]{32})(\/download(?:-ticket)?)?$/);
+      if (match) {
+        const job = builder.jobs.get(match[1]);
+        if (!job || job.owner !== owner) return json(res, 404, { error: 'Сборка не найдена' });
+        if (!match[2]) return json(res, 200, publicJob(job));
+        if (job.status !== 'ready') return json(res, 409, { error: 'Сборка ещё не готова' });
+        if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'Use GET or HEAD' });
+        if (match[2] === '/download-ticket') {
+          if (req.method !== 'GET') return json(res, 405, { error: 'Use GET' });
+          if (!fs.existsSync(job.file))
+            return json(res, 410, { error: 'Build file expired. Build the package again.' });
+          const ticket = downloadTickets.issue(job, session);
+          return json(res, 200, {
+            downloadPath: '/api/jobs/' + job.id + '/download?download_ticket=' + encodeURIComponent(ticket),
+            filename: job.filename ?? vpkFilename(),
+            expiresIn: 600
+          });
+        }
+        return serveDownload(req, res, job);
+      }
+      if (url.pathname === '/api/repack' && req.method === 'POST') {
+        if (!localAdmin) return json(res, 403, { error: 'Только для локального приложения' });
+        const bytes = builder.repackSample();
+        res.writeHead(200, {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="pak01_dir.vpk"'
+        });
+        return res.end(bytes);
+      }
+      if (url.pathname === '/api/viewer' && req.method === 'POST') {
+        if (!localAdmin) return json(res, 403, { error: 'Просмотрщик доступен только локально' });
+        if (!config.viewer) throw new Error('Укажи путь к BetterSource2Viewer.exe в config.json');
+        const data = await body(req);
+        let file = path.resolve(root, config.archives[0]);
+        if (data.jobId) {
+          const job = builder.jobs.get(data.jobId);
+          if (!job || job.owner !== 'local' || job.status !== 'ready') throw new Error('Сборка не готова');
+          file = job.file;
+        }
+        // External native renderer; no claims of browser particle parity.
+        const { spawn } = await import('node:child_process');
+        const child = spawn(path.resolve(root, config.viewer), [file], {
+          detached: true,
+          stdio: 'ignore',
+          shell: false
+        });
+        await new Promise((resolve, reject) => {
+          child.once('spawn', resolve);
+          child.once('error', reject);
+        });
+        child.unref();
+        return json(res, 200, { opened: true });
+      }
+      if (url.pathname === '/hero-pedestal.glb' && ['GET', 'HEAD'].includes(req.method)) {
+        const original = path.join(root, 'hero-pedestal.glb'),
+          file = fs.existsSync(original) ? original : path.join(root, 'public/viewer/assets/hero-pedestal.glb');
+        if (!fs.existsSync(file))
+          return json(res, 404, {
+            error: 'Пьедестал отсутствует в установленном приложении. Требуется обновление файлов сервера.'
+          });
+        res.writeHead(200, { 'Content-Type': 'model/gltf-binary', 'Cache-Control': 'public, max-age=86400' });
+        if (req.method === 'HEAD') return res.end();
+        const stream = fs.createReadStream(file);
+        stream.on('error', error => res.destroy(error));
+        res.once('close', () => stream.destroy());
+        return stream.pipe(res);
+      }
+      if (url.pathname.startsWith('/api/')) return json(res, 404, { error: 'Маршрут не найден' });
+      if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'Use GET' });
+      const isSection = /^\/(effects|sets|cosmetics|weather)\.html$/.test(url.pathname);
+      const isViewer = url.pathname === '/viewer',
+        isWidget = url.pathname === '/widget' || isViewer,
+        isAdmin = url.pathname === '/admin',
+        isAdminSetCatalog = url.pathname === '/admin-set-catalog.html';
+      if (isWidget && !session) return json(res, 401, { error: 'Нужна сессия виджета' });
+      const assetOrigin = config.staticViewerBaseUrl?.startsWith('https://')
+        ? new URL(config.staticViewerBaseUrl).origin
+        : '';
+      const csp =
+        "default-src 'self'; script-src 'self'" +
+        " 'wasm-unsafe-eval'" +
+        "; style-src 'self'; img-src 'self' data: blob: https://cdn.cloudflare.steamstatic.com https://static.wikia.nocookie.net " +
+        assetOrigin +
+        "; media-src 'self' https://static.wikia.nocookie.net; connect-src 'self' " +
+        'blob: ' +
+        assetOrigin +
+        "; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors " +
+        (isAdminSetCatalog ? "'self'" : (isWidget || isAdmin || isSection) && session ? session.origin : "'none'");
+      res.setHeader('Content-Security-Policy', csp);
+      if (/\.(mjs|js)$/.test(url.pathname)) res.setHeader('Access-Control-Allow-Origin', '*');
+      let file;
+      {
+        const rel = isViewer
+          ? 'sdk-viewer.html'
+          : isAdmin
+            ? 'admin.html'
+            : url.pathname === '/' || isWidget
+              ? 'index.html'
+              : decodeURIComponent(url.pathname.slice(1));
+        file = path.resolve(root, 'public', rel);
+        if (!file.startsWith(path.join(root, 'public') + path.sep)) return json(res, 403, { error: 'Forbidden' });
+      }
+      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return json(res, 404, { error: 'Файл не найден' });
+      if (url.pathname.startsWith('/ethereal-media/')) res.setHeader('Cache-Control', 'public, max-age=86400');
+      const ext = path.extname(file),
+        mime =
+          {
+            '.html': 'text/html; charset=utf-8',
+            '.css': 'text/css',
+            '.js': 'text/javascript',
+            '.mjs': 'text/javascript',
+            '.json': 'application/json',
+            '.glb': 'model/gltf-binary',
+            '.webp': 'image/webp',
+            '.png': 'image/png',
+            '.svg': 'image/svg+xml'
+          }[ext] ?? 'application/octet-stream';
+      res.writeHead(200, { 'Content-Type': mime });
+      if (req.method === 'HEAD') return res.end();
+      fs.createReadStream(file).pipe(res);
+    } catch (error) {
+      if (error.statusCode === 429) res.setHeader('Retry-After', String(error.retryAfter));
+      json(res, error.statusCode === 429 ? 429 : 400, {
+        error: error.message,
+        ...(error.statusCode === 429 ? { code: error.code, retryAfter: error.retryAfter } : {})
+      });
+    }
+  });
+  server.once('close', () => {
+    testerPortal.dispose();
+    previews.dispose();
+    builder.dispose();
+  });
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(overridePort ?? config.port, config.host, () => {
+      const url = `http://${config.host}:${server.address().port}`;
+      console.log(`Dota Effect Studio: ${url}`);
+      resolve({ server, builder, auth, previews, url });
+    });
+  });
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+  startServer()
+    .then(({ server, previews }) => {
+      for (const signal of ['SIGINT', 'SIGTERM'])
+        process.once(signal, () => {
+          previews.dispose();
+          server.close();
+        });
+    })
+    .catch(error => {
+      console.error(error.message);
+      process.exitCode = 1;
+    });
+
+function bindViewerEffects(entries, builder) {
+  return (entries ?? []).map(entry => {
+    if (entry.binding || !entry.packet?.root) return entry;
+    const native =
+      builder.catalog.heroes.flatMap(h => h.items ?? []).find(i => i.id === entry.itemId)?.nativeOverrides ?? {};
+    return { ...entry, binding: previewParticleBinding(builder.store, native, entry.packet.root) };
+  });
+}

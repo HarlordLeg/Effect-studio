@@ -1,39 +1,374 @@
-import test from 'node:test';import assert from 'node:assert/strict';
-import {translateStyles,selectors,declarations,assetUrl} from '../lib/hud-creator/panorama-css.mjs';
-import {resourceName,imageCandidates,buildScene} from '../lib/hud-creator/scene.mjs';
-import {navigationFor} from '../lib/hud-creator/renderer.mjs';
-test('Panorama child selectors survive translation and keep native type selectors scoped',()=>{const {css}=translateStyles([{css:'DOTAHud > Panel.Rows > Label {color:#12ab34;flow-children:right;} #Panel + Label{height:30px;}'}],{scope:'hud'});const primary=css.replace(/:is\((\[data-p-tag="[^"]+"\]),\[data-p-alias~="[^"]+"\]\)/g,'$1');assert.ok(css.includes('[data-p-alias~="Panel"]'));assert.match(primary,/\[data-p-tag="DOTAHud"\] > \[data-p-tag="Panel"\]\.Rows > \[data-p-tag="Label"\]\[data-p-context~="hud"\]/);assert.match(css,/color:#12ab34/);assert.match(css,/--p-flow:right/);assert.match(primary,/#Panel \+ \[data-p-tag="Label"\]/);});
-test('native selection states translate without invalidating a comma-separated CSS rule',()=>{assert.equal(selectors('RadioButton:selected,Button:disabled'), ':is([data-p-tag="RadioButton"],[data-p-alias~="RadioButton"]).p-selected,:is([data-p-tag="Button"],[data-p-alias~="Button"]).p-disabled');const r=translateStyles([{css:'RadioButton:selected,Button{opacity:1;}'}]);assert(!r.css.includes(':selected'));});
-test('CSS tokenizer preserves separators inside quoted resource paths and gradients',()=>{const s=declarations('background-image:url("s2r://panorama/images/hud/a_png.vtex");background-color:gradient(linear,0% 0%,0% 100%,from(#fff),to(#000));vertical-align:middle;');assert.match(s,/asset\?path=panorama%2Fimages%2Fhud%2Fa_png.vtex/);assert.match(s,/-webkit-gradient\(/);assert.match(s,/--p-va:center/);assert.equal(assetUrl('https://host/evil.svg'),null);assert.equal(assetUrl('panorama/images/../evil.svg'),null);});
-test('real resource names resolve CSS imports and images without traversing out of panorama',()=>{assert.equal(resourceName('file://{resources}/styles/hud/hud_reborn.css'),'panorama/styles/hud/hud_reborn.vcss_c');assert.equal(resourceName('s2r://panorama/layout/hud/hud_reborn.vxml'),'panorama/layout/hud/hud_reborn.vxml_c');assert.deepEqual(imageCandidates('file://{images}/hud/foo.png'),['panorama/images/hud/foo.png','panorama/images/hud/foo.vtex_c']);assert.equal(resourceName('/etc/passwd'),null);});
-test('authored talent, shop and scoreboard actions navigate to their real overlay views',()=>{assert.equal(navigationFor({attributes:{onactivate:'DOTAHUDTalentTreeClicked()'}}),'talents');assert.equal(navigationFor({attributes:{onactivate:'DOTAShopToggle()'}}),'shop');assert.equal(navigationFor({attributes:{onactivate:'DOTAHUDToggleScoreboard()'}}),'scoreboard');assert.equal(navigationFor({attributes:{onactivate:'Unrelated()'}}),null);});
-test('scene closure reads exact stat-branch layout, orders CSS dependencies first and omits game scripts from execution',async()=>{const hud='panorama/layout/hud/hud_reborn.vxml_c',talent='panorama/layout/hud/dota_hud_stat_branch.vxml_c',css='panorama/styles/hud/hud_reborn.vcss_c',base='panorama/styles/dotastyles.vcss_c';const records=new Map([[hud,{tree:[{target:'root',kind:'DOTAHud',attributes:{},children:[]}],panels:[],includes:[css,'panorama/scripts/hud/hud_reborn.vjs']}],[talent,{tree:[{target:'tree',kind:'DOTAStatBranch',attributes:{},children:[]}],panels:[]}],[css,{css:'@import url("s2r://panorama/styles/dotastyles.vcss");DOTAHud{width:100%;}'}],[base,{css:'Label{font-size:18px;}'}]]);const service={builder:{store:{has:n=>records.has(n)}},layouts:()=>[hud,talent].map(name=>({name,scene:'hud'})),inspectResources:async names=>names.map(n=>records.get(n)),localization:()=>({})};const s=await buildScene(service,{scene:'hud'});assert.equal(s.roots.talents,talent);assert.deepEqual(s.styles.map(x=>x.name),[base,css]);assert(s.documents.every(x=>x.layout.endsWith('.vxml_c')));});
-test('a malformed Valve gradient cannot consume later declarations or later stylesheet rules',()=>{const s=translateStyles([{css:'.TopBarMenuItem Label{color:#777f88;color:gradient(linear,0% 0%,0% 100%,from(#4f545a,to(#777f88));font-size:18px;horizontal-align:center;} #After{width:366px;}'}]);assert.match(s.css,/color:#777f88/);assert.match(s.css,/font-size:18px/);assert.match(s.css,/--p-ha:center/);assert.match(s.css,/#After[^}]*width:366px/);assert(!s.css.includes('from('));});
-import {validateProject,inlineStyle} from '../lib/hud-creator/model.mjs';import {quickParts,childParts} from '../lib/hud-creator/parts.mjs';
-test('recoloring a bar replaces its authored background; PNG fit preserves the target geometry',()=>{const base={id:'hp',scene:'hud',layout:'panorama/layout/hud/dota_hud_health_mana.vxml_c',target:'HealthProgress_Left',kind:'Panel',background:'#ab1234'};assert.match(inlineStyle(base),/background-color:#ab1234/);assert.match(inlineStyle(base),/background-image:none/);const image={...base,kind:'Label',imageFit:'contain',imageBox:{width:320,height:26}};const rules=inlineStyle(image,'panorama/images/harlord/hud/creator/hash.vtex');assert.match(rules,/background-size:contain/);assert.match(rules,/width:320px;height:26px/);assert.match(rules,/color:#00000000/);assert(!/(^|;)position:/.test(rules));assert.throws(()=>validateProject({version:1,name:'x',elements:[{...base,imageFit:'evil'}]}));assert.throws(()=>validateProject({version:1,name:'x',elements:[{...base,imageBox:{width:Infinity,height:20}}]}));});
-test('semantic picks use real inner labels and progress fills, not whole HUD containers',()=>{const d={layout:'panorama/layout/play.vxml_c',tree:[{target:'PlayButton',kind:'Button',children:[{target:'@543',kind:'Label',children:[]}]}],panels:[{id:'PlayButton',kind:'Button'},{id:'@543',kind:'Label'}]},h={layout:'panorama/layout/hud/dota_hud_health_mana.vxml_c',panels:[{id:'HealthProgress_Left',kind:'Panel'},{id:'HealthLabel',kind:'Label'},{id:'ManaProgress_Left',kind:'Panel'},{id:'ManaLabel',kind:'Label'}]};const p={documents:[d,h]},parts=quickParts(p);assert.equal(parts.find(p=>p.key==='play-text').target,'@543');assert.equal(parts.find(p=>p.key==='HealthProgress_Left').target,'HealthProgress_Left');assert.equal(childParts(p,{layout:d.layout,target:'PlayButton'})[0].target,'@543');});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { translateStyles, selectors, declarations, assetUrl } from '../lib/hud-creator/panorama-css.mjs';
+import { resourceName, imageCandidates, buildScene } from '../lib/hud-creator/scene.mjs';
+import { navigationFor } from '../lib/hud-creator/renderer.mjs';
+test('Panorama child selectors survive translation and keep native type selectors scoped', () => {
+  const { css } = translateStyles(
+    [{ css: 'DOTAHud > Panel.Rows > Label {color:#12ab34;flow-children:right;} #Panel + Label{height:30px;}' }],
+    { scope: 'hud' }
+  );
+  const primary = css.replace(/:is\((\[data-p-tag="[^"]+"\]),\[data-p-alias~="[^"]+"\]\)/g, '$1');
+  assert.ok(css.includes('[data-p-alias~="Panel"]'));
+  assert.match(
+    primary,
+    /\[data-p-tag="DOTAHud"\] > \[data-p-tag="Panel"\]\.Rows > \[data-p-tag="Label"\]\[data-p-context~="hud"\]/
+  );
+  assert.match(css, /color:#12ab34/);
+  assert.match(css, /--p-flow:right/);
+  assert.match(primary, /#Panel \+ \[data-p-tag="Label"\]/);
+});
+test('native selection states translate without invalidating a comma-separated CSS rule', () => {
+  assert.equal(
+    selectors('RadioButton:selected,Button:disabled'),
+    ':is([data-p-tag="RadioButton"],[data-p-alias~="RadioButton"]).p-selected,:is([data-p-tag="Button"],[data-p-alias~="Button"]).p-disabled'
+  );
+  const r = translateStyles([{ css: 'RadioButton:selected,Button{opacity:1;}' }]);
+  assert(!r.css.includes(':selected'));
+});
+test('CSS tokenizer preserves separators inside quoted resource paths and gradients', () => {
+  const s = declarations(
+    'background-image:url("s2r://panorama/images/hud/a_png.vtex");background-color:gradient(linear,0% 0%,0% 100%,from(#fff),to(#000));vertical-align:middle;'
+  );
+  assert.match(s, /asset\?path=panorama%2Fimages%2Fhud%2Fa_png.vtex/);
+  assert.match(s, /-webkit-gradient\(/);
+  assert.match(s, /--p-va:center/);
+  assert.equal(assetUrl('https://host/evil.svg'), null);
+  assert.equal(assetUrl('panorama/images/../evil.svg'), null);
+});
+test('real resource names resolve CSS imports and images without traversing out of panorama', () => {
+  assert.equal(resourceName('file://{resources}/styles/hud/hud_reborn.css'), 'panorama/styles/hud/hud_reborn.vcss_c');
+  assert.equal(resourceName('s2r://panorama/layout/hud/hud_reborn.vxml'), 'panorama/layout/hud/hud_reborn.vxml_c');
+  assert.deepEqual(imageCandidates('file://{images}/hud/foo.png'), [
+    'panorama/images/hud/foo.png',
+    'panorama/images/hud/foo.vtex_c'
+  ]);
+  assert.equal(resourceName('/etc/passwd'), null);
+});
+test('authored talent, shop and scoreboard actions navigate to their real overlay views', () => {
+  assert.equal(navigationFor({ attributes: { onactivate: 'DOTAHUDTalentTreeClicked()' } }), 'talents');
+  assert.equal(navigationFor({ attributes: { onactivate: 'DOTAShopToggle()' } }), 'shop');
+  assert.equal(navigationFor({ attributes: { onactivate: 'DOTAHUDToggleScoreboard()' } }), 'scoreboard');
+  assert.equal(navigationFor({ attributes: { onactivate: 'Unrelated()' } }), null);
+});
+test('scene closure reads exact stat-branch layout, orders CSS dependencies first and omits game scripts from execution', async () => {
+  const hud = 'panorama/layout/hud/hud_reborn.vxml_c',
+    talent = 'panorama/layout/hud/dota_hud_stat_branch.vxml_c',
+    css = 'panorama/styles/hud/hud_reborn.vcss_c',
+    base = 'panorama/styles/dotastyles.vcss_c';
+  const records = new Map([
+    [
+      hud,
+      {
+        tree: [{ target: 'root', kind: 'DOTAHud', attributes: {}, children: [] }],
+        panels: [],
+        includes: [css, 'panorama/scripts/hud/hud_reborn.vjs']
+      }
+    ],
+    [talent, { tree: [{ target: 'tree', kind: 'DOTAStatBranch', attributes: {}, children: [] }], panels: [] }],
+    [css, { css: '@import url("s2r://panorama/styles/dotastyles.vcss");DOTAHud{width:100%;}' }],
+    [base, { css: 'Label{font-size:18px;}' }]
+  ]);
+  const service = {
+    builder: { store: { has: n => records.has(n) } },
+    layouts: () => [hud, talent].map(name => ({ name, scene: 'hud' })),
+    inspectResources: async names => names.map(n => records.get(n)),
+    localization: () => ({})
+  };
+  const s = await buildScene(service, { scene: 'hud' });
+  assert.equal(s.roots.talents, talent);
+  assert.deepEqual(
+    s.styles.map(x => x.name),
+    [base, css]
+  );
+  assert(s.documents.every(x => x.layout.endsWith('.vxml_c')));
+});
+test('a malformed Valve gradient cannot consume later declarations or later stylesheet rules', () => {
+  const s = translateStyles([
+    {
+      css: '.TopBarMenuItem Label{color:#777f88;color:gradient(linear,0% 0%,0% 100%,from(#4f545a,to(#777f88));font-size:18px;horizontal-align:center;} #After{width:366px;}'
+    }
+  ]);
+  assert.match(s.css, /color:#777f88/);
+  assert.match(s.css, /font-size:18px/);
+  assert.match(s.css, /--p-ha:center/);
+  assert.match(s.css, /#After[^}]*width:366px/);
+  assert(!s.css.includes('from('));
+});
+import { validateProject, inlineStyle } from '../lib/hud-creator/model.mjs';
+import { quickParts, childParts } from '../lib/hud-creator/parts.mjs';
+test('recoloring a bar replaces its authored background; PNG fit preserves the target geometry', () => {
+  const base = {
+    id: 'hp',
+    scene: 'hud',
+    layout: 'panorama/layout/hud/dota_hud_health_mana.vxml_c',
+    target: 'HealthProgress_Left',
+    kind: 'Panel',
+    background: '#ab1234'
+  };
+  assert.match(inlineStyle(base), /background-color:#ab1234/);
+  assert.match(inlineStyle(base), /background-image:none/);
+  const image = { ...base, kind: 'Label', imageFit: 'contain', imageBox: { width: 320, height: 26 } };
+  const rules = inlineStyle(image, 'panorama/images/harlord/hud/creator/hash.vtex');
+  assert.match(rules, /background-size:contain/);
+  assert.match(rules, /width:320px;height:26px/);
+  assert.match(rules, /color:#00000000/);
+  assert(!/(^|;)position:/.test(rules));
+  assert.throws(() => validateProject({ version: 1, name: 'x', elements: [{ ...base, imageFit: 'evil' }] }));
+  assert.throws(() =>
+    validateProject({ version: 1, name: 'x', elements: [{ ...base, imageBox: { width: Infinity, height: 20 } }] })
+  );
+});
+test('semantic picks use real inner labels and progress fills, not whole HUD containers', () => {
+  const d = {
+      layout: 'panorama/layout/play.vxml_c',
+      tree: [{ target: 'PlayButton', kind: 'Button', children: [{ target: '@543', kind: 'Label', children: [] }] }],
+      panels: [
+        { id: 'PlayButton', kind: 'Button' },
+        { id: '@543', kind: 'Label' }
+      ]
+    },
+    h = {
+      layout: 'panorama/layout/hud/dota_hud_health_mana.vxml_c',
+      panels: [
+        { id: 'HealthProgress_Left', kind: 'Panel' },
+        { id: 'HealthLabel', kind: 'Label' },
+        { id: 'ManaProgress_Left', kind: 'Panel' },
+        { id: 'ManaLabel', kind: 'Label' }
+      ]
+    };
+  const p = { documents: [d, h] },
+    parts = quickParts(p);
+  assert.equal(parts.find(p => p.key === 'play-text').target, '@543');
+  assert.equal(parts.find(p => p.key === 'HealthProgress_Left').target, 'HealthProgress_Left');
+  assert.equal(childParts(p, { layout: d.layout, target: 'PlayButton' })[0].target, '@543');
+});
 
-import {runtimeValues,updateRuntime} from '../lib/hud-creator/demo.mjs';
-import {neededHudResource,collectHud} from '../tools/collect-hud-preview.mjs';
-test('runtime values are bounded and remain display-only',()=>{assert.deepEqual(runtimeValues({health:-4,mana:200,level:99,gold:Infinity}),{health:0,mana:100,level:30,gold:2450});const styles={};const nodes=[{id:'HealthLabel'},{id:'HealthProgress_Left',style:{setProperty:(k,v)=>styles[k]=v}}];updateRuntime(nodes,{health:50});assert.equal(nodes[0].textContent,'1100 / 2200');assert.equal(styles['--p-native-width'],'50%');});
-test('HUD collector selects game UI assets and excludes unrelated private/game files',()=>{for(const p of ['panorama/images/hud/foo.vtex_c','panorama/images/items/blink.vtex_c','panorama/layout/dashboard.vxml_c','resource/localization/dota_russian.txt','resource/radiance_regular.otf'])assert.ok(neededHudResource(p),p);for(const p of ['cfg/config.cfg','models/heroes/axe.vmdl_c','resource/steam_user.txt','panorama/images/front_page/huge.vtex_c'])assert.equal(neededHudResource(p),false,p);});
-import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {packVpk} from '../lib/vpk.mjs';
-test('collector extracts checked UI bytes, loose localization and refuses overwrites',()=>{const temp=fs.mkdtempSync(path.join(os.tmpdir(),'hud-collect-'));try{const game=path.join(temp,'game'),out=path.join(temp,'out');fs.mkdirSync(path.join(game,'resource','localization'),{recursive:true});fs.writeFileSync(path.join(game,'pak01_dir.vpk'),packVpk(new Map([['panorama/images/hud/test.vtex_c',Buffer.from('texture')],['cfg/private.cfg',Buffer.from('private')]])));fs.writeFileSync(path.join(game,'resource/localization/dota_russian.txt'),'localization');const result=collectHud({game,output:out});assert.equal(result.complete,true);assert.equal(fs.readFileSync(path.join(out,'panorama/images/hud/test.vtex_c'),'utf8'),'texture');assert.equal(fs.existsSync(path.join(out,'cfg')),false);assert.equal(fs.readFileSync(path.join(out,'resource/localization/dota_russian.txt'),'utf8'),'localization');assert.throws(()=>collectHud({game,output:out}),/уже существует/);}finally{fs.rmSync(temp,{recursive:true,force:true});}});
-import {runtimeImage,previewText} from '../lib/hud-creator/demo.mjs';import {HudCreatorService} from '../lib/hud-creator/service.mjs';
-test('native demo images use actual compiled PNG resource names',()=>{assert.equal(runtimeImage('items','blink'),'panorama/images/items/blink_png.vtex_c');assert.equal(runtimeImage('heroes','npc_dota_hero_axe'),'panorama/images/heroes/npc_dota_hero_axe_png.vtex_c');assert.equal(runtimeImage('items','../cfg'),null);});
-test('localized native format variables do not leak raw brace tokens into preview',()=>{assert.equal(previewText('#test',{test:'{s:autocomplete_title}'}),'');});
-test('font serving accepts only the authored OTF allowlist',()=>{const calls=[],service=new HudCreatorService({store:{read:n=>(calls.push(n),Buffer.from('font'))}});assert.equal(service.font('radiance_regular.otf').toString(),'font');assert.deepEqual(calls,['resource/radiance_regular.otf']);assert.throws(()=>service.font('../cfg/private.cfg'),/Unknown/);});
-import {styleResource} from '../lib/hud-creator/panorama-css.mjs';
-test('stylesheet references normalize compiled, source, relative and Windows separators',()=>{assert.equal(styleResource('file://{resources}/styles/hud/hud_reborn.css'),'panorama/styles/hud/hud_reborn.vcss_c');assert.equal(styleResource('..\\dotastyles.vcss','panorama/layout/hud/hud_reborn.vxml_c'),'panorama/styles/dotastyles.vcss_c');assert.equal(styleResource('hud_reborn.vcss','panorama/layout/hud/hud_reborn.vxml_c'),'panorama/styles/hud/hud_reborn.vcss_c');assert.equal(styleResource('../../../../cfg/private.cfg'),null);});
-test('choosing an inner component cannot replace the full HUD root; missing include metadata recovers matching CSS',async()=>{const hud='panorama/layout/hud/hud_reborn.vxml_c',inner='panorama/layout/hud/dota_hud_health_mana.vxml_c',css='panorama/styles/hud/hud_reborn.vcss_c';const records=new Map([[hud,{tree:[{target:'root',kind:'DOTAHud',attributes:{},children:[]}],panels:[]}],[inner,{tree:[],panels:[]}],[css,{css:'DOTAHud{width:100%;height:100%;}'}]]);const service={builder:{store:{has:n=>records.has(n)}},layouts:()=>[hud,inner].map(name=>({name,scene:'hud'})),inspectResources:async names=>names.map(n=>records.get(n))};const s=await buildScene(service,{scene:'hud',layout:inner});assert.equal(s.roots.base,hud);assert.ok(s.styles.some(s=>s.name===css));assert.ok(s.documents[0].includes.includes(css));});
-import {componentLayout,NATIVE_SCENE_TYPES,previewVisibility} from '../lib/hud-creator/composition.mjs';
-test('native scene rendering is not confused with similarly named editor layout files',()=>{assert.equal(componentLayout('DOTAScenePanel'),null);assert.ok(NATIVE_SCENE_TYPES.has('DOTAScenePanel'));assert.equal(componentLayout('DOTAHealthMana'),'panorama/layout/hud/dota_hud_health_mana.vxml_c');assert.equal(componentLayout('DOTASomethingWithAnAccidentalFilename'),null);});
-test('home view keeps lazy menus and chat popups closed; Play is a separate native state',()=>{for(const id of ['CoachingMenu','ChatAutocompletePanel','ChatEmoticonPicker'])assert.equal(previewVisibility({scene:'menu',id}),false);assert.equal(previewVisibility({scene:'menu',id:'PlaySlideOut',view:'base'}),false);assert.equal(previewVisibility({scene:'menu',id:'PlaySlideOut',view:'play'}),true);assert.equal(previewVisibility({scene:'hud',id:'InvokerSpellCard'}),false);assert.equal(previewVisibility({scene:'hud',id:'Tooltips',kind:'DOTATooltipManager'}),false);});
-test('composition follows explicit layout attributes and verified native bindings, without name guessing',async()=>{const root='panorama/layout/dashboard.vxml_c',banner='panorama/layout/banners/front_page_seasonal_reward_line.vxml_c',wrong='panorama/layout/scene_panel.vxml_c';const records=new Map([[root,{tree:[{target:'root',kind:'DOTADashboard',attributes:{},children:[{target:'banner',kind:'CustomLayoutPanel',attributes:{layout:banner.replace('_c','')},children:[]},{target:'scene',kind:'DOTAScenePanel',attributes:{},children:[]}]}],panels:[]}],[banner,{tree:[{target:'card',kind:'CustomLayoutPanel',attributes:{},children:[]}],panels:[]}],[wrong,{tree:[],panels:[]}]]);const service={builder:{store:{has:n=>records.has(n)}},layouts:()=>[...records.keys()].map(name=>({name,scene:'menu'})),inspectResources:async ns=>ns.map(n=>records.get(n))};const p=await buildScene(service,{scene:'menu'});assert.equal(p.bindings[root+'\0banner'],banner);assert.equal(p.bindings[root+'\0scene'],undefined);assert(!p.documents.some(d=>d.layout===wrong));});
-test('native margins are layout inputs, not a second browser offset; align and mask strength retain semantics',()=>{const css=declarations('margin:10px 20px 30px 40px;margin-left:12px;align:right bottom;opacity-mask:url("s2r://panorama/images/masks/init_mask_01_psd.vtex") 0;');assert.match(css,/--p-margin-top:10px/);assert.match(css,/--p-margin-right:20px/);assert.match(css,/--p-margin-bottom:30px/);assert.match(css,/--p-margin-left:12px/);assert(!/(?:^|;)margin(?:-|:)/.test(css));assert.match(css,/--p-ha:right/);assert.match(css,/--p-va:bottom/);assert.match(css,/mask-image:none/);});
-test('a talent button is never substituted for the full talent dialog',async()=>{const hud='panorama/layout/hud/hud_reborn.vxml_c',button='panorama/layout/hud/dota_hud_talentdisplay.vxml_c';const records=new Map([[hud,{tree:[{target:'root',kind:'DOTAHud',attributes:{},children:[]}],panels:[]}],[button,{tree:[],panels:[]}]]);const service={builder:{store:{has:n=>records.has(n)}},layouts:()=>[...records.keys()].map(name=>({name,scene:'hud'})),inspectResources:async ns=>ns.map(n=>records.get(n))};const p=await buildScene(service,{scene:'hud'});assert.equal(p.roots.talents,undefined);assert.ok(p.warnings.some(w=>w.includes('talents')));});
-import {menuLayer} from '../lib/hud-creator/composition.mjs';
-test('menu event and foreground hosts remain above the background without flattening active event resources',()=>{assert.equal(menuLayer('DashboardBackgroundManager'),0);assert.ok(menuLayer('DashboardBackgroundStatus')>menuLayer('DashboardBackgroundManager'));assert.ok(menuLayer('DashboardForeground')>menuLayer('DashboardBackgroundStatus'));assert.equal(menuLayer('AnUnknownEventBackground'),null);});
-test('menu background and event quick picks point to actual authored panel targets',()=>{const p={scene:'menu',documents:[{layout:'panorama/layout/dashboard.vxml_c',panels:[{id:'DashboardBackgroundManager'},{id:'DashboardBackgroundStatus'}]},{layout:'panorama/layout/dashboard_page_home.vxml_c',panels:[{id:'FrontpageContents'}]}]};const parts=quickParts(p);assert.equal(parts.length,3);assert.equal(parts.find(p=>p.key==='menu-DashboardBackgroundManager').target,'DashboardBackgroundManager');assert.equal(parts.find(p=>p.key==='menu-FrontpageContents').layout,'panorama/layout/dashboard_page_home.vxml_c');});
+import { runtimeValues, updateRuntime } from '../lib/hud-creator/demo.mjs';
+import { neededHudResource, collectHud } from '../tools/collect-hud-preview.mjs';
+test('runtime values are bounded and remain display-only', () => {
+  assert.deepEqual(runtimeValues({ health: -4, mana: 200, level: 99, gold: Infinity }), {
+    health: 0,
+    mana: 100,
+    level: 30,
+    gold: 2450
+  });
+  const styles = {};
+  const nodes = [
+    { id: 'HealthLabel' },
+    { id: 'HealthProgress_Left', style: { setProperty: (k, v) => (styles[k] = v) } }
+  ];
+  updateRuntime(nodes, { health: 50 });
+  assert.equal(nodes[0].textContent, '1100 / 2200');
+  assert.equal(styles['--p-native-width'], '50%');
+});
+test('HUD collector selects game UI assets and excludes unrelated private/game files', () => {
+  for (const p of [
+    'panorama/images/hud/foo.vtex_c',
+    'panorama/images/items/blink.vtex_c',
+    'panorama/layout/dashboard.vxml_c',
+    'resource/localization/dota_russian.txt',
+    'resource/radiance_regular.otf'
+  ])
+    assert.ok(neededHudResource(p), p);
+  for (const p of [
+    'cfg/config.cfg',
+    'models/heroes/axe.vmdl_c',
+    'resource/steam_user.txt',
+    'panorama/images/front_page/huge.vtex_c'
+  ])
+    assert.equal(neededHudResource(p), false, p);
+});
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { packVpk } from '../lib/vpk.mjs';
+test('collector extracts checked UI bytes, loose localization and refuses overwrites', () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'hud-collect-'));
+  try {
+    const game = path.join(temp, 'game'),
+      out = path.join(temp, 'out');
+    fs.mkdirSync(path.join(game, 'resource', 'localization'), { recursive: true });
+    fs.writeFileSync(
+      path.join(game, 'pak01_dir.vpk'),
+      packVpk(
+        new Map([
+          ['panorama/images/hud/test.vtex_c', Buffer.from('texture')],
+          ['cfg/private.cfg', Buffer.from('private')]
+        ])
+      )
+    );
+    fs.writeFileSync(path.join(game, 'resource/localization/dota_russian.txt'), 'localization');
+    const result = collectHud({ game, output: out });
+    assert.equal(result.complete, true);
+    assert.equal(fs.readFileSync(path.join(out, 'panorama/images/hud/test.vtex_c'), 'utf8'), 'texture');
+    assert.equal(fs.existsSync(path.join(out, 'cfg')), false);
+    assert.equal(fs.readFileSync(path.join(out, 'resource/localization/dota_russian.txt'), 'utf8'), 'localization');
+    assert.throws(() => collectHud({ game, output: out }), /уже существует/);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+import { runtimeImage, previewText } from '../lib/hud-creator/demo.mjs';
+import { HudCreatorService } from '../lib/hud-creator/service.mjs';
+test('native demo images use actual compiled PNG resource names', () => {
+  assert.equal(runtimeImage('items', 'blink'), 'panorama/images/items/blink_png.vtex_c');
+  assert.equal(runtimeImage('heroes', 'npc_dota_hero_axe'), 'panorama/images/heroes/npc_dota_hero_axe_png.vtex_c');
+  assert.equal(runtimeImage('items', '../cfg'), null);
+});
+test('localized native format variables do not leak raw brace tokens into preview', () => {
+  assert.equal(previewText('#test', { test: '{s:autocomplete_title}' }), '');
+});
+test('font serving accepts only the authored OTF allowlist', () => {
+  const calls = [],
+    service = new HudCreatorService({ store: { read: n => (calls.push(n), Buffer.from('font')) } });
+  assert.equal(service.font('radiance_regular.otf').toString(), 'font');
+  assert.deepEqual(calls, ['resource/radiance_regular.otf']);
+  assert.throws(() => service.font('../cfg/private.cfg'), /Unknown/);
+});
+import { styleResource } from '../lib/hud-creator/panorama-css.mjs';
+test('stylesheet references normalize compiled, source, relative and Windows separators', () => {
+  assert.equal(styleResource('file://{resources}/styles/hud/hud_reborn.css'), 'panorama/styles/hud/hud_reborn.vcss_c');
+  assert.equal(
+    styleResource('..\\dotastyles.vcss', 'panorama/layout/hud/hud_reborn.vxml_c'),
+    'panorama/styles/dotastyles.vcss_c'
+  );
+  assert.equal(
+    styleResource('hud_reborn.vcss', 'panorama/layout/hud/hud_reborn.vxml_c'),
+    'panorama/styles/hud/hud_reborn.vcss_c'
+  );
+  assert.equal(styleResource('../../../../cfg/private.cfg'), null);
+});
+test('choosing an inner component cannot replace the full HUD root; missing include metadata recovers matching CSS', async () => {
+  const hud = 'panorama/layout/hud/hud_reborn.vxml_c',
+    inner = 'panorama/layout/hud/dota_hud_health_mana.vxml_c',
+    css = 'panorama/styles/hud/hud_reborn.vcss_c';
+  const records = new Map([
+    [hud, { tree: [{ target: 'root', kind: 'DOTAHud', attributes: {}, children: [] }], panels: [] }],
+    [inner, { tree: [], panels: [] }],
+    [css, { css: 'DOTAHud{width:100%;height:100%;}' }]
+  ]);
+  const service = {
+    builder: { store: { has: n => records.has(n) } },
+    layouts: () => [hud, inner].map(name => ({ name, scene: 'hud' })),
+    inspectResources: async names => names.map(n => records.get(n))
+  };
+  const s = await buildScene(service, { scene: 'hud', layout: inner });
+  assert.equal(s.roots.base, hud);
+  assert.ok(s.styles.some(s => s.name === css));
+  assert.ok(s.documents[0].includes.includes(css));
+});
+import { componentLayout, NATIVE_SCENE_TYPES, previewVisibility } from '../lib/hud-creator/composition.mjs';
+test('native scene rendering is not confused with similarly named editor layout files', () => {
+  assert.equal(componentLayout('DOTAScenePanel'), null);
+  assert.ok(NATIVE_SCENE_TYPES.has('DOTAScenePanel'));
+  assert.equal(componentLayout('DOTAHealthMana'), 'panorama/layout/hud/dota_hud_health_mana.vxml_c');
+  assert.equal(componentLayout('DOTASomethingWithAnAccidentalFilename'), null);
+});
+test('home view keeps lazy menus and chat popups closed; Play is a separate native state', () => {
+  for (const id of ['CoachingMenu', 'ChatAutocompletePanel', 'ChatEmoticonPicker'])
+    assert.equal(previewVisibility({ scene: 'menu', id }), false);
+  assert.equal(previewVisibility({ scene: 'menu', id: 'PlaySlideOut', view: 'base' }), false);
+  assert.equal(previewVisibility({ scene: 'menu', id: 'PlaySlideOut', view: 'play' }), true);
+  assert.equal(previewVisibility({ scene: 'hud', id: 'InvokerSpellCard' }), false);
+  assert.equal(previewVisibility({ scene: 'hud', id: 'Tooltips', kind: 'DOTATooltipManager' }), false);
+});
+test('composition follows explicit layout attributes and verified native bindings, without name guessing', async () => {
+  const root = 'panorama/layout/dashboard.vxml_c',
+    banner = 'panorama/layout/banners/front_page_seasonal_reward_line.vxml_c',
+    wrong = 'panorama/layout/scene_panel.vxml_c';
+  const records = new Map([
+    [
+      root,
+      {
+        tree: [
+          {
+            target: 'root',
+            kind: 'DOTADashboard',
+            attributes: {},
+            children: [
+              {
+                target: 'banner',
+                kind: 'CustomLayoutPanel',
+                attributes: { layout: banner.replace('_c', '') },
+                children: []
+              },
+              { target: 'scene', kind: 'DOTAScenePanel', attributes: {}, children: [] }
+            ]
+          }
+        ],
+        panels: []
+      }
+    ],
+    [banner, { tree: [{ target: 'card', kind: 'CustomLayoutPanel', attributes: {}, children: [] }], panels: [] }],
+    [wrong, { tree: [], panels: [] }]
+  ]);
+  const service = {
+    builder: { store: { has: n => records.has(n) } },
+    layouts: () => [...records.keys()].map(name => ({ name, scene: 'menu' })),
+    inspectResources: async ns => ns.map(n => records.get(n))
+  };
+  const p = await buildScene(service, { scene: 'menu' });
+  assert.equal(p.bindings[root + '\0banner'], banner);
+  assert.equal(p.bindings[root + '\0scene'], undefined);
+  assert(!p.documents.some(d => d.layout === wrong));
+});
+test('native margins are layout inputs, not a second browser offset; align and mask strength retain semantics', () => {
+  const css = declarations(
+    'margin:10px 20px 30px 40px;margin-left:12px;align:right bottom;opacity-mask:url("s2r://panorama/images/masks/init_mask_01_psd.vtex") 0;'
+  );
+  assert.match(css, /--p-margin-top:10px/);
+  assert.match(css, /--p-margin-right:20px/);
+  assert.match(css, /--p-margin-bottom:30px/);
+  assert.match(css, /--p-margin-left:12px/);
+  assert(!/(?:^|;)margin(?:-|:)/.test(css));
+  assert.match(css, /--p-ha:right/);
+  assert.match(css, /--p-va:bottom/);
+  assert.match(css, /mask-image:none/);
+});
+test('a talent button is never substituted for the full talent dialog', async () => {
+  const hud = 'panorama/layout/hud/hud_reborn.vxml_c',
+    button = 'panorama/layout/hud/dota_hud_talentdisplay.vxml_c';
+  const records = new Map([
+    [hud, { tree: [{ target: 'root', kind: 'DOTAHud', attributes: {}, children: [] }], panels: [] }],
+    [button, { tree: [], panels: [] }]
+  ]);
+  const service = {
+    builder: { store: { has: n => records.has(n) } },
+    layouts: () => [...records.keys()].map(name => ({ name, scene: 'hud' })),
+    inspectResources: async ns => ns.map(n => records.get(n))
+  };
+  const p = await buildScene(service, { scene: 'hud' });
+  assert.equal(p.roots.talents, undefined);
+  assert.ok(p.warnings.some(w => w.includes('talents')));
+});
+import { menuLayer } from '../lib/hud-creator/composition.mjs';
+test('menu event and foreground hosts remain above the background without flattening active event resources', () => {
+  assert.equal(menuLayer('DashboardBackgroundManager'), 0);
+  assert.ok(menuLayer('DashboardBackgroundStatus') > menuLayer('DashboardBackgroundManager'));
+  assert.ok(menuLayer('DashboardForeground') > menuLayer('DashboardBackgroundStatus'));
+  assert.equal(menuLayer('AnUnknownEventBackground'), null);
+});
+test('menu background and event quick picks point to actual authored panel targets', () => {
+  const p = {
+    scene: 'menu',
+    documents: [
+      {
+        layout: 'panorama/layout/dashboard.vxml_c',
+        panels: [{ id: 'DashboardBackgroundManager' }, { id: 'DashboardBackgroundStatus' }]
+      },
+      { layout: 'panorama/layout/dashboard_page_home.vxml_c', panels: [{ id: 'FrontpageContents' }] }
+    ]
+  };
+  const parts = quickParts(p);
+  assert.equal(parts.length, 3);
+  assert.equal(parts.find(p => p.key === 'menu-DashboardBackgroundManager').target, 'DashboardBackgroundManager');
+  assert.equal(
+    parts.find(p => p.key === 'menu-FrontpageContents').layout,
+    'panorama/layout/dashboard_page_home.vxml_c'
+  );
+});
 
-test('home friends rail is not classified as a transient popup',()=>{assert.equal(previewVisibility({scene:'menu',id:'FriendMenu',kind:'DOTAFriendMenu'}),null);});
+test('home friends rail is not classified as a transient popup', () => {
+  assert.equal(previewVisibility({ scene: 'menu', id: 'FriendMenu', kind: 'DOTAFriendMenu' }), null);
+});

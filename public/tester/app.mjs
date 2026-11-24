@@ -1,22 +1,197 @@
-import {recolorRequest} from './recolor-request.mjs';
-import {testerJson} from './response.mjs';
-const $=id=>document.getElementById(id),status=$('tester-status');let me,recolor;const recolorJobs=new Set();
-function resourceUrl(input){const u=new URL(input,location.href);const edited=/^\/api\/(?:tester\/studio\/)?jobs\/([a-f0-9]{32})(\/download)?$/.exec(u.pathname);if(u.origin===location.origin&&edited&&recolorJobs.has(edited[1])){u.pathname='/api/tester/recolor/jobs/'+edited[1]+(edited[2]??'');return u.href;}if(u.origin===location.origin){if(u.pathname.startsWith('/api/admin/set-studio/'))u.pathname=u.pathname.replace('/api/admin/set-studio/','/api/tester/studio/');else if(u.pathname.startsWith('/api/')&&!u.pathname.startsWith('/api/tester/'))u.pathname='/api/tester/studio/'+u.pathname.slice(5);}return u.href;}
-const fetcher=(input,init={})=>fetch(resourceUrl(input),{...init,credentials:'same-origin',headers:{...init.headers,...(!['GET','HEAD'].includes(init.method??'GET')?{'X-Tester-CSRF':me.csrf}:{})}});
-async function api(route,data,method){data=recolorRequest(route,data);let recolored=false;if(/^\/api\/(?:tester\/studio\/)?build$/.test(route)&&data){await recolor?.flush();if(recolor)data=recolor.decorateBuild(data);if(data.selections?.some(r=>r.recolor?.resources?.length)){route='/api/tester/recolor/build';recolored=true;}}const response=await fetcher(route,{method:method??(data?'POST':'GET'),headers:{'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});const value=await testerJson(response);if(recolored&&value.id)recolorJobs.add(value.id);if(value.testerBuilder?.coverage){const rows=value.testerBuilder.coverage;status.textContent='Новый сборщик: обработано моделей '+rows.filter(r=>r.kind!=='activity').length+', отдельных сущностей '+rows.filter(r=>r.kind==='entity-model').length+'. '+(value.testerBuilder.warnings??[]).join(' · ');}else if(value.testerBuilder?.warnings?.length)status.textContent=value.testerBuilder.warnings.join(' · ');return value;}
-const request=(route,data)=>api('/api/tester/'+(route.startsWith('set-studio/')?'studio/'+route.slice(11):route),data);
-const guard=fn=>async()=>{try{status.textContent='';await fn();}catch(e){status.textContent=e.message;}};
-async function boot(){const r=await fetch('/api/tester/me',{credentials:'same-origin'});try{me=await testerJson(r);}catch(error){status.textContent=error.message;$('tester-login').hidden=error.status!==401;return;}globalThis.__testerDiscordId=me.id;document.documentElement.dataset.testerHeroAttributes='true';$('tester-name').textContent=me.name+' · '+me.id;$('tester-logout').hidden=false;$('tester-tools').hidden=false;$('tester-login').hidden=true;status.textContent='';
- const [{initSetStudio},{initSharedBasket},{configureCatalogLoader},{ModelPreview},{createViewerMetadataProvider},{initCosmetics}]=await Promise.all([import('/tester/assets/set-studio.mjs'),import('/tester/assets/shared-basket.mjs'),import('/tester/assets/catalog-loader.mjs'),import('/tester/assets/viewer/runtime.mjs'),import('/tester/assets/viewer/metadata-provider.mjs'),import('/tester/assets/cosmetics.mjs')]);
- const {createCatalogRecolor}=await import('/tester/assets/tester/catalog-recolor.mjs');
- const catalog=configureCatalogLoader(await api('/api/catalog'),api);const studio=initSetStudio(catalog,{api,token:null,standalone:true,Preview:ModelPreview,fetcher,resourceUrl,metadataProvider:createViewerMetadataProvider(api,id=>catalog.heroes.find(h=>h.id===id)),onRecolorItem:item=>void recolor.open(item),onPreviewReady:info=>void recolor?.ready(info)});recolor=createCatalogRecolor({api,request,getStudio:()=>studio,catalog});initSharedBasket(catalog,{api,token:null,resourceUrl});
- let editor,hud;const roots=['set-studio','cosmetics-studio','tester-hud-root','tester-editor-root','tester-whitelist-root'];function show(id,title){for(const n of roots)$(n).hidden=n!==id;studio.hide();if(id==='set-studio')studio.show();$('mode-title').textContent=title;for(const b of document.querySelectorAll('.studio-modes button'))b.setAttribute('aria-pressed','false');}
- $('mode-effects').onclick=()=>show('set-studio','Каталог');$('mode-set').onclick=()=>{show('set-studio','Каталог');$('mode-set').setAttribute('aria-pressed','true');};
- initCosmetics(catalog,{api,token:null,resourceUrl,onEnter(){show('cosmetics-studio','Косметика и погоды');}});
- $('tester-editor').onclick=guard(async()=>{show('tester-editor-root','Материалы и партиклы');if(!editor){const{initEditor}=await import('/api/tester/editor/ui.mjs');editor=await initEditor($('tester-editor-root'),request,()=>null);}else editor.show?.();$('tester-editor').setAttribute('aria-pressed','true');});
- $('tester-hud').onclick=guard(async()=>{show('tester-hud-root','HUD Creator');if(!hud){const{initHudCreator}=await import('/api/tester/editor/hud/tester-ui.mjs');hud=await initHudCreator($('tester-hud-root'),request);}$('tester-hud').setAttribute('aria-pressed','true');});
- async function whitelist(){const{ids}=await api('/api/tester/whitelist');$('whitelist-list').replaceChildren(...ids.map(id=>{const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');label.textContent=id;button.textContent='Удалить';button.className='secondary';button.onclick=guard(async()=>{await api('/api/tester/whitelist',{id},'DELETE');await whitelist();});li.append(label,button);return li;}));}
- if(me.isOwner){$('tester-whitelist').hidden=false;$('tester-whitelist').onclick=guard(async()=>{show('tester-whitelist-root','Whitelist');await whitelist();});$('whitelist-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await api('/api/tester/whitelist',{id:$('whitelist-id').value.trim()});$('whitelist-id').value='';await whitelist();})();};}
- $('tester-logout').onclick=guard(async()=>{await api('/api/tester/auth/logout',{});location.reload();});studio.show();
+import { recolorRequest } from './recolor-request.mjs';
+import { testerJson } from './response.mjs';
+const $ = id => document.getElementById(id),
+  status = $('tester-status');
+let me, recolor;
+const recolorJobs = new Set();
+function resourceUrl(input) {
+  const u = new URL(input, location.href);
+  const edited = /^\/api\/(?:tester\/studio\/)?jobs\/([a-f0-9]{32})(\/download)?$/.exec(u.pathname);
+  if (u.origin === location.origin && edited && recolorJobs.has(edited[1])) {
+    u.pathname = '/api/tester/recolor/jobs/' + edited[1] + (edited[2] ?? '');
+    return u.href;
+  }
+  if (u.origin === location.origin) {
+    if (u.pathname.startsWith('/api/admin/set-studio/'))
+      u.pathname = u.pathname.replace('/api/admin/set-studio/', '/api/tester/studio/');
+    else if (u.pathname.startsWith('/api/') && !u.pathname.startsWith('/api/tester/'))
+      u.pathname = '/api/tester/studio/' + u.pathname.slice(5);
+  }
+  return u.href;
 }
-boot().catch(e=>{status.textContent=e.message;});
+const fetcher = (input, init = {}) =>
+  fetch(resourceUrl(input), {
+    ...init,
+    credentials: 'same-origin',
+    headers: {
+      ...init.headers,
+      ...(!['GET', 'HEAD'].includes(init.method ?? 'GET') ? { 'X-Tester-CSRF': me.csrf } : {})
+    }
+  });
+async function api(route, data, method) {
+  data = recolorRequest(route, data);
+  let recolored = false;
+  if (/^\/api\/(?:tester\/studio\/)?build$/.test(route) && data) {
+    await recolor?.flush();
+    if (recolor) data = recolor.decorateBuild(data);
+    if (data.selections?.some(r => r.recolor?.resources?.length)) {
+      route = '/api/tester/recolor/build';
+      recolored = true;
+    }
+  }
+  const response = await fetcher(route, {
+    method: method ?? (data ? 'POST' : 'GET'),
+    headers: { 'Content-Type': 'application/json' },
+    body: data ? JSON.stringify(data) : undefined
+  });
+  const value = await testerJson(response);
+  if (recolored && value.id) recolorJobs.add(value.id);
+  if (value.testerBuilder?.coverage) {
+    const rows = value.testerBuilder.coverage;
+    status.textContent =
+      'Новый сборщик: обработано моделей ' +
+      rows.filter(r => r.kind !== 'activity').length +
+      ', отдельных сущностей ' +
+      rows.filter(r => r.kind === 'entity-model').length +
+      '. ' +
+      (value.testerBuilder.warnings ?? []).join(' · ');
+  } else if (value.testerBuilder?.warnings?.length) status.textContent = value.testerBuilder.warnings.join(' · ');
+  return value;
+}
+const request = (route, data) =>
+  api('/api/tester/' + (route.startsWith('set-studio/') ? 'studio/' + route.slice(11) : route), data);
+const guard = fn => async () => {
+  try {
+    status.textContent = '';
+    await fn();
+  } catch (e) {
+    status.textContent = e.message;
+  }
+};
+async function boot() {
+  const r = await fetch('/api/tester/me', { credentials: 'same-origin' });
+  try {
+    me = await testerJson(r);
+  } catch (error) {
+    status.textContent = error.message;
+    $('tester-login').hidden = error.status !== 401;
+    return;
+  }
+  globalThis.__testerDiscordId = me.id;
+  document.documentElement.dataset.testerHeroAttributes = 'true';
+  $('tester-name').textContent = me.name + ' · ' + me.id;
+  $('tester-logout').hidden = false;
+  $('tester-tools').hidden = false;
+  $('tester-login').hidden = true;
+  status.textContent = '';
+  const [
+    { initSetStudio },
+    { initSharedBasket },
+    { configureCatalogLoader },
+    { ModelPreview },
+    { createViewerMetadataProvider },
+    { initCosmetics }
+  ] = await Promise.all([
+    import('/tester/assets/set-studio.mjs'),
+    import('/tester/assets/shared-basket.mjs'),
+    import('/tester/assets/catalog-loader.mjs'),
+    import('/tester/assets/viewer/runtime.mjs'),
+    import('/tester/assets/viewer/metadata-provider.mjs'),
+    import('/tester/assets/cosmetics.mjs')
+  ]);
+  const { createCatalogRecolor } = await import('/tester/assets/tester/catalog-recolor.mjs');
+  const catalog = configureCatalogLoader(await api('/api/catalog'), api);
+  const studio = initSetStudio(catalog, {
+    api,
+    token: null,
+    standalone: true,
+    Preview: ModelPreview,
+    fetcher,
+    resourceUrl,
+    metadataProvider: createViewerMetadataProvider(api, id => catalog.heroes.find(h => h.id === id)),
+    onRecolorItem: item => void recolor.open(item),
+    onPreviewReady: info => void recolor?.ready(info)
+  });
+  recolor = createCatalogRecolor({ api, request, getStudio: () => studio, catalog });
+  initSharedBasket(catalog, { api, token: null, resourceUrl });
+  let editor, hud;
+  const roots = ['set-studio', 'cosmetics-studio', 'tester-hud-root', 'tester-editor-root', 'tester-whitelist-root'];
+  function show(id, title) {
+    for (const n of roots) $(n).hidden = n !== id;
+    studio.hide();
+    if (id === 'set-studio') studio.show();
+    $('mode-title').textContent = title;
+    for (const b of document.querySelectorAll('.studio-modes button')) b.setAttribute('aria-pressed', 'false');
+  }
+  $('mode-effects').onclick = () => show('set-studio', 'Каталог');
+  $('mode-set').onclick = () => {
+    show('set-studio', 'Каталог');
+    $('mode-set').setAttribute('aria-pressed', 'true');
+  };
+  initCosmetics(catalog, {
+    api,
+    token: null,
+    resourceUrl,
+    onEnter() {
+      show('cosmetics-studio', 'Косметика и погоды');
+    }
+  });
+  $('tester-editor').onclick = guard(async () => {
+    show('tester-editor-root', 'Материалы и партиклы');
+    if (!editor) {
+      const { initEditor } = await import('/api/tester/editor/ui.mjs');
+      editor = await initEditor($('tester-editor-root'), request, () => null);
+    } else editor.show?.();
+    $('tester-editor').setAttribute('aria-pressed', 'true');
+  });
+  $('tester-hud').onclick = guard(async () => {
+    show('tester-hud-root', 'HUD Creator');
+    if (!hud) {
+      const { initHudCreator } = await import('/api/tester/editor/hud/tester-ui.mjs');
+      hud = await initHudCreator($('tester-hud-root'), request);
+    }
+    $('tester-hud').setAttribute('aria-pressed', 'true');
+  });
+  async function whitelist() {
+    const { ids } = await api('/api/tester/whitelist');
+    $('whitelist-list').replaceChildren(
+      ...ids.map(id => {
+        const li = document.createElement('li'),
+          label = document.createElement('span'),
+          button = document.createElement('button');
+        label.textContent = id;
+        button.textContent = 'Удалить';
+        button.className = 'secondary';
+        button.onclick = guard(async () => {
+          await api('/api/tester/whitelist', { id }, 'DELETE');
+          await whitelist();
+        });
+        li.append(label, button);
+        return li;
+      })
+    );
+  }
+  if (me.isOwner) {
+    $('tester-whitelist').hidden = false;
+    $('tester-whitelist').onclick = guard(async () => {
+      show('tester-whitelist-root', 'Whitelist');
+      await whitelist();
+    });
+    $('whitelist-form').onsubmit = e => {
+      e.preventDefault();
+      guard(async () => {
+        await api('/api/tester/whitelist', { id: $('whitelist-id').value.trim() });
+        $('whitelist-id').value = '';
+        await whitelist();
+      })();
+    };
+  }
+  $('tester-logout').onclick = guard(async () => {
+    await api('/api/tester/auth/logout', {});
+    location.reload();
+  });
+  studio.show();
+}
+boot().catch(e => {
+  status.textContent = e.message;
+});

@@ -1,62 +1,452 @@
-import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import vm from'node:vm';
-test('static site loads its catalog only from CDN and sends build work to the API',async()=>{const events={},calls=[];const reply=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});const context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async(url,options)=>{url=String(url);calls.push({url,options});if(url.endsWith('site-config.json'))return reply({serverUrl:'https://api.test/',siteKey:'public',assetsUrl:'https://assets.test/'});if(url==='https://assets.test/manifest.json')return reply({catalog:'assets/catalog.json'});if(url==='https://assets.test/assets/catalog.json')return reply({heroes:[]});if(url==='https://api.test/api/widget/session')return reply({token:'test-token',expiresIn:3600});if(url==='https://api.test/api/visit'){assert.equal(options.method,'POST');assert.equal(options.headers.get('Content-Type'),'application/json');return reply({ok:true});}if(url==='https://api.test/api/build'){assert.equal(options.headers.get('Authorization'),'Bearer test-token');return reply({id:'built'});}throw Error('Unexpected network request: '+url);},self:{registration:{scope:'https://site.test/Effect-studio/'},addEventListener:(name,fn)=>events[name]=fn}};vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);async function request(route,options){let result;events.fetch({request:new Request('https://site.test'+route,options),respondWith:value=>result=value});return await result;}
- const catalog=await(await request('/api/catalog')).json();assert.equal(catalog.staticPreview.manifest,'https://assets.test/manifest.json');assert.equal(calls.some(c=>c.url.startsWith('https://api.test')),false);
- const preview=await request('/api/preview',{method:'POST',body:'{}'});assert.equal(preview.status,409);assert.equal(calls.some(c=>c.url.includes('/api/preview')),false);
- const build=await(await request('/api/build',{method:'POST',body:'{}'})).json();assert.equal(build.id,'built');const visit=await(await request('/api/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).json();assert.equal(visit.ok,true);});
-test('a missing icon is a 404 and cannot become an invalid image with status 200',async()=>{
- const events={},context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async url=>new Response(JSON.stringify(String(url).endsWith('site-config.json')?{assetsUrl:'https://assets.test/'}:{icons:{}})),self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);let response;events.fetch({request:new Request('https://site.test/api/item-icon?itemId=missing'),respondWith:value=>response=value});assert.equal((await response).status,404);
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+test('static site loads its catalog only from CDN and sends build work to the API', async () => {
+  const events = {},
+    calls = [];
+  const reply = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
+  const context = {
+    URL,
+    Request,
+    Response,
+    Headers,
+    Date,
+    JSON,
+    Error,
+    fetch: async (url, options) => {
+      url = String(url);
+      calls.push({ url, options });
+      if (url.endsWith('site-config.json'))
+        return reply({ serverUrl: 'https://api.test/', siteKey: 'public', assetsUrl: 'https://assets.test/' });
+      if (url === 'https://assets.test/manifest.json') return reply({ catalog: 'assets/catalog.json' });
+      if (url === 'https://assets.test/assets/catalog.json') return reply({ heroes: [] });
+      if (url === 'https://api.test/api/widget/session') return reply({ token: 'test-token', expiresIn: 3600 });
+      if (url === 'https://api.test/api/visit') {
+        assert.equal(options.method, 'POST');
+        assert.equal(options.headers.get('Content-Type'), 'application/json');
+        return reply({ ok: true });
+      }
+      if (url === 'https://api.test/api/build') {
+        assert.equal(options.headers.get('Authorization'), 'Bearer test-token');
+        return reply({ id: 'built' });
+      }
+      throw Error('Unexpected network request: ' + url);
+    },
+    self: {
+      registration: { scope: 'https://site.test/Effect-studio/' },
+      addEventListener: (name, fn) => (events[name] = fn)
+    }
+  };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  async function request(route, options) {
+    let result;
+    events.fetch({
+      request: new Request('https://site.test' + route, options),
+      respondWith: value => (result = value)
+    });
+    return await result;
+  }
+  const catalog = await (await request('/api/catalog')).json();
+  assert.equal(catalog.staticPreview.manifest, 'https://assets.test/manifest.json');
+  assert.equal(
+    calls.some(c => c.url.startsWith('https://api.test')),
+    false
+  );
+  const preview = await request('/api/preview', { method: 'POST', body: '{}' });
+  assert.equal(preview.status, 409);
+  assert.equal(
+    calls.some(c => c.url.includes('/api/preview')),
+    false
+  );
+  const build = await (await request('/api/build', { method: 'POST', body: '{}' })).json();
+  assert.equal(build.id, 'built');
+  const visit = await (
+    await request('/api/visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+  ).json();
+  assert.equal(visit.ok, true);
 });
-test('expired session retries once before build work starts',async()=>{
- const events={};let issues=0,builds=0;
- const reply=(value,status=200)=>new Response(JSON.stringify(value),{status});
- const context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async(url,options)=>{
-  url=String(url);if(url.endsWith('site-config.json'))return reply({serverUrl:'https://api.test/',siteKey:'public'});
-  if(url.endsWith('/api/widget/session'))return reply({token:'token-'+(++issues),expiresIn:1800});
-  if(url.endsWith('/api/build')){builds++;assert.equal(options.headers.get('Authorization'),'Bearer token-'+builds);return builds===1?reply({error:'expired'},401):reply({id:'ready'});}
-  throw Error('Unexpected request '+url);
- },self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);
- let result;events.fetch({request:new Request('https://site.test/api/build',{method:'POST',body:'{}'}),respondWith:value=>result=value});
- assert.equal((await(await result).json()).id,'ready');assert.equal(issues,2);assert.equal(builds,2);
+test('a missing icon is a 404 and cannot become an invalid image with status 200', async () => {
+  const events = {},
+    context = {
+      URL,
+      Request,
+      Response,
+      Headers,
+      Date,
+      JSON,
+      Error,
+      fetch: async url =>
+        new Response(
+          JSON.stringify(
+            String(url).endsWith('site-config.json') ? { assetsUrl: 'https://assets.test/' } : { icons: {} }
+          )
+        ),
+      self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+    };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  let response;
+  events.fetch({
+    request: new Request('https://site.test/api/item-icon?itemId=missing'),
+    respondWith: value => (response = value)
+  });
+  assert.equal((await response).status, 404);
 });
-test('bundled hero portraits are served locally without a manifest lookup',async()=>{
- const events={},calls=[],context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async url=>{calls.push(String(url?.url??url));return String(url).endsWith('site-config.json')?new Response('{}'):new Response('image');},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);
- let result;events.fetch({request:new Request('https://site.test/images/heroes/muerta.png'),respondWith:value=>result=value});assert.equal(await(await result).text(),'image');assert.equal(calls.some(url=>url.endsWith('manifest.json')),false);
+test('expired session retries once before build work starts', async () => {
+  const events = {};
+  let issues = 0,
+    builds = 0;
+  const reply = (value, status = 200) => new Response(JSON.stringify(value), { status });
+  const context = {
+    URL,
+    Request,
+    Response,
+    Headers,
+    Date,
+    JSON,
+    Error,
+    fetch: async (url, options) => {
+      url = String(url);
+      if (url.endsWith('site-config.json')) return reply({ serverUrl: 'https://api.test/', siteKey: 'public' });
+      if (url.endsWith('/api/widget/session')) return reply({ token: 'token-' + ++issues, expiresIn: 1800 });
+      if (url.endsWith('/api/build')) {
+        builds++;
+        assert.equal(options.headers.get('Authorization'), 'Bearer token-' + builds);
+        return builds === 1 ? reply({ error: 'expired' }, 401) : reply({ id: 'ready' });
+      }
+      throw Error('Unexpected request ' + url);
+    },
+    self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+  };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  let result;
+  events.fetch({
+    request: new Request('https://site.test/api/build', { method: 'POST', body: '{}' }),
+    respondWith: value => (result = value)
+  });
+  assert.equal((await (await result).json()).id, 'ready');
+  assert.equal(issues, 2);
+  assert.equal(builds, 2);
 });
-test('published persona portraits are loaded from R2 without an API session',async()=>{
- const events={},calls=[],context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async input=>{const url=String(input);calls.push(url);if(url.endsWith('site-config.json'))return new Response(JSON.stringify({assetsUrl:'https://assets.test/'}));if(url.endsWith('manifest.json'))return new Response(JSON.stringify({icons:{'/images/personas/invoker_persona1.png?':'assets/persona.png'}}));if(url==='https://assets.test/assets/persona.png')return new Response('persona image');throw Error('Unexpected network request: '+url);},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);let result;events.fetch({request:new Request('https://site.test/images/personas/invoker_persona1.png'),respondWith:value=>result=value});assert.equal(await(await result).text(),'persona image');assert.equal(calls.some(url=>url.includes('/widget/session')),false);
+test('bundled hero portraits are served locally without a manifest lookup', async () => {
+  const events = {},
+    calls = [],
+    context = {
+      URL,
+      Request,
+      Response,
+      Headers,
+      Date,
+      JSON,
+      Error,
+      fetch: async url => {
+        calls.push(String(url?.url ?? url));
+        return String(url).endsWith('site-config.json') ? new Response('{}') : new Response('image');
+      },
+      self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+    };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  let result;
+  events.fetch({
+    request: new Request('https://site.test/images/heroes/muerta.png'),
+    respondWith: value => (result = value)
+  });
+  assert.equal(await (await result).text(), 'image');
+  assert.equal(
+    calls.some(url => url.endsWith('manifest.json')),
+    false
+  );
 });
-test('publication cache survives worker restart and never caches API sessions or builds',async()=>{
- const stored=new Map(),calls=[];const cache={match:async key=>stored.get(key.url)?.clone(),put:async(key,response)=>stored.set(key.url,response.clone()),keys:async()=>[...stored.keys()].map(url=>new Request(url)),delete:async key=>stored.delete(key.url)};
- const makeWorker=()=>{const events={},context={URL,Request,Response,Headers,Date,JSON,Error,Map,caches:{open:async()=>cache},fetch:async input=>{const url=String(input);calls.push(url);if(url.endsWith('site-config.json'))return new Response(JSON.stringify({assetsUrl:'https://assets.test/',serverUrl:'https://api.test/'}));if(url.endsWith('manifest.json'))return new Response(JSON.stringify({catalog:'assets/catalog.json'}));if(url.endsWith('assets/catalog.json'))return new Response(JSON.stringify({heroes:[{id:'morphling'}]}));throw Error('Unexpected network request: '+url);},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);return async()=>{let result;events.fetch({request:new Request('https://site.test/api/catalog'),respondWith:value=>result=value,waitUntil:()=>{}});return (await result).json();};};
- assert.equal((await makeWorker()()).heroes[0].id,'morphling');assert.equal((await makeWorker()()).heroes[0].id,'morphling');assert.equal(calls.filter(url=>url.endsWith('manifest.json')).length,1);assert.equal(calls.filter(url=>url.endsWith('assets/catalog.json')).length,1);assert.equal([...stored.keys()].some(url=>url.includes('/api/')),false);
+test('published persona portraits are loaded from R2 without an API session', async () => {
+  const events = {},
+    calls = [],
+    context = {
+      URL,
+      Request,
+      Response,
+      Headers,
+      Date,
+      JSON,
+      Error,
+      fetch: async input => {
+        const url = String(input);
+        calls.push(url);
+        if (url.endsWith('site-config.json'))
+          return new Response(JSON.stringify({ assetsUrl: 'https://assets.test/' }));
+        if (url.endsWith('manifest.json'))
+          return new Response(
+            JSON.stringify({ icons: { '/images/personas/invoker_persona1.png?': 'assets/persona.png' } })
+          );
+        if (url === 'https://assets.test/assets/persona.png') return new Response('persona image');
+        throw Error('Unexpected network request: ' + url);
+      },
+      self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+    };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  let result;
+  events.fetch({
+    request: new Request('https://site.test/images/personas/invoker_persona1.png'),
+    respondWith: value => (result = value)
+  });
+  assert.equal(await (await result).text(), 'persona image');
+  assert.equal(
+    calls.some(url => url.includes('/widget/session')),
+    false
+  );
 });
-test('lazy startup reads only the small index and loads a hero shard on demand',async()=>{
- const events={},calls=[],files={'https://assets.test/manifest.json':{catalog:'assets/full.json',catalogIndex:'assets/index.json',heroCatalogs:{morphling:'assets/morph.json',invoker:'assets/invoker.json'}},'https://assets.test/assets/index.json':{lazyCatalog:true,heroes:[{id:'morphling',items:[],lazy:true}]},'https://assets.test/assets/morph.json':{id:'morphling',items:[{id:'hat'}]}};
- const context={URL,Request,Response,Headers,Date,JSON,Error,Map,fetch:async input=>{const url=String(input);calls.push(url);if(url.endsWith('site-config.json'))return new Response(JSON.stringify({assetsUrl:'https://assets.test/'}));if(files[url])return new Response(JSON.stringify(files[url]));throw Error('Unrequested catalog must remain unloaded: '+url);},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);const request=async route=>{let result;events.fetch({request:new Request('https://site.test'+route),respondWith:value=>result=value});return(await result).json();};
- assert.equal((await request('/api/catalog')).lazyCatalog,true);assert.equal(calls.some(url=>url.includes('morph.json')||url.includes('full.json')),false);assert.equal((await request('/api/hero-catalog?heroId=morphling')).items[0].id,'hat');assert.equal(calls.some(url=>url.includes('invoker.json')),false);
+test('publication cache survives worker restart and never caches API sessions or builds', async () => {
+  const stored = new Map(),
+    calls = [];
+  const cache = {
+    match: async key => stored.get(key.url)?.clone(),
+    put: async (key, response) => stored.set(key.url, response.clone()),
+    keys: async () => [...stored.keys()].map(url => new Request(url)),
+    delete: async key => stored.delete(key.url)
+  };
+  const makeWorker = () => {
+    const events = {},
+      context = {
+        URL,
+        Request,
+        Response,
+        Headers,
+        Date,
+        JSON,
+        Error,
+        Map,
+        caches: { open: async () => cache },
+        fetch: async input => {
+          const url = String(input);
+          calls.push(url);
+          if (url.endsWith('site-config.json'))
+            return new Response(JSON.stringify({ assetsUrl: 'https://assets.test/', serverUrl: 'https://api.test/' }));
+          if (url.endsWith('manifest.json')) return new Response(JSON.stringify({ catalog: 'assets/catalog.json' }));
+          if (url.endsWith('assets/catalog.json'))
+            return new Response(JSON.stringify({ heroes: [{ id: 'morphling' }] }));
+          throw Error('Unexpected network request: ' + url);
+        },
+        self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+      };
+    vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+    return async () => {
+      let result;
+      events.fetch({
+        request: new Request('https://site.test/api/catalog'),
+        respondWith: value => (result = value),
+        waitUntil: () => {}
+      });
+      return (await result).json();
+    };
+  };
+  assert.equal((await makeWorker()()).heroes[0].id, 'morphling');
+  assert.equal((await makeWorker()()).heroes[0].id, 'morphling');
+  assert.equal(calls.filter(url => url.endsWith('manifest.json')).length, 1);
+  assert.equal(calls.filter(url => url.endsWith('assets/catalog.json')).length, 1);
+  assert.equal(
+    [...stored.keys()].some(url => url.includes('/api/')),
+    false
+  );
 });
-test('kinetic preview links point to R2 without proxying the server media directory',async()=>{
- const events={},calls=[],context={URL,Request,Response,Headers,Date,JSON,Error,Map,fetch:async input=>{const url=String(input);calls.push(url);if(url.endsWith('site-config.json'))return new Response(JSON.stringify({assetsUrl:'https://assets.test/'}));if(url.endsWith('manifest.json'))return new Response(JSON.stringify({kineticMedia:'assets/media.json'}));if(url.endsWith('assets/media.json'))return new Response(JSON.stringify({items:{k:{clips:[{url:'assets/'+'a'.repeat(64)+'.webm'}]}}}));throw Error('Server must not be contacted: '+url);},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);let result;events.fetch({request:new Request('https://site.test/kinetic-media/manifest.json'),respondWith:value=>result=value});const value=await(await result).json();assert.equal(value.items.k.clips[0].url,'https://assets.test/assets/'+'a'.repeat(64)+'.webm');assert.equal(calls.some(url=>url.includes('/kinetic-media/')),false);
+test('lazy startup reads only the small index and loads a hero shard on demand', async () => {
+  const events = {},
+    calls = [],
+    files = {
+      'https://assets.test/manifest.json': {
+        catalog: 'assets/full.json',
+        catalogIndex: 'assets/index.json',
+        heroCatalogs: { morphling: 'assets/morph.json', invoker: 'assets/invoker.json' }
+      },
+      'https://assets.test/assets/index.json': {
+        lazyCatalog: true,
+        heroes: [{ id: 'morphling', items: [], lazy: true }]
+      },
+      'https://assets.test/assets/morph.json': { id: 'morphling', items: [{ id: 'hat' }] }
+    };
+  const context = {
+    URL,
+    Request,
+    Response,
+    Headers,
+    Date,
+    JSON,
+    Error,
+    Map,
+    fetch: async input => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith('site-config.json')) return new Response(JSON.stringify({ assetsUrl: 'https://assets.test/' }));
+      if (files[url]) return new Response(JSON.stringify(files[url]));
+      throw Error('Unrequested catalog must remain unloaded: ' + url);
+    },
+    self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+  };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  const request = async route => {
+    let result;
+    events.fetch({ request: new Request('https://site.test' + route), respondWith: value => (result = value) });
+    return (await result).json();
+  };
+  assert.equal((await request('/api/catalog')).lazyCatalog, true);
+  assert.equal(
+    calls.some(url => url.includes('morph.json') || url.includes('full.json')),
+    false
+  );
+  assert.equal((await request('/api/hero-catalog?heroId=morphling')).items[0].id, 'hat');
+  assert.equal(
+    calls.some(url => url.includes('invoker.json')),
+    false
+  );
+});
+test('kinetic preview links point to R2 without proxying the server media directory', async () => {
+  const events = {},
+    calls = [],
+    context = {
+      URL,
+      Request,
+      Response,
+      Headers,
+      Date,
+      JSON,
+      Error,
+      Map,
+      fetch: async input => {
+        const url = String(input);
+        calls.push(url);
+        if (url.endsWith('site-config.json'))
+          return new Response(JSON.stringify({ assetsUrl: 'https://assets.test/' }));
+        if (url.endsWith('manifest.json')) return new Response(JSON.stringify({ kineticMedia: 'assets/media.json' }));
+        if (url.endsWith('assets/media.json'))
+          return new Response(
+            JSON.stringify({ items: { k: { clips: [{ url: 'assets/' + 'a'.repeat(64) + '.webm' }] } } })
+          );
+        throw Error('Server must not be contacted: ' + url);
+      },
+      self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+    };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  let result;
+  events.fetch({
+    request: new Request('https://site.test/kinetic-media/manifest.json'),
+    respondWith: value => (result = value)
+  });
+  const value = await (await result).json();
+  assert.equal(value.items.k.clips[0].url, 'https://assets.test/assets/' + 'a'.repeat(64) + '.webm');
+  assert.equal(
+    calls.some(url => url.includes('/kinetic-media/')),
+    false
+  );
 });
 
- test('download proxy strips navigation headers and keeps session authorization',async()=>{
- const events={};let sent;const context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async(input,options)=>{const url=String(input);if(url.endsWith('site-config.json'))return Response.json({serverUrl:'https://api.test/',siteKey:'public',assetsUrl:'https://assets.test/'});if(url.endsWith('/manifest.json'))return Response.json({});if(url.endsWith('/api/widget/session'))return Response.json({token:'session',expiresIn:3600});sent=options;return new Response('vpk',{headers:{'Content-Disposition':'attachment; filename="pak01_dir.vpk"'}});},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);let pending;events.fetch({request:new Request('https://site.test/api/jobs/abc/download',{headers:{'Upgrade-Insecure-Requests':'1','Accept':'text/html','Authorization':'Bearer stale'}}),respondWith:value=>pending=value});const response=await pending;assert.equal(await response.text(),'vpk');assert.equal(sent.headers.get('upgrade-insecure-requests'),null);assert.equal(sent.headers.get('authorization'),'Bearer session');assert.equal(sent.headers.get('accept'),null);assert.equal(response.headers.get('content-disposition'),'attachment; filename="pak01_dir.vpk"');
+test('download proxy strips navigation headers and keeps session authorization', async () => {
+  const events = {};
+  let sent;
+  const context = {
+    URL,
+    Request,
+    Response,
+    Headers,
+    Date,
+    JSON,
+    Error,
+    fetch: async (input, options) => {
+      const url = String(input);
+      if (url.endsWith('site-config.json'))
+        return Response.json({ serverUrl: 'https://api.test/', siteKey: 'public', assetsUrl: 'https://assets.test/' });
+      if (url.endsWith('/manifest.json')) return Response.json({});
+      if (url.endsWith('/api/widget/session')) return Response.json({ token: 'session', expiresIn: 3600 });
+      sent = options;
+      return new Response('vpk', { headers: { 'Content-Disposition': 'attachment; filename="pak01_dir.vpk"' } });
+    },
+    self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+  };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  let pending;
+  events.fetch({
+    request: new Request('https://site.test/api/jobs/abc/download', {
+      headers: { 'Upgrade-Insecure-Requests': '1', Accept: 'text/html', Authorization: 'Bearer stale' }
+    }),
+    respondWith: value => (pending = value)
+  });
+  const response = await pending;
+  assert.equal(await response.text(), 'vpk');
+  assert.equal(sent.headers.get('upgrade-insecure-requests'), null);
+  assert.equal(sent.headers.get('authorization'), 'Bearer session');
+  assert.equal(sent.headers.get('accept'), null);
+  assert.equal(response.headers.get('content-disposition'), 'attachment; filename="pak01_dir.vpk"');
 });
 
-test('download navigation obtains a small scoped ticket and redirects without fetching VPK bytes',async()=>{
- const events={},calls=[],id='a'.repeat(32),downloadPath='/api/jobs/'+id+'/download?download_ticket=signed';const context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async(input,options)=>{const url=String(input);calls.push(url);if(url.endsWith('site-config.json'))return Response.json({serverUrl:'https://api.test/',siteKey:'public'});if(url.endsWith('/api/widget/session'))return Response.json({token:'session',expiresIn:3600});if(url==='https://api.test/api/jobs/'+id+'/download-ticket'){assert.equal(options.headers.get('authorization'),'Bearer session');return Response.json({downloadPath});}throw Error('Unexpected bulk fetch: '+url);},self:{registration:{scope:'https://site.test/'},addEventListener:(name,fn)=>events[name]=fn}};vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs',import.meta.url),'utf8'),context);let pending;events.fetch({request:{url:'https://site.test/api/jobs/'+id+'/download',method:'GET',mode:'navigate'},respondWith:value=>pending=value});const response=await pending;assert.equal(response.status,302);assert.equal(response.headers.get('location'),'https://api.test'+downloadPath);assert.ok(!calls.some(url=>url.endsWith('/download')));
+test('download navigation obtains a small scoped ticket and redirects without fetching VPK bytes', async () => {
+  const events = {},
+    calls = [],
+    id = 'a'.repeat(32),
+    downloadPath = '/api/jobs/' + id + '/download?download_ticket=signed';
+  const context = {
+    URL,
+    Request,
+    Response,
+    Headers,
+    Date,
+    JSON,
+    Error,
+    fetch: async (input, options) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith('site-config.json')) return Response.json({ serverUrl: 'https://api.test/', siteKey: 'public' });
+      if (url.endsWith('/api/widget/session')) return Response.json({ token: 'session', expiresIn: 3600 });
+      if (url === 'https://api.test/api/jobs/' + id + '/download-ticket') {
+        assert.equal(options.headers.get('authorization'), 'Bearer session');
+        return Response.json({ downloadPath });
+      }
+      throw Error('Unexpected bulk fetch: ' + url);
+    },
+    self: { registration: { scope: 'https://site.test/' }, addEventListener: (name, fn) => (events[name] = fn) }
+  };
+  vm.runInNewContext(fs.readFileSync(new URL('../public/static-worker.mjs', import.meta.url), 'utf8'), context);
+  let pending;
+  events.fetch({
+    request: { url: 'https://site.test/api/jobs/' + id + '/download', method: 'GET', mode: 'navigate' },
+    respondWith: value => (pending = value)
+  });
+  const response = await pending;
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get('location'), 'https://api.test' + downloadPath);
+  assert.ok(!calls.some(url => url.endsWith('/download')));
 });
 
-test('manual ethereal WebP is fetched from server on static pages without a session or R2 manifest',async()=>{
- for(const base of ['public','docs']){
- const events={},calls=[],context={URL,Request,Response,Headers,Date,JSON,Error,fetch:async(input,options)=>{const url=String(input);calls.push(url);if(url.endsWith('site-config.json'))return new Response(JSON.stringify({serverUrl:'https://api.test/'}));assert.equal(url,'https://api.test/ethereal-media/lava.webp');assert.equal(options.headers.get('Authorization'),null);return new Response('webp',{headers:{'Content-Type':'image/webp'}});},self:{registration:{scope:'https://site.test/Effect-studio/'},addEventListener:(name,fn)=>events[name]=fn}};
- vm.runInNewContext(fs.readFileSync(new URL('../'+base+'/static-worker.mjs',import.meta.url),'utf8'),context);let pending;events.fetch({request:new Request('https://site.test/ethereal-media/lava.webp'),respondWith:value=>pending=value});const response=await pending;assert.equal(await response.text(),'webp');assert.equal(response.headers.get('Content-Type'),'image/webp');assert.equal(calls.length,2);
- }
+test('manual ethereal WebP is fetched from server on static pages without a session or R2 manifest', async () => {
+  for (const base of ['public', 'docs']) {
+    const events = {},
+      calls = [],
+      context = {
+        URL,
+        Request,
+        Response,
+        Headers,
+        Date,
+        JSON,
+        Error,
+        fetch: async (input, options) => {
+          const url = String(input);
+          calls.push(url);
+          if (url.endsWith('site-config.json')) return new Response(JSON.stringify({ serverUrl: 'https://api.test/' }));
+          assert.equal(url, 'https://api.test/ethereal-media/lava.webp');
+          assert.equal(options.headers.get('Authorization'), null);
+          return new Response('webp', { headers: { 'Content-Type': 'image/webp' } });
+        },
+        self: {
+          registration: { scope: 'https://site.test/Effect-studio/' },
+          addEventListener: (name, fn) => (events[name] = fn)
+        }
+      };
+    vm.runInNewContext(fs.readFileSync(new URL('../' + base + '/static-worker.mjs', import.meta.url), 'utf8'), context);
+    let pending;
+    events.fetch({
+      request: new Request('https://site.test/ethereal-media/lava.webp'),
+      respondWith: value => (pending = value)
+    });
+    const response = await pending;
+    assert.equal(await response.text(), 'webp');
+    assert.equal(response.headers.get('Content-Type'), 'image/webp');
+    assert.equal(calls.length, 2);
+  }
 });

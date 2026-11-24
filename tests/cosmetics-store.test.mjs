@@ -1,9 +1,62 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {chooseCosmetic,selectedCosmetics,registerSetBasket,registerEffectBasket,removeBasketRow,basketRows,sharedBuildPayload} from '../public/cosmetics-store.mjs';
-test('cosmetics and hero selections share a build while categories remain independent',()=>{
- registerSetBasket(()=>({mode:'set',selections:[{heroId:'axe',itemId:'weapon'}]}));chooseCosmetic('emblem',{id:'e',category:'emblem'},['axe']);chooseCosmetic('emblem_attack',{id:'a',category:'emblem_attack'},['lina']);chooseCosmetic('courier',{id:'c1',category:'courier'});chooseCosmetic('courier',{id:'c2',category:'courier'});
- const payload=sharedBuildPayload();assert.equal(payload.selections[0].itemId,'weapon');assert.equal(payload.cosmetics.length,3);assert.deepEqual(payload.cosmetics.find(c=>c.id==='a').heroIds,['lina']);assert.ok(payload.cosmetics.some(c=>c.id==='c2'));assert.ok(!payload.cosmetics.some(c=>c.id==='c1'));payload.cosmetics[0].heroIds.push('pudge');assert.deepEqual(selectedCosmetics()[0].heroIds,['axe']);chooseCosmetic('emblem',null);assert.ok(selectedCosmetics().some(c=>c.id==='a'));for(const id of ['emblem_attack','courier'])chooseCosmetic(id,null);
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  chooseCosmetic,
+  selectedCosmetics,
+  registerSetBasket,
+  registerEffectBasket,
+  removeBasketRow,
+  basketRows,
+  sharedBuildPayload
+} from '../public/cosmetics-store.mjs';
+test('cosmetics and hero selections share a build while categories remain independent', () => {
+  registerSetBasket(() => ({ mode: 'set', selections: [{ heroId: 'axe', itemId: 'weapon' }] }));
+  chooseCosmetic('emblem', { id: 'e', category: 'emblem' }, ['axe']);
+  chooseCosmetic('emblem_attack', { id: 'a', category: 'emblem_attack' }, ['lina']);
+  chooseCosmetic('courier', { id: 'c1', category: 'courier' });
+  chooseCosmetic('courier', { id: 'c2', category: 'courier' });
+  const payload = sharedBuildPayload();
+  assert.equal(payload.selections[0].itemId, 'weapon');
+  assert.equal(payload.cosmetics.length, 3);
+  assert.deepEqual(payload.cosmetics.find(c => c.id === 'a').heroIds, ['lina']);
+  assert.ok(payload.cosmetics.some(c => c.id === 'c2'));
+  assert.ok(!payload.cosmetics.some(c => c.id === 'c1'));
+  payload.cosmetics[0].heroIds.push('pudge');
+  assert.deepEqual(selectedCosmetics()[0].heroIds, ['axe']);
+  chooseCosmetic('emblem', null);
+  assert.ok(selectedCosmetics().some(c => c.id === 'a'));
+  for (const id of ['emblem_attack', 'courier']) chooseCosmetic(id, null);
 });
 
-test('shared basket merges one hero slot, preserves both effect lists and removes both providers',()=>{let sets=[{heroId:'axe',itemId:'weapon',slot:'weapon',effectIds:['frost']}],effects=[{heroId:'axe',itemId:'weapon',slot:'weapon',effectIds:['lava']}];registerSetBasket(()=>({selections:sets}),()=>{sets=[];});registerEffectBasket(()=>effects,()=>{effects=[];});const rows=basketRows();assert.equal(rows.length,1);assert.deepEqual(rows[0].row.effectIds,['frost','lava']);removeBasketRow(rows[0]);assert.equal(sharedBuildPayload().selections.length,0);registerEffectBasket(()=>[]);registerSetBasket(()=>({selections:[]}));});
+test('shared basket merges one hero slot, preserves both effect lists and removes both providers', () => {
+  let sets = [{ heroId: 'axe', itemId: 'weapon', slot: 'weapon', effectIds: ['frost'] }],
+    effects = [{ heroId: 'axe', itemId: 'weapon', slot: 'weapon', effectIds: ['lava'] }];
+  registerSetBasket(
+    () => ({ selections: sets }),
+    () => {
+      sets = [];
+    }
+  );
+  registerEffectBasket(
+    () => effects,
+    () => {
+      effects = [];
+    }
+  );
+  const rows = basketRows();
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].row.effectIds, ['frost', 'lava']);
+  removeBasketRow(rows[0]);
+  assert.equal(sharedBuildPayload().selections.length, 0);
+  registerEffectBasket(() => []);
+  registerSetBasket(() => ({ selections: [] }));
+});
 
-test('RGB selections are copied into the shared request independently of the selected item',()=>{const color=[10,20,30];chooseCosmetic('emblem_attack',{id:'attack',category:'emblem_attack',color});const payload=sharedBuildPayload();payload.cosmetics.find(i=>i.id==='attack').color[0]=200;assert.deepEqual(selectedCosmetics().find(i=>i.id==='attack').color,[10,20,30]);chooseCosmetic('emblem_attack',null);});
+test('RGB selections are copied into the shared request independently of the selected item', () => {
+  const color = [10, 20, 30];
+  chooseCosmetic('emblem_attack', { id: 'attack', category: 'emblem_attack', color });
+  const payload = sharedBuildPayload();
+  payload.cosmetics.find(i => i.id === 'attack').color[0] = 200;
+  assert.deepEqual(selectedCosmetics().find(i => i.id === 'attack').color, [10, 20, 30]);
+  chooseCosmetic('emblem_attack', null);
+});

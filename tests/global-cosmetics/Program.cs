@@ -1,41 +1,174 @@
 #nullable enable
-using System.Reflection;using ValveKeyValue;
-static KVObject Event(string name){var row=KVObject.Collection();var list=KVObject.Array();list.Add(new KVObject(name));row["type"]=new KVObject("dota_update_vo_switch");row["vsnd_files"]=list;return row;}
-var target=KVObject.Collection();var fallback=Event("sounds/vo/announcer/announcer_welcome_02.vsnd");target["announcer_announcer_welcome_01"]=Event("sounds/vo/announcer/announcer_welcome_01.vsnd");target["announcer_announcer_welcome_02"]=fallback;target["announcer_killing_spree_announcer_kill_double_01"]=Event("sounds/vo/announcer_killing_spree/announcer_kill_double_01.vsnd");
-var source=KVObject.Collection();var welcome=Event("sounds/vo/announcer_dlc_meepo/meepo_ann_welcome_01.vsnd");source["meepo_line"]=welcome;var doubleKill=Event("sounds/vo/announcer_dlc_techies_killing_spree/tech_ann_kill_double_01.vsnd");source["techies_line"]=doubleKill;
-var method=Assembly.Load("Dota2UnusualPatcher").GetType("GlobalCosmetics")!.GetMethod("MapSounds",BindingFlags.NonPublic|BindingFlags.Static)!;var count=(int)method.Invoke(null,new object[]{target,source})!;
-if(count!=3||!ReferenceEquals(target["announcer_announcer_welcome_01"]["vsnd_files"],welcome["vsnd_files"])||!ReferenceEquals(target["announcer_announcer_welcome_02"]["vsnd_files"],welcome["vsnd_files"])||!ReferenceEquals(target["announcer_killing_spree_announcer_kill_double_01"]["vsnd_files"],doubleKill["vsnd_files"]))throw new Exception("Semantic announcer mapping failed");
-Console.WriteLine("Global cosmetic sound mapping: default event names retained, announcer and kill lines mapped independently, same-category variations mapped.");
+using System.Reflection;
+using ValveKeyValue;
 
-var glados=KVObject.Collection();var dominating=Event("sounds/vo/announcer_dlc_glados_killing_spree/ann_glados_kill_dominate_01.vsnd");glados["glados_dominate_01"]=dominating;var vanilla=KVObject.Collection();vanilla["announcer_killing_spree_announcer_kill_dominate_01"]=Event("sounds/vo/announcer_killing_spree/announcer_kill_dominate_01.vsnd");var changed=(int)method.Invoke(null,new object[]{vanilla,glados})!;if(changed!=1||!ReferenceEquals(vanilla["announcer_killing_spree_announcer_kill_dominate_01"]["vsnd_files"],dominating["vsnd_files"]))throw new Exception("GLaDOS killing spree prefix mapping failed");
+static KVObject Event(string name)
+{
+    var row = KVObject.Collection();
+    var list = KVObject.Array();
+    list.Add(new KVObject(name));
+    row["type"] = new KVObject("dota_update_vo_switch");
+    row["vsnd_files"] = list;
+    return row;
+}
+var target = KVObject.Collection();
+var fallback = Event("sounds/vo/announcer/announcer_welcome_02.vsnd");
+target["announcer_announcer_welcome_01"] = Event("sounds/vo/announcer/announcer_welcome_01.vsnd");
+target["announcer_announcer_welcome_02"] = fallback;
+target["announcer_killing_spree_announcer_kill_double_01"] = Event(
+    "sounds/vo/announcer_killing_spree/announcer_kill_double_01.vsnd"
+);
+var source = KVObject.Collection();
+var welcome = Event("sounds/vo/announcer_dlc_meepo/meepo_ann_welcome_01.vsnd");
+source["meepo_line"] = welcome;
+var doubleKill = Event("sounds/vo/announcer_dlc_techies_killing_spree/tech_ann_kill_double_01.vsnd");
+source["techies_line"] = doubleKill;
+var method = Assembly
+    .Load("Dota2UnusualPatcher")
+    .GetType("GlobalCosmetics")!
+    .GetMethod("MapSounds", BindingFlags.NonPublic | BindingFlags.Static)!;
+var count = (int)method.Invoke(null, new object[] { target, source })!;
+if (
+    count != 3
+    || !ReferenceEquals(target["announcer_announcer_welcome_01"]["vsnd_files"], welcome["vsnd_files"])
+    || !ReferenceEquals(target["announcer_announcer_welcome_02"]["vsnd_files"], welcome["vsnd_files"])
+    || !ReferenceEquals(
+        target["announcer_killing_spree_announcer_kill_double_01"]["vsnd_files"],
+        doubleKill["vsnd_files"]
+    )
+)
+    throw new Exception("Semantic announcer mapping failed");
+Console.WriteLine(
+    "Global cosmetic sound mapping: default event names retained, announcer and kill lines mapped independently, same-category variations mapped."
+);
 
-var variants=KVObject.Collection();variants["announcer_announcer_twr_attack_dire_top"]=Event("sounds/vo/announcer/announcer_twr_attack_dire_top.vsnd");variants["announcer_announcer_count_battle_10"]=Event("sounds/vo/announcer/announcer_count_battle_10.vsnd");variants["announcer_announcer_rax_attack_dire_top"]=Event("sounds/vo/announcer/announcer_rax_attack_dire_top.vsnd");
-var pack=KVObject.Collection();var tower=Event("sounds/vo/announcer_dlc_glados/ann_glados_twr_attack_dire_top_02.vsnd");var ten=Event("sounds/vo/announcer_dlc_glados/ann_glados_count_battle_10_01.vsnd");pack["tower"]=tower;pack["ten"]=ten;pack["five"]=Event("sounds/vo/announcer_dlc_glados/ann_glados_count_battle_5_01.vsnd");
-var replacements=(int)method.Invoke(null,new object[]{variants,pack})!;if(replacements!=2||!ReferenceEquals(variants["announcer_announcer_twr_attack_dire_top"]["vsnd_files"],tower["vsnd_files"])||!ReferenceEquals(variants["announcer_announcer_count_battle_10"]["vsnd_files"],ten["vsnd_files"]))throw new Exception("Unnumbered announcer event or countdown category mapping failed");
-var missingHoly=KVObject.Collection();missingHoly["announcer_killing_spree_announcer_kill_holy_01"]=Event("sounds/vo/announcer_killing_spree/announcer_kill_holy_01.vsnd");missingHoly["announcer_killing_spree_announcer_1stblood_01"]=Event("sounds/vo/announcer_killing_spree/announcer_1stblood_01.vsnd");missingHoly["announcer_killing_spree_announcer_ownage_01"]=Event("sounds/vo/announcer_killing_spree/announcer_ownage_01.vsnd");
-var kills=KVObject.Collection();kills["holy"]=Event("sounds/vo/glados/ann_glados_kill_holy_02.vsnd");kills["blood"]=Event("sounds/vo/glados/ann_glados_kill_1stblood_01.vsnd");kills["ownage"]=Event("sounds/vo/glados/ann_glados_kill_ownage_01.vsnd");if((int)method.Invoke(null,new object[]{missingHoly,kills})! !=3)throw new Exception("GLaDOS holy/blood/ownage aliases failed");
-Console.WriteLine("Unnumbered lines, exact countdown categories, missing Holy Shit variant and first-blood/ownage aliases passed.");
+var glados = KVObject.Collection();
+var dominating = Event("sounds/vo/announcer_dlc_glados_killing_spree/ann_glados_kill_dominate_01.vsnd");
+glados["glados_dominate_01"] = dominating;
+var vanilla = KVObject.Collection();
+vanilla["announcer_killing_spree_announcer_kill_dominate_01"] = Event(
+    "sounds/vo/announcer_killing_spree/announcer_kill_dominate_01.vsnd"
+);
+var changed = (int)method.Invoke(null, new object[] { vanilla, glados })!;
+if (
+    changed != 1
+    || !ReferenceEquals(
+        vanilla["announcer_killing_spree_announcer_kill_dominate_01"]["vsnd_files"],
+        dominating["vsnd_files"]
+    )
+)
+    throw new Exception("GLaDOS killing spree prefix mapping failed");
+
+var variants = KVObject.Collection();
+variants["announcer_announcer_twr_attack_dire_top"] = Event("sounds/vo/announcer/announcer_twr_attack_dire_top.vsnd");
+variants["announcer_announcer_count_battle_10"] = Event("sounds/vo/announcer/announcer_count_battle_10.vsnd");
+variants["announcer_announcer_rax_attack_dire_top"] = Event("sounds/vo/announcer/announcer_rax_attack_dire_top.vsnd");
+var pack = KVObject.Collection();
+var tower = Event("sounds/vo/announcer_dlc_glados/ann_glados_twr_attack_dire_top_02.vsnd");
+var ten = Event("sounds/vo/announcer_dlc_glados/ann_glados_count_battle_10_01.vsnd");
+pack["tower"] = tower;
+pack["ten"] = ten;
+pack["five"] = Event("sounds/vo/announcer_dlc_glados/ann_glados_count_battle_5_01.vsnd");
+var replacements = (int)method.Invoke(null, new object[] { variants, pack })!;
+if (
+    replacements != 2
+    || !ReferenceEquals(variants["announcer_announcer_twr_attack_dire_top"]["vsnd_files"], tower["vsnd_files"])
+    || !ReferenceEquals(variants["announcer_announcer_count_battle_10"]["vsnd_files"], ten["vsnd_files"])
+)
+    throw new Exception("Unnumbered announcer event or countdown category mapping failed");
+var missingHoly = KVObject.Collection();
+missingHoly["announcer_killing_spree_announcer_kill_holy_01"] = Event(
+    "sounds/vo/announcer_killing_spree/announcer_kill_holy_01.vsnd"
+);
+missingHoly["announcer_killing_spree_announcer_1stblood_01"] = Event(
+    "sounds/vo/announcer_killing_spree/announcer_1stblood_01.vsnd"
+);
+missingHoly["announcer_killing_spree_announcer_ownage_01"] = Event(
+    "sounds/vo/announcer_killing_spree/announcer_ownage_01.vsnd"
+);
+var kills = KVObject.Collection();
+kills["holy"] = Event("sounds/vo/glados/ann_glados_kill_holy_02.vsnd");
+kills["blood"] = Event("sounds/vo/glados/ann_glados_kill_1stblood_01.vsnd");
+kills["ownage"] = Event("sounds/vo/glados/ann_glados_kill_ownage_01.vsnd");
+if ((int)method.Invoke(null, new object[] { missingHoly, kills })! != 3)
+    throw new Exception("GLaDOS holy/blood/ownage aliases failed");
+Console.WriteLine(
+    "Unnumbered lines, exact countdown categories, missing Holy Shit variant and first-blood/ownage aliases passed."
+);
 
 // Bloodseeker's authored CP list must survive a schema binding for CP0 only.
-static KVObject Driver(int cp,string entity,string attachment=""){
- var row=KVObject.Collection();row["m_iControlPoint"]=new KVObject(cp);row["m_entityName"]=new KVObject(entity);row["m_iAttachType"]=new KVObject("PATTACH_POINT_FOLLOW");if(attachment.Length>0)row["m_attachmentName"]=new KVObject(attachment);return row;
+static KVObject Driver(int cp, string entity, string attachment = "")
+{
+    var row = KVObject.Collection();
+    row["m_iControlPoint"] = new KVObject(cp);
+    row["m_entityName"] = new KVObject(entity);
+    row["m_iAttachType"] = new KVObject("PATTACH_POINT_FOLLOW");
+    if (attachment.Length > 0)
+        row["m_attachmentName"] = new KVObject(attachment);
+    return row;
 }
-static KVObject Definition(KVObject[] drivers,string configName="preview"){
- var config=KVObject.Collection();config["m_name"]=new KVObject(configName);config["m_drivers"]=KVObject.Array(drivers);var data=KVObject.Collection();data["m_controlPointConfigurations"]=KVObject.Array(new[]{config});return data;
+static KVObject Definition(KVObject[] drivers, string configName = "preview")
+{
+    var config = KVObject.Collection();
+    config["m_name"] = new KVObject(configName);
+    config["m_drivers"] = KVObject.Array(drivers);
+    var data = KVObject.Collection();
+    data["m_controlPointConfigurations"] = KVObject.Array(new[] { config });
+    return data;
 }
-var bind=Assembly.Load("Dota2UnusualPatcher").GetType("GlobalCosmetics")!.GetMethod("BindCourier",BindingFlags.NonPublic|BindingFlags.Static)!;
-using var bindingJson=System.Text.Json.JsonDocument.Parse("""
+var bind = Assembly
+    .Load("Dota2UnusualPatcher")
+    .GetType("GlobalCosmetics")!
+    .GetMethod("BindCourier", BindingFlags.NonPublic | BindingFlags.Static)!;
+using var bindingJson = System.Text.Json.JsonDocument.Parse(
+    """
 {"attach_type":"customorigin","attach_entity":"parent","control_points":{"0":{"control_point_index":"0","attach_type":"point_follow","attachment":"attach_attack2"},"1":{"control_point_index":"7","attach_type":"point_follow","attachment":"new_attachment"}}}
-""");
-var authoredDrivers=new[]{Driver(0,"self_with_wearables","attach_attack2"),Driver(1,"self_with_wearables","attach_eye_fx"),Driver(2,"self_with_wearables","attach_hole_fx"),Driver(3,"self"),Driver(4,"self"),Driver(5,"self"),Driver(8,"self")};
-authoredDrivers[3]["m_iAttachType"]=new KVObject("PATTACH_WORLDORIGIN");var offset=KVObject.Array(new[]{new KVObject(1f),new KVObject(1f),new KVObject(1f)});authoredDrivers[3]["m_vecOffset"]=offset;
-var nativeDefinition=Definition(authoredDrivers);bind.Invoke(null,new object[]{nativeDefinition,bindingJson.RootElement,true});
-var nativeResult=nativeDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Values.ToArray();
-if(nativeResult.Length!=8||!authoredDrivers.Select((driver,i)=>ReferenceEquals(driver,nativeResult[i])).All(x=>x)||!ReferenceEquals(nativeResult[3]["m_vecOffset"],offset)||nativeResult[0]["m_entityName"].ToString(null)!="self_with_wearables"||nativeResult[7]["m_iControlPoint"].ToInt32(null)!=7)throw new Exception("Authored wearable CPs or offsets lost");
-bind.Invoke(null,new object[]{nativeDefinition,bindingJson.RootElement,true});if(nativeDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Count!=8)throw new Exception("Wearable CP merge not idempotent");
-var courierDefinition=Definition(authoredDrivers);bind.Invoke(null,new object[]{courierDefinition,bindingJson.RootElement,false});var courierDrivers=courierDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Values.ToArray();if(courierDrivers.Length!=2||courierDrivers.Any(d=>d["m_entityName"].ToString(null)!="self"))throw new Exception("Courier replacement changed");
-var fallbackDefinition=Definition(new[]{Driver(1,"self_with_wearables","attach_eye_fx")},"default");bind.Invoke(null,new object[]{fallbackDefinition,bindingJson.RootElement,true});var preview=fallbackDefinition["m_controlPointConfigurations"].Values.Single(c=>c["m_name"].ToString(null)=="preview");if(preview["m_drivers"].Count!=3)throw new Exception("Default config lost when adding preview");
-var implicitDriver=Driver(0,"self_with_wearables","attach_attack2");implicitDriver.Remove("m_iControlPoint");var implicitDefinition=Definition(new[]{implicitDriver});bind.Invoke(null,new object[]{implicitDefinition,bindingJson.RootElement,true});if(implicitDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Count!=2)throw new Exception("Implicit CP0 duplicated");
+"""
+);
+var authoredDrivers = new[]
+{
+    Driver(0, "self_with_wearables", "attach_attack2"),
+    Driver(1, "self_with_wearables", "attach_eye_fx"),
+    Driver(2, "self_with_wearables", "attach_hole_fx"),
+    Driver(3, "self"),
+    Driver(4, "self"),
+    Driver(5, "self"),
+    Driver(8, "self"),
+};
+authoredDrivers[3]["m_iAttachType"] = new KVObject("PATTACH_WORLDORIGIN");
+var offset = KVObject.Array(new[] { new KVObject(1f), new KVObject(1f), new KVObject(1f) });
+authoredDrivers[3]["m_vecOffset"] = offset;
+var nativeDefinition = Definition(authoredDrivers);
+bind.Invoke(null, new object[] { nativeDefinition, bindingJson.RootElement, true });
+var nativeResult = nativeDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Values.ToArray();
+if (
+    nativeResult.Length != 8
+    || !authoredDrivers.Select((driver, i) => ReferenceEquals(driver, nativeResult[i])).All(x => x)
+    || !ReferenceEquals(nativeResult[3]["m_vecOffset"], offset)
+    || nativeResult[0]["m_entityName"].ToString(null) != "self_with_wearables"
+    || nativeResult[7]["m_iControlPoint"].ToInt32(null) != 7
+)
+    throw new Exception("Authored wearable CPs or offsets lost");
+bind.Invoke(null, new object[] { nativeDefinition, bindingJson.RootElement, true });
+if (nativeDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Count != 8)
+    throw new Exception("Wearable CP merge not idempotent");
+var courierDefinition = Definition(authoredDrivers);
+bind.Invoke(null, new object[] { courierDefinition, bindingJson.RootElement, false });
+var courierDrivers = courierDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Values.ToArray();
+if (courierDrivers.Length != 2 || courierDrivers.Any(d => d["m_entityName"].ToString(null) != "self"))
+    throw new Exception("Courier replacement changed");
+var fallbackDefinition = Definition(new[] { Driver(1, "self_with_wearables", "attach_eye_fx") }, "default");
+bind.Invoke(null, new object[] { fallbackDefinition, bindingJson.RootElement, true });
+var preview = fallbackDefinition["m_controlPointConfigurations"]
+    .Values.Single(c => c["m_name"].ToString(null) == "preview");
+if (preview["m_drivers"].Count != 3)
+    throw new Exception("Default config lost when adding preview");
+var implicitDriver = Driver(0, "self_with_wearables", "attach_attack2");
+implicitDriver.Remove("m_iControlPoint");
+var implicitDefinition = Definition(new[] { implicitDriver });
+bind.Invoke(null, new object[] { implicitDefinition, bindingJson.RootElement, true });
+if (implicitDefinition["m_controlPointConfigurations"].Values.Single()["m_drivers"].Count != 2)
+    throw new Exception("Implicit CP0 duplicated");
 Console.WriteLine("Wearable CP preservation, fallback, idempotence, implicit CP0 and courier compatibility passed.");
 
 var cosmeticSkin = method.DeclaringType!.GetMethod("CosmeticSkin", BindingFlags.NonPublic | BindingFlags.Static)!;
@@ -54,7 +187,5 @@ try
     Skin(groups, 7);
     throw new Exception("Nonexistent group on a multi-style courier must still be rejected");
 }
-catch (TargetInvocationException error) when (error.InnerException is InvalidDataException)
-{
-}
+catch (TargetInvocationException error) when (error.InnerException is InvalidDataException) { }
 Console.WriteLine("Baked courier materials, named styles and invalid style rejection passed.");

@@ -1,74 +1,293 @@
-import test from 'node:test';import assert from 'node:assert/strict';
-import {recolorInventory,recolorBuildProject,testerRecolorRoute} from '../lib/tester/recolor.mjs';
-import {particleTargets,particleRecords,selectCast,materialTintEdits} from '../public/tester/recolor-plan.mjs';
-import {RecolorPreview} from '../public/tester/recolor-preview.mjs';
-const sha='a'.repeat(64),row={heroId:'hero',itemId:'hat',slot:'head'},p=(path,dependencies=[])=>({path,sha256:sha,dependencies});
-test('two item particles retain independent colors and children are opt-in',()=>{const inventory={particles:[p('particles/a.vpcf_c',['particles/b.vpcf_c']),p('particles/b.vpcf_c',['particles/a.vpcf_c'])]};assert.deepEqual(particleTargets(inventory,'particles/a.vpcf_c'),['particles/a.vpcf_c']);assert.equal(particleTargets(inventory,'particles/a.vpcf_c',true).length,2);const resources=particleRecords(inventory,{'particles/a.vpcf_c':{hex:'#ff0000'},'particles/b.vpcf_c':{hex:'#0000ff'}});assert.deepEqual(resources.map(r=>r.edits[0].value),[[255,0,0],[0,0,255]]);const project=recolorBuildProject({selections:[{...row,recolor:{resources}}]});assert.equal(project.selections[0].recolor,undefined);assert.deepEqual(project.resources,resources);});
-test('catalog inventory separates item materials from effect materials and supplies friendly names',async()=>{const raw={models:[p('models/hat.vmdl_c')],particleRoots:['particles/a.vpcf_c'],resources:[p('models/hat.vmdl_c',['materials/hat.vmat_c','particles/a.vpcf_c','models/hero_animations.vmdl_c']),p('models/hero_animations.vmdl_c',['materials/hero_body.vmat_c']),p('materials/hero_body.vmat_c'),p('materials/hat.vmat_c'),p('particles/a.vpcf_c',['materials/fx.vmat_c']),p('materials/fx.vmat_c')],scenes:[{path:'particles/a.vpcf_c',target:'secret/name',label:'secret',activities:[]}]};const service={builder:{store:{read:()=>Buffer.from('texture')}},selection:()=>[{item:{id:'hat',slot:'head',imageInventory:'econ/items/test',nativeOverrides:{entries:[]}}}],discover:()=>raw,materials:{refineInventory:async x=>x}};const inventory=await recolorInventory(service,{selections:[row],focus:row});assert.deepEqual(inventory.itemMaterials.map(r=>r.path),['materials/hat.vmat_c']);assert.equal(inventory.icons[0].label,'Иконка предмета');assert.equal(inventory.particles[0].label,'Эффект 1');assert.equal(inventory.scenes[0].label,'Способность 1');});
-test('cast starts only after effects are ready; latest palette update is coalesced locally',async()=>{const events=[],document={materials:{},systems:{'studio/0/particles/a':{m_ConstantColor:[1,2,3]}},bindings:[]},viewer={source:{manifest:{materials:{}}},lastEntries:[],asset:{json:{animations:[{name:'idle'},{name:'spell',activity:'ACT_DOTA_CAST_ABILITY_1',duration:1}]}},viewer:{paused:true},getSceneDocument:()=>document,setEffects:async()=>{await Promise.resolve();events.push('effect');},setAnimation:i=>events.push('animation:'+i),queueDocumentEffects(){this.effectQueue=Promise.resolve();events.push('recolor');},document,effectQueue:Promise.resolve()};const player=new RecolorPreview();player.attach(viewer);await player.cast({definitions:{}},{activities:[{asset:'ACT_DOTA_CAST_ABILITY_1'}]});assert.deepEqual(events.slice(0,2),['effect','animation:1']);player.tintParticles({'particles/a.vpcf_c':{rgb:[20,40,60]}});await viewer.effectQueue;assert.deepEqual(document.systems['studio/0/particles/a'].m_ConstantColor,[20,40,60,255]);player.stop();});
-test('cast picker never reports idle as a cast when metadata is absent',()=>{assert.equal(selectCast([{name:'idle'}]),-1);assert.equal(selectCast([{name:'idle'},{name:'spell',activity:'ACT_DOTA_CAST_ABILITY_2'}]),1);});
-test('edited tester build preserves VPK number and project owner on job downloads',async()=>{const resources=[{path:'particles/a.vpcf_c',sha256:sha,edits:[{op:'color',path:['m_ConstantColor'],value:[1,2,3]}]}],jobs=new Map(),service={jobs,create(owner,project,options){assert.equal(options.filename,'pak47_dir.vpk');assert.equal(project.resources.length,1);const j={id:'b'.repeat(32),owner,status:'queued'};jobs.set(j.id,j);return j;}},context={builder:{catalog:{cosmetics:[]}},editorBuilds:service},result=[];await testerRecolorRoute({req:{method:'POST'},res:{},url:new URL('https://example/api/tester/recolor/build'),context,owner:'tester:a',body:async()=>({vpkNumber:47,selections:[{...row,recolor:{resources}}]}),json:(_,code,value)=>result.push({code,value})});assert.equal(result[0].code,202);await testerRecolorRoute({req:{method:'GET'},res:{},url:new URL('https://example/api/tester/recolor/jobs/'+ 'b'.repeat(32)),context,owner:'tester:b',json:(_,code)=>assert.equal(code,404)});});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { recolorInventory, recolorBuildProject, testerRecolorRoute } from '../lib/tester/recolor.mjs';
+import { particleTargets, particleRecords, selectCast, materialTintEdits } from '../public/tester/recolor-plan.mjs';
+import { RecolorPreview } from '../public/tester/recolor-preview.mjs';
+const sha = 'a'.repeat(64),
+  row = { heroId: 'hero', itemId: 'hat', slot: 'head' },
+  p = (path, dependencies = []) => ({ path, sha256: sha, dependencies });
+test('two item particles retain independent colors and children are opt-in', () => {
+  const inventory = {
+    particles: [p('particles/a.vpcf_c', ['particles/b.vpcf_c']), p('particles/b.vpcf_c', ['particles/a.vpcf_c'])]
+  };
+  assert.deepEqual(particleTargets(inventory, 'particles/a.vpcf_c'), ['particles/a.vpcf_c']);
+  assert.equal(particleTargets(inventory, 'particles/a.vpcf_c', true).length, 2);
+  const resources = particleRecords(inventory, {
+    'particles/a.vpcf_c': { hex: '#ff0000' },
+    'particles/b.vpcf_c': { hex: '#0000ff' }
+  });
+  assert.deepEqual(
+    resources.map(r => r.edits[0].value),
+    [
+      [255, 0, 0],
+      [0, 0, 255]
+    ]
+  );
+  const project = recolorBuildProject({ selections: [{ ...row, recolor: { resources } }] });
+  assert.equal(project.selections[0].recolor, undefined);
+  assert.deepEqual(project.resources, resources);
+});
+test('catalog inventory separates item materials from effect materials and supplies friendly names', async () => {
+  const raw = {
+    models: [p('models/hat.vmdl_c')],
+    particleRoots: ['particles/a.vpcf_c'],
+    resources: [
+      p('models/hat.vmdl_c', ['materials/hat.vmat_c', 'particles/a.vpcf_c', 'models/hero_animations.vmdl_c']),
+      p('models/hero_animations.vmdl_c', ['materials/hero_body.vmat_c']),
+      p('materials/hero_body.vmat_c'),
+      p('materials/hat.vmat_c'),
+      p('particles/a.vpcf_c', ['materials/fx.vmat_c']),
+      p('materials/fx.vmat_c')
+    ],
+    scenes: [{ path: 'particles/a.vpcf_c', target: 'secret/name', label: 'secret', activities: [] }]
+  };
+  const service = {
+    builder: { store: { read: () => Buffer.from('texture') } },
+    selection: () => [
+      { item: { id: 'hat', slot: 'head', imageInventory: 'econ/items/test', nativeOverrides: { entries: [] } } }
+    ],
+    discover: () => raw,
+    materials: { refineInventory: async x => x }
+  };
+  const inventory = await recolorInventory(service, { selections: [row], focus: row });
+  assert.deepEqual(
+    inventory.itemMaterials.map(r => r.path),
+    ['materials/hat.vmat_c']
+  );
+  assert.equal(inventory.icons[0].label, 'Иконка предмета');
+  assert.equal(inventory.particles[0].label, 'Эффект 1');
+  assert.equal(inventory.scenes[0].label, 'Способность 1');
+});
+test('cast starts only after effects are ready; latest palette update is coalesced locally', async () => {
+  const events = [],
+    document = { materials: {}, systems: { 'studio/0/particles/a': { m_ConstantColor: [1, 2, 3] } }, bindings: [] },
+    viewer = {
+      source: { manifest: { materials: {} } },
+      lastEntries: [],
+      asset: {
+        json: { animations: [{ name: 'idle' }, { name: 'spell', activity: 'ACT_DOTA_CAST_ABILITY_1', duration: 1 }] }
+      },
+      viewer: { paused: true },
+      getSceneDocument: () => document,
+      setEffects: async () => {
+        await Promise.resolve();
+        events.push('effect');
+      },
+      setAnimation: i => events.push('animation:' + i),
+      queueDocumentEffects() {
+        this.effectQueue = Promise.resolve();
+        events.push('recolor');
+      },
+      document,
+      effectQueue: Promise.resolve()
+    };
+  const player = new RecolorPreview();
+  player.attach(viewer);
+  await player.cast({ definitions: {} }, { activities: [{ asset: 'ACT_DOTA_CAST_ABILITY_1' }] });
+  assert.deepEqual(events.slice(0, 2), ['effect', 'animation:1']);
+  player.tintParticles({ 'particles/a.vpcf_c': { rgb: [20, 40, 60] } });
+  await viewer.effectQueue;
+  assert.deepEqual(document.systems['studio/0/particles/a'].m_ConstantColor, [20, 40, 60, 255]);
+  player.stop();
+});
+test('cast picker never reports idle as a cast when metadata is absent', () => {
+  assert.equal(selectCast([{ name: 'idle' }]), -1);
+  assert.equal(selectCast([{ name: 'idle' }, { name: 'spell', activity: 'ACT_DOTA_CAST_ABILITY_2' }]), 1);
+});
+test('edited tester build preserves VPK number and project owner on job downloads', async () => {
+  const resources = [
+      { path: 'particles/a.vpcf_c', sha256: sha, edits: [{ op: 'color', path: ['m_ConstantColor'], value: [1, 2, 3] }] }
+    ],
+    jobs = new Map(),
+    service = {
+      jobs,
+      create(owner, project, options) {
+        assert.equal(options.filename, 'pak47_dir.vpk');
+        assert.equal(project.resources.length, 1);
+        const j = { id: 'b'.repeat(32), owner, status: 'queued' };
+        jobs.set(j.id, j);
+        return j;
+      }
+    },
+    context = { builder: { catalog: { cosmetics: [] } }, editorBuilds: service },
+    result = [];
+  await testerRecolorRoute({
+    req: { method: 'POST' },
+    res: {},
+    url: new URL('https://example/api/tester/recolor/build'),
+    context,
+    owner: 'tester:a',
+    body: async () => ({ vpkNumber: 47, selections: [{ ...row, recolor: { resources } }] }),
+    json: (_, code, value) => result.push({ code, value })
+  });
+  assert.equal(result[0].code, 202);
+  await testerRecolorRoute({
+    req: { method: 'GET' },
+    res: {},
+    url: new URL('https://example/api/tester/recolor/jobs/' + 'b'.repeat(32)),
+    context,
+    owner: 'tester:b',
+    json: (_, code) => assert.equal(code, 404)
+  });
+});
 
-import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {startServer} from '../server.mjs';
-import {EditorBuildService} from '../lib/editor/build-service.mjs';
-import {AssetStore,Vpk} from '../lib/vpk.mjs';
-import {digest} from '../lib/editor/project-service.mjs';
-import {MAX_SET_BUILD_ITEMS} from '../lib/namespace.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { startServer } from '../server.mjs';
+import { EditorBuildService } from '../lib/editor/build-service.mjs';
+import { AssetStore, Vpk } from '../lib/vpk.mjs';
+import { digest } from '../lib/editor/project-service.mjs';
+import { MAX_SET_BUILD_ITEMS } from '../lib/namespace.mjs';
 test('recolor builds accept 112 selections with over 2048 edited effects', async () => {
- const selections = Array.from({length: 112}, (_, index) => ({
-  ...row, heroId: 'hero-' + index,
-  recolor: {resources: Array.from({length: 19}, (_, effect) => ({
-   path: `particles/hero-${index}/effect-${effect}.vpcf_c`, sha256: sha,
-   edits: [{op: 'color', path: ['m_ConstantColor'], value: [255, 0, 0]}],
-  }))},
- }));
- const service = {create(_owner, project, options) {
-  assert.equal(project.selections.length, 112);
-  assert.equal(project.resources.length, 2128);
-  assert.equal(options.filename, 'pak47_dir.vpk');
-  return {id: 'a'.repeat(32), status: 'queued', filename: options.filename};
- }};
- await testerRecolorRoute({
-  req: {method: 'POST'}, res: {}, url: new URL('https://example/api/recolor/build'),
-  prefix: '/api/recolor/', context: {builder: {}, editorBuilds: service}, owner: 'player',
-  body: async () => ({selections, vpkNumber: 47}),
-  json: (_res, status, job) => {assert.equal(status, 202);assert.equal(job.filename, 'pak47_dir.vpk');},
- });
+  const selections = Array.from({ length: 112 }, (_, index) => ({
+    ...row,
+    heroId: 'hero-' + index,
+    recolor: {
+      resources: Array.from({ length: 19 }, (_, effect) => ({
+        path: `particles/hero-${index}/effect-${effect}.vpcf_c`,
+        sha256: sha,
+        edits: [{ op: 'color', path: ['m_ConstantColor'], value: [255, 0, 0] }]
+      }))
+    }
+  }));
+  const service = {
+    create(_owner, project, options) {
+      assert.equal(project.selections.length, 112);
+      assert.equal(project.resources.length, 2128);
+      assert.equal(options.filename, 'pak47_dir.vpk');
+      return { id: 'a'.repeat(32), status: 'queued', filename: options.filename };
+    }
+  };
+  await testerRecolorRoute({
+    req: { method: 'POST' },
+    res: {},
+    url: new URL('https://example/api/recolor/build'),
+    prefix: '/api/recolor/',
+    context: { builder: {}, editorBuilds: service },
+    owner: 'player',
+    body: async () => ({ selections, vpkNumber: 47 }),
+    json: (_res, status, job) => {
+      assert.equal(status, 202);
+      assert.equal(job.filename, 'pak47_dir.vpk');
+    }
+  });
 });
 test('recolor builds report which project limit was exceeded', () => {
- const selections = Array.from({length: MAX_SET_BUILD_ITEMS + 1}, (_, index) => ({
-  ...row, heroId: 'hero-' + index,
- }));
- assert.equal(recolorBuildProject({selections: selections.slice(0, 713)}).selections.length, 713);
- assert.throws(() => recolorBuildProject({selections}), new RegExp(`${MAX_SET_BUILD_ITEMS + 1}.*${MAX_SET_BUILD_ITEMS}`));
+  const selections = Array.from({ length: MAX_SET_BUILD_ITEMS + 1 }, (_, index) => ({
+    ...row,
+    heroId: 'hero-' + index
+  }));
+  assert.equal(recolorBuildProject({ selections: selections.slice(0, 713) }).selections.length, 713);
+  assert.throws(
+    () => recolorBuildProject({ selections }),
+    new RegExp(`${MAX_SET_BUILD_ITEMS + 1}.*${MAX_SET_BUILD_ITEMS}`)
+  );
 
- const resources = Array.from({length: 16385}, (_, index) => ({
-  path: `particles/edited-${index}.vpcf_c`, sha256: sha, edits: [],
- }));
- const withResources = resources => ({selections: [{...row, recolor: {resources}}]});
- assert.throws(() => recolorBuildProject(withResources(resources)), /16385.*16384/);
+  const resources = Array.from({ length: 16385 }, (_, index) => ({
+    path: `particles/edited-${index}.vpcf_c`,
+    sha256: sha,
+    edits: []
+  }));
+  const withResources = resources => ({ selections: [{ ...row, recolor: { resources } }] });
+  assert.throws(() => recolorBuildProject(withResources(resources)), /16385.*16384/);
 });
-function binary(tag=''){const b=Buffer.alloc(16+tag.length);b.writeUInt32LE(b.length);b.writeUInt32LE(8,8);b.write(tag,16);return b;}
-test('tester editor pipeline packs both independently edited particles into the requested VPK',async()=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'tester-paint-'));try{const originals=new Map([['particles/a.vpcf_c',binary('a')],['particles/b.vpcf_c',binary('b')]]),store=new AssetStore();store.read=n=>originals.get(n);const item={id:'hat',slot:'head',effects:[]},hero={id:'hero'},builder={root,store,catalog:{effects:[]},config:{},cosmeticChoice:()=>({hero,item,effects:[],effect:{id:'native-only'}}),async assemble(){return new Map([...originals.keys()].map(n=>[n,this.store.read(n)]));}};
- const service=new EditorBuildService(builder);service.particles.apply=async r=>binary(r.edits[0].value.join(','));const resources=[...originals].map(([name,bytes],i)=>({path:name,sha256:digest(bytes),edits:[{op:'color',path:['m_ConstantColor'],value:i?[0,0,255]:[255,0,0]}]}));const job=service.create('tester:a',{schemaVersion:1,selections:[row],resources},{filename:'pak47_dir.vpk',resourceColorPriority:true});while(['queued','building'].includes(job.status))await new Promise(r=>setTimeout(r,2));assert.equal(job.status,'ready',job.error);const vpk=new Vpk(job.file);assert.equal(path.basename(job.file),'pak47_dir.vpk');assert.equal(vpk.read('particles/a.vpcf_c').subarray(16).toString(),'255,0,0');assert.equal(vpk.read('particles/b.vpcf_c').subarray(16).toString(),'0,0,255');
- }finally{fs.rmSync(root,{recursive:true,force:true});}
+function binary(tag = '') {
+  const b = Buffer.alloc(16 + tag.length);
+  b.writeUInt32LE(b.length);
+  b.writeUInt32LE(8, 8);
+  b.write(tag, 16);
+  return b;
+}
+test('tester editor pipeline packs both independently edited particles into the requested VPK', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tester-paint-'));
+  try {
+    const originals = new Map([
+        ['particles/a.vpcf_c', binary('a')],
+        ['particles/b.vpcf_c', binary('b')]
+      ]),
+      store = new AssetStore();
+    store.read = n => originals.get(n);
+    const item = { id: 'hat', slot: 'head', effects: [] },
+      hero = { id: 'hero' },
+      builder = {
+        root,
+        store,
+        catalog: { effects: [] },
+        config: {},
+        cosmeticChoice: () => ({ hero, item, effects: [], effect: { id: 'native-only' } }),
+        async assemble() {
+          return new Map([...originals.keys()].map(n => [n, this.store.read(n)]));
+        }
+      };
+    const service = new EditorBuildService(builder);
+    service.particles.apply = async r => binary(r.edits[0].value.join(','));
+    const resources = [...originals].map(([name, bytes], i) => ({
+      path: name,
+      sha256: digest(bytes),
+      edits: [{ op: 'color', path: ['m_ConstantColor'], value: i ? [0, 0, 255] : [255, 0, 0] }]
+    }));
+    const job = service.create(
+      'tester:a',
+      { schemaVersion: 1, selections: [row], resources },
+      { filename: 'pak47_dir.vpk', resourceColorPriority: true }
+    );
+    while (['queued', 'building'].includes(job.status)) await new Promise(r => setTimeout(r, 2));
+    assert.equal(job.status, 'ready', job.error);
+    const vpk = new Vpk(job.file);
+    assert.equal(path.basename(job.file), 'pak47_dir.vpk');
+    assert.equal(vpk.read('particles/a.vpcf_c').subarray(16).toString(), '255,0,0');
+    assert.equal(vpk.read('particles/b.vpcf_c').subarray(16).toString(), '0,0,255');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
-test('tester recolor remains private while the main catalog enables public recolor',async()=>{
- const app=await startServer({port:0,testerAuth:{verify(){throw Object.assign(Error('Нужен вход тестера'),{status:401});}}});try{for(const route of ['/api/tester/recolor/inventory','/api/tester/recolor/build'])assert.equal((await fetch(app.url+route,{method:'POST',body:'{}'})).status,401);assert.equal((await fetch(app.url+'/tester/assets/tester/catalog-recolor.mjs')).status,401);assert.equal((await fetch(app.url+'/api/recolor/inventory',{method:'POST',body:'{}'})).status,400);assert(fs.readFileSync(path.join(app.builder.root,'public/app.mjs'),'utf8').includes('onRecolorItem:'));assert(!fs.readFileSync(path.join(app.builder.root,'public/admin.mjs'),'utf8').includes('onRecolorItem:'));}finally{app.previews.dispose();await new Promise(r=>app.server.close(r));}
+test('tester recolor remains private while the main catalog enables public recolor', async () => {
+  const app = await startServer({
+    port: 0,
+    testerAuth: {
+      verify() {
+        throw Object.assign(Error('Нужен вход тестера'), { status: 401 });
+      }
+    }
+  });
+  try {
+    for (const route of ['/api/tester/recolor/inventory', '/api/tester/recolor/build'])
+      assert.equal((await fetch(app.url + route, { method: 'POST', body: '{}' })).status, 401);
+    assert.equal((await fetch(app.url + '/tester/assets/tester/catalog-recolor.mjs')).status, 401);
+    assert.equal((await fetch(app.url + '/api/recolor/inventory', { method: 'POST', body: '{}' })).status, 400);
+    assert(fs.readFileSync(path.join(app.builder.root, 'public/app.mjs'), 'utf8').includes('onRecolorItem:'));
+    assert(!fs.readFileSync(path.join(app.builder.root, 'public/admin.mjs'), 'utf8').includes('onRecolorItem:'));
+  } finally {
+    app.previews.dispose();
+    await new Promise(r => app.server.close(r));
+  }
 });
 
-
-test('tester entry static imports load before authentication, protected editor stays private',async()=>{
- const app=await startServer({port:0,testerAuth:{verify(){throw Object.assign(Error('Need tester login'),{status:401});}}});
- try{
-  const entry=await fetch(app.url+'/tester/app.mjs');assert.equal(entry.status,200);
-  const source=await entry.text();
-  const imports=[...source.matchAll(/import\s+[^;]+?from\s+['"](\.[^'"]+)['"]/g)].map(m=>m[1]);
-  assert.ok(imports.includes('./recolor-request.mjs'));
-  for(const dependency of imports){const response=await fetch(new URL(dependency,app.url+'/tester/app.mjs'));assert.equal(response.status,200,dependency);assert.match(response.headers.get('content-type'),/javascript/);}
-  assert.equal((await fetch(app.url+'/api/tester/me')).status,401);
-  assert.equal((await fetch(app.url+'/tester/assets/tester/catalog-recolor.mjs')).status,401);
- }finally{app.previews.dispose();await new Promise(r=>app.server.close(r));}
+test('tester entry static imports load before authentication, protected editor stays private', async () => {
+  const app = await startServer({
+    port: 0,
+    testerAuth: {
+      verify() {
+        throw Object.assign(Error('Need tester login'), { status: 401 });
+      }
+    }
+  });
+  try {
+    const entry = await fetch(app.url + '/tester/app.mjs');
+    assert.equal(entry.status, 200);
+    const source = await entry.text();
+    const imports = [...source.matchAll(/import\s+[^;]+?from\s+['"](\.[^'"]+)['"]/g)].map(m => m[1]);
+    assert.ok(imports.includes('./recolor-request.mjs'));
+    for (const dependency of imports) {
+      const response = await fetch(new URL(dependency, app.url + '/tester/app.mjs'));
+      assert.equal(response.status, 200, dependency);
+      assert.match(response.headers.get('content-type'), /javascript/);
+    }
+    assert.equal((await fetch(app.url + '/api/tester/me')).status, 401);
+    assert.equal((await fetch(app.url + '/tester/assets/tester/catalog-recolor.mjs')).status, 401);
+  } finally {
+    app.previews.dispose();
+    await new Promise(r => app.server.close(r));
+  }
 });

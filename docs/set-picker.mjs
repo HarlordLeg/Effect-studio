@@ -1,13 +1,161 @@
-export function setPreviewItems(hero,set){return (set?.items??[]).map(row=>hero.items.find(i=>i.id===row.itemId)).filter(i=>i?.imageInventory).slice(0,4);}
-export function drawSetPicker(container,hero,state,{disabled=false,token=null,imageForItem=()=>null,onSelect=()=>{}}={}){
- const doc=container.ownerDocument;
- const preview=set=>{const box=doc.createElement('span');box.className='set-preset-thumbnail';const collage=()=>{box.replaceChildren();const items=setPreviewItems(hero,set);box.classList.toggle('collage',items.length>1);for(const item of items){const url=imageForItem(item);if(!url)continue;const img=doc.createElement('img');img.src=url;img.alt='';img.loading='lazy';img.addEventListener('error',()=>img.remove(),{once:true});box.append(img);}if(!items.length)box.textContent='＋';};if(set?.imageInventory){const img=doc.createElement('img'),q=new URLSearchParams({heroId:hero.id,setId:set.id});if(token)q.set('token',token);img.src='/api/set-icon?'+q;img.alt='';img.loading='lazy';img.addEventListener('error',collage,{once:true});box.append(img);}else collage();return box;};
- const current=hero.sets?.find(s=>s.id===state.presetId),trigger=doc.createElement('button');trigger.type='button';trigger.className='set-preset-trigger secondary';trigger.disabled=disabled;trigger.setAttribute('aria-haspopup','dialog');const name=doc.createElement('span');name.textContent=current?.name??'Собрать вручную';trigger.append(preview(current),name);container.append(trigger);
- trigger.onclick=()=>{
-  const dialog=doc.createElement('dialog');dialog.className='set-preset-dialog';const top=doc.createElement('div');top.className='set-picker-top';const heading=doc.createElement('h2');heading.textContent=doc.documentElement.lang==='ru'?'Комплект':'Set';const close=doc.createElement('button');close.type='button';close.className='secondary';close.textContent='×';close.setAttribute('aria-label',doc.documentElement.lang==='ru'?'Закрыть':'Close');close.onclick=()=>dialog.close();top.append(heading,close);
-  const search=doc.createElement('input');search.type='search';search.placeholder=doc.documentElement.lang==='ru'?'Поиск комплекта':'Search sets';search.setAttribute('aria-label',search.placeholder);const list=doc.createElement('div');list.className='set-preset-options';list.setAttribute('role','listbox');const rows=[],unavailable=doc.createElement('details'),unavailableTitle=doc.createElement('summary'),unavailableList=doc.createElement('div');unavailable.className='set-archive-missing';unavailableTitle.textContent=doc.documentElement.lang==='ru'?'Архивные сеты без файлов':'Archives with missing files';unavailable.append(unavailableTitle,unavailableList);
-  for(const set of [null,...hero.sets??[]]){const button=doc.createElement('button');button.type='button';button.className='set-preset-option';button.disabled=disabled||!!set?.unavailable||set?.available===false;if(set?.unavailable)button.title=set.unavailable;button.setAttribute('role','option');button.setAttribute('aria-selected',String((set?.id??null)===(state.presetId??null)));const text=doc.createElement('span'),title=doc.createElement('b');title.textContent=set?.name??(doc.documentElement.lang==='ru'?'Собрать вручную':'Build manually');text.append(title);if(set){const count=doc.createElement('small');count.textContent=set.unavailable?(doc.documentElement.lang==='ru'?set.unavailable:set.unavailableReason==='missing-parts'?`${set.itemCount} of ${set.expectedParts} model parts found in game files`:set.unavailableReason==='ambiguous'?'Multiple model variants require verified bindings':set.unavailableReason==='dependencies'?'Required model resources are missing':'Not available in mounted game files'):set.itemCount+' · '+(doc.documentElement.lang==='ru'?'Предметов':'Items');text.append(count);if(set.note){const note=doc.createElement('small');note.textContent=set.note;text.append(note);}}if(set?.unavailable){button.classList.add('set-archive-missing-row');button.append(text);}else button.append(preview(set),text);button.onclick=()=>{dialog.close();onSelect(set?.id??'');};(set?.unavailable?unavailableList:list).append(button);rows.push({button,text:title.textContent.toLowerCase()});}
-  search.oninput=()=>{const q=search.value.trim().toLowerCase();for(const r of rows)r.button.hidden=!r.text.includes(q);unavailable.open=!!q;unavailable.hidden=![...unavailableList.children].some(b=>!b.hidden);};dialog.addEventListener('keydown',e=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;e.preventDefault();const options=rows.filter(r=>!r.button.hidden&&!r.button.disabled).map(r=>r.button);if(!options.length)return;const i=options.indexOf(doc.activeElement);options[e.key==='Home'?0:e.key==='End'?options.length-1:(i+(e.key==='ArrowUp'?-1:1)+options.length)%options.length].focus();});dialog.addEventListener('close',()=>{dialog.remove();if(trigger.isConnected)trigger.focus();},{once:true});dialog.append(top,search,list,...(unavailableList.children.length?[unavailable]:[]));doc.body.append(dialog);dialog.showModal();search.focus();
- };
- return trigger;
+export function setPreviewItems(hero, set) {
+  return (set?.items ?? [])
+    .map(row => hero.items.find(i => i.id === row.itemId))
+    .filter(i => i?.imageInventory)
+    .slice(0, 4);
+}
+export function drawSetPicker(
+  container,
+  hero,
+  state,
+  { disabled = false, token = null, imageForItem = () => null, onSelect = () => {} } = {}
+) {
+  const doc = container.ownerDocument;
+  const preview = set => {
+    const box = doc.createElement('span');
+    box.className = 'set-preset-thumbnail';
+    const collage = () => {
+      box.replaceChildren();
+      const items = setPreviewItems(hero, set);
+      box.classList.toggle('collage', items.length > 1);
+      for (const item of items) {
+        const url = imageForItem(item);
+        if (!url) continue;
+        const img = doc.createElement('img');
+        img.src = url;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.addEventListener('error', () => img.remove(), { once: true });
+        box.append(img);
+      }
+      if (!items.length) box.textContent = '＋';
+    };
+    if (set?.imageInventory) {
+      const img = doc.createElement('img'),
+        q = new URLSearchParams({ heroId: hero.id, setId: set.id });
+      if (token) q.set('token', token);
+      img.src = '/api/set-icon?' + q;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.addEventListener('error', collage, { once: true });
+      box.append(img);
+    } else collage();
+    return box;
+  };
+  const current = hero.sets?.find(s => s.id === state.presetId),
+    trigger = doc.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'set-preset-trigger secondary';
+  trigger.disabled = disabled;
+  trigger.setAttribute('aria-haspopup', 'dialog');
+  const name = doc.createElement('span');
+  name.textContent = current?.name ?? 'Собрать вручную';
+  trigger.append(preview(current), name);
+  container.append(trigger);
+  trigger.onclick = () => {
+    const dialog = doc.createElement('dialog');
+    dialog.className = 'set-preset-dialog';
+    const top = doc.createElement('div');
+    top.className = 'set-picker-top';
+    const heading = doc.createElement('h2');
+    heading.textContent = doc.documentElement.lang === 'ru' ? 'Комплект' : 'Set';
+    const close = doc.createElement('button');
+    close.type = 'button';
+    close.className = 'secondary';
+    close.textContent = '×';
+    close.setAttribute('aria-label', doc.documentElement.lang === 'ru' ? 'Закрыть' : 'Close');
+    close.onclick = () => dialog.close();
+    top.append(heading, close);
+    const search = doc.createElement('input');
+    search.type = 'search';
+    search.placeholder = doc.documentElement.lang === 'ru' ? 'Поиск комплекта' : 'Search sets';
+    search.setAttribute('aria-label', search.placeholder);
+    const list = doc.createElement('div');
+    list.className = 'set-preset-options';
+    list.setAttribute('role', 'listbox');
+    const rows = [],
+      unavailable = doc.createElement('details'),
+      unavailableTitle = doc.createElement('summary'),
+      unavailableList = doc.createElement('div');
+    unavailable.className = 'set-archive-missing';
+    unavailableTitle.textContent =
+      doc.documentElement.lang === 'ru' ? 'Архивные сеты без файлов' : 'Archives with missing files';
+    unavailable.append(unavailableTitle, unavailableList);
+    for (const set of [null, ...(hero.sets ?? [])]) {
+      const button = doc.createElement('button');
+      button.type = 'button';
+      button.className = 'set-preset-option';
+      button.disabled = disabled || !!set?.unavailable || set?.available === false;
+      if (set?.unavailable) button.title = set.unavailable;
+      button.setAttribute('role', 'option');
+      button.setAttribute('aria-selected', String((set?.id ?? null) === (state.presetId ?? null)));
+      const text = doc.createElement('span'),
+        title = doc.createElement('b');
+      title.textContent = set?.name ?? (doc.documentElement.lang === 'ru' ? 'Собрать вручную' : 'Build manually');
+      text.append(title);
+      if (set) {
+        const count = doc.createElement('small');
+        count.textContent = set.unavailable
+          ? doc.documentElement.lang === 'ru'
+            ? set.unavailable
+            : set.unavailableReason === 'missing-parts'
+              ? `${set.itemCount} of ${set.expectedParts} model parts found in game files`
+              : set.unavailableReason === 'ambiguous'
+                ? 'Multiple model variants require verified bindings'
+                : set.unavailableReason === 'dependencies'
+                  ? 'Required model resources are missing'
+                  : 'Not available in mounted game files'
+          : set.itemCount + ' · ' + (doc.documentElement.lang === 'ru' ? 'Предметов' : 'Items');
+        text.append(count);
+        if (set.note) {
+          const note = doc.createElement('small');
+          note.textContent = set.note;
+          text.append(note);
+        }
+      }
+      if (set?.unavailable) {
+        button.classList.add('set-archive-missing-row');
+        button.append(text);
+      } else button.append(preview(set), text);
+      button.onclick = () => {
+        dialog.close();
+        onSelect(set?.id ?? '');
+      };
+      (set?.unavailable ? unavailableList : list).append(button);
+      rows.push({ button, text: title.textContent.toLowerCase() });
+    }
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      for (const r of rows) r.button.hidden = !r.text.includes(q);
+      unavailable.open = !!q;
+      unavailable.hidden = ![...unavailableList.children].some(b => !b.hidden);
+    };
+    dialog.addEventListener('keydown', e => {
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+      e.preventDefault();
+      const options = rows.filter(r => !r.button.hidden && !r.button.disabled).map(r => r.button);
+      if (!options.length) return;
+      const i = options.indexOf(doc.activeElement);
+      options[
+        e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+            ? options.length - 1
+            : (i + (e.key === 'ArrowUp' ? -1 : 1) + options.length) % options.length
+      ].focus();
+    });
+    dialog.addEventListener(
+      'close',
+      () => {
+        dialog.remove();
+        if (trigger.isConnected) trigger.focus();
+      },
+      { once: true }
+    );
+    dialog.append(top, search, list, ...(unavailableList.children.length ? [unavailable] : []));
+    doc.body.append(dialog);
+    dialog.showModal();
+    search.focus();
+  };
+  return trigger;
 }

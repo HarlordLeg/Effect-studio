@@ -1,47 +1,339 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SceneParts,composeParts} from '../public/renderer/parts.mjs';
-import {ModelPreview} from '../public/renderer/engine.mjs';
-function fixture(name){const json={asset:{version:'2.0'},buffers:[{byteLength:36}],bufferViews:[{buffer:0,byteLength:36}],accessors:[{bufferView:0,type:'VEC3',componentType:5126,count:3}],meshes:[{primitives:[{attributes:{POSITION:0}}]}],nodes:[{name,mesh:0}],scenes:[{nodes:[0]}],scene:0};const text=Buffer.from(JSON.stringify(json)),n=(text.length+3)&~3,b=Buffer.alloc(28+n+36,32);b.writeUInt32LE(0x46546c67);b.writeUInt32LE(2,4);b.writeUInt32LE(b.length,8);b.writeUInt32LE(n,12);b.writeUInt32LE(0x4e4f534a,16);text.copy(b,20);b.writeUInt32LE(36,20+n);b.writeUInt32LE(0x004e4942,24+n);Buffer.from(new Float32Array([0,0,0,1,0,0,0,1,0]).buffer).copy(b,28+n);return b.buffer.slice(b.byteOffset,b.byteOffset+b.length);}
-const parts=[{role:'hero',id:'hero',key:'h',index:0,bytes:fixture('hero')},{role:'default',id:'hat',key:'d',index:1,bytes:fixture('hat')},{role:'item',id:'weapon',key:'i',index:2,bytes:fixture('weapon')}];
-test('scene parts cache downloads only the changed item and groups selected meshes',async()=>{const cache=new SceneParts(),calls=[];const manifest={parts:parts.map(p=>({...p,bytes:p.bytes.byteLength}))};const fetcher=async url=>{calls.push(url);return {ok:true,arrayBuffer:async()=>parts[Number(url.split('/').at(-1))].bytes};};const asset=await cache.load(manifest,'/api/previews/a','',fetcher);assert.equal(calls.length,3);assert.deepEqual(asset.json.extras.effectStudioItemGroups.weapon,[2]);assert.deepEqual([...asset.accessor(2).values],[0,0,0,1,0,0,0,1,0]);assert.equal(await cache.load(manifest,'/api/previews/b','',fetcher),null);assert.equal(calls.length,3);manifest.parts[2].key='new';await cache.load(manifest,'/api/previews/c','',fetcher);assert.equal(calls.length,4);assert.equal(calls.at(-1),'/api/previews/c/parts/2');});
-test('same hero keeps GPU buffers, camera and animation while new slot is uploaded',async()=>{const deleted=[],uploads=[];let id=0;const gl=new Proxy({createVertexArray:()=>++id,createBuffer:()=>++id,deleteVertexArray:x=>deleted.push(x),deleteBuffer:x=>deleted.push(x),bufferData:(_t,data)=>uploads.push(data.length)}, {get:(o,k)=>k in o?o[k]:()=>{}});const preview=Object.create(ModelPreview.prototype);Object.assign(preview,{gl,draws:[],textures:[],loadingVersion:0,center:[9,8,7],radius:4,distance:12,animation:2,start:123});await preview.load(null,composeParts(parts));const hero=preview.draws[0],hat=preview.draws[1],weapon=preview.draws[2];Object.assign(preview,{center:[9,8,7],radius:4,distance:12,animation:2,start:123});const before=uploads.length;await preview.load(null,composeParts(parts.map(p=>p.role==='item'?{...p,key:'new'}:p)),true);assert.equal(preview.draws[0].vao,hero.vao);assert.equal(preview.draws[1].vao,hat.vao);assert.notEqual(preview.draws[2].vao,weapon.vao);assert.equal(uploads.length-before,1);assert.ok(deleted.includes(weapon.vao));assert.ok(!deleted.includes(hero.vao));assert.deepEqual(preview.center,[9,8,7]);assert.equal(preview.animation,2);assert.equal(preview.start,123);});
-
-test('independent part downloads overlap while composition preserves manifest order',async()=>{const cache=new SceneParts();let active=0,peak=0;const manifest={parts:parts.map(p=>({...p,bytes:p.bytes.byteLength}))};const fetcher=async url=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,5));active--;return {ok:true,arrayBuffer:async()=>parts[Number(url.split('/').at(-1))].bytes};};const asset=await cache.load(manifest,'/preview','',fetcher);assert.equal(peak,3);assert.deepEqual(asset.json.nodes.map(n=>n.name),['hero','hat','weapon']);});
-test('queued scene loading discards stale downloads and commits only the latest request',async()=>{let release,entered;const started=new Promise(r=>entered=r),gate=new Promise(r=>release=r),uploads=[];const preview=Object.create(ModelPreview.prototype);Object.assign(preview,{sceneParts:{signature:null,cache:new Map(),async load(manifest){if(manifest.id==='old'){entered();await gate;}return {json:{animations:[]},id:manifest.id};}},async load(_url,asset){uploads.push(asset.id);this.asset=asset;return [];}});const first=preview.loadScene({id:'old',heroId:'hero',parts:[]},'/old');const rejected=assert.rejects(first,e=>e.name==='AbortError');await started;const second=preview.loadScene({id:'new',heroId:'hero',parts:[]},'/new');release();await rejected;await second;assert.deepEqual(uploads,['new']);assert.equal(preview.asset.id,'new');});
-test('internal GPU cleanup preserves downloaded scene cache; explicit clear invalidates it',()=>{let resets=0;const preview=Object.create(ModelPreview.prototype);Object.assign(preview,{gl:{},draws:[],textures:[],loadingVersion:0,sceneRequest:5,sceneParts:{reset(){resets++;}}});preview.clear({internal:true});assert.equal(resets,0);assert.equal(preview.sceneRequest,5);preview.clear();assert.equal(resets,1);assert.equal(preview.sceneRequest,6);});
-test('a cached manifest with no active GPU scene rebuilds the scene instead of reading null.json',async()=>{let reads=0;const asset={json:{animations:[]}},preview=Object.create(ModelPreview.prototype);Object.assign(preview,{asset:null,sceneParts:{signature:'stale',cache:new Map(),async load(){return ++reads===1?null:asset;}},async load(_url,prepared){assert.equal(prepared,asset);this.asset=prepared;return [];}});await preview.loadScene({heroId:'hero',parts:[]},'/preview');assert.equal(reads,2);assert.equal(preview.asset,asset);});
-test('effects requested before geometry is ready cancel safely instead of reading null.json',async()=>{await assert.rejects(ModelPreview.prototype.setEffects.call({asset:null},[]),e=>e.name==='AbortError');});
-test('static CDN part URLs avoid preview API downloads',async()=>{const cache=new SceneParts(),calls=[];const manifest={parts:parts.map(p=>({...p,url:'https://assets.test/'+p.key+'.glb',bytes:p.bytes.byteLength}))};await cache.load(manifest,'/api/previews/unused','',async url=>{calls.push(url);const p=parts.find(p=>url.endsWith('/'+p.key+'.glb'));return {ok:true,arrayBuffer:async()=>p.bytes};});assert.deepEqual(calls.sort(),['https://assets.test/d.glb','https://assets.test/h.glb','https://assets.test/i.glb']);});
-
-test('initial scene decodes independent textures in parallel and shares repeated material textures',async()=>{
- const asset=composeParts(parts),j=asset.json;
- j.images=[{bufferView:0,mimeType:'image/png'},{bufferView:0,mimeType:'image/png'}];j.textures=[{source:0},{source:1}];
- j.materials=[{pbrMetallicRoughness:{baseColorTexture:{index:0}}},{pbrMetallicRoughness:{baseColorTexture:{index:1}}}];
- j.meshes.forEach((m,i)=>m.primitives[0].material=i%2);
- let active=0,peak=0,decoded=0,closed=0,id=0;const saved=globalThis.createImageBitmap;
- globalThis.createImageBitmap=async()=>{decoded++;active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,5));active--;return {close(){closed++;}};};
- const gl=new Proxy({createVertexArray:()=>++id,createBuffer:()=>++id,createTexture:()=>++id},{get:(o,k)=>k in o?o[k]:()=>{}});
- const preview=Object.create(ModelPreview.prototype);Object.assign(preview,{gl,draws:[],textures:[],loadingVersion:0});
- try{await preview.load(null,asset);assert.equal(peak,2);assert.equal(decoded,2);assert.equal(closed,2);assert.equal(preview.textures.length,2);assert.equal(preview.draws[0].texture,preview.draws[2].texture);assert.notEqual(preview.draws[0].texture,preview.draws[1].texture);}finally{globalThis.createImageBitmap=saved;}
+import { SceneParts, composeParts } from '../public/renderer/parts.mjs';
+import { ModelPreview } from '../public/renderer/engine.mjs';
+function fixture(name) {
+  const json = {
+    asset: { version: '2.0' },
+    buffers: [{ byteLength: 36 }],
+    bufferViews: [{ buffer: 0, byteLength: 36 }],
+    accessors: [{ bufferView: 0, type: 'VEC3', componentType: 5126, count: 3 }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+    nodes: [{ name, mesh: 0 }],
+    scenes: [{ nodes: [0] }],
+    scene: 0
+  };
+  const text = Buffer.from(JSON.stringify(json)),
+    n = (text.length + 3) & ~3,
+    b = Buffer.alloc(28 + n + 36, 32);
+  b.writeUInt32LE(0x46546c67);
+  b.writeUInt32LE(2, 4);
+  b.writeUInt32LE(b.length, 8);
+  b.writeUInt32LE(n, 12);
+  b.writeUInt32LE(0x4e4f534a, 16);
+  text.copy(b, 20);
+  b.writeUInt32LE(36, 20 + n);
+  b.writeUInt32LE(0x004e4942, 24 + n);
+  Buffer.from(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]).buffer).copy(b, 28 + n);
+  return b.buffer.slice(b.byteOffset, b.byteOffset + b.length);
+}
+const parts = [
+  { role: 'hero', id: 'hero', key: 'h', index: 0, bytes: fixture('hero') },
+  { role: 'default', id: 'hat', key: 'd', index: 1, bytes: fixture('hat') },
+  { role: 'item', id: 'weapon', key: 'i', index: 2, bytes: fixture('weapon') }
+];
+test('scene parts cache downloads only the changed item and groups selected meshes', async () => {
+  const cache = new SceneParts(),
+    calls = [];
+  const manifest = { parts: parts.map(p => ({ ...p, bytes: p.bytes.byteLength })) };
+  const fetcher = async url => {
+    calls.push(url);
+    return { ok: true, arrayBuffer: async () => parts[Number(url.split('/').at(-1))].bytes };
+  };
+  const asset = await cache.load(manifest, '/api/previews/a', '', fetcher);
+  assert.equal(calls.length, 3);
+  assert.deepEqual(asset.json.extras.effectStudioItemGroups.weapon, [2]);
+  assert.deepEqual([...asset.accessor(2).values], [0, 0, 0, 1, 0, 0, 0, 1, 0]);
+  assert.equal(await cache.load(manifest, '/api/previews/b', '', fetcher), null);
+  assert.equal(calls.length, 3);
+  manifest.parts[2].key = 'new';
+  await cache.load(manifest, '/api/previews/c', '', fetcher);
+  assert.equal(calls.length, 4);
+  assert.equal(calls.at(-1), '/api/previews/c/parts/2');
+});
+test('same hero keeps GPU buffers, camera and animation while new slot is uploaded', async () => {
+  const deleted = [],
+    uploads = [];
+  let id = 0;
+  const gl = new Proxy(
+    {
+      createVertexArray: () => ++id,
+      createBuffer: () => ++id,
+      deleteVertexArray: x => deleted.push(x),
+      deleteBuffer: x => deleted.push(x),
+      bufferData: (_t, data) => uploads.push(data.length)
+    },
+    { get: (o, k) => (k in o ? o[k] : () => {}) }
+  );
+  const preview = Object.create(ModelPreview.prototype);
+  Object.assign(preview, {
+    gl,
+    draws: [],
+    textures: [],
+    loadingVersion: 0,
+    center: [9, 8, 7],
+    radius: 4,
+    distance: 12,
+    animation: 2,
+    start: 123
+  });
+  await preview.load(null, composeParts(parts));
+  const hero = preview.draws[0],
+    hat = preview.draws[1],
+    weapon = preview.draws[2];
+  Object.assign(preview, { center: [9, 8, 7], radius: 4, distance: 12, animation: 2, start: 123 });
+  const before = uploads.length;
+  await preview.load(null, composeParts(parts.map(p => (p.role === 'item' ? { ...p, key: 'new' } : p))), true);
+  assert.equal(preview.draws[0].vao, hero.vao);
+  assert.equal(preview.draws[1].vao, hat.vao);
+  assert.notEqual(preview.draws[2].vao, weapon.vao);
+  assert.equal(uploads.length - before, 1);
+  assert.ok(deleted.includes(weapon.vao));
+  assert.ok(!deleted.includes(hero.vao));
+  assert.deepEqual(preview.center, [9, 8, 7]);
+  assert.equal(preview.animation, 2);
+  assert.equal(preview.start, 123);
 });
 
-test('connected arcana byte metadata reaches the real scene downloader for hero, defaults and selected items',async()=>{
- const {hydrateArcanaPartSizes}=await import('../lib/connect-prepared-arcanas.mjs');const payloads=new Map(),rows=parts.map((p,i)=>{const key=String(i+1).repeat(64),url='assets/'+key+'.glb';payloads.set(url,p.bytes);return {...p,key,url,bytes:undefined};}),recipe={parts:rows.slice(0,2),items:{weapon:{parts:[rows[2]]}}};
- hydrateArcanaPartSizes(recipe,url=>payloads.get(url).byteLength);assert.ok(rows.every(p=>Number.isSafeInteger(p.bytes)));const asset=await new SceneParts().load({parts:rows},'/unused','',async url=>({ok:true,arrayBuffer:async()=>payloads.get(url)}));assert.equal(asset.json.nodes.length,3);
- assert.throws(()=>hydrateArcanaPartSizes({parts:[{url:'assets/'+ 'a'.repeat(64)+'.glb'}]},()=>0),/Invalid local GLB size/);
+test('independent part downloads overlap while composition preserves manifest order', async () => {
+  const cache = new SceneParts();
+  let active = 0,
+    peak = 0;
+  const manifest = { parts: parts.map(p => ({ ...p, bytes: p.bytes.byteLength })) };
+  const fetcher = async url => {
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise(r => setTimeout(r, 5));
+    active--;
+    return { ok: true, arrayBuffer: async () => parts[Number(url.split('/').at(-1))].bytes };
+  };
+  const asset = await cache.load(manifest, '/preview', '', fetcher);
+  assert.equal(peak, 3);
+  assert.deepEqual(
+    asset.json.nodes.map(n => n.name),
+    ['hero', 'hat', 'weapon']
+  );
+});
+test('queued scene loading discards stale downloads and commits only the latest request', async () => {
+  let release, entered;
+  const started = new Promise(r => (entered = r)),
+    gate = new Promise(r => (release = r)),
+    uploads = [];
+  const preview = Object.create(ModelPreview.prototype);
+  Object.assign(preview, {
+    sceneParts: {
+      signature: null,
+      cache: new Map(),
+      async load(manifest) {
+        if (manifest.id === 'old') {
+          entered();
+          await gate;
+        }
+        return { json: { animations: [] }, id: manifest.id };
+      }
+    },
+    async load(_url, asset) {
+      uploads.push(asset.id);
+      this.asset = asset;
+      return [];
+    }
+  });
+  const first = preview.loadScene({ id: 'old', heroId: 'hero', parts: [] }, '/old');
+  const rejected = assert.rejects(first, e => e.name === 'AbortError');
+  await started;
+  const second = preview.loadScene({ id: 'new', heroId: 'hero', parts: [] }, '/new');
+  release();
+  await rejected;
+  await second;
+  assert.deepEqual(uploads, ['new']);
+  assert.equal(preview.asset.id, 'new');
+});
+test('internal GPU cleanup preserves downloaded scene cache; explicit clear invalidates it', () => {
+  let resets = 0;
+  const preview = Object.create(ModelPreview.prototype);
+  Object.assign(preview, {
+    gl: {},
+    draws: [],
+    textures: [],
+    loadingVersion: 0,
+    sceneRequest: 5,
+    sceneParts: {
+      reset() {
+        resets++;
+      }
+    }
+  });
+  preview.clear({ internal: true });
+  assert.equal(resets, 0);
+  assert.equal(preview.sceneRequest, 5);
+  preview.clear();
+  assert.equal(resets, 1);
+  assert.equal(preview.sceneRequest, 6);
+});
+test('a cached manifest with no active GPU scene rebuilds the scene instead of reading null.json', async () => {
+  let reads = 0;
+  const asset = { json: { animations: [] } },
+    preview = Object.create(ModelPreview.prototype);
+  Object.assign(preview, {
+    asset: null,
+    sceneParts: {
+      signature: 'stale',
+      cache: new Map(),
+      async load() {
+        return ++reads === 1 ? null : asset;
+      }
+    },
+    async load(_url, prepared) {
+      assert.equal(prepared, asset);
+      this.asset = prepared;
+      return [];
+    }
+  });
+  await preview.loadScene({ heroId: 'hero', parts: [] }, '/preview');
+  assert.equal(reads, 2);
+  assert.equal(preview.asset, asset);
+});
+test('effects requested before geometry is ready cancel safely instead of reading null.json', async () => {
+  await assert.rejects(ModelPreview.prototype.setEffects.call({ asset: null }, []), e => e.name === 'AbortError');
+});
+test('static CDN part URLs avoid preview API downloads', async () => {
+  const cache = new SceneParts(),
+    calls = [];
+  const manifest = {
+    parts: parts.map(p => ({ ...p, url: 'https://assets.test/' + p.key + '.glb', bytes: p.bytes.byteLength }))
+  };
+  await cache.load(manifest, '/api/previews/unused', '', async url => {
+    calls.push(url);
+    const p = parts.find(p => url.endsWith('/' + p.key + '.glb'));
+    return { ok: true, arrayBuffer: async () => p.bytes };
+  });
+  assert.deepEqual(calls.sort(), [
+    'https://assets.test/d.glb',
+    'https://assets.test/h.glb',
+    'https://assets.test/i.glb'
+  ]);
 });
 
-test('legacy CDN recipes without byte metadata load and cache valid GLBs without API fallback',async()=>{
- const scene=new SceneParts(),calls=[],manifest={parts:parts.map(({bytes,...p})=>({...p,url:'https://assets.test/'+p.key+'.glb'}))};
- const fetcher=async url=>{calls.push(url);const part=parts.find(p=>url.endsWith('/'+p.key+'.glb'));return {ok:true,headers:new Headers({'Content-Length':'10','Content-Encoding':'br'}),arrayBuffer:async()=>part.bytes};};
- const asset=await scene.load(manifest,'/unused','',fetcher);assert.equal(asset.json.nodes.length,3);assert.equal(calls.length,3);
- scene.signature=null;await scene.load(manifest,'/unused','',fetcher);assert.equal(calls.length,3);
+test('initial scene decodes independent textures in parallel and shares repeated material textures', async () => {
+  const asset = composeParts(parts),
+    j = asset.json;
+  j.images = [
+    { bufferView: 0, mimeType: 'image/png' },
+    { bufferView: 0, mimeType: 'image/png' }
+  ];
+  j.textures = [{ source: 0 }, { source: 1 }];
+  j.materials = [
+    { pbrMetallicRoughness: { baseColorTexture: { index: 0 } } },
+    { pbrMetallicRoughness: { baseColorTexture: { index: 1 } } }
+  ];
+  j.meshes.forEach((m, i) => (m.primitives[0].material = i % 2));
+  let active = 0,
+    peak = 0,
+    decoded = 0,
+    closed = 0,
+    id = 0;
+  const saved = globalThis.createImageBitmap;
+  globalThis.createImageBitmap = async () => {
+    decoded++;
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise(r => setTimeout(r, 5));
+    active--;
+    return {
+      close() {
+        closed++;
+      }
+    };
+  };
+  const gl = new Proxy(
+    { createVertexArray: () => ++id, createBuffer: () => ++id, createTexture: () => ++id },
+    { get: (o, k) => (k in o ? o[k] : () => {}) }
+  );
+  const preview = Object.create(ModelPreview.prototype);
+  Object.assign(preview, { gl, draws: [], textures: [], loadingVersion: 0 });
+  try {
+    await preview.load(null, asset);
+    assert.equal(peak, 2);
+    assert.equal(decoded, 2);
+    assert.equal(closed, 2);
+    assert.equal(preview.textures.length, 2);
+    assert.equal(preview.draws[0].texture, preview.draws[2].texture);
+    assert.notEqual(preview.draws[0].texture, preview.draws[1].texture);
+  } finally {
+    globalThis.createImageBitmap = saved;
+  }
 });
-test('missing recipe sizes never permit HTML, truncated GLB or corrupt declared lengths into the cache',async()=>{
- const rows=[new TextEncoder().encode('<html>Not a model, despite HTTP 200</html>').buffer,parts[0].bytes.slice(0,-4),parts[0].bytes.slice(0)];new DataView(rows[2]).setUint32(8,20,true);
- for(const bytes of rows){const scene=new SceneParts();await assert.rejects(scene.load({parts:[{role:'hero',key:'bad',url:'/bad.glb'}]},'/unused','',async()=>({ok:true,arrayBuffer:async()=>bytes})),/Invalid GLB/);assert.equal(scene.cache.size,0);assert.equal(scene.signature,null);}
+
+test('connected arcana byte metadata reaches the real scene downloader for hero, defaults and selected items', async () => {
+  const { hydrateArcanaPartSizes } = await import('../lib/connect-prepared-arcanas.mjs');
+  const payloads = new Map(),
+    rows = parts.map((p, i) => {
+      const key = String(i + 1).repeat(64),
+        url = 'assets/' + key + '.glb';
+      payloads.set(url, p.bytes);
+      return { ...p, key, url, bytes: undefined };
+    }),
+    recipe = { parts: rows.slice(0, 2), items: { weapon: { parts: [rows[2]] } } };
+  hydrateArcanaPartSizes(recipe, url => payloads.get(url).byteLength);
+  assert.ok(rows.every(p => Number.isSafeInteger(p.bytes)));
+  const asset = await new SceneParts().load({ parts: rows }, '/unused', '', async url => ({
+    ok: true,
+    arrayBuffer: async () => payloads.get(url)
+  }));
+  assert.equal(asset.json.nodes.length, 3);
+  assert.throws(
+    () => hydrateArcanaPartSizes({ parts: [{ url: 'assets/' + 'a'.repeat(64) + '.glb' }] }, () => 0),
+    /Invalid local GLB size/
+  );
 });
-test('explicit published sizes still reject mismatches and malformed metadata',async()=>{
- for(const bytes of [parts[0].bytes.byteLength+4,0,'123',-1])await assert.rejects(new SceneParts().load({parts:[{role:'hero',key:'h',url:'/h.glb',bytes}]},'/unused','',async()=>({ok:true,arrayBuffer:async()=>parts[0].bytes})),/size mismatch/);
+
+test('legacy CDN recipes without byte metadata load and cache valid GLBs without API fallback', async () => {
+  const scene = new SceneParts(),
+    calls = [],
+    manifest = { parts: parts.map(({ bytes, ...p }) => ({ ...p, url: 'https://assets.test/' + p.key + '.glb' })) };
+  const fetcher = async url => {
+    calls.push(url);
+    const part = parts.find(p => url.endsWith('/' + p.key + '.glb'));
+    return {
+      ok: true,
+      headers: new Headers({ 'Content-Length': '10', 'Content-Encoding': 'br' }),
+      arrayBuffer: async () => part.bytes
+    };
+  };
+  const asset = await scene.load(manifest, '/unused', '', fetcher);
+  assert.equal(asset.json.nodes.length, 3);
+  assert.equal(calls.length, 3);
+  scene.signature = null;
+  await scene.load(manifest, '/unused', '', fetcher);
+  assert.equal(calls.length, 3);
+});
+test('missing recipe sizes never permit HTML, truncated GLB or corrupt declared lengths into the cache', async () => {
+  const rows = [
+    new TextEncoder().encode('<html>Not a model, despite HTTP 200</html>').buffer,
+    parts[0].bytes.slice(0, -4),
+    parts[0].bytes.slice(0)
+  ];
+  new DataView(rows[2]).setUint32(8, 20, true);
+  for (const bytes of rows) {
+    const scene = new SceneParts();
+    await assert.rejects(
+      scene.load({ parts: [{ role: 'hero', key: 'bad', url: '/bad.glb' }] }, '/unused', '', async () => ({
+        ok: true,
+        arrayBuffer: async () => bytes
+      })),
+      /Invalid GLB/
+    );
+    assert.equal(scene.cache.size, 0);
+    assert.equal(scene.signature, null);
+  }
+});
+test('explicit published sizes still reject mismatches and malformed metadata', async () => {
+  for (const bytes of [parts[0].bytes.byteLength + 4, 0, '123', -1])
+    await assert.rejects(
+      new SceneParts().load({ parts: [{ role: 'hero', key: 'h', url: '/h.glb', bytes }] }, '/unused', '', async () => ({
+        ok: true,
+        arrayBuffer: async () => parts[0].bytes
+      })),
+      /size mismatch/
+    );
 });

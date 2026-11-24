@@ -1,18 +1,114 @@
-import {abilityIconRow,iconImage,iconPickerDialog} from './ability-icon-ui.mjs';
-export const terrorbladeIconGroups=[['abilities','Иконки способностей'],['topbar','Иконка на верхней панели'],['portrait','Мини-иконка героя']];
-export const terrorbladeAbilities=[['reflection','Reflection'],['conjure_image','Conjure Image'],['metamorphosis','Metamorphosis'],['sunder','Sunder'],['terror_wave','Terror Wave'],['demon_zeal','Demon Zeal']];
-export function defaultTerrorbladeIconStyles(arcana,hasSet=false){return {abilities:hasSet&&arcana.icons==='set'?'set':'colored',topbar:'colored',portrait:'colored',...arcana.iconStyles,...(arcana.iconStyles?.abilityOverrides?{abilityOverrides:{...arcana.iconStyles.abilityOverrides}}:{})};}
-export function terrorbladeIconStyle(arcana,group,ability){const styles=arcana.iconStyles??defaultTerrorbladeIconStyles(arcana);return group==='abilities'?styles.abilityOverrides?.[ability]??styles.abilities:styles[group];}
-export function setTerrorbladeIconStyle(arcana,group,ability,value){if(group==='abilities')arcana.iconStyles.abilityOverrides={...arcana.iconStyles.abilityOverrides,[ability]:value};else arcana.iconStyles[group]=value;}
-export function terrorbladeIconChoices(group,hasSet){return [['classic','Классические'],['arcana','Оригинальные от арканы'],['colored','Под цвет арканы'],...(group==='abilities'&&hasSet?[['set','Иконки Rictus Ripper']]:[])];}
-export function drawTerrorbladeIconControls(container,arcana,{hasSet=false,disabled=false,onChange=()=>{},previewUrl=null,heroOnly=false,append=false}={}){
- const doc=container.ownerDocument;if(!append)container.replaceChildren();arcana.iconStyles=defaultTerrorbladeIconStyles(arcana,hasSet);
- if(!hasSet){if(arcana.iconStyles.abilities==='set')arcana.iconStyles.abilities='colored';for(const [ability,value]of Object.entries(arcana.iconStyles.abilityOverrides??{}))if(value==='set')arcana.iconStyles.abilityOverrides[ability]='colored';}
- if(!append){const title=doc.createElement('h3');title.textContent='Иконки интерфейса';container.append(title);}
- const rows=[...(!heroOnly?terrorbladeAbilities.map(([ability,name])=>({group:'abilities',ability,name})):[]),{group:'topbar',ability:'hero',name:'Иконка на верхней панели'},{group:'portrait',ability:'hero',name:'Мини-иконка героя'}];
- for(const {group,ability,name}of rows){const value=terrorbladeIconStyle(arcana,group,ability),choices=terrorbladeIconChoices(group,hasSet);abilityIconRow(container,{name,url:previewUrl?.(group,value,ability),source:choices.find(c=>c[0]===value)?.[1]??'',disabled,onClick:()=>{
-  const {dialog,grid,footer,show}=iconPickerDialog({title:name});let selected=terrorbladeIconStyle(arcana,group,ability);const cards=[];
-  for(const [style,text]of choices){const card=doc.createElement('button');card.type='button';card.className='ability-variant-choice';card.setAttribute('aria-label',text);card.setAttribute('aria-pressed',String(style===selected));card.append(iconImage(doc,previewUrl?.(group,style,ability),text));const caption=doc.createElement('b');caption.textContent=text;card.append(caption);card.addEventListener('click',()=>{selected=style;for(const [other,node]of cards)node.setAttribute('aria-pressed',String(other===style));});cards.push([style,card]);grid.append(card);}
-  const apply=doc.createElement('button');apply.className='primary';apply.textContent='Применить';apply.addEventListener('click',()=>{setTerrorbladeIconStyle(arcana,group,ability,selected);dialog.close();drawTerrorbladeIconControls(container,arcana,{hasSet,disabled,onChange,previewUrl,heroOnly,append:false});onChange(group,selected,ability);});footer.append(apply);show();
- }});}
+import { abilityIconRow, iconImage, iconPickerDialog } from './ability-icon-ui.mjs';
+export const terrorbladeIconGroups = [
+  ['abilities', 'Иконки способностей'],
+  ['topbar', 'Иконка на верхней панели'],
+  ['portrait', 'Мини-иконка героя']
+];
+export const terrorbladeAbilities = [
+  ['reflection', 'Reflection'],
+  ['conjure_image', 'Conjure Image'],
+  ['metamorphosis', 'Metamorphosis'],
+  ['sunder', 'Sunder'],
+  ['terror_wave', 'Terror Wave'],
+  ['demon_zeal', 'Demon Zeal']
+];
+export function defaultTerrorbladeIconStyles(arcana, hasSet = false) {
+  return {
+    abilities: hasSet && arcana.icons === 'set' ? 'set' : 'colored',
+    topbar: 'colored',
+    portrait: 'colored',
+    ...arcana.iconStyles,
+    ...(arcana.iconStyles?.abilityOverrides ? { abilityOverrides: { ...arcana.iconStyles.abilityOverrides } } : {})
+  };
+}
+export function terrorbladeIconStyle(arcana, group, ability) {
+  const styles = arcana.iconStyles ?? defaultTerrorbladeIconStyles(arcana);
+  return group === 'abilities' ? (styles.abilityOverrides?.[ability] ?? styles.abilities) : styles[group];
+}
+export function setTerrorbladeIconStyle(arcana, group, ability, value) {
+  if (group === 'abilities')
+    arcana.iconStyles.abilityOverrides = { ...arcana.iconStyles.abilityOverrides, [ability]: value };
+  else arcana.iconStyles[group] = value;
+}
+export function terrorbladeIconChoices(group, hasSet) {
+  return [
+    ['classic', 'Классические'],
+    ['arcana', 'Оригинальные от арканы'],
+    ['colored', 'Под цвет арканы'],
+    ...(group === 'abilities' && hasSet ? [['set', 'Иконки Rictus Ripper']] : [])
+  ];
+}
+export function drawTerrorbladeIconControls(
+  container,
+  arcana,
+  { hasSet = false, disabled = false, onChange = () => {}, previewUrl = null, heroOnly = false, append = false } = {}
+) {
+  const doc = container.ownerDocument;
+  if (!append) container.replaceChildren();
+  arcana.iconStyles = defaultTerrorbladeIconStyles(arcana, hasSet);
+  if (!hasSet) {
+    if (arcana.iconStyles.abilities === 'set') arcana.iconStyles.abilities = 'colored';
+    for (const [ability, value] of Object.entries(arcana.iconStyles.abilityOverrides ?? {}))
+      if (value === 'set') arcana.iconStyles.abilityOverrides[ability] = 'colored';
+  }
+  if (!append) {
+    const title = doc.createElement('h3');
+    title.textContent = 'Иконки интерфейса';
+    container.append(title);
+  }
+  const rows = [
+    ...(!heroOnly ? terrorbladeAbilities.map(([ability, name]) => ({ group: 'abilities', ability, name })) : []),
+    { group: 'topbar', ability: 'hero', name: 'Иконка на верхней панели' },
+    { group: 'portrait', ability: 'hero', name: 'Мини-иконка героя' }
+  ];
+  for (const { group, ability, name } of rows) {
+    const value = terrorbladeIconStyle(arcana, group, ability),
+      choices = terrorbladeIconChoices(group, hasSet);
+    abilityIconRow(container, {
+      name,
+      url: previewUrl?.(group, value, ability),
+      source: choices.find(c => c[0] === value)?.[1] ?? '',
+      disabled,
+      onClick: () => {
+        const { dialog, grid, footer, show } = iconPickerDialog({ title: name });
+        let selected = terrorbladeIconStyle(arcana, group, ability);
+        const cards = [];
+        for (const [style, text] of choices) {
+          const card = doc.createElement('button');
+          card.type = 'button';
+          card.className = 'ability-variant-choice';
+          card.setAttribute('aria-label', text);
+          card.setAttribute('aria-pressed', String(style === selected));
+          card.append(iconImage(doc, previewUrl?.(group, style, ability), text));
+          const caption = doc.createElement('b');
+          caption.textContent = text;
+          card.append(caption);
+          card.addEventListener('click', () => {
+            selected = style;
+            for (const [other, node] of cards) node.setAttribute('aria-pressed', String(other === style));
+          });
+          cards.push([style, card]);
+          grid.append(card);
+        }
+        const apply = doc.createElement('button');
+        apply.className = 'primary';
+        apply.textContent = 'Применить';
+        apply.addEventListener('click', () => {
+          setTerrorbladeIconStyle(arcana, group, ability, selected);
+          dialog.close();
+          drawTerrorbladeIconControls(container, arcana, {
+            hasSet,
+            disabled,
+            onChange,
+            previewUrl,
+            heroOnly,
+            append: false
+          });
+          onChange(group, selected, ability);
+        });
+        footer.append(apply);
+        show();
+      }
+    });
+  }
 }

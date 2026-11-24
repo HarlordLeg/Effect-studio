@@ -1,54 +1,345 @@
-import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';
-import {expandedArcanaDefinitions,arcanaStyleIds,arcanaOccupiedSlots}from'../public/expanded-arcana-definitions.mjs';
-import {expandedArcanaChoices}from'../lib/expanded-arcanas.mjs';import{publicArcanaChoice,completePublicArcanas,publicArcanaIcons}from'../lib/public-arcanas.mjs';import{setPayload}from'../public/set-studio.mjs';import{assembleStaticPreview}from'../public/static-preview.mjs';
-const items=JSON.parse(fs.readFileSync(new URL('./fixtures/expanded-arcana-economy.json',import.meta.url)));
-function fixture(id){const defaults={weapon:'models/heroes/'+id+'/weapon.vmdl_c',head:'models/heroes/'+id+'/head.vmdl_c',back:'models/heroes/'+id+'/back.vmdl_c',shoulder:'models/heroes/'+id+'/shoulder.vmdl_c',belt:'models/heroes/'+id+'/belt.vmdl_c',arms:'models/heroes/'+id+'/arms.vmdl_c',legs:'models/heroes/'+id+'/legs.vmdl_c'};if(id==='zuus'){defaults.arms='models/heroes/zeus/zeus_bracers.vmdl_c';defaults.armor='models/heroes/zeus/zeus_vest.vmdl_c';}const hero={id,model:'models/heroes/'+id+'/base.vmdl_c',defaultSlotModels:defaults,items:[{id:'custom-head',name:'Custom head',slot:'head',model:'models/items/'+id+'/head.vmdl_c'},{id:'custom-back',name:'Custom back',slot:'back',model:'models/items/'+id+'/back.vmdl_c'}]};return{catalog:{heroes:[hero]},expandedArcanaEconomy:{items},store:{has:()=>true,read(){throw Error('Cached schema should be reused');}}};}
-test('six arcana ports use authored models, occupied slots, skins and isolated style particles',()=>{for(const[id,def]of Object.entries(expandedArcanaDefinitions))for(const style of arcanaStyleIds(def)){const b=fixture(id),rows=expandedArcanaChoices(b,id,{style});assert.equal(new Set(rows.map(r=>r.item.slot)).size,rows.length);assert.ok(rows[0].item.activityBody);assert.equal(rows[0].item.replacesModel,b.catalog.heroes[0].model);for(const slot of arcanaOccupiedSlots(def))assert.ok(rows.some(r=>r.item.slot===slot),id+'/'+slot);const opposite=Object.values(items[def.itemId].visuals).filter(v=>v?.type==='particle_create'&&v.style!==undefined&&Number(v.style)!==style).map(v=>v.modifier+'_c');for(const row of rows){assert.ok(!row.item.nativeOverrides.entries.some(e=>e.type==='model'));for(const particle of row.item.nativeOverrides.particles)assert.ok(!opposite.includes(particle),id+'/'+style+' mixes particle styles');}assert.ok(Object.keys(publicArcanaIcons(b,id,style)).some(icon=>icon in def.abilities));if(id==='pudge')assert.equal(rows[0].item.nativeOverrides.skin,style+1);if(id==='vengefulspirit'&&style===2){assert.match(rows[0].item.model,/imperia/);assert.equal(rows[0].item.nativeOverrides.skin,0);}if(id==='zuus')assert.equal(rows.filter(r=>r.item.model==='models/development/invisiblebox.vmdl_c').length,2);if(id==='legion_commander'){assert.match(rows.find(r=>r.item.slot==='weapon').item.model,/voth_domosh_sword/);assert.ok(rows[0].item.nativeOverrides.activities.some(a=>a.modifier==='dualwield'));}if(id==='skywrath_mage')assert.ok(rows.find(r=>r.item.slot==='back').item.nativeOverrides.particles.every(p=>p.includes('ambient_wings')));}});
-test('authored styles validate on API; CM offers only official no-pet style, no silent fake pet',()=>{for(const[id,def]of Object.entries(expandedArcanaDefinitions)){const b=fixture(id);for(const style of arcanaStyleIds(def)){const arc=publicArcanaChoice(b,{heroId:id,arcana:{style}});assert.ok(completePublicArcanas(b,[arc]).length>=1);}for(const style of [-1,99,'0'])assert.throws(()=>publicArcanaChoice(b,{heroId:id,arcana:{style}}));}const b=fixture('crystal_maiden');assert.throws(()=>expandedArcanaChoices(b,'crystal_maiden',{style:0}));assert.doesNotThrow(()=>expandedArcanaChoices(b,'crystal_maiden',{style:1}));});
-test('occupied slots disappear from set payloads, ordinary compatible equipment stays selectable',()=>{for(const[id,def]of Object.entries(expandedArcanaDefinitions)){const b=fixture(id),hero=b.catalog.heroes[0],selected=new Map([['head','custom-head'],['back','custom-back']]),payload=setPayload(hero,selected,{arcana:{style:arcanaStyleIds(def)[0]}});for(const slot of arcanaOccupiedSlots(def))assert.ok(!payload.selections.some(r=>r.slot===slot));const compatible=hero.items.filter(i=>!arcanaOccupiedSlots(def).includes(i.slot)),arc=publicArcanaChoice(b,{heroId:id,arcana:{style:arcanaStyleIds(def)[0]}});const rows=completePublicArcanas(b,[arc,...compatible.map(item=>({hero,item,effects:[]}))]);for(const item of compatible)assert.ok(rows.some(r=>r.item.id===item.id));for(const slot of arcanaOccupiedSlots(def))assert.throws(()=>completePublicArcanas(b,[arc,{hero,item:{slot},effects:[]}]),/occupies/);}});
-test('static preview understands CM authored style 1 and preserves ordinary head selection',async()=>{const id='crystal_maiden',hero=fixture(id).catalog.heroes[0],catalog={heroes:[hero]},manifest={heroes:{[id]:'base'},arcanas:{[id]:{'1':'arcana'}}},data={base:{items:{'custom-head':{slot:'head',parts:[{id:'hat',key:'hat',role:'item',slot:'head'}]}}},arcana:{parts:[{key:'body',role:'hero'},{id:'cape',key:'cape',role:'default',slot:'back'},{id:'head',key:'head',role:'default',slot:'head'}]}};const job=await assembleStaticPreview({selections:[{heroId:id,arcana:{style:1}},{heroId:id,itemId:'custom-head',slot:'head'}]},catalog,manifest,async k=>data[k]);assert.deepEqual(job.parts.map(p=>p.key).sort(),['body','cape','hat']);});
-
-import {heroActivityPlans} from '../lib/hero-activities.mjs';import os from 'node:os';import path from 'node:path';import {Builder} from '../lib/build.mjs';import {packVpk,Vpk} from '../lib/vpk.mjs';
-test('legacy and new builders preserve expanded arcana activities and packed replacement identity',async()=>{
- for(const testerBuildV1 of [false,true])for(const [id,def] of Object.entries(expandedArcanaDefinitions))for(const style of arcanaStyleIds(def)){
-  const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-expanded-pack-'));
-  try{
-   const b=fixture(id),rows=expandedArcanaChoices(b,id,{style}),original=Buffer.alloc(16);original.writeUInt32LE(16);original.writeUInt32LE(8,8);
-   for(const row of rows){const n=row.item.nativeOverrides;n.particles=[];n.particleBindings=[];n.entries=[];n.particleReplacements={};n.soundEvents=[];n.responseCriteria=[];}
-   const assets=new Map(rows.map(r=>[r.item.model,original]));if(rows[0].item.model!==rows[0].hero.model)assets.set(rows[0].hero.model,Buffer.concat([original,Buffer.from(':UNPATCHED_BASE')]));
-   fs.writeFileSync(path.join(root,'game.vpk'),packVpk(assets));fs.writeFileSync(path.join(root,'patcher'),'stub');fs.writeFileSync(path.join(root,'catalog.json'),JSON.stringify(b.catalog));let calls=0;
-   const run=async(_,args)=>{
-    if(args[0]==='--capabilities')return JSON.stringify({version:'1.1.0',legacyRaw:true,modelOnly:true,materialSkin:true,activityRulesV1:true,activityRulesV9:true,heroActivitiesV4:true,crystalMaidenArcanaRuntimeV1:true,testerWearableHostV2:true,testerRuntimeBindingsV3:true,testerImporterRootProfilesV4:true,immortalRuntimeFixesV1:true});
-    if(args[0]==='--input'){fs.writeFileSync(args[args.indexOf('--output')+1],Buffer.concat([fs.readFileSync(args[1]),Buffer.from(':PACKED_BODY')]));return '';}
-    if(args[0]==='--model-mesh-groups'){const m=JSON.parse(fs.readFileSync(args[1]));assert.equal(id,'skywrath_mage');assert.match(m.group,style===0?/_@1_/:/_@2_/);fs.copyFileSync(m.input,m.output);return '';}
-    if(args[0]==='--activity-rules'){calls++;const m=JSON.parse(fs.readFileSync(args[1]));assert.equal(m.model,rows[0].item.model,'activity request must name the arcana source model, not its replacement path');assert.ok(!fs.readFileSync(m.input).toString().includes('UNPATCHED_BASE'));fs.writeFileSync(m.output,Buffer.concat([fs.readFileSync(m.input),Buffer.from(':ACTIVITIES')]));return '';}
-    if(args[0]==='--cm-arcana-runtime'){assert.equal(id,'crystal_maiden');const q=JSON.parse(fs.readFileSync(args[1]));assert.ok(!fs.readFileSync(q.input).toString().includes('UNPATCHED_BASE'));fs.writeFileSync(q.output,Buffer.concat([fs.readFileSync(q.input),Buffer.from(':CM_RUNTIME')]));return '';}
-    if(args[0]==='--tester-wearable-host'){assert.equal(testerBuildV1,true);const q=JSON.parse(fs.readFileSync(args[1]));for(const h of q.hosts){fs.copyFileSync(h.input,h.output);for(const d of h.donors){fs.copyFileSync(d.input,d.hidden);fs.copyFileSync(d.input,d.visible);}}for(const p of q.particles)fs.copyFileSync(p.input,p.output);fs.writeFileSync(q.report,JSON.stringify({version:2,hosts:q.hosts.map(h=>({host:h.host,wearables:h.donors.map(d=>d.target)}))}));return '';}
-    if(args[0]==='--relocate'){for(const f of JSON.parse(fs.readFileSync(args[1])).files)fs.copyFileSync(f.input,f.output);return '';}
-    throw Error('Unexpected patch step: '+args[0]);
-   };
-   const engine=new Builder(root,{archives:['game.vpk'],catalog:'catalog.json',patcher:'patcher',autoCatalog:false,testerBuildV1},run),job={id:'arcana'};
-   try{await engine.build(rows,job);assert.equal(job.status,'ready');assert.equal(calls,heroActivityPlans(rows).length,id+' activity plan');if(calls)assert.match(new Vpk(job.file).read(rows[0].hero.model).toString(),/ACTIVITIES/);else assert.ok(new Vpk(job.file).read(rows[0].hero.model));}finally{await engine.dispose();}
-  }finally{fs.rmSync(root,{recursive:true,force:true});}
- }
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {
+  expandedArcanaDefinitions,
+  arcanaStyleIds,
+  arcanaOccupiedSlots
+} from '../public/expanded-arcana-definitions.mjs';
+import { expandedArcanaChoices } from '../lib/expanded-arcanas.mjs';
+import { publicArcanaChoice, completePublicArcanas, publicArcanaIcons } from '../lib/public-arcanas.mjs';
+import { setPayload } from '../public/set-studio.mjs';
+import { assembleStaticPreview } from '../public/static-preview.mjs';
+const items = JSON.parse(fs.readFileSync(new URL('./fixtures/expanded-arcana-economy.json', import.meta.url)));
+function fixture(id) {
+  const defaults = {
+    weapon: 'models/heroes/' + id + '/weapon.vmdl_c',
+    head: 'models/heroes/' + id + '/head.vmdl_c',
+    back: 'models/heroes/' + id + '/back.vmdl_c',
+    shoulder: 'models/heroes/' + id + '/shoulder.vmdl_c',
+    belt: 'models/heroes/' + id + '/belt.vmdl_c',
+    arms: 'models/heroes/' + id + '/arms.vmdl_c',
+    legs: 'models/heroes/' + id + '/legs.vmdl_c'
+  };
+  if (id === 'zuus') {
+    defaults.arms = 'models/heroes/zeus/zeus_bracers.vmdl_c';
+    defaults.armor = 'models/heroes/zeus/zeus_vest.vmdl_c';
+  }
+  const hero = {
+    id,
+    model: 'models/heroes/' + id + '/base.vmdl_c',
+    defaultSlotModels: defaults,
+    items: [
+      { id: 'custom-head', name: 'Custom head', slot: 'head', model: 'models/items/' + id + '/head.vmdl_c' },
+      { id: 'custom-back', name: 'Custom back', slot: 'back', model: 'models/items/' + id + '/back.vmdl_c' }
+    ]
+  };
+  return {
+    catalog: { heroes: [hero] },
+    expandedArcanaEconomy: { items },
+    store: {
+      has: () => true,
+      read() {
+        throw Error('Cached schema should be reused');
+      }
+    }
+  };
+}
+test('six arcana ports use authored models, occupied slots, skins and isolated style particles', () => {
+  for (const [id, def] of Object.entries(expandedArcanaDefinitions))
+    for (const style of arcanaStyleIds(def)) {
+      const b = fixture(id),
+        rows = expandedArcanaChoices(b, id, { style });
+      assert.equal(new Set(rows.map(r => r.item.slot)).size, rows.length);
+      assert.ok(rows[0].item.activityBody);
+      assert.equal(rows[0].item.replacesModel, b.catalog.heroes[0].model);
+      for (const slot of arcanaOccupiedSlots(def))
+        assert.ok(
+          rows.some(r => r.item.slot === slot),
+          id + '/' + slot
+        );
+      const opposite = Object.values(items[def.itemId].visuals)
+        .filter(v => v?.type === 'particle_create' && v.style !== undefined && Number(v.style) !== style)
+        .map(v => v.modifier + '_c');
+      for (const row of rows) {
+        assert.ok(!row.item.nativeOverrides.entries.some(e => e.type === 'model'));
+        for (const particle of row.item.nativeOverrides.particles)
+          assert.ok(!opposite.includes(particle), id + '/' + style + ' mixes particle styles');
+      }
+      assert.ok(Object.keys(publicArcanaIcons(b, id, style)).some(icon => icon in def.abilities));
+      if (id === 'pudge') assert.equal(rows[0].item.nativeOverrides.skin, style + 1);
+      if (id === 'vengefulspirit' && style === 2) {
+        assert.match(rows[0].item.model, /imperia/);
+        assert.equal(rows[0].item.nativeOverrides.skin, 0);
+      }
+      if (id === 'zuus')
+        assert.equal(rows.filter(r => r.item.model === 'models/development/invisiblebox.vmdl_c').length, 2);
+      if (id === 'legion_commander') {
+        assert.match(rows.find(r => r.item.slot === 'weapon').item.model, /voth_domosh_sword/);
+        assert.ok(rows[0].item.nativeOverrides.activities.some(a => a.modifier === 'dualwield'));
+      }
+      if (id === 'skywrath_mage')
+        assert.ok(
+          rows.find(r => r.item.slot === 'back').item.nativeOverrides.particles.every(p => p.includes('ambient_wings'))
+        );
+    }
+});
+test('authored styles validate on API; CM offers only official no-pet style, no silent fake pet', () => {
+  for (const [id, def] of Object.entries(expandedArcanaDefinitions)) {
+    const b = fixture(id);
+    for (const style of arcanaStyleIds(def)) {
+      const arc = publicArcanaChoice(b, { heroId: id, arcana: { style } });
+      assert.ok(completePublicArcanas(b, [arc]).length >= 1);
+    }
+    for (const style of [-1, 99, '0']) assert.throws(() => publicArcanaChoice(b, { heroId: id, arcana: { style } }));
+  }
+  const b = fixture('crystal_maiden');
+  assert.throws(() => expandedArcanaChoices(b, 'crystal_maiden', { style: 0 }));
+  assert.doesNotThrow(() => expandedArcanaChoices(b, 'crystal_maiden', { style: 1 }));
+});
+test('occupied slots disappear from set payloads, ordinary compatible equipment stays selectable', () => {
+  for (const [id, def] of Object.entries(expandedArcanaDefinitions)) {
+    const b = fixture(id),
+      hero = b.catalog.heroes[0],
+      selected = new Map([
+        ['head', 'custom-head'],
+        ['back', 'custom-back']
+      ]),
+      payload = setPayload(hero, selected, { arcana: { style: arcanaStyleIds(def)[0] } });
+    for (const slot of arcanaOccupiedSlots(def)) assert.ok(!payload.selections.some(r => r.slot === slot));
+    const compatible = hero.items.filter(i => !arcanaOccupiedSlots(def).includes(i.slot)),
+      arc = publicArcanaChoice(b, { heroId: id, arcana: { style: arcanaStyleIds(def)[0] } });
+    const rows = completePublicArcanas(b, [arc, ...compatible.map(item => ({ hero, item, effects: [] }))]);
+    for (const item of compatible) assert.ok(rows.some(r => r.item.id === item.id));
+    for (const slot of arcanaOccupiedSlots(def))
+      assert.throws(() => completePublicArcanas(b, [arc, { hero, item: { slot }, effects: [] }]), /occupies/);
+  }
+});
+test('static preview understands CM authored style 1 and preserves ordinary head selection', async () => {
+  const id = 'crystal_maiden',
+    hero = fixture(id).catalog.heroes[0],
+    catalog = { heroes: [hero] },
+    manifest = { heroes: { [id]: 'base' }, arcanas: { [id]: { 1: 'arcana' } } },
+    data = {
+      base: {
+        items: { 'custom-head': { slot: 'head', parts: [{ id: 'hat', key: 'hat', role: 'item', slot: 'head' }] } }
+      },
+      arcana: {
+        parts: [
+          { key: 'body', role: 'hero' },
+          { id: 'cape', key: 'cape', role: 'default', slot: 'back' },
+          { id: 'head', key: 'head', role: 'default', slot: 'head' }
+        ]
+      }
+    };
+  const job = await assembleStaticPreview(
+    {
+      selections: [
+        { heroId: id, arcana: { style: 1 } },
+        { heroId: id, itemId: 'custom-head', slot: 'head' }
+      ]
+    },
+    catalog,
+    manifest,
+    async k => data[k]
+  );
+  assert.deepEqual(job.parts.map(p => p.key).sort(), ['body', 'cape', 'hat']);
 });
 
-test('equipped Pudge refits replace only their own ability icons, leaving other arcana icons and catalog intact',()=>{
- const b=fixture('pudge'),hero=b.catalog.heroes[0],target='panorama/images/spellicons/pudge_flesh_heap_png.vtex_c',source='panorama/images/spellicons/pudge/horrorfest_butcher/horrorfest_butcher_flesh_heap_png.vtex_c';
- const ordinary=hero.items.find(i=>i.id==='custom-back');ordinary.nativeOverrides={...((expandedArcanaChoices(b,'pudge')[0]).item.nativeOverrides),entries:[{type:'ability_icon',target,source}],particles:[],particleBindings:[],activities:[],soundEvents:[],responseCriteria:[]};
- const before=JSON.stringify(b.catalog),baseline=expandedArcanaChoices(b,'pudge'),rows=expandedArcanaChoices(b,'pudge',{items:{back:'custom-back'}}),entries=rows.flatMap(r=>r.item.nativeOverrides.entries);
- assert.deepEqual(entries.filter(e=>e.target===target),[{type:'ability_icon',target,source}]);
- assert.ok(baseline[0].item.nativeOverrides.entries.some(e=>e.target===target&&e.source!==source));
- for(const entry of baseline[0].item.nativeOverrides.entries.filter(e=>e.type==='ability_icon'&&e.target!==target))assert.ok(entries.some(e=>e.target===entry.target&&e.source===entry.source));
- assert.equal(JSON.stringify(b.catalog),before);
- assert.deepEqual(expandedArcanaChoices(b,'pudge',{items:{back:'custom-back'}}).flatMap(r=>r.item.nativeOverrides.entries),entries);
+import { heroActivityPlans } from '../lib/hero-activities.mjs';
+import os from 'node:os';
+import path from 'node:path';
+import { Builder } from '../lib/build.mjs';
+import { packVpk, Vpk } from '../lib/vpk.mjs';
+test('legacy and new builders preserve expanded arcana activities and packed replacement identity', async () => {
+  for (const testerBuildV1 of [false, true])
+    for (const [id, def] of Object.entries(expandedArcanaDefinitions))
+      for (const style of arcanaStyleIds(def)) {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'des-expanded-pack-'));
+        try {
+          const b = fixture(id),
+            rows = expandedArcanaChoices(b, id, { style }),
+            original = Buffer.alloc(16);
+          original.writeUInt32LE(16);
+          original.writeUInt32LE(8, 8);
+          for (const row of rows) {
+            const n = row.item.nativeOverrides;
+            n.particles = [];
+            n.particleBindings = [];
+            n.entries = [];
+            n.particleReplacements = {};
+            n.soundEvents = [];
+            n.responseCriteria = [];
+          }
+          const assets = new Map(rows.map(r => [r.item.model, original]));
+          if (rows[0].item.model !== rows[0].hero.model)
+            assets.set(rows[0].hero.model, Buffer.concat([original, Buffer.from(':UNPATCHED_BASE')]));
+          fs.writeFileSync(path.join(root, 'game.vpk'), packVpk(assets));
+          fs.writeFileSync(path.join(root, 'patcher'), 'stub');
+          fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify(b.catalog));
+          let calls = 0;
+          const run = async (_, args) => {
+            if (args[0] === '--capabilities')
+              return JSON.stringify({
+                version: '1.1.0',
+                legacyRaw: true,
+                modelOnly: true,
+                materialSkin: true,
+                activityRulesV1: true,
+                activityRulesV9: true,
+                heroActivitiesV4: true,
+                crystalMaidenArcanaRuntimeV1: true,
+                testerWearableHostV2: true,
+                testerRuntimeBindingsV3: true,
+                testerImporterRootProfilesV4: true,
+                immortalRuntimeFixesV1: true
+              });
+            if (args[0] === '--input') {
+              fs.writeFileSync(
+                args[args.indexOf('--output') + 1],
+                Buffer.concat([fs.readFileSync(args[1]), Buffer.from(':PACKED_BODY')])
+              );
+              return '';
+            }
+            if (args[0] === '--model-mesh-groups') {
+              const m = JSON.parse(fs.readFileSync(args[1]));
+              assert.equal(id, 'skywrath_mage');
+              assert.match(m.group, style === 0 ? /_@1_/ : /_@2_/);
+              fs.copyFileSync(m.input, m.output);
+              return '';
+            }
+            if (args[0] === '--activity-rules') {
+              calls++;
+              const m = JSON.parse(fs.readFileSync(args[1]));
+              assert.equal(
+                m.model,
+                rows[0].item.model,
+                'activity request must name the arcana source model, not its replacement path'
+              );
+              assert.ok(!fs.readFileSync(m.input).toString().includes('UNPATCHED_BASE'));
+              fs.writeFileSync(m.output, Buffer.concat([fs.readFileSync(m.input), Buffer.from(':ACTIVITIES')]));
+              return '';
+            }
+            if (args[0] === '--cm-arcana-runtime') {
+              assert.equal(id, 'crystal_maiden');
+              const q = JSON.parse(fs.readFileSync(args[1]));
+              assert.ok(!fs.readFileSync(q.input).toString().includes('UNPATCHED_BASE'));
+              fs.writeFileSync(q.output, Buffer.concat([fs.readFileSync(q.input), Buffer.from(':CM_RUNTIME')]));
+              return '';
+            }
+            if (args[0] === '--tester-wearable-host') {
+              assert.equal(testerBuildV1, true);
+              const q = JSON.parse(fs.readFileSync(args[1]));
+              for (const h of q.hosts) {
+                fs.copyFileSync(h.input, h.output);
+                for (const d of h.donors) {
+                  fs.copyFileSync(d.input, d.hidden);
+                  fs.copyFileSync(d.input, d.visible);
+                }
+              }
+              for (const p of q.particles) fs.copyFileSync(p.input, p.output);
+              fs.writeFileSync(
+                q.report,
+                JSON.stringify({
+                  version: 2,
+                  hosts: q.hosts.map(h => ({ host: h.host, wearables: h.donors.map(d => d.target) }))
+                })
+              );
+              return '';
+            }
+            if (args[0] === '--relocate') {
+              for (const f of JSON.parse(fs.readFileSync(args[1])).files) fs.copyFileSync(f.input, f.output);
+              return '';
+            }
+            throw Error('Unexpected patch step: ' + args[0]);
+          };
+          const engine = new Builder(
+              root,
+              {
+                archives: ['game.vpk'],
+                catalog: 'catalog.json',
+                patcher: 'patcher',
+                autoCatalog: false,
+                testerBuildV1
+              },
+              run
+            ),
+            job = { id: 'arcana' };
+          try {
+            await engine.build(rows, job);
+            assert.equal(job.status, 'ready');
+            assert.equal(calls, heroActivityPlans(rows).length, id + ' activity plan');
+            if (calls) assert.match(new Vpk(job.file).read(rows[0].hero.model).toString(), /ACTIVITIES/);
+            else assert.ok(new Vpk(job.file).read(rows[0].hero.model));
+          } finally {
+            await engine.dispose();
+          }
+        } finally {
+          fs.rmSync(root, { recursive: true, force: true });
+        }
+      }
 });
 
-test('refitted Venge hat retains its attached systems without restoring arcana-suppressed base ambient',()=>{
- const b=fixture('vengefulspirit'),hero=b.catalog.heroes[0],base=expandedArcanaChoices(b,'vengefulspirit'),entry=base[0].item.nativeOverrides.entries.find(e=>e.type==='particle'&&e.source==='particles/error/null.vpcf_c');assert.ok(entry);
- const item=hero.items.find(i=>i.id==='custom-head');item.nativeOverrides={...base[0].item.nativeOverrides,entries:[{...entry,source:'particles/econ/hat_ambient_alt.vpcf_c'}],particles:['particles/econ/hat_attached.vpcf_c'],particleBindings:[{path:'particles/econ/hat_attached.vpcf_c'}],soundEvents:[],responseCriteria:[],activities:[]};
- const rows=expandedArcanaChoices(b,'vengefulspirit',{items:{head:item.id}}),hat=rows.find(r=>r.item.id===item.id);
- assert.deepEqual(rows.flatMap(r=>r.item.nativeOverrides.entries).filter(e=>e.target===entry.target),[entry]);
- assert.deepEqual(hat.item.nativeOverrides.particles,['particles/econ/hat_attached.vpcf_c']);assert.deepEqual(hat.item.nativeOverrides.particleBindings,[{path:'particles/econ/hat_attached.vpcf_c'}]);
- assert.equal(item.nativeOverrides.entries[0].source,'particles/econ/hat_ambient_alt.vpcf_c');
+test('equipped Pudge refits replace only their own ability icons, leaving other arcana icons and catalog intact', () => {
+  const b = fixture('pudge'),
+    hero = b.catalog.heroes[0],
+    target = 'panorama/images/spellicons/pudge_flesh_heap_png.vtex_c',
+    source = 'panorama/images/spellicons/pudge/horrorfest_butcher/horrorfest_butcher_flesh_heap_png.vtex_c';
+  const ordinary = hero.items.find(i => i.id === 'custom-back');
+  ordinary.nativeOverrides = {
+    ...expandedArcanaChoices(b, 'pudge')[0].item.nativeOverrides,
+    entries: [{ type: 'ability_icon', target, source }],
+    particles: [],
+    particleBindings: [],
+    activities: [],
+    soundEvents: [],
+    responseCriteria: []
+  };
+  const before = JSON.stringify(b.catalog),
+    baseline = expandedArcanaChoices(b, 'pudge'),
+    rows = expandedArcanaChoices(b, 'pudge', { items: { back: 'custom-back' } }),
+    entries = rows.flatMap(r => r.item.nativeOverrides.entries);
+  assert.deepEqual(
+    entries.filter(e => e.target === target),
+    [{ type: 'ability_icon', target, source }]
+  );
+  assert.ok(baseline[0].item.nativeOverrides.entries.some(e => e.target === target && e.source !== source));
+  for (const entry of baseline[0].item.nativeOverrides.entries.filter(
+    e => e.type === 'ability_icon' && e.target !== target
+  ))
+    assert.ok(entries.some(e => e.target === entry.target && e.source === entry.source));
+  assert.equal(JSON.stringify(b.catalog), before);
+  assert.deepEqual(
+    expandedArcanaChoices(b, 'pudge', { items: { back: 'custom-back' } }).flatMap(r => r.item.nativeOverrides.entries),
+    entries
+  );
+});
+
+test('refitted Venge hat retains its attached systems without restoring arcana-suppressed base ambient', () => {
+  const b = fixture('vengefulspirit'),
+    hero = b.catalog.heroes[0],
+    base = expandedArcanaChoices(b, 'vengefulspirit'),
+    entry = base[0].item.nativeOverrides.entries.find(
+      e => e.type === 'particle' && e.source === 'particles/error/null.vpcf_c'
+    );
+  assert.ok(entry);
+  const item = hero.items.find(i => i.id === 'custom-head');
+  item.nativeOverrides = {
+    ...base[0].item.nativeOverrides,
+    entries: [{ ...entry, source: 'particles/econ/hat_ambient_alt.vpcf_c' }],
+    particles: ['particles/econ/hat_attached.vpcf_c'],
+    particleBindings: [{ path: 'particles/econ/hat_attached.vpcf_c' }],
+    soundEvents: [],
+    responseCriteria: [],
+    activities: []
+  };
+  const rows = expandedArcanaChoices(b, 'vengefulspirit', { items: { head: item.id } }),
+    hat = rows.find(r => r.item.id === item.id);
+  assert.deepEqual(
+    rows.flatMap(r => r.item.nativeOverrides.entries).filter(e => e.target === entry.target),
+    [entry]
+  );
+  assert.deepEqual(hat.item.nativeOverrides.particles, ['particles/econ/hat_attached.vpcf_c']);
+  assert.deepEqual(hat.item.nativeOverrides.particleBindings, [{ path: 'particles/econ/hat_attached.vpcf_c' }]);
+  assert.equal(item.nativeOverrides.entries[0].source, 'particles/econ/hat_ambient_alt.vpcf_c');
 });

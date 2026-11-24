@@ -1,39 +1,360 @@
-using ValveResourceFormat;using ValveResourceFormat.ResourceTypes;using System.Globalization;using System.Text.Json;
-internal static class TerrorbladeArcanaTests{
- static void Check(bool ok,string message){if(!ok)throw new Exception(message);}
- public static int Main(){var fixture=Path.Combine(AppContext.BaseDirectory,"fixtures");var root=Path.Combine(Path.GetTempPath(),"des-tb-tests-"+Guid.NewGuid());Directory.CreateDirectory(root);try{
- var files=new[]{"tint.vmat_c","sunder.vpcf_c","icon.vtex_c","owned-tint.vmat_c","owned-specular.vmat_c","owned-sunder.vpcf_c"}.Select(n=>new{input=Path.Combine(fixture,n),output=Path.Combine(root,n),texture=n.EndsWith("vtex_c"),referenceInput=n=="owned-sunder.vpcf_c"?Path.Combine(fixture,"sunder.vpcf_c"):null}).ToArray();var manifest=Path.Combine(root,"request.json");File.WriteAllText(manifest,JsonSerializer.Serialize(new{files,color=new[]{163,92,255}}));TerrorbladeArcana.Run(manifest);
- using(var before=new Resource{FileName=files[0].input})using(var after=new Resource{FileName=files[0].output}){before.Read(files[0].input);after.Read(files[0].output);var a=(before.DataBlock as Material??throw new Exception("Missing source material"));var b=(after.DataBlock as Material??throw new Exception("Missing output material"));Check(a.DynamicExpressions["g_vDetail1ColorTint"]!=b.DynamicExpressions["g_vDetail1ColorTint"],"Material tint did not change");Check(a.TextureParams.OrderBy(p=>p.Key).SequenceEqual(b.TextureParams.OrderBy(p=>p.Key)),"Material texture binding changed");Check(new FileInfo(files[0].input).Length==new FileInfo(files[0].output).Length,"Material layout changed");}
- using(var r=new Resource{FileName=files[1].output}){r.Read(files[1].output);var p=(r.DataBlock as ParticleSystem??throw new Exception("Missing particle"));Check(p.Data["m_ConstantColor"].Values.Take(3).Select(v=>v.ToInt32(CultureInfo.InvariantCulture)).SequenceEqual(new[]{163,92,255}),"Particle color incorrect");var op=p.Data["m_Initializers"].Values.First(v=>v.TryGetValue("m_nFieldOutput",out var field)&&field.ToInt32(CultureInfo.InvariantCulture)==6);Check(Math.Abs(op["m_vOutputMax"][1].ToDouble(CultureInfo.InvariantCulture)-92/255d)<.00001,"Fixed gem control point color incorrect");}
- using(var original=new Resource{FileName=files[2].input})using(var updated=new Resource{FileName=files[2].output}){original.Read(files[2].input);updated.Read(files[2].output);var a=(original.DataBlock as Texture??throw new Exception("Missing texture"));var b=(updated.DataBlock as Texture??throw new Exception("Missing texture"));using var old=a.GenerateBitmap();using var next=b.GenerateBitmap();Check(old.Width==next.Width&&old.Height==next.Height,"Texture dimensions changed");Check(old.Pixels.Select(p=>p.Alpha).SequenceEqual(next.Pixels.Select(p=>p.Alpha)),"Texture alpha changed");Check(old.Pixels.Where((p,i)=>p!=next.Pixels[i]).Any(),"Texture colors unchanged");using var mip=b.GenerateBitmap(mipLevel:(uint)b.NumMipLevels-1);Check(mip.Width==1&&mip.Height==1,"Texture mips invalid");}
- File.WriteAllText(manifest,JsonSerializer.Serialize(new{files=files.Skip(3).Take(2).ToArray(),color=new[]{40,180,220}}));TerrorbladeArcana.Run(manifest);
- foreach(var index in new[]{3,4}){using var a=new Resource{FileName=files[index].input};using var b=new Resource{FileName=files[index].output};a.Read(files[index].input);b.Read(files[index].output);var old=a.DataBlock as Material??throw new Exception("Missing material");var next=b.DataBlock as Material??throw new Exception("Missing material");Check(!old.DynamicExpressions.OrderBy(p=>p.Key).SequenceEqual(next.DynamicExpressions.OrderBy(p=>p.Key)),"Owned material tint unchanged");Check(old.TextureParams.OrderBy(p=>p.Key).SequenceEqual(next.TextureParams.OrderBy(p=>p.Key)),"Owned material bindings changed");}
- using(var r=new Resource{FileName=files[5].output}){r.Read(files[5].output);var data=(r.DataBlock as ParticleSystem??throw new Exception("Missing particle")).Data;Check(data["m_ConstantColor"].Values.Take(3).Select(v=>v.ToInt32(CultureInfo.InvariantCulture)).SequenceEqual(new[]{163,92,255}),"Owned particle baseline incorrect");}
- Check(TerrorbladeArcana.Color(new[]{84,183,196},new[]{163,92,255},new[]{84,183,196}).SequenceEqual(new[]{163,92,255}),"Native blue source color incorrect");
- var transform=ValveKeyValue.KVObject.Collection();transform["_class"]=new ValveKeyValue.KVObject("C_INIT_RemapTransformToVector");transform["m_nFieldOutput"]=new ValveKeyValue.KVObject(6);var input=ValveKeyValue.KVObject.Collection();input["m_nType"]=new ValveKeyValue.KVObject("PT_TYPE_CONTROL_POINT");input["m_nControlPoint"]=new ValveKeyValue.KVObject(15);transform["m_TransformInput"]=input;
- TerrorbladeArcana.Recolor(transform,new[]{163,92,255},new[]{84,183,196});
- Check(transform["m_vOutputMin"].Values.Select(v=>v.ToDouble(CultureInfo.InvariantCulture)).Zip(new[]{163,92,255}).All(p=>Math.Abs(p.First-p.Second/255d)<.000001),"Modern transform gem color missing");Check(transform["m_vOutputMin"].Values.Select(v=>v.ToDouble(CultureInfo.InvariantCulture)).SequenceEqual(transform["m_vOutputMax"].Values.Select(v=>v.ToDouble(CultureInfo.InvariantCulture))),"Modern transform still multiplies owned gem color");Check(transform["m_flOpStrength"]["m_flLiteralValue"].ToDouble(CultureInfo.InvariantCulture)==1,"Modern transform still uses external strength");
- var accent=TerrorbladeArcana.Accent(new SkiaSharp.SKColor(84,183,196,37),new[]{163,92,255},new[]{84,183,196});Check(accent==new SkiaSharp.SKColor(163,92,255,37),"Native cyan texture accent or alpha incorrect");Check(TerrorbladeArcana.Accent(new SkiaSharp.SKColor(255,40,40,37),new[]{163,92,255},new[]{84,183,196})==new SkiaSharp.SKColor(255,40,40,37),"Unrelated texture hue changed");
- var skadiInput=Path.Combine(fixture,"skadi-tint.vmat_c");var skadiOutput=Path.Combine(root,"skadi.vmat_c");
- using(var materialResource=new Resource{FileName=skadiInput}){materialResource.Read(skadiInput);var skadi=(Material)materialResource.DataBlock!;
- var detail=skadi.TextureParams["g_tDetail"]+"_c";var normal=skadi.TextureParams["g_tNormal"]+"_c";
- var colorOutput=Path.Combine(root,"detail.vtex_c");var normalOutput=Path.Combine(root,"normal.vtex_c");
- File.WriteAllText(manifest,JsonSerializer.Serialize(new{files=new object[]{new{input=skadiInput,output=skadiOutput,optionalMaterial=false},new{input=files[2].input,output=colorOutput,texture=true,name=detail},new{input=files[2].input,output=normalOutput,texture=true,name=normal}},color=new[]{163,92,255}}));TerrorbladeArcana.Run(manifest);
- Check(File.ReadAllBytes(normalOutput).SequenceEqual(File.ReadAllBytes(files[2].input)),"Normal map changed during recolor");Check(!File.ReadAllBytes(colorOutput).SequenceEqual(File.ReadAllBytes(files[2].input)),"Selected color texture unchanged");
- using var patchedMaterial=new Resource{FileName=skadiOutput};patchedMaterial.Read(skadiOutput);var next=(Material)patchedMaterial.DataBlock!;Check(skadi.TextureParams.OrderBy(p=>p.Key).SequenceEqual(next.TextureParams.OrderBy(p=>p.Key)),"Modern material texture slots changed");
- var tint=next.Data["m_dynamicParams"].Values.First(v=>v["m_name"].ToString(CultureInfo.InvariantCulture)=="g_vDetail1ColorTint");var code=Convert.FromHexString(string.Concat(tint["m_value"].ToString(CultureInfo.InvariantCulture).Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries)));
- Check(code[0]==7&&BitConverter.ToSingle(code,1)==1f&&BitConverter.ToSingle(code,6)==1f&&BitConverter.ToSingle(code,11)==1f&&code.Skip(18).Take(code.Length-19).All(v=>v==24)&&code[^1]==0,"Modern tint still evaluates owned gem or applies color twice");
- }
- var eyesInput=Path.Combine(fixture,"eyes.vpcf_c");var eyesOutput=Path.Combine(root,"eyes.vpcf_c");File.WriteAllText(manifest,JsonSerializer.Serialize(new{files=new[]{new{input=eyesInput,output=eyesOutput,excludedChildren=new[]{"particles/econ/items/terrorblade/terrorblade_horns_arcana/terrorblade_ambient_eye_arcana_horns.vpcf"}}},color=new[]{163,92,255}}));TerrorbladeArcana.Run(manifest);
- using(var r=new Resource{FileName=eyesOutput}){r.Read(eyesOutput);var data=((ParticleSystem)r.DataBlock!).Data;var children=data["m_Children"].Values.Select(v=>v["m_ChildRef"].ToString(CultureInfo.InvariantCulture)).ToArray();Check(children.Length==2&&children.Any(n=>n.Contains("ambient_body"))&&children.Any(n=>n.Contains("ambient_mouth")),"Rictus eye filtering removed core/body or left duplicate side eyes");Check(data["m_controlPointConfigurations"].Values.First()["m_drivers"].Count==4,"Core control point bindings changed");}
- var fear=ValveKeyValue.KVObject.Collection();var fearColor=ValveKeyValue.KVObject.Array();foreach(var v in new[]{200,40,30,255})fearColor.Add(new ValveKeyValue.KVObject(v));fear["m_ConstantColor"]=fearColor;var fearSource=TerrorbladeArcana.ParticleSourceColor(fear);Check(fearSource is not null&&fearSource.SequenceEqual(new[]{200,40,30}),"Ability particle source palette not detected");TerrorbladeArcana.Recolor(fear,new[]{163,92,255},fearSource);Check(fear["m_ConstantColor"].Values.Take(3).Select(v=>v.ToInt32(CultureInfo.InvariantCulture)).SequenceEqual(new[]{163,92,255}),"Ability palette was not mapped to requested color");
- Check(TerrorbladeArcana.Color(new[]{255,60,40},new[]{0,0,0}).All(v=>v==0),"Black color invalid");
- var dark=ValveKeyValue.KVObject.Collection();var renderers=ValveKeyValue.KVObject.Array();dark["m_Renderers"]=renderers;
- var sprite=ValveKeyValue.KVObject.Collection();sprite["_class"]=new ValveKeyValue.KVObject("C_OP_RenderSprites");sprite["m_nOutputBlendMode"]=new ValveKeyValue.KVObject("PARTICLE_OUTPUT_BLEND_MODE_ADD");sprite["m_flAddSelfAmount"]=new ValveKeyValue.KVObject(1d);renderers.Add(sprite);
- var textures=ValveKeyValue.KVObject.Array();var spriteTexture=ValveKeyValue.KVObject.Collection();textures.Add(spriteTexture);sprite["m_vecTexturesInput"]=textures;
- ParticleRecolor.EnableDarkBlend(dark,[255,60,40]);Check(sprite.ContainsKey("m_nOutputBlendMode"),"Bright recolor changed blend mode");
- ParticleRecolor.EnableDarkBlend(dark,[0,0,0]);Check(!sprite.ContainsKey("m_nOutputBlendMode")&&sprite["m_flAddSelfAmount"].ToDouble(CultureInfo.InvariantCulture)==0,"Black sprite still uses additive blending");
- Check(spriteTexture["m_nTextureChannels"].ToString(null)=="SPRITECARD_TEXTURE_CHANNEL_MIX_A_RGBALPHA","Dark sprite needs RGB coverage");
- Console.WriteLine("[OK] Arcana particle colors, control point multipliers, material bindings, VTEX alpha and mip levels");return 0;
- }finally{Directory.Delete(root,true);}}
+using System.Globalization;
+using System.Text.Json;
+using ValveResourceFormat;
+using ValveResourceFormat.ResourceTypes;
+
+internal static class TerrorbladeArcanaTests
+{
+    static void Check(bool ok, string message)
+    {
+        if (!ok)
+            throw new Exception(message);
+    }
+
+    public static int Main()
+    {
+        var fixture = Path.Combine(AppContext.BaseDirectory, "fixtures");
+        var root = Path.Combine(Path.GetTempPath(), "des-tb-tests-" + Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        try
+        {
+            var files = new[]
+            {
+                "tint.vmat_c",
+                "sunder.vpcf_c",
+                "icon.vtex_c",
+                "owned-tint.vmat_c",
+                "owned-specular.vmat_c",
+                "owned-sunder.vpcf_c",
+            }
+                .Select(n => new
+                {
+                    input = Path.Combine(fixture, n),
+                    output = Path.Combine(root, n),
+                    texture = n.EndsWith("vtex_c"),
+                    referenceInput = n == "owned-sunder.vpcf_c" ? Path.Combine(fixture, "sunder.vpcf_c") : null,
+                })
+                .ToArray();
+            var manifest = Path.Combine(root, "request.json");
+            File.WriteAllText(manifest, JsonSerializer.Serialize(new { files, color = new[] { 163, 92, 255 } }));
+            TerrorbladeArcana.Run(manifest);
+            using (var before = new Resource { FileName = files[0].input })
+            using (var after = new Resource { FileName = files[0].output })
+            {
+                before.Read(files[0].input);
+                after.Read(files[0].output);
+                var a = (before.DataBlock as Material ?? throw new Exception("Missing source material"));
+                var b = (after.DataBlock as Material ?? throw new Exception("Missing output material"));
+                Check(
+                    a.DynamicExpressions["g_vDetail1ColorTint"] != b.DynamicExpressions["g_vDetail1ColorTint"],
+                    "Material tint did not change"
+                );
+                Check(
+                    a.TextureParams.OrderBy(p => p.Key).SequenceEqual(b.TextureParams.OrderBy(p => p.Key)),
+                    "Material texture binding changed"
+                );
+                Check(
+                    new FileInfo(files[0].input).Length == new FileInfo(files[0].output).Length,
+                    "Material layout changed"
+                );
+            }
+            using (var r = new Resource { FileName = files[1].output })
+            {
+                r.Read(files[1].output);
+                var p = (r.DataBlock as ParticleSystem ?? throw new Exception("Missing particle"));
+                Check(
+                    p.Data["m_ConstantColor"]
+                        .Values.Take(3)
+                        .Select(v => v.ToInt32(CultureInfo.InvariantCulture))
+                        .SequenceEqual(new[] { 163, 92, 255 }),
+                    "Particle color incorrect"
+                );
+                var op = p.Data["m_Initializers"]
+                    .Values.First(v =>
+                        v.TryGetValue("m_nFieldOutput", out var field)
+                        && field.ToInt32(CultureInfo.InvariantCulture) == 6
+                    );
+                Check(
+                    Math.Abs(op["m_vOutputMax"][1].ToDouble(CultureInfo.InvariantCulture) - 92 / 255d) < .00001,
+                    "Fixed gem control point color incorrect"
+                );
+            }
+            using (var original = new Resource { FileName = files[2].input })
+            using (var updated = new Resource { FileName = files[2].output })
+            {
+                original.Read(files[2].input);
+                updated.Read(files[2].output);
+                var a = (original.DataBlock as Texture ?? throw new Exception("Missing texture"));
+                var b = (updated.DataBlock as Texture ?? throw new Exception("Missing texture"));
+                using var old = a.GenerateBitmap();
+                using var next = b.GenerateBitmap();
+                Check(old.Width == next.Width && old.Height == next.Height, "Texture dimensions changed");
+                Check(
+                    old.Pixels.Select(p => p.Alpha).SequenceEqual(next.Pixels.Select(p => p.Alpha)),
+                    "Texture alpha changed"
+                );
+                Check(old.Pixels.Where((p, i) => p != next.Pixels[i]).Any(), "Texture colors unchanged");
+                using var mip = b.GenerateBitmap(mipLevel: (uint)b.NumMipLevels - 1);
+                Check(mip.Width == 1 && mip.Height == 1, "Texture mips invalid");
+            }
+            File.WriteAllText(
+                manifest,
+                JsonSerializer.Serialize(
+                    new { files = files.Skip(3).Take(2).ToArray(), color = new[] { 40, 180, 220 } }
+                )
+            );
+            TerrorbladeArcana.Run(manifest);
+            foreach (var index in new[] { 3, 4 })
+            {
+                using var a = new Resource { FileName = files[index].input };
+                using var b = new Resource { FileName = files[index].output };
+                a.Read(files[index].input);
+                b.Read(files[index].output);
+                var old = a.DataBlock as Material ?? throw new Exception("Missing material");
+                var next = b.DataBlock as Material ?? throw new Exception("Missing material");
+                Check(
+                    !old
+                        .DynamicExpressions.OrderBy(p => p.Key)
+                        .SequenceEqual(next.DynamicExpressions.OrderBy(p => p.Key)),
+                    "Owned material tint unchanged"
+                );
+                Check(
+                    old.TextureParams.OrderBy(p => p.Key).SequenceEqual(next.TextureParams.OrderBy(p => p.Key)),
+                    "Owned material bindings changed"
+                );
+            }
+            using (var r = new Resource { FileName = files[5].output })
+            {
+                r.Read(files[5].output);
+                var data = (r.DataBlock as ParticleSystem ?? throw new Exception("Missing particle")).Data;
+                Check(
+                    data["m_ConstantColor"]
+                        .Values.Take(3)
+                        .Select(v => v.ToInt32(CultureInfo.InvariantCulture))
+                        .SequenceEqual(new[] { 163, 92, 255 }),
+                    "Owned particle baseline incorrect"
+                );
+            }
+            Check(
+                TerrorbladeArcana
+                    .Color(new[] { 84, 183, 196 }, new[] { 163, 92, 255 }, new[] { 84, 183, 196 })
+                    .SequenceEqual(new[] { 163, 92, 255 }),
+                "Native blue source color incorrect"
+            );
+            var transform = ValveKeyValue.KVObject.Collection();
+            transform["_class"] = new ValveKeyValue.KVObject("C_INIT_RemapTransformToVector");
+            transform["m_nFieldOutput"] = new ValveKeyValue.KVObject(6);
+            var input = ValveKeyValue.KVObject.Collection();
+            input["m_nType"] = new ValveKeyValue.KVObject("PT_TYPE_CONTROL_POINT");
+            input["m_nControlPoint"] = new ValveKeyValue.KVObject(15);
+            transform["m_TransformInput"] = input;
+            TerrorbladeArcana.Recolor(transform, new[] { 163, 92, 255 }, new[] { 84, 183, 196 });
+            Check(
+                transform["m_vOutputMin"]
+                    .Values.Select(v => v.ToDouble(CultureInfo.InvariantCulture))
+                    .Zip(new[] { 163, 92, 255 })
+                    .All(p => Math.Abs(p.First - p.Second / 255d) < .000001),
+                "Modern transform gem color missing"
+            );
+            Check(
+                transform["m_vOutputMin"]
+                    .Values.Select(v => v.ToDouble(CultureInfo.InvariantCulture))
+                    .SequenceEqual(
+                        transform["m_vOutputMax"].Values.Select(v => v.ToDouble(CultureInfo.InvariantCulture))
+                    ),
+                "Modern transform still multiplies owned gem color"
+            );
+            Check(
+                transform["m_flOpStrength"]["m_flLiteralValue"].ToDouble(CultureInfo.InvariantCulture) == 1,
+                "Modern transform still uses external strength"
+            );
+            var accent = TerrorbladeArcana.Accent(
+                new SkiaSharp.SKColor(84, 183, 196, 37),
+                new[] { 163, 92, 255 },
+                new[] { 84, 183, 196 }
+            );
+            Check(accent == new SkiaSharp.SKColor(163, 92, 255, 37), "Native cyan texture accent or alpha incorrect");
+            Check(
+                TerrorbladeArcana.Accent(
+                    new SkiaSharp.SKColor(255, 40, 40, 37),
+                    new[] { 163, 92, 255 },
+                    new[] { 84, 183, 196 }
+                ) == new SkiaSharp.SKColor(255, 40, 40, 37),
+                "Unrelated texture hue changed"
+            );
+            var skadiInput = Path.Combine(fixture, "skadi-tint.vmat_c");
+            var skadiOutput = Path.Combine(root, "skadi.vmat_c");
+            using (var materialResource = new Resource { FileName = skadiInput })
+            {
+                materialResource.Read(skadiInput);
+                var skadi = (Material)materialResource.DataBlock!;
+                var detail = skadi.TextureParams["g_tDetail"] + "_c";
+                var normal = skadi.TextureParams["g_tNormal"] + "_c";
+                var colorOutput = Path.Combine(root, "detail.vtex_c");
+                var normalOutput = Path.Combine(root, "normal.vtex_c");
+                File.WriteAllText(
+                    manifest,
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            files = new object[]
+                            {
+                                new
+                                {
+                                    input = skadiInput,
+                                    output = skadiOutput,
+                                    optionalMaterial = false,
+                                },
+                                new
+                                {
+                                    input = files[2].input,
+                                    output = colorOutput,
+                                    texture = true,
+                                    name = detail,
+                                },
+                                new
+                                {
+                                    input = files[2].input,
+                                    output = normalOutput,
+                                    texture = true,
+                                    name = normal,
+                                },
+                            },
+                            color = new[] { 163, 92, 255 },
+                        }
+                    )
+                );
+                TerrorbladeArcana.Run(manifest);
+                Check(
+                    File.ReadAllBytes(normalOutput).SequenceEqual(File.ReadAllBytes(files[2].input)),
+                    "Normal map changed during recolor"
+                );
+                Check(
+                    !File.ReadAllBytes(colorOutput).SequenceEqual(File.ReadAllBytes(files[2].input)),
+                    "Selected color texture unchanged"
+                );
+                using var patchedMaterial = new Resource { FileName = skadiOutput };
+                patchedMaterial.Read(skadiOutput);
+                var next = (Material)patchedMaterial.DataBlock!;
+                Check(
+                    skadi.TextureParams.OrderBy(p => p.Key).SequenceEqual(next.TextureParams.OrderBy(p => p.Key)),
+                    "Modern material texture slots changed"
+                );
+                var tint = next.Data["m_dynamicParams"]
+                    .Values.First(v => v["m_name"].ToString(CultureInfo.InvariantCulture) == "g_vDetail1ColorTint");
+                var code = Convert.FromHexString(
+                    string.Concat(
+                        tint["m_value"]
+                            .ToString(CultureInfo.InvariantCulture)
+                            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                    )
+                );
+                Check(
+                    code[0] == 7
+                        && BitConverter.ToSingle(code, 1) == 1f
+                        && BitConverter.ToSingle(code, 6) == 1f
+                        && BitConverter.ToSingle(code, 11) == 1f
+                        && code.Skip(18).Take(code.Length - 19).All(v => v == 24)
+                        && code[^1] == 0,
+                    "Modern tint still evaluates owned gem or applies color twice"
+                );
+            }
+            var eyesInput = Path.Combine(fixture, "eyes.vpcf_c");
+            var eyesOutput = Path.Combine(root, "eyes.vpcf_c");
+            File.WriteAllText(
+                manifest,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        files = new[]
+                        {
+                            new
+                            {
+                                input = eyesInput,
+                                output = eyesOutput,
+                                excludedChildren = new[]
+                                {
+                                    "particles/econ/items/terrorblade/terrorblade_horns_arcana/terrorblade_ambient_eye_arcana_horns.vpcf",
+                                },
+                            },
+                        },
+                        color = new[] { 163, 92, 255 },
+                    }
+                )
+            );
+            TerrorbladeArcana.Run(manifest);
+            using (var r = new Resource { FileName = eyesOutput })
+            {
+                r.Read(eyesOutput);
+                var data = ((ParticleSystem)r.DataBlock!).Data;
+                var children = data["m_Children"]
+                    .Values.Select(v => v["m_ChildRef"].ToString(CultureInfo.InvariantCulture))
+                    .ToArray();
+                Check(
+                    children.Length == 2
+                        && children.Any(n => n.Contains("ambient_body"))
+                        && children.Any(n => n.Contains("ambient_mouth")),
+                    "Rictus eye filtering removed core/body or left duplicate side eyes"
+                );
+                Check(
+                    data["m_controlPointConfigurations"].Values.First()["m_drivers"].Count == 4,
+                    "Core control point bindings changed"
+                );
+            }
+            var fear = ValveKeyValue.KVObject.Collection();
+            var fearColor = ValveKeyValue.KVObject.Array();
+            foreach (var v in new[] { 200, 40, 30, 255 })
+                fearColor.Add(new ValveKeyValue.KVObject(v));
+            fear["m_ConstantColor"] = fearColor;
+            var fearSource = TerrorbladeArcana.ParticleSourceColor(fear);
+            Check(
+                fearSource is not null && fearSource.SequenceEqual(new[] { 200, 40, 30 }),
+                "Ability particle source palette not detected"
+            );
+            TerrorbladeArcana.Recolor(fear, new[] { 163, 92, 255 }, fearSource);
+            Check(
+                fear["m_ConstantColor"]
+                    .Values.Take(3)
+                    .Select(v => v.ToInt32(CultureInfo.InvariantCulture))
+                    .SequenceEqual(new[] { 163, 92, 255 }),
+                "Ability palette was not mapped to requested color"
+            );
+            Check(
+                TerrorbladeArcana.Color(new[] { 255, 60, 40 }, new[] { 0, 0, 0 }).All(v => v == 0),
+                "Black color invalid"
+            );
+            var dark = ValveKeyValue.KVObject.Collection();
+            var renderers = ValveKeyValue.KVObject.Array();
+            dark["m_Renderers"] = renderers;
+            var sprite = ValveKeyValue.KVObject.Collection();
+            sprite["_class"] = new ValveKeyValue.KVObject("C_OP_RenderSprites");
+            sprite["m_nOutputBlendMode"] = new ValveKeyValue.KVObject("PARTICLE_OUTPUT_BLEND_MODE_ADD");
+            sprite["m_flAddSelfAmount"] = new ValveKeyValue.KVObject(1d);
+            renderers.Add(sprite);
+            var textures = ValveKeyValue.KVObject.Array();
+            var spriteTexture = ValveKeyValue.KVObject.Collection();
+            textures.Add(spriteTexture);
+            sprite["m_vecTexturesInput"] = textures;
+            ParticleRecolor.EnableDarkBlend(dark, [255, 60, 40]);
+            Check(sprite.ContainsKey("m_nOutputBlendMode"), "Bright recolor changed blend mode");
+            ParticleRecolor.EnableDarkBlend(dark, [0, 0, 0]);
+            Check(
+                !sprite.ContainsKey("m_nOutputBlendMode")
+                    && sprite["m_flAddSelfAmount"].ToDouble(CultureInfo.InvariantCulture) == 0,
+                "Black sprite still uses additive blending"
+            );
+            Check(
+                spriteTexture["m_nTextureChannels"].ToString(null) == "SPRITECARD_TEXTURE_CHANNEL_MIX_A_RGBALPHA",
+                "Dark sprite needs RGB coverage"
+            );
+            Console.WriteLine(
+                "[OK] Arcana particle colors, control point multipliers, material bindings, VTEX alpha and mip levels"
+            );
+            return 0;
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
 }

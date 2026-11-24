@@ -1,29 +1,297 @@
-import test from 'node:test';import assert from 'node:assert/strict';
-import {validateBlockCss,moveMenuBackgroundImages} from '../lib/hud-creator/block-css.mjs';
-import {validateProject,inlineStyle,changed} from '../lib/hud-creator/model.mjs';
-const element=(target,extra={})=>({id:target,scene:'menu',kind:'Panel',layout:'panorama/layout/dashboard.vxml_c',target,...extra});
-test('block CSS reaches native export after structured styles, including gradients and coordinates',()=>{const e=element('Card',{color:'#112233',css:'position: 20px 30px 0px; width:450px; background-color:gradient(linear,0% 0%,100% 0%,from(#112233),to(#445566));'});assert.equal(changed(e),true);const p=validateProject({version:1,name:'css',elements:[e]});const text=inlineStyle(p.elements[0]);assert(text.indexOf('position:20px 30px 0px')>text.indexOf('color:#112233'));assert.match(text,/width:450px/);assert.match(text,/gradient\(linear/);});
-test('CSS editor rejects selectors, resource injection, unbalanced syntax and unsupported executable properties',()=>{for(const css of ['Panel{opacity:0}','@import "x"','background-image:url(https://evil/x)','color:expression(alert(1))','color:red;onactivate:run()','opacity:1;/*x*/','transform:translateX(20px','color:"red'])assert.throws(()=>validateBlockCss(css),css);});
-test('a saved blocker image migrates to the background without moving the event layer or dropping other edits',()=>{const image='data:image/png;base64,AAAA',project={elements:[element('DashboardBackgroundManager'),element('DashboardPagesBlocker',{image,imageFit:'contain',x:10,y:20,moved:true,color:'#112233'}),element('FrontpageContents',{color:'#445566'})]};moveMenuBackgroundImages(project);assert.equal(project.elements[0].image,image);assert.equal(project.elements[0].imageFit,'contain');assert.equal(project.elements[0].moved,undefined);assert.equal(project.elements[1].image,undefined);assert.equal(project.elements[1].x,10);assert.equal(project.elements[2].color,'#445566');});
-test('migrating a legacy image preserves an explicitly configured main background',()=>{const project={elements:[element('DashboardBackgroundManager',{image:'new'}),element('DashboardForeground',{image:'old'})]};moveMenuBackgroundImages(project);assert.equal(project.elements[0].image,'new');assert.equal(project.elements[1].image,undefined);});
-test('game HUD positions are accepted and exported with native flow and transform reset',()=>{const e={...element('Hud',{x:400,y:200,moved:true}),scene:'hud'};validateProject({version:1,name:'move',elements:[e]});const css=inlineStyle(e);assert.match(css,/position:400px 200px 0px/);assert.match(css,/ignore-parent-flow:true/);assert.match(css,/transform:none/);assert.match(css,/x:400px/);});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { validateBlockCss, moveMenuBackgroundImages } from '../lib/hud-creator/block-css.mjs';
+import { validateProject, inlineStyle, changed } from '../lib/hud-creator/model.mjs';
+const element = (target, extra = {}) => ({
+  id: target,
+  scene: 'menu',
+  kind: 'Panel',
+  layout: 'panorama/layout/dashboard.vxml_c',
+  target,
+  ...extra
+});
+test('block CSS reaches native export after structured styles, including gradients and coordinates', () => {
+  const e = element('Card', {
+    color: '#112233',
+    css: 'position: 20px 30px 0px; width:450px; background-color:gradient(linear,0% 0%,100% 0%,from(#112233),to(#445566));'
+  });
+  assert.equal(changed(e), true);
+  const p = validateProject({ version: 1, name: 'css', elements: [e] });
+  const text = inlineStyle(p.elements[0]);
+  assert(text.indexOf('position:20px 30px 0px') > text.indexOf('color:#112233'));
+  assert.match(text, /width:450px/);
+  assert.match(text, /gradient\(linear/);
+});
+test('CSS editor rejects selectors, resource injection, unbalanced syntax and unsupported executable properties', () => {
+  for (const css of [
+    'Panel{opacity:0}',
+    '@import "x"',
+    'background-image:url(https://evil/x)',
+    'color:expression(alert(1))',
+    'color:red;onactivate:run()',
+    'opacity:1;/*x*/',
+    'transform:translateX(20px',
+    'color:"red'
+  ])
+    assert.throws(() => validateBlockCss(css), css);
+});
+test('a saved blocker image migrates to the background without moving the event layer or dropping other edits', () => {
+  const image = 'data:image/png;base64,AAAA',
+    project = {
+      elements: [
+        element('DashboardBackgroundManager'),
+        element('DashboardPagesBlocker', { image, imageFit: 'contain', x: 10, y: 20, moved: true, color: '#112233' }),
+        element('FrontpageContents', { color: '#445566' })
+      ]
+    };
+  moveMenuBackgroundImages(project);
+  assert.equal(project.elements[0].image, image);
+  assert.equal(project.elements[0].imageFit, 'contain');
+  assert.equal(project.elements[0].moved, undefined);
+  assert.equal(project.elements[1].image, undefined);
+  assert.equal(project.elements[1].x, 10);
+  assert.equal(project.elements[2].color, '#445566');
+});
+test('migrating a legacy image preserves an explicitly configured main background', () => {
+  const project = {
+    elements: [
+      element('DashboardBackgroundManager', { image: 'new' }),
+      element('DashboardForeground', { image: 'old' })
+    ]
+  };
+  moveMenuBackgroundImages(project);
+  assert.equal(project.elements[0].image, 'new');
+  assert.equal(project.elements[1].image, undefined);
+});
+test('game HUD positions are accepted and exported with native flow and transform reset', () => {
+  const e = { ...element('Hud', { x: 400, y: 200, moved: true }), scene: 'hud' };
+  validateProject({ version: 1, name: 'move', elements: [e] });
+  const css = inlineStyle(e);
+  assert.match(css, /position:400px 200px 0px/);
+  assert.match(css, /ignore-parent-flow:true/);
+  assert.match(css, /transform:none/);
+  assert.match(css, /x:400px/);
+});
 
-import {panelSelector} from '../lib/hud-creator/export-css.mjs';
-import {quickParts} from '../lib/hud-creator/parts.mjs';
-test('CSS fallback selectors retain the authored path for unnamed texture panels',()=>{const tree=[{kind:'DOTATopBar',target:'root',attributes:{},children:[{kind:'Panel',target:'Team',attributes:{id:'TopBarRadiantTeam'},children:[{kind:'Panel',target:'@17',attributes:{class:'TopBarBackground'},children:[]}]}]}];assert.equal(panelSelector(tree,'@17'),'DOTATopBar > #TopBarRadiantTeam > Panel.TopBarBackground');assert.throws(()=>panelSelector(tree,'missing'));});
-test('native clock backing, scoreboard background and mana regeneration can be picked separately',()=>{const packet={scene:'hud',documents:[{layout:'panorama/layout/hud/dota_hud_top_bar.vxml_c',panels:[{id:'TimeOfDayBG'},{id:'GameTime'}]},{layout:'panorama/layout/hud/dota_hud_scoreboard.vxml_c',panels:[{id:'Background'}]},{layout:'panorama/layout/hud/dota_hud_health_mana.vxml_c',panels:[{id:'ManaRegenLabel'}]}]};const targets=quickParts(packet).map(p=>p.target);for(const id of ['TimeOfDayBG','GameTime','Background','ManaRegenLabel'])assert(targets.includes(id));});
-test('texture-state edits preserve independent alive/dead resources and reject conflicting shared replacements',()=>{const png='data:image/png;base64,AAAA',resource='panorama/images/hud/reborn/ability_bg_dead_psd.vtex_c',e=element('center_bg',{textureEdits:[{resource,png}]});const result=validateProject({version:1,name:'dead only',elements:[e]});assert.equal(result.elements[0].image,undefined);assert.equal(changed(result.elements[0]),true);assert.equal(result.elements[0].textureEdits[0].resource,resource);assert.throws(()=>validateProject({version:1,name:'bad',elements:[e,element('another',{textureEdits:[{resource,png:'data:image/png;base64,BBBB'}]})]}));assert.throws(()=>validateProject({version:1,name:'path',elements:[element('x',{textureEdits:[{resource:'../bad.vtex_c',png}]})]}));});
+import { panelSelector } from '../lib/hud-creator/export-css.mjs';
+import { quickParts } from '../lib/hud-creator/parts.mjs';
+test('CSS fallback selectors retain the authored path for unnamed texture panels', () => {
+  const tree = [
+    {
+      kind: 'DOTATopBar',
+      target: 'root',
+      attributes: {},
+      children: [
+        {
+          kind: 'Panel',
+          target: 'Team',
+          attributes: { id: 'TopBarRadiantTeam' },
+          children: [{ kind: 'Panel', target: '@17', attributes: { class: 'TopBarBackground' }, children: [] }]
+        }
+      ]
+    }
+  ];
+  assert.equal(panelSelector(tree, '@17'), 'DOTATopBar > #TopBarRadiantTeam > Panel.TopBarBackground');
+  assert.throws(() => panelSelector(tree, 'missing'));
+});
+test('native clock backing, scoreboard background and mana regeneration can be picked separately', () => {
+  const packet = {
+    scene: 'hud',
+    documents: [
+      { layout: 'panorama/layout/hud/dota_hud_top_bar.vxml_c', panels: [{ id: 'TimeOfDayBG' }, { id: 'GameTime' }] },
+      { layout: 'panorama/layout/hud/dota_hud_scoreboard.vxml_c', panels: [{ id: 'Background' }] },
+      { layout: 'panorama/layout/hud/dota_hud_health_mana.vxml_c', panels: [{ id: 'ManaRegenLabel' }] }
+    ]
+  };
+  const targets = quickParts(packet).map(p => p.target);
+  for (const id of ['TimeOfDayBG', 'GameTime', 'Background', 'ManaRegenLabel']) assert(targets.includes(id));
+});
+test('texture-state edits preserve independent alive/dead resources and reject conflicting shared replacements', () => {
+  const png = 'data:image/png;base64,AAAA',
+    resource = 'panorama/images/hud/reborn/ability_bg_dead_psd.vtex_c',
+    e = element('center_bg', { textureEdits: [{ resource, png }] });
+  const result = validateProject({ version: 1, name: 'dead only', elements: [e] });
+  assert.equal(result.elements[0].image, undefined);
+  assert.equal(changed(result.elements[0]), true);
+  assert.equal(result.elements[0].textureEdits[0].resource, resource);
+  assert.throws(() =>
+    validateProject({
+      version: 1,
+      name: 'bad',
+      elements: [e, element('another', { textureEdits: [{ resource, png: 'data:image/png;base64,BBBB' }] })]
+    })
+  );
+  assert.throws(() =>
+    validateProject({
+      version: 1,
+      name: 'path',
+      elements: [element('x', { textureEdits: [{ resource: '../bad.vtex_c', png }] })]
+    })
+  );
+});
 
-import {panelRule} from '../lib/hud-creator/export-css.mjs';
-test('runtime root classes do not gate exported edits on an empty scoreboard or dashboard state',()=>{const tree=[{kind:'DOTAScoreboardPlayer',target:'root',attributes:{class:'LeftRightFlow EmptyPlayerRow'},children:[{kind:'Label',target:'PlayerName',attributes:{id:'PlayerName'},children:[]}]}];assert.equal(panelSelector(tree,'PlayerName'),'DOTAScoreboardPlayer > #PlayerName');const rule=panelRule(tree,element('root',{moved:true,x:1,y:3}));assert.match(rule,/transform:translateX\(1px\) translateY\(3px\)/);assert.doesNotMatch(rule,/EmptyPlayerRow|ignore-parent-flow|position:/);});
-test('solid health fill suppresses the native animated burner without hiding the bar or mana',()=>{const tree=[{kind:'DOTAHealthMana',target:'root',attributes:{},children:[{kind:'Panel',target:'HealthProgress_Left',attributes:{id:'HealthProgress_Left'},children:[]},{kind:'DOTAScenePanel',target:'HealthBurner',attributes:{id:'HealthBurner'},children:[]}]}];const css=panelRule(tree,element('HealthProgress_Left',{background:'#1cb3ce'}));assert.match(css,/#HealthProgress_Left\{background-color:#1cb3ce;background-image:none;/);assert.match(css,/#HealthBurner\{visibility:collapse;\}/);assert.doesNotMatch(css,/ManaBurner/);assert.doesNotMatch(panelRule(tree,element('HealthProgress_Left',{opacity:.6})),/HealthBurner/);});
+import { panelRule } from '../lib/hud-creator/export-css.mjs';
+test('runtime root classes do not gate exported edits on an empty scoreboard or dashboard state', () => {
+  const tree = [
+    {
+      kind: 'DOTAScoreboardPlayer',
+      target: 'root',
+      attributes: { class: 'LeftRightFlow EmptyPlayerRow' },
+      children: [{ kind: 'Label', target: 'PlayerName', attributes: { id: 'PlayerName' }, children: [] }]
+    }
+  ];
+  assert.equal(panelSelector(tree, 'PlayerName'), 'DOTAScoreboardPlayer > #PlayerName');
+  const rule = panelRule(tree, element('root', { moved: true, x: 1, y: 3 }));
+  assert.match(rule, /transform:translateX\(1px\) translateY\(3px\)/);
+  assert.doesNotMatch(rule, /EmptyPlayerRow|ignore-parent-flow|position:/);
+});
+test('solid health fill suppresses the native animated burner without hiding the bar or mana', () => {
+  const tree = [
+    {
+      kind: 'DOTAHealthMana',
+      target: 'root',
+      attributes: {},
+      children: [
+        { kind: 'Panel', target: 'HealthProgress_Left', attributes: { id: 'HealthProgress_Left' }, children: [] },
+        { kind: 'DOTAScenePanel', target: 'HealthBurner', attributes: { id: 'HealthBurner' }, children: [] }
+      ]
+    }
+  ];
+  const css = panelRule(tree, element('HealthProgress_Left', { background: '#1cb3ce' }));
+  assert.match(css, /#HealthProgress_Left\{background-color:#1cb3ce;background-image:none;/);
+  assert.match(css, /#HealthBurner\{visibility:collapse;\}/);
+  assert.doesNotMatch(css, /ManaBurner/);
+  assert.doesNotMatch(panelRule(tree, element('HealthProgress_Left', { opacity: 0.6 })), /HealthBurner/);
+});
 
-test('minimap artwork uses the skin slot without moving or resizing the live map',()=>{const tree=[{kind:'DOTAHud',target:'root',attributes:{},children:[{kind:'Panel',target:'minimap_block',attributes:{id:'minimap_block'},children:[{kind:'DOTAMinimap',target:'minimap',attributes:{id:'minimap'},children:[]}]},{kind:'Panel',target:'HUDSkinMinimap',attributes:{id:'HUDSkinMinimap'},children:[]}]}];const e={...element('minimap_block'),scene:'hud',image:'present',moved:true,x:-15,y:5,resized:true,width:268,height:277,imageFit:'contain'};const css=panelRule(tree,e,'panorama/images/test.vtex');assert.match(css,/#HUDSkinMinimap\{background-image:/);assert.match(css,/background-size:contain;/);assert.match(css,/#HUDSkinMinimap\{visibility:visible;z-index:-2;/);assert.match(css,/#minimap_block\{background-image:none;/);assert.doesNotMatch(css,/(?:^|[;{])position:|width:268|height:277|#minimap\{/);});
-test('top-bar artwork opens its clipping ancestors and clears only its side portrait backing',()=>{const tree=[{kind:'DOTATopBar',target:'root',attributes:{},children:[{kind:'Panel',target:'TopBarRadiantTeamContainer',attributes:{id:'TopBarRadiantTeamContainer'},children:[{kind:'Panel',target:'TopBarRadiantTeam',attributes:{id:'TopBarRadiantTeam'},children:[{kind:'Panel',target:'parent',attributes:{class:'TeamBackground'},children:[{kind:'Panel',target:'art',attributes:{class:'TopBarBackground'},children:[]}]}]}]}]}];const css=panelRule(tree,{...element('art'),scene:'hud',image:'present'},'panorama/images/test.vtex');assert.match(css,/Panel.TeamBackground\{overflow:noclip;/);assert.match(css,/#TopBarRadiantTeam .TopBarHeroImage\{background-color:none;/);assert.doesNotMatch(css,/Dire|visibility:collapse|opacity:0/);const untouched=panelRule(tree,{...element('art'),scene:'hud',color:'#112233'});assert.doesNotMatch(untouched,/overflow:noclip|TopBarHeroImage/);});
+test('minimap artwork uses the skin slot without moving or resizing the live map', () => {
+  const tree = [
+    {
+      kind: 'DOTAHud',
+      target: 'root',
+      attributes: {},
+      children: [
+        {
+          kind: 'Panel',
+          target: 'minimap_block',
+          attributes: { id: 'minimap_block' },
+          children: [{ kind: 'DOTAMinimap', target: 'minimap', attributes: { id: 'minimap' }, children: [] }]
+        },
+        { kind: 'Panel', target: 'HUDSkinMinimap', attributes: { id: 'HUDSkinMinimap' }, children: [] }
+      ]
+    }
+  ];
+  const e = {
+    ...element('minimap_block'),
+    scene: 'hud',
+    image: 'present',
+    moved: true,
+    x: -15,
+    y: 5,
+    resized: true,
+    width: 268,
+    height: 277,
+    imageFit: 'contain'
+  };
+  const css = panelRule(tree, e, 'panorama/images/test.vtex');
+  assert.match(css, /#HUDSkinMinimap\{background-image:/);
+  assert.match(css, /background-size:contain;/);
+  assert.match(css, /#HUDSkinMinimap\{visibility:visible;z-index:-2;/);
+  assert.match(css, /#minimap_block\{background-image:none;/);
+  assert.doesNotMatch(css, /(?:^|[;{])position:|width:268|height:277|#minimap\{/);
+});
+test('top-bar artwork opens its clipping ancestors and clears only its side portrait backing', () => {
+  const tree = [
+    {
+      kind: 'DOTATopBar',
+      target: 'root',
+      attributes: {},
+      children: [
+        {
+          kind: 'Panel',
+          target: 'TopBarRadiantTeamContainer',
+          attributes: { id: 'TopBarRadiantTeamContainer' },
+          children: [
+            {
+              kind: 'Panel',
+              target: 'TopBarRadiantTeam',
+              attributes: { id: 'TopBarRadiantTeam' },
+              children: [
+                {
+                  kind: 'Panel',
+                  target: 'parent',
+                  attributes: { class: 'TeamBackground' },
+                  children: [{ kind: 'Panel', target: 'art', attributes: { class: 'TopBarBackground' }, children: [] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ];
+  const css = panelRule(tree, { ...element('art'), scene: 'hud', image: 'present' }, 'panorama/images/test.vtex');
+  assert.match(css, /Panel.TeamBackground\{overflow:noclip;/);
+  assert.match(css, /#TopBarRadiantTeam .TopBarHeroImage\{background-color:none;/);
+  assert.doesNotMatch(css, /Dire|visibility:collapse|opacity:0/);
+  const untouched = panelRule(tree, { ...element('art'), scene: 'hud', color: '#112233' });
+  assert.doesNotMatch(untouched, /overflow:noclip|TopBarHeroImage/);
+});
 
-test('map opening fit scales frame and all three native minimap size presets without scaling the map',()=>{const tree=[{kind:'DOTAHud',target:'root',attributes:{},children:['HUDSkinMinimap','minimap_block','GlyphScanContainer'].map(id=>({kind:'Panel',target:id,attributes:{id},children:[]}))}];const e={...element('HUDSkinMinimap'),scene:'hud',image:'present',mapWindow:{x:45/640,y:155/739,width:532/640,height:531/739}};const css=panelRule(tree,e,'panorama/images/frame.vtex');assert.match(css,/width:293.53px;height:339.58px/);assert.match(css,/margin-left:20.64px;margin-bottom:24.35px/);assert.match(css,/DOTAHud.MinimapExtraLarge > #HUDSkinMinimap/);assert.match(css,/DOTAHud.MinimapExtraExtraLarge > #HUDSkinMinimap/);assert.doesNotMatch(css,/#minimap_block\{[^}]*width:/);assert.throws(()=>validateProject({version:1,name:'bad',elements:[{...e,mapWindow:{x:.9,y:0,width:.5,height:.5}}]}));});
+test('map opening fit scales frame and all three native minimap size presets without scaling the map', () => {
+  const tree = [
+    {
+      kind: 'DOTAHud',
+      target: 'root',
+      attributes: {},
+      children: ['HUDSkinMinimap', 'minimap_block', 'GlyphScanContainer'].map(id => ({
+        kind: 'Panel',
+        target: id,
+        attributes: { id },
+        children: []
+      }))
+    }
+  ];
+  const e = {
+    ...element('HUDSkinMinimap'),
+    scene: 'hud',
+    image: 'present',
+    mapWindow: { x: 45 / 640, y: 155 / 739, width: 532 / 640, height: 531 / 739 }
+  };
+  const css = panelRule(tree, e, 'panorama/images/frame.vtex');
+  assert.match(css, /width:293.53px;height:339.58px/);
+  assert.match(css, /margin-left:20.64px;margin-bottom:24.35px/);
+  assert.match(css, /DOTAHud.MinimapExtraLarge > #HUDSkinMinimap/);
+  assert.match(css, /DOTAHud.MinimapExtraExtraLarge > #HUDSkinMinimap/);
+  assert.doesNotMatch(css, /#minimap_block\{[^}]*width:/);
+  assert.throws(() =>
+    validateProject({
+      version: 1,
+      name: 'bad',
+      elements: [{ ...e, mapWindow: { x: 0.9, y: 0, width: 0.5, height: 0.5 } }]
+    })
+  );
+});
 
-import {cssDraft,cssChanges} from '../lib/hud-creator/block-css.mjs';
-import {authoredRules} from '../lib/hud-creator/panorama-css.mjs';
-test('CSS editor starts with actual declarations and exports only edited values',()=>{const source='width:320px;background-image:url("s2r://panorama/images/hud/original.vtex");font-family:titleFont;';const draft=cssDraft(source);assert.match(draft,/width: 320px/);assert.equal(cssChanges(source,draft),'');assert.equal(cssChanges(source,draft.replace('320px','420px')),'width:420px;');assert.throws(()=>cssChanges(source,draft.replace('original.vtex','evil.vtex')));assert.equal(cssChanges(source,cssDraft(source,'width:420px;').replace('width: 420px;',''),'width:420px;'),'');});
-test('authored rules retain original selector and resource values while skipping imports and animation frames',()=>{const rules=authoredRules([{name:'test.vcss_c',css:'@import url("s2r://x");@define font:Radiance; .Reborn #HealthLabel{width:320px;color:#ffffff;} @keyframes glow{0%{opacity:0;}100%{opacity:1;}}'}]);assert.deepEqual(rules,[{source:'test.vcss_c',selector:'.Reborn #HealthLabel',body:'width:320px;color:#ffffff;'}]);});
+import { cssDraft, cssChanges } from '../lib/hud-creator/block-css.mjs';
+import { authoredRules } from '../lib/hud-creator/panorama-css.mjs';
+test('CSS editor starts with actual declarations and exports only edited values', () => {
+  const source = 'width:320px;background-image:url("s2r://panorama/images/hud/original.vtex");font-family:titleFont;';
+  const draft = cssDraft(source);
+  assert.match(draft, /width: 320px/);
+  assert.equal(cssChanges(source, draft), '');
+  assert.equal(cssChanges(source, draft.replace('320px', '420px')), 'width:420px;');
+  assert.throws(() => cssChanges(source, draft.replace('original.vtex', 'evil.vtex')));
+  assert.equal(cssChanges(source, cssDraft(source, 'width:420px;').replace('width: 420px;', ''), 'width:420px;'), '');
+});
+test('authored rules retain original selector and resource values while skipping imports and animation frames', () => {
+  const rules = authoredRules([
+    {
+      name: 'test.vcss_c',
+      css: '@import url("s2r://x");@define font:Radiance; .Reborn #HealthLabel{width:320px;color:#ffffff;} @keyframes glow{0%{opacity:0;}100%{opacity:1;}}'
+    }
+  ]);
+  assert.deepEqual(rules, [
+    { source: 'test.vcss_c', selector: '.Reborn #HealthLabel', body: 'width:320px;color:#ffffff;' }
+  ]);
+});

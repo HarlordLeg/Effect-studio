@@ -1,41 +1,330 @@
-import {pathToFileURL} from 'node:url';
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import os from 'node:os';
-import {createArcanaRowExporter,parseArcanaPublishArgs} from '../lib/arcana-row-export.mjs';
-const glb=()=>{const b=Buffer.alloc(20);b.writeUInt32LE(0x46546c67);b.writeUInt32LE(2,4);b.writeUInt32LE(b.length,8);return b;};
-function setup(){const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-arcana-row-'));fs.writeFileSync(path.join(root,'bridge.exe'),'test exporter');fs.writeFileSync(path.join(root,'game.vpk'),'mounted');const config={assetBridge:'bridge.exe',archives:['game.vpk']},row={hero:{id:'vengefulspirit',model:'models/heroes/vengeful/vengeful.vmdl_c'},item:{id:'royal-legs',slot:'legs',replacesModel:'models/heroes/vengeful/vengeful_lowerbody.vmdl_c',nativeOverrides:{particles:['particles/ambient.vpcf_c']}}},overlay={file:path.join(root,'overlay.vpk'),key:'overlay'};return {root,config,row,overlay};}
-function write(request){fs.writeFileSync(request.output,glb());fs.writeFileSync(path.join(path.dirname(request.output),'native-0.json'),JSON.stringify({layers:['authored']}));}
-test('CLI accepts an authored single style and rejects unsupported or ambiguous requests',()=>{const defs={vengefulspirit:[0,1,2],crystal_maiden:[1]};assert.deepEqual(parseArcanaPublishArgs([],defs),{hero:undefined,style:undefined});assert.deepEqual(parseArcanaPublishArgs(['--hero','vengefulspirit','--style','2'],defs),{hero:'vengefulspirit',style:2});for(const args of [['--style','0'],['--hero','fake'],['--hero','crystal_maiden','--style','0'],['--hero','vengefulspirit','--hero','vengefulspirit'],['--hero'],['--other','x']])assert.throws(()=>parseArcanaPublishArgs(args,defs));});
-test('each row exports one model with materials, textures and native particles; no unrelated hero or loadout is requested',async()=>{const f=setup();try{let calls=0;const run=async(exe,args,options)=>{calls++;assert.equal(exe,path.join(f.root,'bridge.exe'));assert.equal(options.env.DOTNET_PROCESSOR_COUNT,'1');const r=JSON.parse(fs.readFileSync(args[0]));assert.equal(r.model,f.row.item.replacesModel);assert.equal(r.heroModel,null);assert.equal(r.heroOutput,null);assert.deepEqual(r.defaultModels,[]);assert.equal(r.materials,true);assert.deepEqual(r.nativeParticles,['particles/ambient.vpcf_c']);assert.equal(r.archives[0],f.overlay.file);write(r);};const result=await createArcanaRowExporter({...f,run})(f.row,f.overlay);assert.equal(calls,1);assert.deepEqual(result.bytes,glb());assert.deepEqual(result.packet.effects[0].packet,{layers:['authored']});assert.equal(result.packet.effects[0].effectId,'native-0');assert.equal(result.cacheHit,false);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('completed rows survive exporter restart; a different overlay or changed game archive invalidates the cache',async()=>{const f=setup();try{let calls=0;const run=async(_,args)=>{calls++;write(JSON.parse(fs.readFileSync(args[0])));};await createArcanaRowExporter({...f,run})(f.row,f.overlay);const hit=await createArcanaRowExporter({...f,run})(f.row,f.overlay);assert.equal(hit.cacheHit,true);assert.equal(calls,1);await createArcanaRowExporter({...f,run})(f.row,{...f.overlay,key:'changed'});assert.equal(calls,2);fs.appendFileSync(path.join(f.root,'game.vpk'),'new version');await createArcanaRowExporter({...f,run})(f.row,f.overlay);assert.equal(calls,3);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('native heap crash gets one clean isolated retry, with no stale GLB or particle data reused',async()=>{const f=setup();try{let calls=0,logs=[];const run=async(_,args)=>{calls++;const r=JSON.parse(fs.readFileSync(args[0]));if(calls===1){fs.writeFileSync(r.output,'partial');fs.writeFileSync(path.join(path.dirname(r.output),'native-0.json'),'stale');throw Object.assign(Error('native crash'),{code:3221226356});}assert.equal(fs.existsSync(r.output),false);assert.equal(fs.existsSync(path.join(path.dirname(r.output),'native-0.json')),false);write(r);};const result=await createArcanaRowExporter({...f,run,log:x=>logs.push(x)})(f.row,f.overlay);assert.equal(calls,2);assert.equal(logs.length,1);assert.deepEqual(result.packet.effects[0].packet,{layers:['authored']});}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('persistent native crash remains a failure with model context and never leaves a partial cached row',async()=>{const f=setup();try{let calls=0;const run=async()=>{calls++;throw Object.assign(Error('heap'),{code:3221226356,stderr:'native failure'});};await assert.rejects(createArcanaRowExporter({...f,run,log:()=>{}})(f.row,f.overlay),/vengefulspirit \/ royal-legs \/ models/);assert.equal(calls,2);assert.deepEqual(fs.readdirSync(path.join(f.root,'cache/public-arcana-rows')),[]);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('managed export errors are not retried, and invalid GLBs never become published cache entries',async()=>{const f=setup();try{let calls=0;await assert.rejects(createArcanaRowExporter({...f,run:async()=>{calls++;throw Object.assign(Error('bad input'),{code:1});}})(f.row,f.overlay),/exit 1/);assert.equal(calls,1);await assert.rejects(createArcanaRowExporter({...f,run:async(_,args)=>{const r=JSON.parse(fs.readFileSync(args[0]));fs.writeFileSync(r.output,'invalid');}})(f.row,f.overlay),/invalid GLB/);assert.deepEqual(fs.readdirSync(path.join(f.root,'cache/public-arcana-rows')),[]);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-
-import {spawn} from 'node:child_process';
-const runNode=(args,env)=>new Promise(resolve=>{const p=spawn(process.execPath,args,{env:{...process.env,...env}});let output='';p.stdout.on('data',b=>output+=b);p.stderr.on('data',b=>output+=b);p.on('close',code=>resolve({code,output}));});
-async function publisherFixture(){
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-arcana-publisher-'));fs.mkdirSync(path.join(root,'tools'));fs.mkdirSync(path.join(root,'cache/static-viewer'),{recursive:true});
- fs.mkdirSync(path.join(root,'lib'));fs.copyFileSync(new URL('../lib/arcana-preview-items.mjs',import.meta.url),path.join(root,'lib/arcana-preview-items.mjs'));
- fs.copyFileSync(new URL('../tools/publish-public-arcanas.mjs',import.meta.url),path.join(root,'tools/publish-public-arcanas.mjs'));fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({archives:[]}));fs.writeFileSync(path.join(root,'cache/static-viewer/catalog.json'),JSON.stringify({heroes:[]}));fs.writeFileSync(path.join(root,'cache/static-viewer/manifest.json'),JSON.stringify({catalog:'catalog.json',arcanas:{pudge:{0:'keep-existing-pudge'}}}));
- const stubs={
-  'public-arcanas':`export const publicArcanaNames={vengefulspirit:'Arcana'};export const arcanaDefinition=()=>({});export const publicArcanaChoices=(b,id,{style,items={}})=>[{hero:b.catalog.heroes[0],item:{id:'body-'+style,name:'Body',style,slot:'hero_base',replacesModel:'models/heroes/vengeful/body.vmdl_c',nativeOverrides:{particles:[]}}},...Object.entries(items).map(([slot,itemId])=>({hero:b.catalog.heroes[0],item:{...b.catalog.heroes[0].items.find(i=>i.id===itemId),replacesModel:'models/head.vmdl_c',nativeOverrides:{particles:[]}},effects:[]}))];export const publicArcanaIcons=(b,id,style)=>({spell:'style-'+style});`,
-  'expanded-arcana-definitions':`export const arcanaStyleIds=()=>[0,1,2];export const arcanaOccupiedSlots=()=>[];`,
-  'build':`import fs from'node:fs';import path from'node:path';export class Builder{constructor(root,config){this.root=root;this.config=config;this.catalog={heroes:[{id:'vengefulspirit',model:'models/heroes/vengeful/body.vmdl_c',items:process.env.TEST_INCLUDE_HEADS?[{id:'game-head',slot:'head',name:'Head',model:'models/head.vmdl_c'}]:[],defaultSlotModels:process.env.TEST_INCLUDE_HEADS?{head:'models/head.vmdl_c'}:{}}]};this.store={has:()=>true};}async build(rows,job){job.file=path.join(this.root,'output',job.id,'pak01_dir.vpk');fs.mkdirSync(path.dirname(job.file),{recursive:true});fs.writeFileSync(job.file,JSON.stringify(rows));}dispose(){}}`,
-  'arcana-row-export':`export const parseArcanaPublishArgs=args=>({hero:'vengefulspirit',style:args.includes('--style')?Number(args[args.indexOf('--style')+1]):undefined,allItems:args.includes('--all-items'),continueOnItemError:args.includes('--continue-on-item-error')});export const createArcanaRowExporter=()=>async row=>{if(row.item.id===process.env.TEST_FAIL_ITEM_ID)throw Error('simulated wearable failure');if(String(row.item.style)===process.env.TEST_FAIL_MODEL_STYLE)throw Error('simulated Imperia export failure');const b=Buffer.alloc(20);b.writeUInt32LE(0x46546c67);b.writeUInt32LE(2,4);b.writeUInt32LE(20,8);return{bytes:b,packet:{effects:[]},cacheHit:false};};`,
-  'item-icons':`import fs from'node:fs';import path from'node:path';export class ItemIcons{constructor(root){this.root=root;}async getTexture(texture){if(texture==='style-'+process.env.TEST_FAIL_ICON_STYLE)throw Error('simulated icon failure');const file=path.join(this.root,'icon.png');fs.writeFileSync(file,'png');return file;}}`,
-  'static-viewer':`import fs from'node:fs';import path from'node:path';import crypto from'node:crypto';export const writeStaticFile=(dir,data,ext)=>{const file=crypto.createHash('sha256').update(data).digest('hex')+'.'+ext;fs.writeFileSync(path.join(dir,file),data);return{url:file};};export const atomicJson=(file,data)=>{fs.writeFileSync(file+'.tmp',JSON.stringify(data));fs.renameSync(file+'.tmp',file);};export const publishCatalogIndex=()=>({});`,
-  'rubick-arcana':`export const rubickArcanaChoices=()=>[];`,
-  'admin-arcanas':`export const adminArcanaChoices=()=>[];`,
-  'replacement':`export const replacementTarget=(hero,item)=>item.replacesModel;`
- };
- const hook=`import{registerHooks}from'node:module';const stubs=${JSON.stringify(stubs)};registerHooks({resolve(s,c,next){const key=s.split('/').pop().replace(/\\.mjs$/,'');return Object.hasOwn(stubs,key)?{url:'des-test:'+key,shortCircuit:true}:next(s,c);},load(url,c,next){return url.startsWith('des-test:')?{format:'module',source:stubs[url.slice(9)],shortCircuit:true}:next(url,c);}});`;
- fs.writeFileSync(path.join(root,'hook.mjs'),hook);return {root,run:(env={},args=[])=>runNode(['--import',pathToFileURL(path.join(root,'hook.mjs')).href,path.join(root,'tools/publish-public-arcanas.mjs'),'--hero','vengefulspirit',...args],env),manifest:()=>JSON.parse(fs.readFileSync(path.join(root,'cache/static-viewer/manifest.json')))};
+import { pathToFileURL } from 'node:url';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { createArcanaRowExporter, parseArcanaPublishArgs } from '../lib/arcana-row-export.mjs';
+const glb = () => {
+  const b = Buffer.alloc(20);
+  b.writeUInt32LE(0x46546c67);
+  b.writeUInt32LE(2, 4);
+  b.writeUInt32LE(b.length, 8);
+  return b;
+};
+function setup() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'des-arcana-row-'));
+  fs.writeFileSync(path.join(root, 'bridge.exe'), 'test exporter');
+  fs.writeFileSync(path.join(root, 'game.vpk'), 'mounted');
+  const config = { assetBridge: 'bridge.exe', archives: ['game.vpk'] },
+    row = {
+      hero: { id: 'vengefulspirit', model: 'models/heroes/vengeful/vengeful.vmdl_c' },
+      item: {
+        id: 'royal-legs',
+        slot: 'legs',
+        replacesModel: 'models/heroes/vengeful/vengeful_lowerbody.vmdl_c',
+        nativeOverrides: { particles: ['particles/ambient.vpcf_c'] }
+      }
+    },
+    overlay = { file: path.join(root, 'overlay.vpk'), key: 'overlay' };
+  return { root, config, row, overlay };
 }
-test('publisher checkpoints completed styles before a later model failure, preserves other heroes and releases its lock',async()=>{const f=await publisherFixture();try{const r=await f.run({TEST_FAIL_MODEL_STYLE:'2'});assert.notEqual(r.code,0,r.output);assert.match(r.output,/simulated Imperia export failure/);const m=f.manifest();assert.ok(m.arcanas.vengefulspirit['0']);assert.ok(m.arcanas.vengefulspirit['1']);assert.equal(m.arcanas.vengefulspirit['2'],undefined);assert.equal(m.arcanas.pudge['0'],'keep-existing-pudge');assert.equal(fs.existsSync(path.join(f.root,'cache/static-publish.lock')),false);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('a failed icon export cannot publish the incomplete style',async()=>{const f=await publisherFixture();try{const r=await f.run({TEST_FAIL_ICON_STYLE:'1'});assert.notEqual(r.code,0,r.output);assert.match(r.output,/simulated icon failure/);const m=f.manifest();assert.ok(m.arcanas.vengefulspirit['0']);assert.equal(m.arcanas.vengefulspirit['1'],undefined);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('single-style CLI updates only the requested style and retains existing hero entries',async()=>{const f=await publisherFixture();try{const r=await f.run({},['--style','2']);assert.equal(r.code,0,r.output);const m=f.manifest();assert.deepEqual(Object.keys(m.arcanas.vengefulspirit),['2']);assert.equal(m.arcanas.pudge['0'],'keep-existing-pudge');}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
+function write(request) {
+  fs.writeFileSync(request.output, glb());
+  fs.writeFileSync(path.join(path.dirname(request.output), 'native-0.json'), JSON.stringify({ layers: ['authored'] }));
+}
+test('CLI accepts an authored single style and rejects unsupported or ambiguous requests', () => {
+  const defs = { vengefulspirit: [0, 1, 2], crystal_maiden: [1] };
+  assert.deepEqual(parseArcanaPublishArgs([], defs), { hero: undefined, style: undefined });
+  assert.deepEqual(parseArcanaPublishArgs(['--hero', 'vengefulspirit', '--style', '2'], defs), {
+    hero: 'vengefulspirit',
+    style: 2
+  });
+  for (const args of [
+    ['--style', '0'],
+    ['--hero', 'fake'],
+    ['--hero', 'crystal_maiden', '--style', '0'],
+    ['--hero', 'vengefulspirit', '--hero', 'vengefulspirit'],
+    ['--hero'],
+    ['--other', 'x']
+  ])
+    assert.throws(() => parseArcanaPublishArgs(args, defs));
+});
+test('each row exports one model with materials, textures and native particles; no unrelated hero or loadout is requested', async () => {
+  const f = setup();
+  try {
+    let calls = 0;
+    const run = async (exe, args, options) => {
+      calls++;
+      assert.equal(exe, path.join(f.root, 'bridge.exe'));
+      assert.equal(options.env.DOTNET_PROCESSOR_COUNT, '1');
+      const r = JSON.parse(fs.readFileSync(args[0]));
+      assert.equal(r.model, f.row.item.replacesModel);
+      assert.equal(r.heroModel, null);
+      assert.equal(r.heroOutput, null);
+      assert.deepEqual(r.defaultModels, []);
+      assert.equal(r.materials, true);
+      assert.deepEqual(r.nativeParticles, ['particles/ambient.vpcf_c']);
+      assert.equal(r.archives[0], f.overlay.file);
+      write(r);
+    };
+    const result = await createArcanaRowExporter({ ...f, run })(f.row, f.overlay);
+    assert.equal(calls, 1);
+    assert.deepEqual(result.bytes, glb());
+    assert.deepEqual(result.packet.effects[0].packet, { layers: ['authored'] });
+    assert.equal(result.packet.effects[0].effectId, 'native-0');
+    assert.equal(result.cacheHit, false);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('completed rows survive exporter restart; a different overlay or changed game archive invalidates the cache', async () => {
+  const f = setup();
+  try {
+    let calls = 0;
+    const run = async (_, args) => {
+      calls++;
+      write(JSON.parse(fs.readFileSync(args[0])));
+    };
+    await createArcanaRowExporter({ ...f, run })(f.row, f.overlay);
+    const hit = await createArcanaRowExporter({ ...f, run })(f.row, f.overlay);
+    assert.equal(hit.cacheHit, true);
+    assert.equal(calls, 1);
+    await createArcanaRowExporter({ ...f, run })(f.row, { ...f.overlay, key: 'changed' });
+    assert.equal(calls, 2);
+    fs.appendFileSync(path.join(f.root, 'game.vpk'), 'new version');
+    await createArcanaRowExporter({ ...f, run })(f.row, f.overlay);
+    assert.equal(calls, 3);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('native heap crash gets one clean isolated retry, with no stale GLB or particle data reused', async () => {
+  const f = setup();
+  try {
+    let calls = 0,
+      logs = [];
+    const run = async (_, args) => {
+      calls++;
+      const r = JSON.parse(fs.readFileSync(args[0]));
+      if (calls === 1) {
+        fs.writeFileSync(r.output, 'partial');
+        fs.writeFileSync(path.join(path.dirname(r.output), 'native-0.json'), 'stale');
+        throw Object.assign(Error('native crash'), { code: 3221226356 });
+      }
+      assert.equal(fs.existsSync(r.output), false);
+      assert.equal(fs.existsSync(path.join(path.dirname(r.output), 'native-0.json')), false);
+      write(r);
+    };
+    const result = await createArcanaRowExporter({ ...f, run, log: x => logs.push(x) })(f.row, f.overlay);
+    assert.equal(calls, 2);
+    assert.equal(logs.length, 1);
+    assert.deepEqual(result.packet.effects[0].packet, { layers: ['authored'] });
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('persistent native crash remains a failure with model context and never leaves a partial cached row', async () => {
+  const f = setup();
+  try {
+    let calls = 0;
+    const run = async () => {
+      calls++;
+      throw Object.assign(Error('heap'), { code: 3221226356, stderr: 'native failure' });
+    };
+    await assert.rejects(
+      createArcanaRowExporter({ ...f, run, log: () => {} })(f.row, f.overlay),
+      /vengefulspirit \/ royal-legs \/ models/
+    );
+    assert.equal(calls, 2);
+    assert.deepEqual(fs.readdirSync(path.join(f.root, 'cache/public-arcana-rows')), []);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('managed export errors are not retried, and invalid GLBs never become published cache entries', async () => {
+  const f = setup();
+  try {
+    let calls = 0;
+    await assert.rejects(
+      createArcanaRowExporter({
+        ...f,
+        run: async () => {
+          calls++;
+          throw Object.assign(Error('bad input'), { code: 1 });
+        }
+      })(f.row, f.overlay),
+      /exit 1/
+    );
+    assert.equal(calls, 1);
+    await assert.rejects(
+      createArcanaRowExporter({
+        ...f,
+        run: async (_, args) => {
+          const r = JSON.parse(fs.readFileSync(args[0]));
+          fs.writeFileSync(r.output, 'invalid');
+        }
+      })(f.row, f.overlay),
+      /invalid GLB/
+    );
+    assert.deepEqual(fs.readdirSync(path.join(f.root, 'cache/public-arcana-rows')), []);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
 
-test('full publisher exports even same-path custom heads and writes their refit recipe',async()=>{const f=await publisherFixture();try{const r=await f.run({TEST_INCLUDE_HEADS:'1'},['--style','0','--all-items']);assert.equal(r.code,0,r.output);const reference=f.manifest().arcanas.vengefulspirit['0'],recipe=JSON.parse(fs.readFileSync(path.join(f.root,'cache/static-viewer',reference)));assert.ok(recipe.items['game-head']);assert.equal(recipe.items['game-head'].slot,'head');assert.equal(recipe.items['game-head'].parts[0].role,'item');assert.equal(recipe.items['game-head'].parts[0].bytes,20);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
+import { spawn } from 'node:child_process';
+const runNode = (args, env) =>
+  new Promise(resolve => {
+    const p = spawn(process.execPath, args, { env: { ...process.env, ...env } });
+    let output = '';
+    p.stdout.on('data', b => (output += b));
+    p.stderr.on('data', b => (output += b));
+    p.on('close', code => resolve({ code, output }));
+  });
+async function publisherFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'des-arcana-publisher-'));
+  fs.mkdirSync(path.join(root, 'tools'));
+  fs.mkdirSync(path.join(root, 'cache/static-viewer'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'lib'));
+  fs.copyFileSync(
+    new URL('../lib/arcana-preview-items.mjs', import.meta.url),
+    path.join(root, 'lib/arcana-preview-items.mjs')
+  );
+  fs.copyFileSync(
+    new URL('../tools/publish-public-arcanas.mjs', import.meta.url),
+    path.join(root, 'tools/publish-public-arcanas.mjs')
+  );
+  fs.writeFileSync(path.join(root, 'config.json'), JSON.stringify({ archives: [] }));
+  fs.writeFileSync(path.join(root, 'cache/static-viewer/catalog.json'), JSON.stringify({ heroes: [] }));
+  fs.writeFileSync(
+    path.join(root, 'cache/static-viewer/manifest.json'),
+    JSON.stringify({ catalog: 'catalog.json', arcanas: { pudge: { 0: 'keep-existing-pudge' } } })
+  );
+  const stubs = {
+    'public-arcanas': `export const publicArcanaNames={vengefulspirit:'Arcana'};export const arcanaDefinition=()=>({});export const publicArcanaChoices=(b,id,{style,items={}})=>[{hero:b.catalog.heroes[0],item:{id:'body-'+style,name:'Body',style,slot:'hero_base',replacesModel:'models/heroes/vengeful/body.vmdl_c',nativeOverrides:{particles:[]}}},...Object.entries(items).map(([slot,itemId])=>({hero:b.catalog.heroes[0],item:{...b.catalog.heroes[0].items.find(i=>i.id===itemId),replacesModel:'models/head.vmdl_c',nativeOverrides:{particles:[]}},effects:[]}))];export const publicArcanaIcons=(b,id,style)=>({spell:'style-'+style});`,
+    'expanded-arcana-definitions': `export const arcanaStyleIds=()=>[0,1,2];export const arcanaOccupiedSlots=()=>[];`,
+    build: `import fs from'node:fs';import path from'node:path';export class Builder{constructor(root,config){this.root=root;this.config=config;this.catalog={heroes:[{id:'vengefulspirit',model:'models/heroes/vengeful/body.vmdl_c',items:process.env.TEST_INCLUDE_HEADS?[{id:'game-head',slot:'head',name:'Head',model:'models/head.vmdl_c'}]:[],defaultSlotModels:process.env.TEST_INCLUDE_HEADS?{head:'models/head.vmdl_c'}:{}}]};this.store={has:()=>true};}async build(rows,job){job.file=path.join(this.root,'output',job.id,'pak01_dir.vpk');fs.mkdirSync(path.dirname(job.file),{recursive:true});fs.writeFileSync(job.file,JSON.stringify(rows));}dispose(){}}`,
+    'arcana-row-export': `export const parseArcanaPublishArgs=args=>({hero:'vengefulspirit',style:args.includes('--style')?Number(args[args.indexOf('--style')+1]):undefined,allItems:args.includes('--all-items'),continueOnItemError:args.includes('--continue-on-item-error')});export const createArcanaRowExporter=()=>async row=>{if(row.item.id===process.env.TEST_FAIL_ITEM_ID)throw Error('simulated wearable failure');if(String(row.item.style)===process.env.TEST_FAIL_MODEL_STYLE)throw Error('simulated Imperia export failure');const b=Buffer.alloc(20);b.writeUInt32LE(0x46546c67);b.writeUInt32LE(2,4);b.writeUInt32LE(20,8);return{bytes:b,packet:{effects:[]},cacheHit:false};};`,
+    'item-icons': `import fs from'node:fs';import path from'node:path';export class ItemIcons{constructor(root){this.root=root;}async getTexture(texture){if(texture==='style-'+process.env.TEST_FAIL_ICON_STYLE)throw Error('simulated icon failure');const file=path.join(this.root,'icon.png');fs.writeFileSync(file,'png');return file;}}`,
+    'static-viewer': `import fs from'node:fs';import path from'node:path';import crypto from'node:crypto';export const writeStaticFile=(dir,data,ext)=>{const file=crypto.createHash('sha256').update(data).digest('hex')+'.'+ext;fs.writeFileSync(path.join(dir,file),data);return{url:file};};export const atomicJson=(file,data)=>{fs.writeFileSync(file+'.tmp',JSON.stringify(data));fs.renameSync(file+'.tmp',file);};export const publishCatalogIndex=()=>({});`,
+    'rubick-arcana': `export const rubickArcanaChoices=()=>[];`,
+    'admin-arcanas': `export const adminArcanaChoices=()=>[];`,
+    replacement: `export const replacementTarget=(hero,item)=>item.replacesModel;`
+  };
+  const hook = `import{registerHooks}from'node:module';const stubs=${JSON.stringify(stubs)};registerHooks({resolve(s,c,next){const key=s.split('/').pop().replace(/\\.mjs$/,'');return Object.hasOwn(stubs,key)?{url:'des-test:'+key,shortCircuit:true}:next(s,c);},load(url,c,next){return url.startsWith('des-test:')?{format:'module',source:stubs[url.slice(9)],shortCircuit:true}:next(url,c);}});`;
+  fs.writeFileSync(path.join(root, 'hook.mjs'), hook);
+  return {
+    root,
+    run: (env = {}, args = []) =>
+      runNode(
+        [
+          '--import',
+          pathToFileURL(path.join(root, 'hook.mjs')).href,
+          path.join(root, 'tools/publish-public-arcanas.mjs'),
+          '--hero',
+          'vengefulspirit',
+          ...args
+        ],
+        env
+      ),
+    manifest: () => JSON.parse(fs.readFileSync(path.join(root, 'cache/static-viewer/manifest.json')))
+  };
+}
+test('publisher checkpoints completed styles before a later model failure, preserves other heroes and releases its lock', async () => {
+  const f = await publisherFixture();
+  try {
+    const r = await f.run({ TEST_FAIL_MODEL_STYLE: '2' });
+    assert.notEqual(r.code, 0, r.output);
+    assert.match(r.output, /simulated Imperia export failure/);
+    const m = f.manifest();
+    assert.ok(m.arcanas.vengefulspirit['0']);
+    assert.ok(m.arcanas.vengefulspirit['1']);
+    assert.equal(m.arcanas.vengefulspirit['2'], undefined);
+    assert.equal(m.arcanas.pudge['0'], 'keep-existing-pudge');
+    assert.equal(fs.existsSync(path.join(f.root, 'cache/static-publish.lock')), false);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('a failed icon export cannot publish the incomplete style', async () => {
+  const f = await publisherFixture();
+  try {
+    const r = await f.run({ TEST_FAIL_ICON_STYLE: '1' });
+    assert.notEqual(r.code, 0, r.output);
+    assert.match(r.output, /simulated icon failure/);
+    const m = f.manifest();
+    assert.ok(m.arcanas.vengefulspirit['0']);
+    assert.equal(m.arcanas.vengefulspirit['1'], undefined);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('single-style CLI updates only the requested style and retains existing hero entries', async () => {
+  const f = await publisherFixture();
+  try {
+    const r = await f.run({}, ['--style', '2']);
+    assert.equal(r.code, 0, r.output);
+    const m = f.manifest();
+    assert.deepEqual(Object.keys(m.arcanas.vengefulspirit), ['2']);
+    assert.equal(m.arcanas.pudge['0'], 'keep-existing-pudge');
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
 
-test('optional item errors are recorded and remaining publication completes with partial exit status',async()=>{const f=await publisherFixture();try{const r=await f.run({TEST_INCLUDE_HEADS:'1',TEST_FAIL_ITEM_ID:'game-head'},['--style','0','--all-items','--continue-on-item-error']);assert.equal(r.code,2,r.output);assert.match(r.output,/PARTIAL/);const directory=path.join(f.root,'cache/static-viewer'),recipe=JSON.parse(fs.readFileSync(path.join(directory,f.manifest().arcanas.vengefulspirit['0'])));assert.equal(recipe.items['game-head'],undefined);assert.ok(recipe.parts.length>0);const errors=JSON.parse(fs.readFileSync(path.join(directory,'arcana-item-errors.json')));assert.equal(errors.length,1);assert.equal(errors[0].item,'game-head');assert.equal(errors[0].style,0);assert.match(errors[0].error,/simulated wearable failure/);assert.equal(fs.existsSync(path.join(f.root,'cache/static-publish.lock')),false);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('without continue flag an optional item failure still stops publication and records the failing item',async()=>{const f=await publisherFixture();try{const r=await f.run({TEST_INCLUDE_HEADS:'1',TEST_FAIL_ITEM_ID:'game-head'},['--style','0','--all-items']);assert.notEqual(r.code,0,r.output);assert.equal(f.manifest().arcanas.vengefulspirit?.['0'],undefined);assert.equal(JSON.parse(fs.readFileSync(path.join(f.root,'cache/static-viewer/arcana-item-errors.json')))[0].item,'game-head');}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
+test('full publisher exports even same-path custom heads and writes their refit recipe', async () => {
+  const f = await publisherFixture();
+  try {
+    const r = await f.run({ TEST_INCLUDE_HEADS: '1' }, ['--style', '0', '--all-items']);
+    assert.equal(r.code, 0, r.output);
+    const reference = f.manifest().arcanas.vengefulspirit['0'],
+      recipe = JSON.parse(fs.readFileSync(path.join(f.root, 'cache/static-viewer', reference)));
+    assert.ok(recipe.items['game-head']);
+    assert.equal(recipe.items['game-head'].slot, 'head');
+    assert.equal(recipe.items['game-head'].parts[0].role, 'item');
+    assert.equal(recipe.items['game-head'].parts[0].bytes, 20);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test('optional item errors are recorded and remaining publication completes with partial exit status', async () => {
+  const f = await publisherFixture();
+  try {
+    const r = await f.run({ TEST_INCLUDE_HEADS: '1', TEST_FAIL_ITEM_ID: 'game-head' }, [
+      '--style',
+      '0',
+      '--all-items',
+      '--continue-on-item-error'
+    ]);
+    assert.equal(r.code, 2, r.output);
+    assert.match(r.output, /PARTIAL/);
+    const directory = path.join(f.root, 'cache/static-viewer'),
+      recipe = JSON.parse(fs.readFileSync(path.join(directory, f.manifest().arcanas.vengefulspirit['0'])));
+    assert.equal(recipe.items['game-head'], undefined);
+    assert.ok(recipe.parts.length > 0);
+    const errors = JSON.parse(fs.readFileSync(path.join(directory, 'arcana-item-errors.json')));
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].item, 'game-head');
+    assert.equal(errors[0].style, 0);
+    assert.match(errors[0].error, /simulated wearable failure/);
+    assert.equal(fs.existsSync(path.join(f.root, 'cache/static-publish.lock')), false);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('without continue flag an optional item failure still stops publication and records the failing item', async () => {
+  const f = await publisherFixture();
+  try {
+    const r = await f.run({ TEST_INCLUDE_HEADS: '1', TEST_FAIL_ITEM_ID: 'game-head' }, ['--style', '0', '--all-items']);
+    assert.notEqual(r.code, 0, r.output);
+    assert.equal(f.manifest().arcanas.vengefulspirit?.['0'], undefined);
+    assert.equal(
+      JSON.parse(fs.readFileSync(path.join(f.root, 'cache/static-viewer/arcana-item-errors.json')))[0].item,
+      'game-head'
+    );
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});

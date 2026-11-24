@@ -1,38 +1,284 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {AssetStore,packVpk} from '../lib/vpk.mjs';import {addAdminUnreleasedSets,unreleasedSetDefinitions,createAdminSetBuilder,requiresMountedArchivePreview} from '../lib/admin-unreleased-sets.mjs';import {applyHeroSet} from '../public/hero-sets.mjs';import {adminSetPayload} from '../lib/admin-set-preview.mjs';import {startServer} from '../server.mjs';
-const resource=()=>{const b=Buffer.alloc(17);b.writeUInt32LE(17);b.writeUInt32LE(8,8);return b;};
-function fixture(){const root=fs.mkdtempSync(path.join(os.tmpdir(),'unreleased-catalog-')),hero={id:'faceless_void',name:'Faceless Void',model:'models/heroes/faceless_void/faceless_void.vmdl_c',defaultSlotModels:{head:'models/heroes/faceless_void/head.vmdl_c',weapon:'models/heroes/faceless_void/weapon.vmdl_c'},items:[],sets:[]};
- const files=new Map([hero.model,...Object.values(hero.defaultSlotModels),'models/items/faceless_void/dark_geode/dark_geode_head.vmdl_c','models/items/faceless_void/dark_geode/dark_geode_weapon.vmdl_c'].map(n=>[n,resource()]));const archive=path.join(root,'game.vpk');fs.writeFileSync(archive,packVpk(files));return {root,hero,files,store:new AssetStore([archive]),catalog:{heroes:[hero],effects:[]}};}
-test('all 19 discussed archive definitions are registered; discovery is private, idempotent and uses real file names',()=>{const f=fixture();try{
- assert.equal(unreleasedSetDefinitions.length,19);assert.equal(new Set(unreleasedSetDefinitions.map(d=>d.id)).size,19);const before=JSON.stringify(f.catalog),one=addAdminUnreleasedSets(f.catalog,f.store),two=addAdminUnreleasedSets(one,f.store),hero=one.heroes[0],set=hero.sets.find(s=>s.id==='unreleased-dark-geode');assert.equal(JSON.stringify(f.catalog),before);assert.deepEqual(one,two);assert.equal(set.available,true);assert.equal(set.itemCount,2);assert.equal(hero.items.length,2);assert.ok(hero.items.every(i=>i.adminOnly&&f.store.has(i.model)));
- const state=applyHeroSet(hero,set.id);assert.equal(state.selected.size,2);const payload=adminSetPayload(one,{heroId:hero.id,setId:set.id});assert.equal(payload.selections.length,2);assert.equal(requiresMountedArchivePreview(one,payload),true);assert.equal(requiresMountedArchivePreview(f.catalog,payload),false);assert.equal(requiresMountedArchivePreview(one,{selections:[{heroId:hero.id,itemId:'ordinary'}]}),false);assert.ok(payload.selections.every(row=>row.effectIds.length===0));
- const publicBuilder={catalog:f.catalog,store:f.store},admin=createAdminSetBuilder(publicBuilder);assert.equal(publicBuilder.catalog.heroes[0].items.length,0);assert.equal(admin.catalog.heroes[0].items.length,2);
- }finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('missing, ambiguous or unbindable files never produce fake or selectable set pieces',()=>{const f=fixture();try{
- const hero={...f.hero,defaultSlotModels:{},items:[]},none=addAdminUnreleasedSets({...f.catalog,heroes:[hero]},f.store),empty=none.heroes[0].sets[0];assert.equal(empty.available,false);assert.deepEqual(empty.items,[]);assert.equal(none.heroes[0].items.length,0);assert.throws(()=>applyHeroSet(none.heroes[0],empty.id),/нет полного набора/);
- const a={id:'a',name:'Dark Geode Head',model:[...f.files.keys()].find(n=>n.includes('dark_geode_head')),slot:'head'},b={...a,id:'b',model:'models/items/faceless_void/dark_geode/dark_geode_other_head.vmdl_c'};f.files.set(b.model,resource());fs.writeFileSync(path.join(f.root,'game.vpk'),packVpk(f.files));const conflict=addAdminUnreleasedSets({...f.catalog,heroes:[{...f.hero,items:[a,b]}]},new AssetStore([path.join(f.root,'game.vpk')]));assert.match(conflict.heroes[0].sets[0].unavailable,/неоднозначные/);
- }finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('loose mounted assets and normal catalog records share slots without duplicating an existing style',()=>{const f=fixture();try{
- const name=[...f.files.keys()].find(n=>n.includes('dark_geode_head')),directory=path.join(f.root,'loose');fs.mkdirSync(path.dirname(path.join(directory,name)),{recursive:true});fs.writeFileSync(path.join(directory,name),resource());const catalog={...f.catalog,heroes:[{...f.hero,items:[{id:'authored',name:'Localized',matchNames:['Dark Geode Head'],slot:'head',model:name,styleGroupId:'authored',styleId:'0'}]}]},result=addAdminUnreleasedSets(catalog,new AssetStore([path.join(f.root,'game.vpk')],[directory]));assert.equal(result.heroes[0].items.filter(i=>i.model===name).length,1);assert.ok(result.heroes[0].sets[0].items.some(r=>r.itemId==='authored'));
- }finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('authenticated admin catalog and native preview can use archive files without publishing or leaking them to public catalog',async()=>{const f=fixture();try{
- fs.writeFileSync(path.join(f.root,'catalog.json'),JSON.stringify(f.catalog));fs.writeFileSync(path.join(f.root,'config.json'),JSON.stringify({archives:['game.vpk'],catalog:'catalog.json',autoCatalog:false,patcher:'patcher',staticViewerEnabled:true}));const published=path.join(f.root,'cache/static-viewer');fs.mkdirSync(published,{recursive:true});fs.writeFileSync(path.join(published,'catalog.json'),JSON.stringify(f.catalog));fs.writeFileSync(path.join(published,'manifest.json'),JSON.stringify({version:1,catalog:'catalog.json',heroes:{},effects:{},icons:{}}));
- const {server,url,previews}=await startServer({root:f.root,port:0,adminAuth:{verify:t=>{if(t!=='admin')throw Error('Sign in');}}});let exported;
- previews.export=async(choice,job)=>{exported=choice;Object.assign(job,{status:'ready',parts:[],partFiles:[]});};try{
- const headers={Authorization:'Bearer admin','Content-Type':'application/json'},publicBefore=await(await fetch(url+'/api/catalog')).json();assert.equal((await fetch(url+'/api/admin/set-studio/catalog')).status,401);
- const admin=await(await fetch(url+'/api/admin/set-studio/catalog',{headers})).json(),set=admin.heroes[0].sets.find(s=>s.unreleased);assert.equal(set.available,true);assert.equal(admin.heroes[0].items.length,2);const publicAfter=await(await fetch(url+'/api/catalog')).json();assert.deepEqual(publicAfter,publicBefore);assert.equal(publicAfter.heroes[0].items.length,0);
- const payload=adminSetPayload(admin,{heroId:f.hero.id,setId:set.id}),response=await fetch(url+'/api/admin/set-studio/preview',{method:'POST',headers,body:JSON.stringify(payload)});assert.equal(response.status,202,await response.clone().text());const job=await response.json();await new Promise(resolve=>setImmediate(resolve));assert.equal(exported.selections.length,2);assert.equal(exported.selections[0].item.adminOnly,true);assert.equal((await fetch(url+'/api/previews/'+job.id)).status,404);
- const forged=await fetch(url+'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});assert.equal(forged.status,400);
- }finally{await new Promise(resolve=>server.close(resolve));}
- }finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('Nyx alternate folder resolves merge target objects without mutating public bindings',()=>{
- const model='models/heroes/nerubian_assassin/nerubian_assassin.vmdl_c',hero={id:'nyx_assassin',model,defaultSlotModels:{},mergeSlots:Object.fromEntries(['head','weapon','back','misc'].map(slot=>[slot,{target:model}])),items:[]};
- const names=['head','weapon','back','misc'].map(s=>'models/items/nerubian_assassin/ti9_cache_ns_moonlight_hunter_'+s+'/ti9_cache_ns_moonlight_hunter_'+s+'.vmdl_c'),files=new Map([model,...names].map(n=>[n,resource()])),store={archives:[{entries:files}],directories:[],read:n=>files.get(n),has:n=>files.has(n),closure:()=>({missing:[],files:new Map()})};
- const catalog={heroes:[hero],effects:[]},before=JSON.stringify(catalog),result=addAdminUnreleasedSets(catalog,store),set=result.heroes[0].sets[0];assert.equal(set.available,true);assert.equal(set.items.length,4);assert.ok(result.heroes[0].items.every(i=>i.mergeTarget===model));assert.equal(JSON.stringify(catalog),before);
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { AssetStore, packVpk } from '../lib/vpk.mjs';
+import {
+  addAdminUnreleasedSets,
+  unreleasedSetDefinitions,
+  createAdminSetBuilder,
+  requiresMountedArchivePreview
+} from '../lib/admin-unreleased-sets.mjs';
+import { applyHeroSet } from '../public/hero-sets.mjs';
+import { adminSetPayload } from '../lib/admin-set-preview.mjs';
+import { startServer } from '../server.mjs';
+const resource = () => {
+  const b = Buffer.alloc(17);
+  b.writeUInt32LE(17);
+  b.writeUInt32LE(8, 8);
+  return b;
+};
+function fixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'unreleased-catalog-')),
+    hero = {
+      id: 'faceless_void',
+      name: 'Faceless Void',
+      model: 'models/heroes/faceless_void/faceless_void.vmdl_c',
+      defaultSlotModels: {
+        head: 'models/heroes/faceless_void/head.vmdl_c',
+        weapon: 'models/heroes/faceless_void/weapon.vmdl_c'
+      },
+      items: [],
+      sets: []
+    };
+  const files = new Map(
+    [
+      hero.model,
+      ...Object.values(hero.defaultSlotModels),
+      'models/items/faceless_void/dark_geode/dark_geode_head.vmdl_c',
+      'models/items/faceless_void/dark_geode/dark_geode_weapon.vmdl_c'
+    ].map(n => [n, resource()])
+  );
+  const archive = path.join(root, 'game.vpk');
+  fs.writeFileSync(archive, packVpk(files));
+  return { root, hero, files, store: new AssetStore([archive]), catalog: { heroes: [hero], effects: [] } };
+}
+test('all 19 discussed archive definitions are registered; discovery is private, idempotent and uses real file names', () => {
+  const f = fixture();
+  try {
+    assert.equal(unreleasedSetDefinitions.length, 19);
+    assert.equal(new Set(unreleasedSetDefinitions.map(d => d.id)).size, 19);
+    const before = JSON.stringify(f.catalog),
+      one = addAdminUnreleasedSets(f.catalog, f.store),
+      two = addAdminUnreleasedSets(one, f.store),
+      hero = one.heroes[0],
+      set = hero.sets.find(s => s.id === 'unreleased-dark-geode');
+    assert.equal(JSON.stringify(f.catalog), before);
+    assert.deepEqual(one, two);
+    assert.equal(set.available, true);
+    assert.equal(set.itemCount, 2);
+    assert.equal(hero.items.length, 2);
+    assert.ok(hero.items.every(i => i.adminOnly && f.store.has(i.model)));
+    const state = applyHeroSet(hero, set.id);
+    assert.equal(state.selected.size, 2);
+    const payload = adminSetPayload(one, { heroId: hero.id, setId: set.id });
+    assert.equal(payload.selections.length, 2);
+    assert.equal(requiresMountedArchivePreview(one, payload), true);
+    assert.equal(requiresMountedArchivePreview(f.catalog, payload), false);
+    assert.equal(requiresMountedArchivePreview(one, { selections: [{ heroId: hero.id, itemId: 'ordinary' }] }), false);
+    assert.ok(payload.selections.every(row => row.effectIds.length === 0));
+    const publicBuilder = { catalog: f.catalog, store: f.store },
+      admin = createAdminSetBuilder(publicBuilder);
+    assert.equal(publicBuilder.catalog.heroes[0].items.length, 0);
+    assert.equal(admin.catalog.heroes[0].items.length, 2);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
 });
-test('authored Alchemist bundle selects neck2 and embedded gloves, not both neck variants',()=>{
- const model='models/heroes/alchemist/alchemist.vmdl_c',hero={id:'alchemist',model,items:[],defaultSlotModels:{},embeddedWearableSlots:['neck','gloves']},paths=['neck','neck2','gloves'].map(s=>'models/items/alchemist/new_chieftain_'+s+'.vmdl_c');
- const entries=paths.map((p,i)=>'"'+(i+1)+'" { "name" "new_chieftain_'+['neck','neck2','gloves'][i]+'" "item_slot" "'+(i===2?'gloves':'neck')+'" "model_player" "'+p+'" "used_by_heroes" { "npc_dota_hero_alchemist" "1" } }').join(' '),schema='"items_game" { "items" { '+entries+' "4" { "name" "new_chieftain" "bundle" { "new_chieftain_neck" "1" } } "5" { "name" "TI9 Cache Alchemist New Chieftain" "bundle" { "new_chieftain_neck2" "1" "new_chieftain_gloves" "1" "new_chieftain LS" "1" } } "6" { "name" "new_chieftain LS" "prefab" "loading_screen" } } }';
- const files=new Map([model,...paths].map(n=>[n,resource()]));files.set('scripts/items/items_game.txt',Buffer.from(schema));const store={archives:[{entries:files}],directories:[],read:n=>files.get(n),has:n=>files.has(n),closure:()=>({missing:[],files:new Map()})};
- const result=addAdminUnreleasedSets({heroes:[hero],effects:[]},store),set=result.heroes[0].sets[0];assert.equal(set.available,true,set.unavailable);assert.equal(set.items.length,2);const chosen=set.items.map(row=>result.heroes[0].items.find(i=>i.id===row.itemId));assert.deepEqual(new Set(chosen.map(i=>i.model)),new Set(paths.slice(1)));assert.ok(chosen.every(i=>i.mergeTarget===model));assert.equal(hero.items.length,0);
+test('missing, ambiguous or unbindable files never produce fake or selectable set pieces', () => {
+  const f = fixture();
+  try {
+    const hero = { ...f.hero, defaultSlotModels: {}, items: [] },
+      none = addAdminUnreleasedSets({ ...f.catalog, heroes: [hero] }, f.store),
+      empty = none.heroes[0].sets[0];
+    assert.equal(empty.available, false);
+    assert.deepEqual(empty.items, []);
+    assert.equal(none.heroes[0].items.length, 0);
+    assert.throws(() => applyHeroSet(none.heroes[0], empty.id), /нет полного набора/);
+    const a = {
+        id: 'a',
+        name: 'Dark Geode Head',
+        model: [...f.files.keys()].find(n => n.includes('dark_geode_head')),
+        slot: 'head'
+      },
+      b = { ...a, id: 'b', model: 'models/items/faceless_void/dark_geode/dark_geode_other_head.vmdl_c' };
+    f.files.set(b.model, resource());
+    fs.writeFileSync(path.join(f.root, 'game.vpk'), packVpk(f.files));
+    const conflict = addAdminUnreleasedSets(
+      { ...f.catalog, heroes: [{ ...f.hero, items: [a, b] }] },
+      new AssetStore([path.join(f.root, 'game.vpk')])
+    );
+    assert.match(conflict.heroes[0].sets[0].unavailable, /неоднозначные/);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('loose mounted assets and normal catalog records share slots without duplicating an existing style', () => {
+  const f = fixture();
+  try {
+    const name = [...f.files.keys()].find(n => n.includes('dark_geode_head')),
+      directory = path.join(f.root, 'loose');
+    fs.mkdirSync(path.dirname(path.join(directory, name)), { recursive: true });
+    fs.writeFileSync(path.join(directory, name), resource());
+    const catalog = {
+        ...f.catalog,
+        heroes: [
+          {
+            ...f.hero,
+            items: [
+              {
+                id: 'authored',
+                name: 'Localized',
+                matchNames: ['Dark Geode Head'],
+                slot: 'head',
+                model: name,
+                styleGroupId: 'authored',
+                styleId: '0'
+              }
+            ]
+          }
+        ]
+      },
+      result = addAdminUnreleasedSets(catalog, new AssetStore([path.join(f.root, 'game.vpk')], [directory]));
+    assert.equal(result.heroes[0].items.filter(i => i.model === name).length, 1);
+    assert.ok(result.heroes[0].sets[0].items.some(r => r.itemId === 'authored'));
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('authenticated admin catalog and native preview can use archive files without publishing or leaking them to public catalog', async () => {
+  const f = fixture();
+  try {
+    fs.writeFileSync(path.join(f.root, 'catalog.json'), JSON.stringify(f.catalog));
+    fs.writeFileSync(
+      path.join(f.root, 'config.json'),
+      JSON.stringify({
+        archives: ['game.vpk'],
+        catalog: 'catalog.json',
+        autoCatalog: false,
+        patcher: 'patcher',
+        staticViewerEnabled: true
+      })
+    );
+    const published = path.join(f.root, 'cache/static-viewer');
+    fs.mkdirSync(published, { recursive: true });
+    fs.writeFileSync(path.join(published, 'catalog.json'), JSON.stringify(f.catalog));
+    fs.writeFileSync(
+      path.join(published, 'manifest.json'),
+      JSON.stringify({ version: 1, catalog: 'catalog.json', heroes: {}, effects: {}, icons: {} })
+    );
+    const { server, url, previews } = await startServer({
+      root: f.root,
+      port: 0,
+      adminAuth: {
+        verify: t => {
+          if (t !== 'admin') throw Error('Sign in');
+        }
+      }
+    });
+    let exported;
+    previews.export = async (choice, job) => {
+      exported = choice;
+      Object.assign(job, { status: 'ready', parts: [], partFiles: [] });
+    };
+    try {
+      const headers = { Authorization: 'Bearer admin', 'Content-Type': 'application/json' },
+        publicBefore = await (await fetch(url + '/api/catalog')).json();
+      assert.equal((await fetch(url + '/api/admin/set-studio/catalog')).status, 401);
+      const admin = await (await fetch(url + '/api/admin/set-studio/catalog', { headers })).json(),
+        set = admin.heroes[0].sets.find(s => s.unreleased);
+      assert.equal(set.available, true);
+      assert.equal(admin.heroes[0].items.length, 2);
+      const publicAfter = await (await fetch(url + '/api/catalog')).json();
+      assert.deepEqual(publicAfter, publicBefore);
+      assert.equal(publicAfter.heroes[0].items.length, 0);
+      const payload = adminSetPayload(admin, { heroId: f.hero.id, setId: set.id }),
+        response = await fetch(url + '/api/admin/set-studio/preview', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+      assert.equal(response.status, 202, await response.clone().text());
+      const job = await response.json();
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(exported.selections.length, 2);
+      assert.equal(exported.selections[0].item.adminOnly, true);
+      assert.equal((await fetch(url + '/api/previews/' + job.id)).status, 404);
+      const forged = await fetch(url + '/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      assert.equal(forged.status, 400);
+    } finally {
+      await new Promise(resolve => server.close(resolve));
+    }
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('Nyx alternate folder resolves merge target objects without mutating public bindings', () => {
+  const model = 'models/heroes/nerubian_assassin/nerubian_assassin.vmdl_c',
+    hero = {
+      id: 'nyx_assassin',
+      model,
+      defaultSlotModels: {},
+      mergeSlots: Object.fromEntries(['head', 'weapon', 'back', 'misc'].map(slot => [slot, { target: model }])),
+      items: []
+    };
+  const names = ['head', 'weapon', 'back', 'misc'].map(
+      s =>
+        'models/items/nerubian_assassin/ti9_cache_ns_moonlight_hunter_' +
+        s +
+        '/ti9_cache_ns_moonlight_hunter_' +
+        s +
+        '.vmdl_c'
+    ),
+    files = new Map([model, ...names].map(n => [n, resource()])),
+    store = {
+      archives: [{ entries: files }],
+      directories: [],
+      read: n => files.get(n),
+      has: n => files.has(n),
+      closure: () => ({ missing: [], files: new Map() })
+    };
+  const catalog = { heroes: [hero], effects: [] },
+    before = JSON.stringify(catalog),
+    result = addAdminUnreleasedSets(catalog, store),
+    set = result.heroes[0].sets[0];
+  assert.equal(set.available, true);
+  assert.equal(set.items.length, 4);
+  assert.ok(result.heroes[0].items.every(i => i.mergeTarget === model));
+  assert.equal(JSON.stringify(catalog), before);
+});
+test('authored Alchemist bundle selects neck2 and embedded gloves, not both neck variants', () => {
+  const model = 'models/heroes/alchemist/alchemist.vmdl_c',
+    hero = { id: 'alchemist', model, items: [], defaultSlotModels: {}, embeddedWearableSlots: ['neck', 'gloves'] },
+    paths = ['neck', 'neck2', 'gloves'].map(s => 'models/items/alchemist/new_chieftain_' + s + '.vmdl_c');
+  const entries = paths
+      .map(
+        (p, i) =>
+          '"' +
+          (i + 1) +
+          '" { "name" "new_chieftain_' +
+          ['neck', 'neck2', 'gloves'][i] +
+          '" "item_slot" "' +
+          (i === 2 ? 'gloves' : 'neck') +
+          '" "model_player" "' +
+          p +
+          '" "used_by_heroes" { "npc_dota_hero_alchemist" "1" } }'
+      )
+      .join(' '),
+    schema =
+      '"items_game" { "items" { ' +
+      entries +
+      ' "4" { "name" "new_chieftain" "bundle" { "new_chieftain_neck" "1" } } "5" { "name" "TI9 Cache Alchemist New Chieftain" "bundle" { "new_chieftain_neck2" "1" "new_chieftain_gloves" "1" "new_chieftain LS" "1" } } "6" { "name" "new_chieftain LS" "prefab" "loading_screen" } } }';
+  const files = new Map([model, ...paths].map(n => [n, resource()]));
+  files.set('scripts/items/items_game.txt', Buffer.from(schema));
+  const store = {
+    archives: [{ entries: files }],
+    directories: [],
+    read: n => files.get(n),
+    has: n => files.has(n),
+    closure: () => ({ missing: [], files: new Map() })
+  };
+  const result = addAdminUnreleasedSets({ heroes: [hero], effects: [] }, store),
+    set = result.heroes[0].sets[0];
+  assert.equal(set.available, true, set.unavailable);
+  assert.equal(set.items.length, 2);
+  const chosen = set.items.map(row => result.heroes[0].items.find(i => i.id === row.itemId));
+  assert.deepEqual(new Set(chosen.map(i => i.model)), new Set(paths.slice(1)));
+  assert.ok(chosen.every(i => i.mergeTarget === model));
+  assert.equal(hero.items.length, 0);
 });

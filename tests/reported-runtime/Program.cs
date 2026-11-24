@@ -1,49 +1,321 @@
-using System.Reflection;using System.Text.Json;using ValveKeyValue;
-var asm=Assembly.Load("Dota2UnusualPatcher");
-KVObject A(params KVObject[] a)=>KVObject.Array(a);KVObject R(params (string,KVObject)[] fields){var r=KVObject.Collection();foreach(var(k,v)in fields)r[k]=v;return r;}
-KVObject Read(JsonElement e)=>e.ValueKind switch{JsonValueKind.Object=>R(e.EnumerateObject().Select(p=>(p.Name,Read(p.Value))).ToArray()),JsonValueKind.Array=>A(e.EnumerateArray().Select(Read).ToArray()),JsonValueKind.String=>new KVObject(e.GetString()!),JsonValueKind.Number=>e.TryGetInt32(out var n)?new KVObject(n):new KVObject(e.GetDouble()),JsonValueKind.True=>new KVObject(true),JsonValueKind.False=>new KVObject(false),_=>KVObject.Null()};
-MethodInfo Method(string type,string method)=>asm.GetType(type)!.GetMethod(method,BindingFlags.NonPublic|BindingFlags.Static)!;void Check(bool value,string reason){if(!value)throw new Exception(reason);}
-using var fixture=JsonDocument.Parse(File.ReadAllText("tests/fixtures/reported-tester-runtime.json"));MethodInfo prefix=Method("TesterAttachmentProfiles","Prefix"),rename=Method("TesterAttachmentProfiles","NamespaceMesh"),patch=Method("TesterAttachmentProfiles","PatchForHost");var cores=new HashSet<string>();
-foreach(var p in fixture.RootElement.GetProperty("models").EnumerateObject()){var ns=(string?)prefix.Invoke(null,new object[]{p.Name});if(ns is null)continue;var mesh=Read(p.Value);var originalBones=mesh["m_attachments"].Values.Select(a=>a["value"]["m_influenceNames"].ToString()).ToArray();rename.Invoke(null,new object?[]{mesh,ns});Check(mesh["m_attachments"].Values.Select(a=>a["value"]["m_influenceNames"].ToString()).SequenceEqual(originalBones),"Attachment bone changed");foreach(var n in mesh["m_attachments"].Values.Select(a=>a["key"].ToString(null)).Where(n=>n.EndsWith("attach_core")).Distinct())Check(cores.Add(n),"Juggernaut core collision");Check((int)rename.Invoke(null,new object?[]{mesh,ns})! ==0,"Namespace not idempotent");}Check(cores.Count==3,"Missing Jugg core owners");
-foreach(var p in fixture.RootElement.GetProperty("particles").EnumerateObject()){var data=Read(p.Value);patch.Invoke(null,new object?[]{data,null,true});foreach(var c in data["m_controlPointConfigurations"].Values)foreach(var d in c["m_drivers"].Values)if(d.TryGetValue("m_entityName",out var e))Check(e.ToString(null)!="parent","Absent hero parent retained");Check((int)patch.Invoke(null,new object?[]{data,null,true})! ==0,"Root ownership not idempotent");}
-var global=asm.GetType("GlobalCosmetics")!;var posType=global.GetNestedType("PointPosition",BindingFlags.NonPublic)!;var positions=JsonSerializer.Deserialize("[{\"Particle\":\"particles/a.vpcf_c\",\"Point\":26,\"Position\":[100,0,0]}]",posType.MakeArrayType());var set=Method("GlobalCosmetics","SetPositions");var pa=Read(fixture.RootElement.GetProperty("particles").EnumerateObject().First(p=>p.Name.Contains("ac9a597")).Value);set.Invoke(null,new object?[]{pa,positions});Check(pa["m_PreEmissionOperators"][0]["m_nCP1"].ToInt32(null)==26&&pa["m_PreEmissionOperators"][0]["m_vecCP1Pos"][0].ToDouble(null)==100,"PA CP26 missing");Check(pa["m_PreEmissionOperators"][1]["_class"].ToString(null)=="C_OP_RemapCPtoCP","PA override after remap");var once=pa.ToString();set.Invoke(null,new object?[]{pa,positions});Check(once==pa.ToString(),"Constant override not idempotent");
-var profiles=Method("ModelRootProfiles","TesterAttachments");KVObject Skeleton(string root)=>R(("m_boneName",A(new KVObject(root))),("m_nParent",A(new KVObject(-1))));
-foreach(var (host,model,rootName,orphan,target)in new[]{("windrunner","windrunner/windrunner_arcana/wr_arcana_head","root","wr_root","root"),("lanaya","lanaya/heavenly_secrets_armor/heavenly_secrets_armor","Root_0","armor_lod0","Root_0"),("sven","sven/lord_of_the_north_belt/lord_of_the_north_belt","root","sven_body","root"),("ember_spirit","ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder","Root_JNT","ember_spirit_base","Root_JNT")}){var skeleton=Skeleton(rootName);if(host=="windrunner"){skeleton["m_boneName"].Add(new KVObject("hawk_chest"));skeleton["m_nParent"].Add(new KVObject(-1));}var result=(IReadOnlyDictionary<string,string>?)profiles.Invoke(null,new object[]{"models/heroes/"+host+"/"+host+".vmdl_c","models/items/"+model+".vmdl_c",skeleton});Check(result is not null&&result[orphan]==target,"Root profile failed: "+host);Check(profiles.Invoke(null,new object[]{"models/heroes/unrelated/hero.vmdl_c","models/items/"+model+".vmdl_c",skeleton}) is null,"Profile leaked to unrelated hero");}
-var willow=Skeleton("pelvis");willow["m_boneName"].Add(new KVObject("head"));willow["m_nParent"].Add(new KVObject(0));var w=(IReadOnlyDictionary<string,string>?)profiles.Invoke(null,new object[]{"models/heroes/dark_willow/dark_willow.vmdl_c","models/items/dark_willow/the_naughty_witch_from_dark_woods_head/the_naughty_witch_from_dark_woods_head.vmdl_c",willow});Check(w is not null&&w["cat_head_base"]=="head","Willow head was attached to pelvis");
-var invoker=Skeleton("root_0");
-foreach(var bone in new[]{"orb1","orb2","orb3","Head_1"}){
- invoker["m_boneName"].Add(new KVObject(bone));
- invoker["m_nParent"].Add(new KVObject(bone=="Head_1"?0:-1));
-}
-var crimson=(IReadOnlyDictionary<string,string>?)profiles.Invoke(null,new object[]{"models/heroes/invoker/invoker.vmdl_c","models/items/invoker/crimson_taoist_head/crimson_taoist_head.vmdl_c",invoker});
-Check(crimson?["topKnot_0"]=="Head_1","Crimson Taoist hair should follow Invoker's head");
-var ur=fixture.RootElement.GetProperty("ursa");var uroot=Read(ur.GetProperty("root"));var meshes=ur.GetProperty("meshes").EnumerateArray().Select(Read).ToArray();var boxesBefore=string.Join("|",meshes.Select(m=>m.ToString()));var bounds=Method("ModelSelectionBounds","Apply");Check((bool)bounds.Invoke(null,new object[]{uroot,meshes})!,"Ursa bounds not restored");Check(uroot["m_modelInfo"]["m_vHullMax"][2].ToDouble(null)>uroot["m_modelInfo"]["m_vHullMin"][2].ToDouble(null),"Degenerate bounds");Check(boxesBefore==string.Join("|",meshes.Select(m=>m.ToString())),"Selection hitboxes changed");Check(!(bool)bounds.Invoke(null,new object[]{uroot,meshes})!,"Nonzero bounds rewritten");
-var bake=Method("LifestealerRuntime","Bake");foreach(var key in new[]{"m_animArray","m_localS1SeqDescArray"}){var field=key=="m_animArray"?"m_name":"m_sName";KVObject Anim(string n,string pose)=>R((field,new KVObject(n)),("m_activityArray",A()),("m_flags",R(("m_bHidden",new KVObject(false)))),("pose",new KVObject(pose)));KVObject idle=Anim("idle_anim","healthy"),hurt=Anim("idle_injured_anim","hurt"),attack=Anim("attack_injured","untouched");var data=R((key,A(idle,hurt,attack)));Check((int)bake.Invoke(null,new object[]{data,key})! ==1,"LS idle count");Check(data[key][1]["pose"].ToString(null)=="healthy"&&data[key][1][field].ToString(null)=="idle_injured_anim","LS identity or pose");Check(data[key][2]["pose"].ToString(null)=="untouched","LS attack changed");}
-Console.WriteLine("Reported runtime: authored PA CP26, Jugg/Mace names, hero-owned roots, exact WR/TA/Sven/Willow/Ember profiles, original Ursa selection bounds and Lifestealer idle slots passed.");
+using System.Reflection;
+using System.Text.Json;
+using ValveKeyValue;
 
-var collectScope=Method("ScopedHitboxTransfer","Collect");var appendScope=Method("ScopedHitboxTransfer","Append");
-var scopeBone=R(("m_sBoneName",new KVObject("head")));
-KVObject ScopeSet(string name)=>R(("key",new KVObject(name)),("value",R(("m_HitBoxes",A(scopeBone)))));
-var sourceScope=R(("m_hitboxsets",A(ScopeSet("default"),ScopeSet("harlord_fx_test"))));
-var scopeSkel=R(("m_boneName",A(new KVObject("head"))));
-var transferred=(KVObject[])collectScope.Invoke(null,new object[]{sourceScope,scopeSkel})!;
-Check(transferred.Length==1,"Independent wearable copied non-effect hitboxes");
-var targetScope=R(("m_hitboxsets",A(ScopeSet("select_high"))));
-appendScope.Invoke(null,new object[]{targetScope,transferred});Check(targetScope["m_hitboxsets"].Count==2&&targetScope["m_hitboxsets"][0]["key"].ToString(null)=="select_high","Selection box overwritten by effect transfer");
+var asm = Assembly.Load("Dota2UnusualPatcher");
+KVObject A(params KVObject[] a) => KVObject.Array(a);
+KVObject R(params (string, KVObject)[] fields)
+{
+    var r = KVObject.Collection();
+    foreach (var (k, v) in fields)
+        r[k] = v;
+    return r;
+}
+KVObject Read(JsonElement e) =>
+    e.ValueKind switch
+    {
+        JsonValueKind.Object => R(e.EnumerateObject().Select(p => (p.Name, Read(p.Value))).ToArray()),
+        JsonValueKind.Array => A(e.EnumerateArray().Select(Read).ToArray()),
+        JsonValueKind.String => new KVObject(e.GetString()!),
+        JsonValueKind.Number => e.TryGetInt32(out var n) ? new KVObject(n) : new KVObject(e.GetDouble()),
+        JsonValueKind.True => new KVObject(true),
+        JsonValueKind.False => new KVObject(false),
+        _ => KVObject.Null(),
+    };
+MethodInfo Method(string type, string method) =>
+    asm.GetType(type)!.GetMethod(method, BindingFlags.NonPublic | BindingFlags.Static)!;
+void Check(bool value, string reason)
+{
+    if (!value)
+        throw new Exception(reason);
+}
+using var fixture = JsonDocument.Parse(File.ReadAllText("tests/fixtures/reported-tester-runtime.json"));
+MethodInfo prefix = Method("TesterAttachmentProfiles", "Prefix"),
+    rename = Method("TesterAttachmentProfiles", "NamespaceMesh"),
+    patch = Method("TesterAttachmentProfiles", "PatchForHost");
+var cores = new HashSet<string>();
+foreach (var p in fixture.RootElement.GetProperty("models").EnumerateObject())
+{
+    var ns = (string?)prefix.Invoke(null, new object[] { p.Name });
+    if (ns is null)
+        continue;
+    var mesh = Read(p.Value);
+    var originalBones = mesh["m_attachments"].Values.Select(a => a["value"]["m_influenceNames"].ToString()).ToArray();
+    rename.Invoke(null, new object?[] { mesh, ns });
+    Check(
+        mesh["m_attachments"]
+            .Values.Select(a => a["value"]["m_influenceNames"].ToString())
+            .SequenceEqual(originalBones),
+        "Attachment bone changed"
+    );
+    foreach (
+        var n in mesh["m_attachments"]
+            .Values.Select(a => a["key"].ToString(null))
+            .Where(n => n.EndsWith("attach_core"))
+            .Distinct()
+    )
+        Check(cores.Add(n), "Juggernaut core collision");
+    Check((int)rename.Invoke(null, new object?[] { mesh, ns })! == 0, "Namespace not idempotent");
+}
+Check(cores.Count == 3, "Missing Jugg core owners");
+foreach (var p in fixture.RootElement.GetProperty("particles").EnumerateObject())
+{
+    var data = Read(p.Value);
+    patch.Invoke(null, new object?[] { data, null, true });
+    foreach (var c in data["m_controlPointConfigurations"].Values)
+    foreach (var d in c["m_drivers"].Values)
+        if (d.TryGetValue("m_entityName", out var e))
+            Check(e.ToString(null) != "parent", "Absent hero parent retained");
+    Check((int)patch.Invoke(null, new object?[] { data, null, true })! == 0, "Root ownership not idempotent");
+}
+var global = asm.GetType("GlobalCosmetics")!;
+var posType = global.GetNestedType("PointPosition", BindingFlags.NonPublic)!;
+var positions = JsonSerializer.Deserialize(
+    "[{\"Particle\":\"particles/a.vpcf_c\",\"Point\":26,\"Position\":[100,0,0]}]",
+    posType.MakeArrayType()
+);
+var set = Method("GlobalCosmetics", "SetPositions");
+var pa = Read(
+    fixture.RootElement.GetProperty("particles").EnumerateObject().First(p => p.Name.Contains("ac9a597")).Value
+);
+set.Invoke(null, new object?[] { pa, positions });
+Check(
+    pa["m_PreEmissionOperators"][0]["m_nCP1"].ToInt32(null) == 26
+        && pa["m_PreEmissionOperators"][0]["m_vecCP1Pos"][0].ToDouble(null) == 100,
+    "PA CP26 missing"
+);
+Check(pa["m_PreEmissionOperators"][1]["_class"].ToString(null) == "C_OP_RemapCPtoCP", "PA override after remap");
+var once = pa.ToString();
+set.Invoke(null, new object?[] { pa, positions });
+Check(once == pa.ToString(), "Constant override not idempotent");
+var profiles = Method("ModelRootProfiles", "TesterAttachments");
+KVObject Skeleton(string root) => R(("m_boneName", A(new KVObject(root))), ("m_nParent", A(new KVObject(-1))));
+foreach (
+    var (host, model, rootName, orphan, target) in new[]
+    {
+        ("windrunner", "windrunner/windrunner_arcana/wr_arcana_head", "root", "wr_root", "root"),
+        ("lanaya", "lanaya/heavenly_secrets_armor/heavenly_secrets_armor", "Root_0", "armor_lod0", "Root_0"),
+        ("sven", "sven/lord_of_the_north_belt/lord_of_the_north_belt", "root", "sven_body", "root"),
+        (
+            "ember_spirit",
+            "ember_spirit/ember_sindur_sensei_shoulder/ember_sindur_sensei_shoulder",
+            "Root_JNT",
+            "ember_spirit_base",
+            "Root_JNT"
+        ),
+    }
+)
+{
+    var skeleton = Skeleton(rootName);
+    if (host == "windrunner")
+    {
+        skeleton["m_boneName"].Add(new KVObject("hawk_chest"));
+        skeleton["m_nParent"].Add(new KVObject(-1));
+    }
+    var result = (IReadOnlyDictionary<string, string>?)
+        profiles.Invoke(
+            null,
+            new object[]
+            {
+                "models/heroes/" + host + "/" + host + ".vmdl_c",
+                "models/items/" + model + ".vmdl_c",
+                skeleton,
+            }
+        );
+    Check(result is not null && result[orphan] == target, "Root profile failed: " + host);
+    Check(
+        profiles.Invoke(
+            null,
+            new object[] { "models/heroes/unrelated/hero.vmdl_c", "models/items/" + model + ".vmdl_c", skeleton }
+        )
+            is null,
+        "Profile leaked to unrelated hero"
+    );
+}
+var willow = Skeleton("pelvis");
+willow["m_boneName"].Add(new KVObject("head"));
+willow["m_nParent"].Add(new KVObject(0));
+var w = (IReadOnlyDictionary<string, string>?)
+    profiles.Invoke(
+        null,
+        new object[]
+        {
+            "models/heroes/dark_willow/dark_willow.vmdl_c",
+            "models/items/dark_willow/the_naughty_witch_from_dark_woods_head/the_naughty_witch_from_dark_woods_head.vmdl_c",
+            willow,
+        }
+    );
+Check(w is not null && w["cat_head_base"] == "head", "Willow head was attached to pelvis");
+var invoker = Skeleton("root_0");
+foreach (var bone in new[] { "orb1", "orb2", "orb3", "Head_1" })
+{
+    invoker["m_boneName"].Add(new KVObject(bone));
+    invoker["m_nParent"].Add(new KVObject(bone == "Head_1" ? 0 : -1));
+}
+var crimson = (IReadOnlyDictionary<string, string>?)
+    profiles.Invoke(
+        null,
+        new object[]
+        {
+            "models/heroes/invoker/invoker.vmdl_c",
+            "models/items/invoker/crimson_taoist_head/crimson_taoist_head.vmdl_c",
+            invoker,
+        }
+    );
+Check(crimson?["topKnot_0"] == "Head_1", "Crimson Taoist hair should follow Invoker's head");
+var ur = fixture.RootElement.GetProperty("ursa");
+var uroot = Read(ur.GetProperty("root"));
+var meshes = ur.GetProperty("meshes").EnumerateArray().Select(Read).ToArray();
+var boxesBefore = string.Join("|", meshes.Select(m => m.ToString()));
+var bounds = Method("ModelSelectionBounds", "Apply");
+Check((bool)bounds.Invoke(null, new object[] { uroot, meshes })!, "Ursa bounds not restored");
+Check(
+    uroot["m_modelInfo"]["m_vHullMax"][2].ToDouble(null) > uroot["m_modelInfo"]["m_vHullMin"][2].ToDouble(null),
+    "Degenerate bounds"
+);
+Check(boxesBefore == string.Join("|", meshes.Select(m => m.ToString())), "Selection hitboxes changed");
+Check(!(bool)bounds.Invoke(null, new object[] { uroot, meshes })!, "Nonzero bounds rewritten");
+var bake = Method("LifestealerRuntime", "Bake");
+foreach (var key in new[] { "m_animArray", "m_localS1SeqDescArray" })
+{
+    var field = key == "m_animArray" ? "m_name" : "m_sName";
+    KVObject Anim(string n, string pose) =>
+        R(
+            (field, new KVObject(n)),
+            ("m_activityArray", A()),
+            ("m_flags", R(("m_bHidden", new KVObject(false)))),
+            ("pose", new KVObject(pose))
+        );
+    KVObject idle = Anim("idle_anim", "healthy"),
+        hurt = Anim("idle_injured_anim", "hurt"),
+        attack = Anim("attack_injured", "untouched");
+    var data = R((key, A(idle, hurt, attack)));
+    Check((int)bake.Invoke(null, new object[] { data, key })! == 1, "LS idle count");
+    Check(
+        data[key][1]["pose"].ToString(null) == "healthy" && data[key][1][field].ToString(null) == "idle_injured_anim",
+        "LS identity or pose"
+    );
+    Check(data[key][2]["pose"].ToString(null) == "untouched", "LS attack changed");
+}
+Console.WriteLine(
+    "Reported runtime: authored PA CP26, Jugg/Mace names, hero-owned roots, exact WR/TA/Sven/Willow/Ember profiles, original Ursa selection bounds and Lifestealer idle slots passed."
+);
+
+var collectScope = Method("ScopedHitboxTransfer", "Collect");
+var appendScope = Method("ScopedHitboxTransfer", "Append");
+var scopeBone = R(("m_sBoneName", new KVObject("head")));
+KVObject ScopeSet(string name) => R(("key", new KVObject(name)), ("value", R(("m_HitBoxes", A(scopeBone)))));
+var sourceScope = R(("m_hitboxsets", A(ScopeSet("default"), ScopeSet("harlord_fx_test"))));
+var scopeSkel = R(("m_boneName", A(new KVObject("head"))));
+var transferred = (KVObject[])collectScope.Invoke(null, new object[] { sourceScope, scopeSkel })!;
+Check(transferred.Length == 1, "Independent wearable copied non-effect hitboxes");
+var targetScope = R(("m_hitboxsets", A(ScopeSet("select_high"))));
+appendScope.Invoke(null, new object[] { targetScope, transferred });
+Check(
+    targetScope["m_hitboxsets"].Count == 2 && targetScope["m_hitboxsets"][0]["key"].ToString(null) == "select_high",
+    "Selection box overwritten by effect transfer"
+);
+
 // A volume on a bone the host lacks (the reported weapon_3) stays on the
 // independent wearable: it is not copied to the host, and the set still builds.
-Check(((KVObject[])collectScope.Invoke(null,new object[]{sourceScope,R(("m_boneName",A(new KVObject("other"))))})!).Length==0,"Unknown effect bone copied to the host");
-Console.WriteLine("Independent effect hitboxes: only private volumes transferred; host selection kept, unknown-bone volumes left on the wearable.");
+Check(
+    (
+        (KVObject[])
+            collectScope.Invoke(null, new object[] { sourceScope, R(("m_boneName", A(new KVObject("other")))) })!
+    ).Length == 0,
+    "Unknown effect bone copied to the host"
+);
+Console.WriteLine(
+    "Independent effect hitboxes: only private volumes transferred; host selection kept, unknown-bone volumes left on the wearable."
+);
 
-var healthyBake=Method("HeroHealthyLocomotion","Bake");
-foreach(var key in new[]{"m_animArray","m_localS1SeqDescArray"}){var field=key=="m_animArray"?"m_name":"m_sName";KVObject Clip(string name,string payload)=>R((field,new KVObject(name)),("m_activityArray",A()),("payload",new KVObject(payload)));var data=R((key,A(Clip("run_anim","healthy"),Clip("run_new_injured_anim","injured"),Clip("attack_injured","attack"))));Check((int)healthyBake.Invoke(null,new object[]{data,key})! ==1,"Centaur run alias missing");Check(data[key][1]["payload"].ToString(null)=="healthy"&&data[key][1][field].ToString(null)=="run_new_injured_anim","Healthy locomotion changed sequence identity");Check(data[key][2]["payload"].ToString(null)=="attack","Healthy locomotion replaced injured attack");}
+var healthyBake = Method("HeroHealthyLocomotion", "Bake");
+foreach (var key in new[] { "m_animArray", "m_localS1SeqDescArray" })
+{
+    var field = key == "m_animArray" ? "m_name" : "m_sName";
+    KVObject Clip(string name, string payload) =>
+        R((field, new KVObject(name)), ("m_activityArray", A()), ("payload", new KVObject(payload)));
+    var data = R(
+        (key, A(Clip("run_anim", "healthy"), Clip("run_new_injured_anim", "injured"), Clip("attack_injured", "attack")))
+    );
+    Check((int)healthyBake.Invoke(null, new object[] { data, key })! == 1, "Centaur run alias missing");
+    Check(
+        data[key][1]["payload"].ToString(null) == "healthy"
+            && data[key][1][field].ToString(null) == "run_new_injured_anim",
+        "Healthy locomotion changed sequence identity"
+    );
+    Check(data[key][2]["payload"].ToString(null) == "attack", "Healthy locomotion replaced injured attack");
+}
 Console.WriteLine("Centaur/DP healthy locomotion: run_new mapping, sequence identity and attack preservation passed.");
 
-var invokerBake=Method("HeroHealthyLocomotion","BakeInvoker");
-foreach(var key in new[]{"m_animArray","m_localS1SeqDescArray"}){var field=key=="m_animArray"?"m_name":"m_sName";var at=key=="m_animArray"?"@":"";KVObject Clip(string name,string pose)=>R((field,new KVObject(name)),("m_activityArray",A()),("pose",new KVObject(pose)));var data=R((key,A(Clip(at+"run_anim","walk"),Clip(at+"run_anim_var1","cartwheel"),Clip("run_versus_screen","versus"),Clip("cast_anim","cast"))));Check((int)invokerBake.Invoke(null,new object[]{data,key})! ==2,"Invoker run aliases absent");Check(data[key][1]["pose"].ToString(null)=="walk"&&data[key][2]["pose"].ToString(null)=="walk","Invoker cartwheel payload retained");Check(data[key][3]["pose"].ToString(null)=="cast","Invoker cast changed");}
+var invokerBake = Method("HeroHealthyLocomotion", "BakeInvoker");
+foreach (var key in new[] { "m_animArray", "m_localS1SeqDescArray" })
+{
+    var field = key == "m_animArray" ? "m_name" : "m_sName";
+    var at = key == "m_animArray" ? "@" : "";
+    KVObject Clip(string name, string pose) =>
+        R((field, new KVObject(name)), ("m_activityArray", A()), ("pose", new KVObject(pose)));
+    var data = R(
+        (
+            key,
+            A(
+                Clip(at + "run_anim", "walk"),
+                Clip(at + "run_anim_var1", "cartwheel"),
+                Clip("run_versus_screen", "versus"),
+                Clip("cast_anim", "cast")
+            )
+        )
+    );
+    Check((int)invokerBake.Invoke(null, new object[] { data, key })! == 2, "Invoker run aliases absent");
+    Check(
+        data[key][1]["pose"].ToString(null) == "walk" && data[key][2]["pose"].ToString(null) == "walk",
+        "Invoker cartwheel payload retained"
+    );
+    Check(data[key][3]["pose"].ToString(null) == "cast", "Invoker cast changed");
+}
 Console.WriteLine("Invoker persona: ANIM @ names and ASEQ run aliases normalized; casts preserved.");
 
-var wrSkeleton=R(("m_boneName",A(new KVObject("root"),new KVObject("hawk_chest"))),("m_nParent",A(new KVObject(-1),new KVObject(-1))));
-foreach(var part in new[]{"wr_arcana_head","wr_arcana_cape","wr_arcana_weapon","wr_arcana_quiver","wr_arcana_shoulder_refit_legacy"})foreach(var suffix in new[]{".vmdl",".vmdl_c"}){var mapped=(IReadOnlyDictionary<string,string>?)profiles.Invoke(null,new object[]{"models/heroes/windrunner/windrunner.vmdl_c","models/items/windrunner/windrunner_arcana/"+part+suffix,wrSkeleton});Check(mapped is not null&&mapped["wr_root"]=="root","WR authored part not attached: "+part);}
-Check(profiles.Invoke(null,new object[]{"models/heroes/windrunner/windrunner.vmdl_c","models/items/windrunner/windrunner_arcana/unrelated.vmdl_c",wrSkeleton}) is null,"WR exact profile accepted unrelated model");
-Console.WriteLine("Windranger: all five authored arcana parts resolve wr_root with hawk_chest present; unrelated models rejected.");
+var wrSkeleton = R(
+    ("m_boneName", A(new KVObject("root"), new KVObject("hawk_chest"))),
+    ("m_nParent", A(new KVObject(-1), new KVObject(-1)))
+);
+foreach (
+    var part in new[]
+    {
+        "wr_arcana_head",
+        "wr_arcana_cape",
+        "wr_arcana_weapon",
+        "wr_arcana_quiver",
+        "wr_arcana_shoulder_refit_legacy",
+    }
+)
+foreach (var suffix in new[] { ".vmdl", ".vmdl_c" })
+{
+    var mapped = (IReadOnlyDictionary<string, string>?)
+        profiles.Invoke(
+            null,
+            new object[]
+            {
+                "models/heroes/windrunner/windrunner.vmdl_c",
+                "models/items/windrunner/windrunner_arcana/" + part + suffix,
+                wrSkeleton,
+            }
+        );
+    Check(mapped is not null && mapped["wr_root"] == "root", "WR authored part not attached: " + part);
+}
+Check(
+    profiles.Invoke(
+        null,
+        new object[]
+        {
+            "models/heroes/windrunner/windrunner.vmdl_c",
+            "models/items/windrunner/windrunner_arcana/unrelated.vmdl_c",
+            wrSkeleton,
+        }
+    )
+        is null,
+    "WR exact profile accepted unrelated model"
+);
+Console.WriteLine(
+    "Windranger: all five authored arcana parts resolve wr_root with hawk_chest present; unrelated models rejected."
+);

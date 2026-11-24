@@ -1,27 +1,287 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import os from 'node:os';
-import {TesterAuth} from '../lib/tester/auth.mjs';import {testerSource} from '../lib/tester/routes.mjs';import {applyTesterHosts} from '../lib/tester/build.mjs';import {HudCreatorService} from '../lib/hud-creator/service.mjs';import {startServer} from '../server.mjs';
-const owner='111111111111111111',tester='222222222222222222',other='333333333333333333',origin='https://studio.example';
-function fixture(){const root=fs.mkdtempSync(path.join(os.tmpdir(),'tester-auth-'));let id=tester,calls=[];const auth=new TesterAuth(root,{publicBaseUrl:origin},{env:{TESTER_OWNER_DISCORD_ID:owner,DISCORD_CLIENT_ID:'444444444444444444',DISCORD_CLIENT_SECRET:'test-secret'},fetcher:async(url,opts)=>{calls.push({url,opts});return{ok:true,json:async()=>url.endsWith('/token')?{access_token:'private-token',scope:'identify'}:{id,username:'Tester'}};}});auth.update({id:owner},tester);return{root,auth,calls,set id(v){id=v;},dispose(){fs.rmSync(root,{recursive:true,force:true});}};}
-async function login(f,id=tester){f.id=id;const b=f.auth.begin(),state=new URL(b.url).searchParams.get('state');const callback=new URL(origin+'/api/tester/auth/callback?code=abc&state='+state);const cookie=await f.auth.callback({headers:{cookie:'tester-oauth-state='+state}},callback);return {cookie:cookie.split(';')[0],callback,state};}
-test('Discord code grant is state/cookie-bound, single-use, identify-only and whitelist-gated',async()=>{const f=fixture();try{const b=f.auth.begin(),url=new URL(b.url),state=url.searchParams.get('state');assert.equal(url.searchParams.get('scope'),'identify');assert(!url.href.includes('test-secret'));await assert.rejects(f.auth.callback({headers:{}},new URL(origin+'/api/tester/auth/callback?state='+state+'&code=abc')),/попытка/);assert.equal(f.calls.length,0);const s=await login(f);assert.equal(f.auth.verify({headers:{cookie:s.cookie}}).id,tester);await assert.rejects(f.auth.callback({headers:{cookie:'tester-oauth-state='+s.state}},s.callback),/попытка/);await assert.rejects(login(f,other),/whitelist/);assert.equal(f.auth.sessions.size,1);assert(f.calls[0].opts.body.get('client_secret')==='test-secret');}finally{f.dispose();}});
-test('only configured owner edits whitelist; removal and logout revoke sessions; mutations require Origin and CSRF',async()=>{const f=fixture();try{const s=await login(f),req={headers:{cookie:s.cookie}},session=f.auth.verify(req);assert.throws(()=>f.auth.update(session,other),/владелец/);assert.throws(()=>f.auth.verify(req,{mutation:true}),/Origin/);assert.throws(()=>f.auth.verify({headers:{...req.headers,origin}},{mutation:true}),/защита/);assert.equal(f.auth.verify({headers:{...req.headers,origin,'x-tester-csrf':session.csrf}},{mutation:true}).id,tester);f.auth.update({id:owner},tester,true);assert.throws(()=>f.auth.verify(req),/вход/);assert.deepEqual(f.auth.list(),[]);f.auth.update({id:owner},tester);const t=await login(f);f.auth.logout({headers:{cookie:t.cookie}});assert.throws(()=>f.auth.verify({headers:{cookie:t.cookie}}),/вход/);}finally{f.dispose();}});
-test('tester HUD saves cannot read or overwrite admin or another tester projects',()=>{const root=fs.mkdtempSync(path.join(os.tmpdir(),'tester-hud-'));try{const a=new HudCreatorService({root,config:{}}),b=new HudCreatorService({root,config:{testerProjectOwner:tester}}),c=new HudCreatorService({root,config:{testerProjectOwner:other}});const project={version:1,name:'Private HUD',elements:[]};const saved=b.save(project);assert.equal(b.list().length,1);assert.equal(a.list().length,0);assert.equal(c.list().length,0);assert.throws(()=>c.load(saved.id));}finally{fs.rmSync(root,{recursive:true,force:true});}});
-test('public builder cannot enter tester native pipeline',async()=>{await applyTesterHosts({config:{}},null,null,null,null,null,null,{});let calls=0;await applyTesterHosts({config:{testerBuildV1:false},run(){calls++;}},[],new Map(),new Set(),[],null,null,{});assert.equal(calls,0);});
-test('tester modules map private APIs without granting admin endpoints',()=>{const ui=fs.readFileSync(new URL('../lib/editor/ui.mjs',import.meta.url),'utf8'),scoped=testerSource(ui);assert(!scoped.includes('/api/admin/'));assert(scoped.includes("route.startsWith('/api/tester/studio/')"));assert(scoped.includes("from '/tester/assets/set-studio.mjs'"));assert(!testerSource(fs.readFileSync(new URL('../lib/hud-creator/ui.mjs',import.meta.url),'utf8')).includes('/api/admin/'));});
-test('tester routes require Discord cookie even on localhost; admin/widget credentials never authorize tester APIs',async()=>{const f=fixture(),s=await login(f);const app=await startServer({port:0,testerAuth:f.auth,adminAuth:{verify(){throw Error('Sign in');}}});try{
- for(const route of ['/api/tester/me','/api/tester/studio/catalog','/api/tester/editor/catalog','/api/tester/editor/hud/projects','/tester/assets/set-studio.mjs'])assert.equal((await fetch(app.url+route,{headers:{Authorization:'Bearer admin-token'}})).status,401,route);
- const headers={Cookie:s.cookie};assert.equal((await fetch(app.url+'/api/tester/me',{headers})).status,200);assert.equal((await fetch(app.url+'/api/tester/studio/catalog',{headers})).status,200);assert.equal((await fetch(app.url+'/api/tester/studio/statistics',{headers})).status,404);assert.equal((await fetch(app.url+'/api/tester/whitelist',{headers})).status,403);assert.equal((await fetch(app.url+'/api/admin/statistics',{headers})).status,401);assert.equal((await fetch(app.url+'/api/tester/editor/hud/projects',{headers})).status,200);assert.equal((await fetch(app.url+'/api/tester/editor/build',{method:'POST',headers,body:'{}'})).status,403);
- const js=await fetch(app.url+'/api/tester/editor/ui.mjs',{headers});assert.equal(js.status,200);assert(!((await js.text()).includes('/api/admin/')));
- const publicCatalog=await fetch(app.url+'/api/catalog');assert.equal(publicCatalog.status,200);assert.equal(app.builder.config.testerBuildV1,true);
- f.auth.update({id:owner},tester,true);assert.equal((await fetch(app.url+'/api/tester/studio/catalog',{headers})).status,401);
- }finally{app.previews.dispose();await new Promise(r=>app.server.close(r));f.dispose();}});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { TesterAuth } from '../lib/tester/auth.mjs';
+import { testerSource } from '../lib/tester/routes.mjs';
+import { applyTesterHosts } from '../lib/tester/build.mjs';
+import { HudCreatorService } from '../lib/hud-creator/service.mjs';
+import { startServer } from '../server.mjs';
+const owner = '111111111111111111',
+  tester = '222222222222222222',
+  other = '333333333333333333',
+  origin = 'https://studio.example';
+function fixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tester-auth-'));
+  let id = tester,
+    calls = [];
+  const auth = new TesterAuth(
+    root,
+    { publicBaseUrl: origin },
+    {
+      env: {
+        TESTER_OWNER_DISCORD_ID: owner,
+        DISCORD_CLIENT_ID: '444444444444444444',
+        DISCORD_CLIENT_SECRET: 'test-secret'
+      },
+      fetcher: async (url, opts) => {
+        calls.push({ url, opts });
+        return {
+          ok: true,
+          json: async () =>
+            url.endsWith('/token') ? { access_token: 'private-token', scope: 'identify' } : { id, username: 'Tester' }
+        };
+      }
+    }
+  );
+  auth.update({ id: owner }, tester);
+  return {
+    root,
+    auth,
+    calls,
+    set id(v) {
+      id = v;
+    },
+    dispose() {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  };
+}
+async function login(f, id = tester) {
+  f.id = id;
+  const b = f.auth.begin(),
+    state = new URL(b.url).searchParams.get('state');
+  const callback = new URL(origin + '/api/tester/auth/callback?code=abc&state=' + state);
+  const cookie = await f.auth.callback({ headers: { cookie: 'tester-oauth-state=' + state } }, callback);
+  return { cookie: cookie.split(';')[0], callback, state };
+}
+test('Discord code grant is state/cookie-bound, single-use, identify-only and whitelist-gated', async () => {
+  const f = fixture();
+  try {
+    const b = f.auth.begin(),
+      url = new URL(b.url),
+      state = url.searchParams.get('state');
+    assert.equal(url.searchParams.get('scope'), 'identify');
+    assert(!url.href.includes('test-secret'));
+    await assert.rejects(
+      f.auth.callback({ headers: {} }, new URL(origin + '/api/tester/auth/callback?state=' + state + '&code=abc')),
+      /попытка/
+    );
+    assert.equal(f.calls.length, 0);
+    const s = await login(f);
+    assert.equal(f.auth.verify({ headers: { cookie: s.cookie } }).id, tester);
+    await assert.rejects(
+      f.auth.callback({ headers: { cookie: 'tester-oauth-state=' + s.state } }, s.callback),
+      /попытка/
+    );
+    await assert.rejects(login(f, other), /whitelist/);
+    assert.equal(f.auth.sessions.size, 1);
+    assert(f.calls[0].opts.body.get('client_secret') === 'test-secret');
+  } finally {
+    f.dispose();
+  }
+});
+test('only configured owner edits whitelist; removal and logout revoke sessions; mutations require Origin and CSRF', async () => {
+  const f = fixture();
+  try {
+    const s = await login(f),
+      req = { headers: { cookie: s.cookie } },
+      session = f.auth.verify(req);
+    assert.throws(() => f.auth.update(session, other), /владелец/);
+    assert.throws(() => f.auth.verify(req, { mutation: true }), /Origin/);
+    assert.throws(() => f.auth.verify({ headers: { ...req.headers, origin } }, { mutation: true }), /защита/);
+    assert.equal(
+      f.auth.verify({ headers: { ...req.headers, origin, 'x-tester-csrf': session.csrf } }, { mutation: true }).id,
+      tester
+    );
+    f.auth.update({ id: owner }, tester, true);
+    assert.throws(() => f.auth.verify(req), /вход/);
+    assert.deepEqual(f.auth.list(), []);
+    f.auth.update({ id: owner }, tester);
+    const t = await login(f);
+    f.auth.logout({ headers: { cookie: t.cookie } });
+    assert.throws(() => f.auth.verify({ headers: { cookie: t.cookie } }), /вход/);
+  } finally {
+    f.dispose();
+  }
+});
+test('tester HUD saves cannot read or overwrite admin or another tester projects', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tester-hud-'));
+  try {
+    const a = new HudCreatorService({ root, config: {} }),
+      b = new HudCreatorService({ root, config: { testerProjectOwner: tester } }),
+      c = new HudCreatorService({ root, config: { testerProjectOwner: other } });
+    const project = { version: 1, name: 'Private HUD', elements: [] };
+    const saved = b.save(project);
+    assert.equal(b.list().length, 1);
+    assert.equal(a.list().length, 0);
+    assert.equal(c.list().length, 0);
+    assert.throws(() => c.load(saved.id));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+test('public builder cannot enter tester native pipeline', async () => {
+  await applyTesterHosts({ config: {} }, null, null, null, null, null, null, {});
+  let calls = 0;
+  await applyTesterHosts(
+    {
+      config: { testerBuildV1: false },
+      run() {
+        calls++;
+      }
+    },
+    [],
+    new Map(),
+    new Set(),
+    [],
+    null,
+    null,
+    {}
+  );
+  assert.equal(calls, 0);
+});
+test('tester modules map private APIs without granting admin endpoints', () => {
+  const ui = fs.readFileSync(new URL('../lib/editor/ui.mjs', import.meta.url), 'utf8'),
+    scoped = testerSource(ui);
+  assert(!scoped.includes('/api/admin/'));
+  assert(scoped.includes("route.startsWith('/api/tester/studio/')"));
+  assert(scoped.includes("from '/tester/assets/set-studio.mjs'"));
+  assert(
+    !testerSource(fs.readFileSync(new URL('../lib/hud-creator/ui.mjs', import.meta.url), 'utf8')).includes(
+      '/api/admin/'
+    )
+  );
+});
+test('tester routes require Discord cookie even on localhost; admin/widget credentials never authorize tester APIs', async () => {
+  const f = fixture(),
+    s = await login(f);
+  const app = await startServer({
+    port: 0,
+    testerAuth: f.auth,
+    adminAuth: {
+      verify() {
+        throw Error('Sign in');
+      }
+    }
+  });
+  try {
+    for (const route of [
+      '/api/tester/me',
+      '/api/tester/studio/catalog',
+      '/api/tester/editor/catalog',
+      '/api/tester/editor/hud/projects',
+      '/tester/assets/set-studio.mjs'
+    ])
+      assert.equal(
+        (await fetch(app.url + route, { headers: { Authorization: 'Bearer admin-token' } })).status,
+        401,
+        route
+      );
+    const headers = { Cookie: s.cookie };
+    assert.equal((await fetch(app.url + '/api/tester/me', { headers })).status, 200);
+    assert.equal((await fetch(app.url + '/api/tester/studio/catalog', { headers })).status, 200);
+    assert.equal((await fetch(app.url + '/api/tester/studio/statistics', { headers })).status, 404);
+    assert.equal((await fetch(app.url + '/api/tester/whitelist', { headers })).status, 403);
+    assert.equal((await fetch(app.url + '/api/admin/statistics', { headers })).status, 401);
+    assert.equal((await fetch(app.url + '/api/tester/editor/hud/projects', { headers })).status, 200);
+    assert.equal(
+      (await fetch(app.url + '/api/tester/editor/build', { method: 'POST', headers, body: '{}' })).status,
+      403
+    );
+    const js = await fetch(app.url + '/api/tester/editor/ui.mjs', { headers });
+    assert.equal(js.status, 200);
+    assert(!(await js.text()).includes('/api/admin/'));
+    const publicCatalog = await fetch(app.url + '/api/catalog');
+    assert.equal(publicCatalog.status, 200);
+    assert.equal(app.builder.config.testerBuildV1, true);
+    f.auth.update({ id: owner }, tester, true);
+    assert.equal((await fetch(app.url + '/api/tester/studio/catalog', { headers })).status, 401);
+  } finally {
+    app.previews.dispose();
+    await new Promise(r => app.server.close(r));
+    f.dispose();
+  }
+});
 
-test('tester login survives restart, keeps bearer token off disk, and logout stays revoked',async()=>{
- const f=fixture();try{const s=await login(f);const create=()=>new TesterAuth(f.root,{publicBaseUrl:origin},{env:{TESTER_OWNER_DISCORD_ID:owner,DISCORD_CLIENT_ID:f.auth.clientId,DISCORD_CLIENT_SECRET:'test-secret'}});const disk=fs.readFileSync(path.join(f.root,'data/tester-sessions.json'),'utf8');assert(!disk.includes(s.cookie.split('=')[1]));const restarted=create();assert.equal(restarted.verify({headers:{cookie:s.cookie}}).id,tester);restarted.logout({headers:{cookie:s.cookie}});assert.throws(()=>create().verify({headers:{cookie:s.cookie}}),/вход/);}finally{f.dispose();}
+test('tester login survives restart, keeps bearer token off disk, and logout stays revoked', async () => {
+  const f = fixture();
+  try {
+    const s = await login(f);
+    const create = () =>
+      new TesterAuth(
+        f.root,
+        { publicBaseUrl: origin },
+        {
+          env: {
+            TESTER_OWNER_DISCORD_ID: owner,
+            DISCORD_CLIENT_ID: f.auth.clientId,
+            DISCORD_CLIENT_SECRET: 'test-secret'
+          }
+        }
+      );
+    const disk = fs.readFileSync(path.join(f.root, 'data/tester-sessions.json'), 'utf8');
+    assert(!disk.includes(s.cookie.split('=')[1]));
+    const restarted = create();
+    assert.equal(restarted.verify({ headers: { cookie: s.cookie } }).id, tester);
+    restarted.logout({ headers: { cookie: s.cookie } });
+    assert.throws(() => create().verify({ headers: { cookie: s.cookie } }), /вход/);
+  } finally {
+    f.dispose();
+  }
 });
-test('tester sessions renew while active, expire when inactive, and whitelist revocation survives restart',async()=>{
- const f=fixture();try{let clock=Date.now();f.auth.now=()=>clock;const s=await login(f),req={headers:{cookie:s.cookie}};const first=f.auth.verify(req).expires;clock+=2*86400000;const renewed=f.auth.verify(req).expires;assert(renewed>first);clock=renewed+1;assert.throws(()=>f.auth.verify(req),/вход/);const next=await login(f);f.auth.update({id:owner},tester,true);const restart=new TesterAuth(f.root,{publicBaseUrl:origin},{env:{TESTER_OWNER_DISCORD_ID:owner,DISCORD_CLIENT_ID:f.auth.clientId,DISCORD_CLIENT_SECRET:'test-secret'},now:()=>clock});assert.throws(()=>restart.verify({headers:{cookie:next.cookie}}),/вход/);}finally{f.dispose();}
+test('tester sessions renew while active, expire when inactive, and whitelist revocation survives restart', async () => {
+  const f = fixture();
+  try {
+    let clock = Date.now();
+    f.auth.now = () => clock;
+    const s = await login(f),
+      req = { headers: { cookie: s.cookie } };
+    const first = f.auth.verify(req).expires;
+    clock += 2 * 86400000;
+    const renewed = f.auth.verify(req).expires;
+    assert(renewed > first);
+    clock = renewed + 1;
+    assert.throws(() => f.auth.verify(req), /вход/);
+    const next = await login(f);
+    f.auth.update({ id: owner }, tester, true);
+    const restart = new TesterAuth(
+      f.root,
+      { publicBaseUrl: origin },
+      {
+        env: {
+          TESTER_OWNER_DISCORD_ID: owner,
+          DISCORD_CLIENT_ID: f.auth.clientId,
+          DISCORD_CLIENT_SECRET: 'test-secret'
+        },
+        now: () => clock
+      }
+    );
+    assert.throws(() => restart.verify({ headers: { cookie: next.cookie } }), /вход/);
+  } finally {
+    f.dispose();
+  }
 });
-test('private tester scripts revalidate with ETag and never bypass login',async()=>{
- const f=fixture(),s=await login(f);const app=await startServer({port:0,testerAuth:f.auth});try{const url=app.url+'/tester/assets/set-studio.mjs',r=await fetch(url,{headers:{Cookie:s.cookie}});assert.equal(r.status,200);assert.match(r.headers.get('cache-control'),/private/);const tag=r.headers.get('etag');assert(tag);await r.text();const cached=await fetch(url,{headers:{Cookie:s.cookie,'If-None-Match':tag}});assert.equal(cached.status,304);const denied=await fetch(url,{headers:{'If-None-Match':tag}});assert.equal(denied.status,401);}finally{app.previews.dispose();await new Promise(r=>app.server.close(r));f.dispose();}
+test('private tester scripts revalidate with ETag and never bypass login', async () => {
+  const f = fixture(),
+    s = await login(f);
+  const app = await startServer({ port: 0, testerAuth: f.auth });
+  try {
+    const url = app.url + '/tester/assets/set-studio.mjs',
+      r = await fetch(url, { headers: { Cookie: s.cookie } });
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('cache-control'), /private/);
+    const tag = r.headers.get('etag');
+    assert(tag);
+    await r.text();
+    const cached = await fetch(url, { headers: { Cookie: s.cookie, 'If-None-Match': tag } });
+    assert.equal(cached.status, 304);
+    const denied = await fetch(url, { headers: { 'If-None-Match': tag } });
+    assert.equal(denied.status, 401);
+  } finally {
+    app.previews.dispose();
+    await new Promise(r => app.server.close(r));
+    f.dispose();
+  }
 });

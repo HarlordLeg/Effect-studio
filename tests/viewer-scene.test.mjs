@@ -1,23 +1,168 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SceneSource,readGlb,writeGlb,effectSource,normalizeAttachment} from '../public/viewer/scene-source.mjs';
-import {SceneDocument} from '../public/viewer/scene-document.mjs';
-const glb=()=>writeGlb({json:{asset:{version:'2.0'},materials:[{name:'same',pbrMetallicRoughness:{baseColorFactor:[1,.5,.2,1]}}],nodes:[{name:'root'}],extras:{dotaStudio:{materials:{same:{descriptor:{specScale:0}}},attachments:{weapon:{bones:['root'],offsets:[[1,2,3]],rotations:[[0,0,0,1]],weights:[1]}}}}},bin:new Uint8Array([1,2,3,4])});
-test('scene adaptation retains binary geometry and isolates material names between wearables',()=>{
- let n=0;const released=[],source=new SceneSource({createUrl:()=>`blob:${++n}`,revokeUrl:u=>released.push(u)});
- source.addGlb(glb(),{key:'hero',owner:'hero'});source.addGlb(glb(),{key:'arms',owner:'arms',itemId:'one'});
- assert.deepEqual(Object.keys(source.manifest.materials),['hero::0','arms::0']);assert.equal(source.owners.get('one'),'arms');assert.deepEqual(source.manifest.attachments.hero.weapon.offsets,[[1,2,3]]);
- const decoded=readGlb(glb());assert.deepEqual(readGlb(writeGlb(decoded)).bin,decoded.bin);source.dispose();assert.equal(released.length,2);assert.equal(source.files.size,0);
+import { SceneSource, readGlb, writeGlb, effectSource, normalizeAttachment } from '../public/viewer/scene-source.mjs';
+import { SceneDocument } from '../public/viewer/scene-document.mjs';
+const glb = () =>
+  writeGlb({
+    json: {
+      asset: { version: '2.0' },
+      materials: [{ name: 'same', pbrMetallicRoughness: { baseColorFactor: [1, 0.5, 0.2, 1] } }],
+      nodes: [{ name: 'root' }],
+      extras: {
+        dotaStudio: {
+          materials: { same: { descriptor: { specScale: 0 } } },
+          attachments: { weapon: { bones: ['root'], offsets: [[1, 2, 3]], rotations: [[0, 0, 0, 1]], weights: [1] } }
+        }
+      }
+    },
+    bin: new Uint8Array([1, 2, 3, 4])
+  });
+test('scene adaptation retains binary geometry and isolates material names between wearables', () => {
+  let n = 0;
+  const released = [],
+    source = new SceneSource({ createUrl: () => `blob:${++n}`, revokeUrl: u => released.push(u) });
+  source.addGlb(glb(), { key: 'hero', owner: 'hero' });
+  source.addGlb(glb(), { key: 'arms', owner: 'arms', itemId: 'one' });
+  assert.deepEqual(Object.keys(source.manifest.materials), ['hero::0', 'arms::0']);
+  assert.equal(source.owners.get('one'), 'arms');
+  assert.deepEqual(source.manifest.attachments.hero.weapon.offsets, [[1, 2, 3]]);
+  const decoded = readGlb(glb());
+  assert.deepEqual(readGlb(writeGlb(decoded)).bin, decoded.bin);
+  source.dispose();
+  assert.equal(released.length, 2);
+  assert.equal(source.files.size, 0);
 });
-test('effect adapter remaps children and snapshots and converts normalized colors to Source bytes',()=>{
- const source=new SceneSource();source.owners.set('one','arms');const packet={root:'particles/a.vpcf_c',definitions:{'particles/a.vpcf_c':{m_Children:[{m_ChildRef:'particles/b.vpcf_c'}]},'particles/b.vpcf_c':{}},snapshots:{'particles/a.vsnap_c':{skin:[{joints:['root'],weights:[1]}]}}};
- const result=effectSource(source,[{packet,itemId:'one',color:[0,1,0]},{packet,scope:'hero'}]);
- assert.equal(result.effects[0].owner,'arms');assert.equal(result.effects[1].owner,'hero');assert.equal(result.systems['studio/0/particles/a'].m_Children[0].m_ChildRef,'studio/0/particles/b');assert.deepEqual(result.systems['studio/0/particles/a'].m_ConstantColor,[0,255,0,255]);assert.deepEqual(result.snapshots['studio/0/particles/a.vsnap'].skin,[[['root',1]]]);assert.equal(Object.keys(result.systems).length,4);
+test('effect adapter remaps children and snapshots and converts normalized colors to Source bytes', () => {
+  const source = new SceneSource();
+  source.owners.set('one', 'arms');
+  const packet = {
+    root: 'particles/a.vpcf_c',
+    definitions: {
+      'particles/a.vpcf_c': { m_Children: [{ m_ChildRef: 'particles/b.vpcf_c' }] },
+      'particles/b.vpcf_c': {}
+    },
+    snapshots: { 'particles/a.vsnap_c': { skin: [{ joints: ['root'], weights: [1] }] } }
+  };
+  const result = effectSource(source, [
+    { packet, itemId: 'one', color: [0, 1, 0] },
+    { packet, scope: 'hero' }
+  ]);
+  assert.equal(result.effects[0].owner, 'arms');
+  assert.equal(result.effects[1].owner, 'hero');
+  assert.equal(result.systems['studio/0/particles/a'].m_Children[0].m_ChildRef, 'studio/0/particles/b');
+  assert.deepEqual(result.systems['studio/0/particles/a'].m_ConstantColor, [0, 255, 0, 255]);
+  assert.deepEqual(result.snapshots['studio/0/particles/a.vsnap'].skin, [[['root', 1]]]);
+  assert.equal(Object.keys(result.systems).length, 4);
 });
-test('attachment adapter accepts Source influence records',()=>{assert.deepEqual(normalizeAttachment({value:{m_nInfluences:1,m_influenceNames:['hand'],m_vInfluenceOffsets:[[1,0,0]],m_vInfluenceRotations:[[0,0,0,1]],m_influenceWeights:[1]}}).bones,['hand']);});
-test('scene document updates copies and rejects unknown ids and prototype properties',()=>{const doc=new SceneDocument();doc.reset({materials:{arms:{rimScale:1}},systems:{a:{m_nMaxParticles:10}}});let event;doc.subscribe(e=>event=e);doc.apply({kind:'material',id:'arms',value:{rimScale:2}});assert.equal(event.kind,'material');const copy=doc.snapshot();copy.materials.arms.rimScale=8;assert.equal(doc.materials.arms.rimScale,2);assert.throws(()=>doc.apply({kind:'material',id:'missing',value:{}}));assert.throws(()=>doc.apply(JSON.parse('{"kind":"particle","id":"a","value":{"__proto__":{}}}')));});
-test('geometry-only GLB gets a visible fallback material',()=>{const source=new SceneSource();const bytes=writeGlb({json:{asset:{version:'2.0'},meshes:[{primitives:[{attributes:{POSITION:0}}]}]},bin:new Uint8Array()});source.addGlb(bytes,{key:'geometry'});assert.equal(Object.keys(source.manifest.materials).length,1);assert.deepEqual(source.manifest.materials['geometry::0'].baseColor,[.55,.58,.65,1]);source.dispose();});
-test('effect model resources are released between effect changes without revoking the hero',()=>{let n=0;const revoked=[],source=new SceneSource({createUrl:()=>`blob:${++n}`,revokeUrl:u=>revoked.push(u)});source.addGlb(glb(),{key:'hero'});source.addGlb(glb(),{key:'fx',register:false});source.clearEffects();assert.deepEqual(revoked,['blob:2']);assert(source.files.has('models/hero.glb'));assert(!source.files.has('models/fx.glb'));assert.deepEqual(Object.keys(source.manifest.materials),['hero::0']);source.dispose();});
-test('texture sheets keep frame UVs and duration for the upstream particle renderer',()=>{const result=effectSource(new SceneSource(),[{packet:{root:'a.vpcf',definitions:{'a.vpcf_c':{}},textures:{'sheet.vtex_c':{mime:'image/png',data:'YWJj',sequences:[{frames:[{duration:.2,images:[{min:[.25,.5],max:[.5,1]}]}]}]}}}}]);assert.deepEqual(result.textures['studio/0/sheet.vtex'].sequences[0].frames[0],{time:.2,uv:[.25,.5,.5,1]});});
-test('embedded textures are assigned to the host shader without duplicate GLTF decoding',async()=>{const source=new SceneSource();const bytes=writeGlb({json:{asset:{version:'2.0'},images:[{uri:'data:image/png;base64,AA=='}],textures:[{source:0}],materials:[{name:'skin',pbrMetallicRoughness:{baseColorTexture:{index:0},baseColorFactor:[.5,1,1,1]},normalTexture:{index:0}}]},bin:new Uint8Array()});const file=source.addGlb(bytes,{key:'skin'});const adapted=readGlb(await(await fetch(source.url(file))).arrayBuffer()).json;assert.equal(adapted.materials[0].pbrMetallicRoughness.baseColorTexture,undefined);assert.equal(adapted.materials[0].normalTexture,undefined);assert.equal(source.manifest.materials['skin::0'].color,'skin-image-0');assert.equal(source.manifest.materials['skin::0'].normal,'skin-image-0');source.dispose();});
-test('particle models without native material or texture never become opaque fallback cards',()=>{const source=new SceneSource();const bytes=writeGlb({json:{asset:{version:'2.0'},materials:[{name:'unknown_card',pbrMetallicRoughness:{baseColorFactor:[.5,.5,.5,1]}}],meshes:[{primitives:[{material:0,attributes:{POSITION:0}}]}]},bin:new Uint8Array()});source.addGlb(bytes,{key:'card',register:false});assert.equal(Object.keys(source.manifest.materials).length,0);assert.match(source.warnings[0],/Particle model material unavailable/);source.dispose();});
+test('attachment adapter accepts Source influence records', () => {
+  assert.deepEqual(
+    normalizeAttachment({
+      value: {
+        m_nInfluences: 1,
+        m_influenceNames: ['hand'],
+        m_vInfluenceOffsets: [[1, 0, 0]],
+        m_vInfluenceRotations: [[0, 0, 0, 1]],
+        m_influenceWeights: [1]
+      }
+    }).bones,
+    ['hand']
+  );
+});
+test('scene document updates copies and rejects unknown ids and prototype properties', () => {
+  const doc = new SceneDocument();
+  doc.reset({ materials: { arms: { rimScale: 1 } }, systems: { a: { m_nMaxParticles: 10 } } });
+  let event;
+  doc.subscribe(e => (event = e));
+  doc.apply({ kind: 'material', id: 'arms', value: { rimScale: 2 } });
+  assert.equal(event.kind, 'material');
+  const copy = doc.snapshot();
+  copy.materials.arms.rimScale = 8;
+  assert.equal(doc.materials.arms.rimScale, 2);
+  assert.throws(() => doc.apply({ kind: 'material', id: 'missing', value: {} }));
+  assert.throws(() => doc.apply(JSON.parse('{"kind":"particle","id":"a","value":{"__proto__":{}}}')));
+});
+test('geometry-only GLB gets a visible fallback material', () => {
+  const source = new SceneSource();
+  const bytes = writeGlb({
+    json: { asset: { version: '2.0' }, meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }] },
+    bin: new Uint8Array()
+  });
+  source.addGlb(bytes, { key: 'geometry' });
+  assert.equal(Object.keys(source.manifest.materials).length, 1);
+  assert.deepEqual(source.manifest.materials['geometry::0'].baseColor, [0.55, 0.58, 0.65, 1]);
+  source.dispose();
+});
+test('effect model resources are released between effect changes without revoking the hero', () => {
+  let n = 0;
+  const revoked = [],
+    source = new SceneSource({ createUrl: () => `blob:${++n}`, revokeUrl: u => revoked.push(u) });
+  source.addGlb(glb(), { key: 'hero' });
+  source.addGlb(glb(), { key: 'fx', register: false });
+  source.clearEffects();
+  assert.deepEqual(revoked, ['blob:2']);
+  assert(source.files.has('models/hero.glb'));
+  assert(!source.files.has('models/fx.glb'));
+  assert.deepEqual(Object.keys(source.manifest.materials), ['hero::0']);
+  source.dispose();
+});
+test('texture sheets keep frame UVs and duration for the upstream particle renderer', () => {
+  const result = effectSource(new SceneSource(), [
+    {
+      packet: {
+        root: 'a.vpcf',
+        definitions: { 'a.vpcf_c': {} },
+        textures: {
+          'sheet.vtex_c': {
+            mime: 'image/png',
+            data: 'YWJj',
+            sequences: [{ frames: [{ duration: 0.2, images: [{ min: [0.25, 0.5], max: [0.5, 1] }] }] }]
+          }
+        }
+      }
+    }
+  ]);
+  assert.deepEqual(result.textures['studio/0/sheet.vtex'].sequences[0].frames[0], {
+    time: 0.2,
+    uv: [0.25, 0.5, 0.5, 1]
+  });
+});
+test('embedded textures are assigned to the host shader without duplicate GLTF decoding', async () => {
+  const source = new SceneSource();
+  const bytes = writeGlb({
+    json: {
+      asset: { version: '2.0' },
+      images: [{ uri: 'data:image/png;base64,AA==' }],
+      textures: [{ source: 0 }],
+      materials: [
+        {
+          name: 'skin',
+          pbrMetallicRoughness: { baseColorTexture: { index: 0 }, baseColorFactor: [0.5, 1, 1, 1] },
+          normalTexture: { index: 0 }
+        }
+      ]
+    },
+    bin: new Uint8Array()
+  });
+  const file = source.addGlb(bytes, { key: 'skin' });
+  const adapted = readGlb(await (await fetch(source.url(file))).arrayBuffer()).json;
+  assert.equal(adapted.materials[0].pbrMetallicRoughness.baseColorTexture, undefined);
+  assert.equal(adapted.materials[0].normalTexture, undefined);
+  assert.equal(source.manifest.materials['skin::0'].color, 'skin-image-0');
+  assert.equal(source.manifest.materials['skin::0'].normal, 'skin-image-0');
+  source.dispose();
+});
+test('particle models without native material or texture never become opaque fallback cards', () => {
+  const source = new SceneSource();
+  const bytes = writeGlb({
+    json: {
+      asset: { version: '2.0' },
+      materials: [{ name: 'unknown_card', pbrMetallicRoughness: { baseColorFactor: [0.5, 0.5, 0.5, 1] } }],
+      meshes: [{ primitives: [{ material: 0, attributes: { POSITION: 0 } }] }]
+    },
+    bin: new Uint8Array()
+  });
+  source.addGlb(bytes, { key: 'card', register: false });
+  assert.equal(Object.keys(source.manifest.materials).length, 0);
+  assert.match(source.warnings[0], /Particle model material unavailable/);
+  source.dispose();
+});

@@ -1,0 +1,12 @@
+vendor/
+docs/
+node_modules/
+data/
+cache/
+output/
+public/viewer/runtime.mjs
+tests/helpers/viewer-test-runtime.bundle.mjs
+*.json
+*.md
+*.html
+*.css

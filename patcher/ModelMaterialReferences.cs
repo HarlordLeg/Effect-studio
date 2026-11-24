@@ -6,8 +6,10 @@ internal static class ModelMaterialReferences
 {
     internal static int Repair(KVObject root)
     {
-        if (!root.TryGetValue("m_materialGroups", out var groups)) return 0;
-        if (!groups.IsArray) throw new InvalidDataException("Invalid model material groups");
+        if (!root.TryGetValue("m_materialGroups", out var groups))
+            return 0;
+        if (!groups.IsArray)
+            throw new InvalidDataException("Invalid model material groups");
         var count = 0;
         foreach (var group in groups.Values)
         {
@@ -17,7 +19,8 @@ internal static class ModelMaterialReferences
             {
                 if (material.ValueType != KVValueType.String)
                     throw new InvalidDataException("Invalid model material reference");
-                if (material.Flag == KVFlag.Resource) continue;
+                if (material.Flag == KVFlag.Resource)
+                    continue;
                 material.Flag = KVFlag.Resource;
                 count++;
             }

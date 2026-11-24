@@ -12,7 +12,11 @@ internal static class Program
         string Output,
         IReadOnlyList<string> ParticlePaths,
         ulong? ResourceId,
-        bool Backup, int Skin, string? ParticleReplacements, bool ModelOnly);
+        bool Backup,
+        int Skin,
+        string? ParticleReplacements,
+        bool ModelOnly
+    );
 
     private sealed record ParticleEntry(string Path, ulong ResourceId, string? Config);
 
@@ -26,40 +30,178 @@ internal static class Program
                 return 0;
             }
 
-            if(args.Length==2&&args[0]=="--editor-resources"){EditorResources.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--editor-textures"){EditorTextures.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--windrunner-focusfire"){WindrunnerFocusFire.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--model-mesh-groups"){ModelMeshGroups.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--map-weather"){MapWeather.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--suppress-particles"){ParticleSuppression.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--techies-body-meshes"){TechiesBodyMeshes.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--cosmetic-shader-rgb"){CosmeticShaderRgb.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--hud-creator"){HudCreator.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--hud-cosmetics"){HudCosmetics.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--minimap-icons"){MinimapIcons.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--global-cosmetics"){GlobalCosmetics.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--index-sound-events"){SoundOverrides.Index(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--sound-overrides"){SoundOverrides.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--persona-voices"){PersonaVoices.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--watermark-models"){ResourceWatermark.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--healthy-locomotion"){HeroHealthyLocomotion.Run(args[1]);return 0;}
-            if(args.Length==2&&args[0]=="--merge-models"){ModelMerge.Run(args[1]);return 0;}
-            if (args.Length == 2 && args[0] == "--persona-scale") { PersonaScale.Run(args[1]);return 0; }
-            if (args.Length == 2 && args[0] == "--item-hitbox-scope") { ItemHitboxScope.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--item-effect-scope") { ItemEffectScope.Run(args[1]); return 0; }
-            if(args.Length==2&&args[0]=="--lifestealer-runtime"){LifestealerRuntime.Run(args[1]);return 0;}
-            if (args.Length == 1 && args[0] == "--capabilities") { Console.WriteLine("{\"version\":\"1.1.0\",\"editorResourcesV1\":true,\"editorTexturesV1\":true,\"windrunnerFocusFireV2\":true,\"modelMeshGroupsV1\":true,\"modelMeshGroupsV2\":true,\"cosmeticShaderRgbV1\":true,\"hudCreatorPreviewV2\":true,\"hudCreatorCssOnlyV1\":true,\"hudCreatorExportV2\":true,\"hudCreatorV1\":true,\"globalHudV2\":true,\"globalHudV1\":true,\"personaScaleV1\":true,\"personaSingleScaleRootV1\":true,\"minimapIconsV2\":true,\"minimapIconsV1\":true,\"announcerSemanticV2\":true,\"globalCosmeticsV1\":true,\"wearableBindingsV1\":true,\"techiesArcanaV1\":true,\"techiesBodyMeshesV1\":true,\"mapWeatherV1\":true,\"mapWeatherV2\":true,\"mapWeatherV3\":true,\"mapWeatherV4\":true,\"modelMergeIdentityV1\":true,\"modelMergeNamedRootsV1\":true,\"modelMergeHideHostMeshesV1\":true,\"modelMergeSharkRootsV1\":true,\"modelMergeRootBonesV1\":true,\"modelMergeMorphV1\":true,\"particleSuppressionV1\":true,\"soundOverridesV1\":true,\"personaRuntimeV1\":true,\"personaVoicesV1\":true,\"personaVoiceStylesV1\":true,\"personaVoiceStylesV2\":true,\"watermarkV1\":true,\"modelMergeV1\":true,\"modelMergeV2\":true,\"modelMergeV5\":true,\"modelMergeV4\":true,\"modelMergeV3\":true,\"particleRecolorV2\":true,\"itemHitboxScopeV1\":true,\"itemEffectScopeV1\":true,\"itemEffectScopeMeshBindV1\":true,\"itemEffectScopeSkinV2\":true,\"itemEffectScopeTreeV2\":true,\"modelSoftbodyPartsV1\":true,\"morphlingRuntimeV2\":true,\"morphlingFishChannelsV1\":true,\"morphlingNativeWaterV1\":true,\"immortalRuntimeFixesV1\":true,\"testerWearableHostV2\":true,\"wearableAuditFix1\":true,\"testerRuntimeWearablesV1\":true,\"testerVisibleSlotCopiesV1\":true,\"testerAttachmentNamespacesV1\":true,\"testerRuntimeBindingsV3\":true,\"testerScopedVolumesV1\":true,\"healthyLocomotionV1\":true,\"invokerPersonaRuntimeV2\":true,\"wearableControlPointPositionsV1\":true,\"lifestealerHealthyRuntimeV1\":true,\"crystalMaidenArcanaRuntimeV1\":true,\"testerImporterRootProfilesV4\":true,\"testerImporterRootProfilesV3\":true,\"testerWearableHostV1\":true,\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"heroActivitiesV4\":true,\"darkclawActivities\":true,\"activityRulesV1\":true,\"activityRulesV2\":true,\"activityRulesV3\":true,\"activityRulesV4\":true,\"activityRulesV5\":true,\"activityRulesV6\":true,\"activityRulesV7\":true,\"activityRulesV8\":true,\"activityRulesV9\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true,\"terrorbladeArcanaV3\":true,\"terrorbladeArcanaV4\":true,\"terrorbladeBindingsV1\":true}");return 0; }
-            if (args.Length == 2 && args[0] == "--morphling-fish-channels") { MorphlingFishChannels.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--cm-arcana-runtime") { CrystalMaidenArcanaRuntime.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--morphling-runtime") { MorphlingRuntime.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--model-softbody-parts") { ModelSoftbodyParts.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--tester-wearable-host") { TesterWearableHost.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--relocate") { ResourceRelocator.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--terrorblade-bindings") { TerrorbladeBindings.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--terrorblade-arcana") { TerrorbladeArcana.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--activity-rules") { HeroActivityRules.Run(args[1]); return 0; }
-            if (args.Length == 2 && args[0] == "--inspect-activities") { HeroActivityRules.Run(args[1],true); return 0; }
-            if (args.Length == 2 && args[0] == "--hero-activities") { HeroActivities.Run(args[1]); return 0; }
+            if (args.Length == 2 && args[0] == "--editor-resources")
+            {
+                EditorResources.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--editor-textures")
+            {
+                EditorTextures.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--windrunner-focusfire")
+            {
+                WindrunnerFocusFire.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--model-mesh-groups")
+            {
+                ModelMeshGroups.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--map-weather")
+            {
+                MapWeather.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--suppress-particles")
+            {
+                ParticleSuppression.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--techies-body-meshes")
+            {
+                TechiesBodyMeshes.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--cosmetic-shader-rgb")
+            {
+                CosmeticShaderRgb.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--hud-creator")
+            {
+                HudCreator.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--hud-cosmetics")
+            {
+                HudCosmetics.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--minimap-icons")
+            {
+                MinimapIcons.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--global-cosmetics")
+            {
+                GlobalCosmetics.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--index-sound-events")
+            {
+                SoundOverrides.Index(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--sound-overrides")
+            {
+                SoundOverrides.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--persona-voices")
+            {
+                PersonaVoices.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--watermark-models")
+            {
+                ResourceWatermark.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--healthy-locomotion")
+            {
+                HeroHealthyLocomotion.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--merge-models")
+            {
+                ModelMerge.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--persona-scale")
+            {
+                PersonaScale.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--item-hitbox-scope")
+            {
+                ItemHitboxScope.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--item-effect-scope")
+            {
+                ItemEffectScope.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--lifestealer-runtime")
+            {
+                LifestealerRuntime.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 1 && args[0] == "--capabilities")
+            {
+                Console.WriteLine(
+                    "{\"version\":\"1.1.0\",\"editorResourcesV1\":true,\"editorTexturesV1\":true,\"windrunnerFocusFireV2\":true,\"modelMeshGroupsV1\":true,\"modelMeshGroupsV2\":true,\"cosmeticShaderRgbV1\":true,\"hudCreatorPreviewV2\":true,\"hudCreatorCssOnlyV1\":true,\"hudCreatorExportV2\":true,\"hudCreatorV1\":true,\"globalHudV2\":true,\"globalHudV1\":true,\"personaScaleV1\":true,\"personaSingleScaleRootV1\":true,\"minimapIconsV2\":true,\"minimapIconsV1\":true,\"announcerSemanticV2\":true,\"globalCosmeticsV1\":true,\"wearableBindingsV1\":true,\"techiesArcanaV1\":true,\"techiesBodyMeshesV1\":true,\"mapWeatherV1\":true,\"mapWeatherV2\":true,\"mapWeatherV3\":true,\"mapWeatherV4\":true,\"modelMergeIdentityV1\":true,\"modelMergeNamedRootsV1\":true,\"modelMergeHideHostMeshesV1\":true,\"modelMergeSharkRootsV1\":true,\"modelMergeRootBonesV1\":true,\"modelMergeMorphV1\":true,\"particleSuppressionV1\":true,\"soundOverridesV1\":true,\"personaRuntimeV1\":true,\"personaVoicesV1\":true,\"personaVoiceStylesV1\":true,\"personaVoiceStylesV2\":true,\"watermarkV1\":true,\"modelMergeV1\":true,\"modelMergeV2\":true,\"modelMergeV5\":true,\"modelMergeV4\":true,\"modelMergeV3\":true,\"particleRecolorV2\":true,\"itemHitboxScopeV1\":true,\"itemEffectScopeV1\":true,\"itemEffectScopeMeshBindV1\":true,\"itemEffectScopeSkinV2\":true,\"itemEffectScopeTreeV2\":true,\"modelSoftbodyPartsV1\":true,\"morphlingRuntimeV2\":true,\"morphlingFishChannelsV1\":true,\"morphlingNativeWaterV1\":true,\"immortalRuntimeFixesV1\":true,\"testerWearableHostV2\":true,\"wearableAuditFix1\":true,\"testerRuntimeWearablesV1\":true,\"testerVisibleSlotCopiesV1\":true,\"testerAttachmentNamespacesV1\":true,\"testerRuntimeBindingsV3\":true,\"testerScopedVolumesV1\":true,\"healthyLocomotionV1\":true,\"invokerPersonaRuntimeV2\":true,\"wearableControlPointPositionsV1\":true,\"lifestealerHealthyRuntimeV1\":true,\"crystalMaidenArcanaRuntimeV1\":true,\"testerImporterRootProfilesV4\":true,\"testerImporterRootProfilesV3\":true,\"testerWearableHostV1\":true,\"relocate\":true,\"legacyRaw\":true,\"materialSkin\":true,\"nativeParticleVariants\":true,\"modelOnly\":true,\"heroActivities\":true,\"heroActivitiesV2\":true,\"heroActivitiesV3\":true,\"heroActivitiesV4\":true,\"darkclawActivities\":true,\"activityRulesV1\":true,\"activityRulesV2\":true,\"activityRulesV3\":true,\"activityRulesV4\":true,\"activityRulesV5\":true,\"activityRulesV6\":true,\"activityRulesV7\":true,\"activityRulesV8\":true,\"activityRulesV9\":true,\"terrorbladeArcana\":true,\"terrorbladeArcanaV2\":true,\"terrorbladeArcanaV3\":true,\"terrorbladeArcanaV4\":true,\"terrorbladeBindingsV1\":true}"
+                );
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--morphling-fish-channels")
+            {
+                MorphlingFishChannels.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--cm-arcana-runtime")
+            {
+                CrystalMaidenArcanaRuntime.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--morphling-runtime")
+            {
+                MorphlingRuntime.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--model-softbody-parts")
+            {
+                ModelSoftbodyParts.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--tester-wearable-host")
+            {
+                TesterWearableHost.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--relocate")
+            {
+                ResourceRelocator.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--terrorblade-bindings")
+            {
+                TerrorbladeBindings.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--terrorblade-arcana")
+            {
+                TerrorbladeArcana.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--activity-rules")
+            {
+                HeroActivityRules.Run(args[1]);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--inspect-activities")
+            {
+                HeroActivityRules.Run(args[1], true);
+                return 0;
+            }
+            if (args.Length == 2 && args[0] == "--hero-activities")
+            {
+                HeroActivities.Run(args[1]);
+                return 0;
+            }
             var options = ParseArguments(args);
             Patch(options);
             return 0;
@@ -75,8 +217,8 @@ internal static class Program
     {
         var input = Path.GetFullPath(options.Input);
         var output = Path.GetFullPath(options.Output);
-        var particlePaths = options.ParticlePaths
-            .Select(NormalizeParticlePath)
+        var particlePaths = options
+            .ParticlePaths.Select(NormalizeParticlePath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -110,19 +252,36 @@ internal static class Program
                 throw new InvalidDataException("The DATA block is not a compiled model.");
             }
 
-            var changedBlocks=ModelVariant.Apply(resource, options.Skin);
-            if(options.ParticleReplacements is not null)
+            var changedBlocks = ModelVariant.Apply(resource, options.Skin);
+            if (options.ParticleReplacements is not null)
             {
-                var paths=System.Text.Json.JsonSerializer.Deserialize<Dictionary<string,string>>(File.ReadAllText(options.ParticleReplacements)) ?? throw new InvalidDataException("Invalid particle replacement map");
-                if(model.Data.TryGetValue("m_modelInfo",out var info) && info.TryGetValue("m_keyValueText",out var text))
+                var paths = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                    File.ReadAllText(options.ParticleReplacements)
+                ) ?? throw new InvalidDataException("Invalid particle replacement map");
+                if (
+                    model.Data.TryGetValue("m_modelInfo", out var info)
+                    && info.TryGetValue("m_keyValueText", out var text)
+                )
                 {
-                    var original=text.ToString(CultureInfo.InvariantCulture);
-                    foreach(var pair in paths)original=original.Replace("\""+NormalizeParticlePath(pair.Key)+"\"","\""+NormalizeParticlePath(pair.Value)+"\"",StringComparison.Ordinal);
-                    info["m_keyValueText"]=new KVObject(original);
+                    var original = text.ToString(CultureInfo.InvariantCulture);
+                    foreach (var pair in paths)
+                        original = original.Replace(
+                            "\"" + NormalizeParticlePath(pair.Key) + "\"",
+                            "\"" + NormalizeParticlePath(pair.Value) + "\"",
+                            StringComparison.Ordinal
+                        );
+                    info["m_keyValueText"] = new KVObject(original);
                 }
             }
-            IReadOnlyList<ParticleEntry> particleEntries = particlePaths.Length == 0 && options.ModelOnly ? Array.Empty<ParticleEntry>() : ResolveParticleEntries(particlePaths, options.ResourceId);
-            if (particleEntries.Count > 0) { SetParticleConfig(model, particleEntries); SetRed2ParticleReference(resource); }
+            IReadOnlyList<ParticleEntry> particleEntries =
+                particlePaths.Length == 0 && options.ModelOnly
+                    ? Array.Empty<ParticleEntry>()
+                    : ResolveParticleEntries(particlePaths, options.ResourceId);
+            if (particleEntries.Count > 0)
+            {
+                SetParticleConfig(model, particleEntries);
+                SetRed2ParticleReference(resource);
+            }
             var needsReferences = particleEntries.Count > 0 && resource.ExternalReferences is null;
             if (!needsReferences)
             {
@@ -142,7 +301,10 @@ internal static class Program
 
                 if (needsReferences)
                 {
-                    EditorResources.AppendReferences(temporary, particleEntries.Select(entry => (entry.Path, entry.ResourceId)));
+                    EditorResources.AppendReferences(
+                        temporary,
+                        particleEntries.Select(entry => (entry.Path, entry.ResourceId))
+                    );
                 }
                 Validate(temporary, particleEntries);
                 File.Move(temporary, output, overwrite: true);
@@ -158,14 +320,26 @@ internal static class Program
 
         Console.WriteLine($"[OK] Attached particles: {particlePaths.Length}");
         Console.WriteLine($"Model:    {output}");
-        foreach (var entry in particlePaths.Length==0 ? Array.Empty<ParticleEntry>() : ResolveParticleEntries(particlePaths, options.ResourceId))
+        foreach (
+            var entry in particlePaths.Length == 0
+                ? Array.Empty<ParticleEntry>()
+                : ResolveParticleEntries(particlePaths, options.ResourceId)
+        )
         {
             Console.WriteLine($"Particle: {entry.Path}");
             Console.WriteLine($"RERL id:  0x{entry.ResourceId:X16}");
         }
     }
 
-    internal static void SerializePatchedResource(Resource resource, byte[] original, Stream output, bool rewriteData = true, HashSet<object>? changedBlocks = null, bool preserveMetadata = false, Dictionary<object,byte[]>? rawBlocks = null)
+    internal static void SerializePatchedResource(
+        Resource resource,
+        byte[] original,
+        Stream output,
+        bool rewriteData = true,
+        HashSet<object>? changedBlocks = null,
+        bool preserveMetadata = false,
+        Dictionary<object, byte[]>? rawBlocks = null
+    )
     {
         if (!output.CanSeek)
         {
@@ -189,9 +363,11 @@ internal static class Program
             throw new InvalidDataException("Resource block directory is truncated.");
         }
 
-        if (resource.DataBlock is Model materialModel &&
-            !resource.ContainsBlockType(BlockType.NTRO) &&
-            ModelMaterialReferences.Repair(materialModel.Data) > 0)
+        if (
+            resource.DataBlock is Model materialModel
+            && !resource.ContainsBlockType(BlockType.NTRO)
+            && ModelMaterialReferences.Repair(materialModel.Data) > 0
+        )
         {
             // Imported templates may contain untyped material strings. Preserve
             // all other blocks; only DATA needs serialization after this repair.
@@ -202,14 +378,30 @@ internal static class Program
         var payloads = new List<byte[]>(resource.Blocks.Count);
         foreach (var block in resource.Blocks)
         {
-            if(rawBlocks is not null&&rawBlocks.TryGetValue(block,out var raw)){payloads.Add(raw);continue;}
-            if ((changedBlocks?.Contains(block) == true) || (rewriteData && ReferenceEquals(block, resource.DataBlock))
+            if (rawBlocks is not null && rawBlocks.TryGetValue(block, out var raw))
+            {
+                payloads.Add(raw);
+                continue;
+            }
+            if (
+                (changedBlocks?.Contains(block) == true)
+                || (rewriteData && ReferenceEquals(block, resource.DataBlock))
                 || (!preserveMetadata && ReferenceEquals(block, resource.ExternalReferences))
-                || (!preserveMetadata && block is ResourceEditInfo2 && ReferenceEquals(block, resource.EditInfo)))
+                || (!preserveMetadata && block is ResourceEditInfo2 && ReferenceEquals(block, resource.EditInfo))
+            )
             {
                 using var memory = new MemoryStream();
-                try { block.Serialize(memory); }
-                catch (NotImplementedException ex) { throw new InvalidDataException($"Cannot serialize {resource.FileName}: {block.Type} ({block.GetType().Name}). {ex.Message}", ex); }
+                try
+                {
+                    block.Serialize(memory);
+                }
+                catch (NotImplementedException ex)
+                {
+                    throw new InvalidDataException(
+                        $"Cannot serialize {resource.FileName}: {block.Type} ({block.GetType().Name}). {ex.Message}",
+                        ex
+                    );
+                }
                 payloads.Add(memory.ToArray());
                 continue;
             }
@@ -259,7 +451,8 @@ internal static class Program
 
     private static IReadOnlyList<ParticleEntry> ResolveParticleEntries(
         IReadOnlyList<string> particlePaths,
-        ulong? resourceIdOverride)
+        ulong? resourceIdOverride
+    )
     {
         if (particlePaths.Count == 0)
         {
@@ -272,10 +465,7 @@ internal static class Program
         }
 
         return particlePaths
-            .Select(path => new ParticleEntry(
-                path,
-                resourceIdOverride ?? ComputeResourceId(path),
-                "preview"))
+            .Select(path => new ParticleEntry(path, resourceIdOverride ?? ComputeResourceId(path), "preview"))
             .ToArray();
     }
 
@@ -323,9 +513,16 @@ internal static class Program
 
         switch (remaining)
         {
-            case 3: h2 ^= (uint)data[offset + 2] << 16; goto case 2;
-            case 2: h2 ^= (uint)data[offset + 1] << 8; goto case 1;
-            case 1: h2 ^= data[offset]; h2 *= m; break;
+            case 3:
+                h2 ^= (uint)data[offset + 2] << 16;
+                goto case 2;
+            case 2:
+                h2 ^= (uint)data[offset + 1] << 8;
+                goto case 1;
+            case 1:
+                h2 ^= data[offset];
+                h2 *= m;
+                break;
         }
 
         h1 ^= h2 >> 18;
@@ -343,17 +540,16 @@ internal static class Program
     {
         var root = model.Data;
 
-        if (!root.TryGetValue("m_modelInfo", out var modelInfo)
-            || modelInfo.ValueType != KVValueType.Collection)
+        if (!root.TryGetValue("m_modelInfo", out var modelInfo) || modelInfo.ValueType != KVValueType.Collection)
         {
             throw new InvalidDataException("DATA does not contain m_modelInfo.");
         }
 
         // Preserve other keys (attachments, hitboxes, original particle settings).
-        var original = modelInfo.TryGetValue("m_keyValueText", out var oldText)
-            ? (string)oldText : string.Empty;
-        modelInfo["m_keyValueText"] = new KVObject(ModelKeyText.AddParticles(
-            original, entries.Select(entry => entry.Path).ToArray()));
+        var original = modelInfo.TryGetValue("m_keyValueText", out var oldText) ? (string)oldText : string.Empty;
+        modelInfo["m_keyValueText"] = new KVObject(
+            ModelKeyText.AddParticles(original, entries.Select(entry => entry.Path).ToArray())
+        );
     }
 
     internal static void SetRed2ParticleReference(Resource resource)
@@ -365,14 +561,15 @@ internal static class Program
 
         // Update only the affected property, retaining all other subasset refs.
         var root = red2.Data.Root;
-        if (!root.TryGetValue("m_SubassetReferences", out var subassets)
-            || subassets.ValueType != KVValueType.Collection)
+        if (
+            !root.TryGetValue("m_SubassetReferences", out var subassets)
+            || subassets.ValueType != KVValueType.Collection
+        )
         {
             subassets = KVObject.Collection();
             root["m_SubassetReferences"] = subassets;
         }
-        if (!subassets.TryGetValue("model_key", out var modelKey)
-            || modelKey.ValueType != KVValueType.Collection)
+        if (!subassets.TryGetValue("model_key", out var modelKey) || modelKey.ValueType != KVValueType.Collection)
         {
             modelKey = KVObject.Collection();
             subassets["model_key"] = modelKey;
@@ -382,11 +579,11 @@ internal static class Program
 
     private static void AddExternalReference(Resource resource, string particlePath, ulong resourceId)
     {
-        var rerl = resource.ExternalReferences
-            ?? throw new InvalidDataException("The model has no RERL block.");
+        var rerl = resource.ExternalReferences ?? throw new InvalidDataException("The model has no RERL block.");
 
         var existing = rerl.ResourceRefInfoList.FirstOrDefault(x =>
-            string.Equals(x.Name, particlePath, StringComparison.OrdinalIgnoreCase));
+            string.Equals(x.Name, particlePath, StringComparison.OrdinalIgnoreCase)
+        );
 
         if (existing is not null)
         {
@@ -394,22 +591,23 @@ internal static class Program
             return;
         }
 
-        rerl.ResourceRefInfoList.Add(new ResourceExtRefList.ResourceReferenceInfo
-        {
-            Id = resourceId,
-            Name = particlePath,
-        });
+        rerl.ResourceRefInfoList.Add(
+            new ResourceExtRefList.ResourceReferenceInfo { Id = resourceId, Name = particlePath }
+        );
     }
 
     private static void Validate(string file, IReadOnlyList<ParticleEntry> entries)
     {
         using var check = new Resource { FileName = file };
         check.Read(file);
-        if (entries.Count == 0 && check.DataBlock is Model) return;
+        if (entries.Count == 0 && check.DataBlock is Model)
+            return;
 
-        if (check.DataBlock is not Model model
+        if (
+            check.DataBlock is not Model model
             || !model.Data.TryGetValue("m_modelInfo", out var modelInfo)
-            || !modelInfo.TryGetValue("m_keyValueText", out var keyValueTextObject))
+            || !modelInfo.TryGetValue("m_keyValueText", out var keyValueTextObject)
+        )
         {
             throw new InvalidDataException("Written DATA does not contain m_modelInfo.m_keyValueText.");
         }
@@ -423,9 +621,11 @@ internal static class Program
                 throw new InvalidDataException($"Written model key data does not contain {entry.Path}.");
             }
 
-            if (check.ExternalReferences?.ResourceRefInfoList.Any(x =>
-                    x.Id == entry.ResourceId
-                    && string.Equals(x.Name, entry.Path, StringComparison.OrdinalIgnoreCase)) != true)
+            if (
+                check.ExternalReferences?.ResourceRefInfoList.Any(x =>
+                    x.Id == entry.ResourceId && string.Equals(x.Name, entry.Path, StringComparison.OrdinalIgnoreCase)
+                ) != true
+            )
             {
                 throw new InvalidDataException($"Written RERL does not contain {entry.Path} with the expected id.");
             }
@@ -457,24 +657,45 @@ internal static class Program
             switch (args[i])
             {
                 case "--input":
-                case "-i": input = NextValue(); break;
+                case "-i":
+                    input = NextValue();
+                    break;
                 case "--output":
-                case "-o": output = NextValue(); break;
+                case "-o":
+                    output = NextValue();
+                    break;
                 case "--particle":
-                case "-p": particles.Add(NextValue()); break;
-                case "--resource-id": resourceId = ParseUInt64(NextValue()); break;
-                case "--particle-replacements": particleReplacements = NextValue(); break;
-                case "--skin": skin = int.Parse(NextValue(), CultureInfo.InvariantCulture); if(skin<0)throw new ArgumentException("Invalid skin"); break;
-                case "--model-only": modelOnly = true; break;
-                case "--no-backup": backup = false; break;
-                default: throw new ArgumentException($"Unknown argument: {args[i]}");
+                case "-p":
+                    particles.Add(NextValue());
+                    break;
+                case "--resource-id":
+                    resourceId = ParseUInt64(NextValue());
+                    break;
+                case "--particle-replacements":
+                    particleReplacements = NextValue();
+                    break;
+                case "--skin":
+                    skin = int.Parse(NextValue(), CultureInfo.InvariantCulture);
+                    if (skin < 0)
+                        throw new ArgumentException("Invalid skin");
+                    break;
+                case "--model-only":
+                    modelOnly = true;
+                    break;
+                case "--no-backup":
+                    backup = false;
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown argument: {args[i]}");
             }
         }
 
-        if (string.IsNullOrWhiteSpace(input)
+        if (
+            string.IsNullOrWhiteSpace(input)
             || string.IsNullOrWhiteSpace(output)
             || (particles.Count == 0 && !modelOnly)
-            || particles.Any(string.IsNullOrWhiteSpace))
+            || particles.Any(string.IsNullOrWhiteSpace)
+        )
         {
             throw new ArgumentException("--input, --output and --particle are required. Run with --help.");
         }

@@ -1,11 +1,87 @@
-import {newArcanaDefinitions} from './new-arcana-definitions.mjs';
-import {expandedArcanaDefinitions,arcanaStyleIds,arcanaOccupiedSlots} from './expanded-arcana-definitions.mjs';
-export const publicArcanaDefinitions={...expandedArcanaDefinitions,...newArcanaDefinitions,rubick:{name:'The Magus Cypher',styles:['The Magus Cypher'],occupiedSlot:'back'},lina:{name:'Fiery Soul of the Slayer',styles:['Fiery Soul of the Slayer']},monkey_king:{occupiedSlots:[],name:"Great Sage's Reckoning",styles:['Base','Water','Underworld','Fire']}};
-export function drawPublicArcanaControls(box,hero,state,{disabled=false,onChange}={}){
- box.replaceChildren();const d=publicArcanaDefinitions[hero.id];if(!d)return;const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=!!state.arcana;toggle.disabled=disabled;label.append(toggle,document.createTextNode(d.name));box.append(label);
- if(['razor','windrunner'].includes(hero.id)){const thanks=document.createElement('small'),link=document.createElement('a');thanks.className='arcana-special-thanks';thanks.append(document.createTextNode('Special thanks for '));link.href='https://t.me/j0nvpk';link.target='_blank';link.rel='noopener noreferrer';const name=document.createElement('strong');name.textContent='J0nathan550';link.append(name);thanks.append(link);box.append(thanks);}
- toggle.onchange=()=>{state.arcana=toggle.checked?{style:arcanaStyleIds(d)[0],...(hero.id==='rubick'?{stolenEffects:false}:{})}:null;if(toggle.checked){for(const slot of arcanaOccupiedSlots(d)){state.selected.delete(slot);state.effects?.delete(slot);}}onChange?.();};
- if(state.arcana&&d.withoutPet){const note=document.createElement('small');note.textContent=document.documentElement.lang==='ru'?'Официальный стиль без питомца':'Official style without the pet';box.append(note);}
- if(state.arcana&&hero.id==='rubick'){const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.checked=state.arcana.stolenEffects===true;input.disabled=disabled;label.append(input,document.createTextNode(document.documentElement.lang==='ru'?'Эффекты украденных способностей (меняются и у исходных героев)':'Stolen spell effects (also changes the original heroes)'));input.onchange=()=>{state.arcana.stolenEffects=input.checked;onChange?.();};box.append(label);}
- if(state.arcana&&d.styles.length>1){const label=document.createElement('label');label.textContent=document.documentElement.lang==='ru'?'Форма':'Form';const select=document.createElement('select');for(const [id,name]of d.styles.entries())select.append(new Option(name,arcanaStyleIds(d)[id]));select.value=state.arcana.style;select.disabled=disabled;select.onchange=()=>{state.arcana.style=Number(select.value);onChange?.();};label.append(select);box.append(label);}
+import { newArcanaDefinitions } from './new-arcana-definitions.mjs';
+import { expandedArcanaDefinitions, arcanaStyleIds, arcanaOccupiedSlots } from './expanded-arcana-definitions.mjs';
+export const publicArcanaDefinitions = {
+  ...expandedArcanaDefinitions,
+  ...newArcanaDefinitions,
+  rubick: { name: 'The Magus Cypher', styles: ['The Magus Cypher'], occupiedSlot: 'back' },
+  lina: { name: 'Fiery Soul of the Slayer', styles: ['Fiery Soul of the Slayer'] },
+  monkey_king: { occupiedSlots: [], name: "Great Sage's Reckoning", styles: ['Base', 'Water', 'Underworld', 'Fire'] }
+};
+export function drawPublicArcanaControls(box, hero, state, { disabled = false, onChange } = {}) {
+  box.replaceChildren();
+  const d = publicArcanaDefinitions[hero.id];
+  if (!d) return;
+  const label = document.createElement('label'),
+    toggle = document.createElement('input');
+  toggle.type = 'checkbox';
+  toggle.checked = !!state.arcana;
+  toggle.disabled = disabled;
+  label.append(toggle, document.createTextNode(d.name));
+  box.append(label);
+  if (['razor', 'windrunner'].includes(hero.id)) {
+    const thanks = document.createElement('small'),
+      link = document.createElement('a');
+    thanks.className = 'arcana-special-thanks';
+    thanks.append(document.createTextNode('Special thanks for '));
+    link.href = 'https://t.me/j0nvpk';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    const name = document.createElement('strong');
+    name.textContent = 'J0nathan550';
+    link.append(name);
+    thanks.append(link);
+    box.append(thanks);
+  }
+  toggle.onchange = () => {
+    state.arcana = toggle.checked
+      ? { style: arcanaStyleIds(d)[0], ...(hero.id === 'rubick' ? { stolenEffects: false } : {}) }
+      : null;
+    if (toggle.checked) {
+      for (const slot of arcanaOccupiedSlots(d)) {
+        state.selected.delete(slot);
+        state.effects?.delete(slot);
+      }
+    }
+    onChange?.();
+  };
+  if (state.arcana && d.withoutPet) {
+    const note = document.createElement('small');
+    note.textContent =
+      document.documentElement.lang === 'ru' ? 'Официальный стиль без питомца' : 'Official style without the pet';
+    box.append(note);
+  }
+  if (state.arcana && hero.id === 'rubick') {
+    const label = document.createElement('label'),
+      input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = state.arcana.stolenEffects === true;
+    input.disabled = disabled;
+    label.append(
+      input,
+      document.createTextNode(
+        document.documentElement.lang === 'ru'
+          ? 'Эффекты украденных способностей (меняются и у исходных героев)'
+          : 'Stolen spell effects (also changes the original heroes)'
+      )
+    );
+    input.onchange = () => {
+      state.arcana.stolenEffects = input.checked;
+      onChange?.();
+    };
+    box.append(label);
+  }
+  if (state.arcana && d.styles.length > 1) {
+    const label = document.createElement('label');
+    label.textContent = document.documentElement.lang === 'ru' ? 'Форма' : 'Form';
+    const select = document.createElement('select');
+    for (const [id, name] of d.styles.entries()) select.append(new Option(name, arcanaStyleIds(d)[id]));
+    select.value = state.arcana.style;
+    select.disabled = disabled;
+    select.onchange = () => {
+      state.arcana.style = Number(select.value);
+      onChange?.();
+    };
+    label.append(select);
+    box.append(label);
+  }
 }

@@ -9,29 +9,89 @@ using ValveResourceFormat.ResourceTypes;
 // Host animation/physics blocks keep their indices and their original bytes.
 internal static class ModelMerge
 {
-    private sealed record Donor(string Input,string[]? MeshNames=null,bool MetadataOnly=false,bool AttachRootZero=false,bool OverrideAttachments=false,bool MatchBoneCase=false,bool NeutralizeOriginalMorph=false,bool AttachMorphlingSharkRoots=false,string? SourceModel=null,bool SkipParticleMetadata=false)
+    private sealed record Donor(
+        string Input,
+        string[]? MeshNames = null,
+        bool MetadataOnly = false,
+        bool AttachRootZero = false,
+        bool OverrideAttachments = false,
+        bool MatchBoneCase = false,
+        bool NeutralizeOriginalMorph = false,
+        bool AttachMorphlingSharkRoots = false,
+        string? SourceModel = null,
+        bool SkipParticleMetadata = false
+    )
     {
         public string OriginalInput { get; init; } = Input;
     }
-    private sealed record Request(string Input,string Output,Donor[] Donors,Dictionary<string,string>? Meshes=null,string? SkeletonReference=null,string? HostModel=null,bool TesterImporterRoots=false,string[]? HideHostMeshes=null);
-    private sealed record Chunk(BlockType Type,byte[] Bytes);
+
+    private sealed record Request(
+        string Input,
+        string Output,
+        Donor[] Donors,
+        Dictionary<string, string>? Meshes = null,
+        string? SkeletonReference = null,
+        string? HostModel = null,
+        bool TesterImporterRoots = false,
+        string[]? HideHostMeshes = null
+    );
+
+    private sealed record Chunk(BlockType Type, byte[] Bytes);
+
     internal const string IncompatibleDonorInput = "IncompatibleWearableDonorInput";
     const string UnattachedDonorRoot = "UnattachedWearableDonorRoot";
 
-    static string Text(KVObject value)=>value.ToString(CultureInfo.InvariantCulture);
-    internal static string MeshReference(KVObject value)=>value.ValueType==KVValueType.Null?string.Empty:value.ValueType==KVValueType.String?Text(value):throw new InvalidDataException("Mesh reference must be a resource string or null");
-    static int Number(KVObject value)=>value.ToInt32(CultureInfo.InvariantCulture);
-    static KVObject Array(IEnumerable<KVObject> values){var a=KVObject.Array();foreach(var value in values)a.Add(value);return a;}
-    static KVObject[] Values(KVObject root,string key)=>root.TryGetValue(key,out var a)?a.Values.ToArray():[];
-    static BinaryKV3 Read(Resource resource,byte[] bytes,Block block){
-        if(block.Size<4||!BinaryKV3.IsBinaryKV3(BitConverter.ToUInt32(bytes,(int)block.Offset)))throw new InvalidDataException("Mesh merging requires binary KV3: "+block.Type);
-        var result=new BinaryKV3(block.Type){Resource=resource,Offset=block.Offset,Size=block.Size};using var reader=new BinaryReader(new MemoryStream(bytes));reader.BaseStream.Position=block.Offset;result.Read(reader);return result;
+    static string Text(KVObject value) => value.ToString(CultureInfo.InvariantCulture);
+
+    internal static string MeshReference(KVObject value) =>
+        value.ValueType == KVValueType.Null ? string.Empty
+        : value.ValueType == KVValueType.String ? Text(value)
+        : throw new InvalidDataException("Mesh reference must be a resource string or null");
+
+    static int Number(KVObject value) => value.ToInt32(CultureInfo.InvariantCulture);
+
+    static KVObject Array(IEnumerable<KVObject> values)
+    {
+        var a = KVObject.Array();
+        foreach (var value in values)
+            a.Add(value);
+        return a;
     }
-    static byte[] Serialize(BinaryKV3 value,byte version)=>HeroActivityRules.SerializeActivity(value,version);
-    static string Field(KVObject row,string modern,string legacy)=>row.ContainsKey(modern)?modern:legacy;
-    static ulong Mask(KVObject value){var text=Text(value);return text.StartsWith('-')?unchecked((ulong)long.Parse(text,CultureInfo.InvariantCulture)):ulong.Parse(text,CultureInfo.InvariantCulture);}
-    static int MeshIndex(KVObject row)=>Number(row[Field(row,"m_nMeshIndex","mesh_index")]);
-    static string MeshName(KVObject row)=>Text(row[Field(row,"m_Name","name")]);
+
+    static KVObject[] Values(KVObject root, string key) => root.TryGetValue(key, out var a) ? a.Values.ToArray() : [];
+
+    static BinaryKV3 Read(Resource resource, byte[] bytes, Block block)
+    {
+        if (block.Size < 4 || !BinaryKV3.IsBinaryKV3(BitConverter.ToUInt32(bytes, (int)block.Offset)))
+            throw new InvalidDataException("Mesh merging requires binary KV3: " + block.Type);
+        var result = new BinaryKV3(block.Type)
+        {
+            Resource = resource,
+            Offset = block.Offset,
+            Size = block.Size,
+        };
+        using var reader = new BinaryReader(new MemoryStream(bytes));
+        reader.BaseStream.Position = block.Offset;
+        result.Read(reader);
+        return result;
+    }
+
+    static byte[] Serialize(BinaryKV3 value, byte version) => HeroActivityRules.SerializeActivity(value, version);
+
+    static string Field(KVObject row, string modern, string legacy) => row.ContainsKey(modern) ? modern : legacy;
+
+    static ulong Mask(KVObject value)
+    {
+        var text = Text(value);
+        return text.StartsWith('-')
+            ? unchecked((ulong)long.Parse(text, CultureInfo.InvariantCulture))
+            : ulong.Parse(text, CultureInfo.InvariantCulture);
+    }
+
+    static int MeshIndex(KVObject row) => Number(row[Field(row, "m_nMeshIndex", "mesh_index")]);
+
+    static string MeshName(KVObject row) => Text(row[Field(row, "m_Name", "name")]);
+
     internal static void HideHostMeshes(KVObject model, IReadOnlyList<KVObject> meshes, string[] names)
     {
         var byName = meshes.ToLookup(MeshName, StringComparer.Ordinal);
@@ -39,97 +99,328 @@ internal static class ModelMerge
         foreach (var name in names)
         {
             var matching = byName[name].ToArray();
-            if (matching.Length != 1) throw new InvalidDataException("Missing or ambiguous host mesh: " + name);
+            if (matching.Length != 1)
+                throw new InvalidDataException("Missing or ambiguous host mesh: " + name);
             var index = MeshIndex(matching[0]);
-            if (index < 0 || index >= masks.Length) throw new InvalidDataException("Host mesh index is out of range: " + name);
+            if (index < 0 || index >= masks.Length)
+                throw new InvalidDataException("Host mesh index is out of range: " + name);
             masks[index] = new KVObject(0UL);
         }
         model["m_refMeshGroupMasks"] = Array(masks);
     }
-    static readonly HashSet<string> BlockFields=["m_nDataBlock","m_nMorphBlock","m_nVBIBBlock","m_nToolsVBBlock","m_nBlockIndex","tools_vb_block","data_block","vbib_block","morph_block"];
-    static void BlockReferences(KVObject value,Action<KVObject,string,int> action){
-        if(value.ValueType is not (KVValueType.Collection or KVValueType.Array))return;
-        foreach(var (key,child) in value){if(BlockFields.Contains(key)){var index=Number(child);if(index>=0)action(value,key,index);}else BlockReferences(child,action);}
-    }
-    static Dictionary<string,KVObject> RootLocalPose(KVObject host,int parent,KVObject donor,int bone){
-        System.Numerics.Matrix4x4 Pose(KVObject skeleton,int index){
-            var pos=Values(skeleton,"m_bonePosParent")[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();
-            var rot=Values(skeleton,"m_boneRotParent")[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();
-            var scales=Values(skeleton,"m_boneScaleParent");var scale=scales.Length==0?1f:scales[index].ToSingle(CultureInfo.InvariantCulture);
-            if(pos.Length!=3||rot.Length!=4||!pos.Concat(rot).Append(scale).All(float.IsFinite)||scale<=0)throw new InvalidDataException("Invalid root attachment bind pose");
-            var q=new System.Numerics.Quaternion(rot[0],rot[1],rot[2],rot[3]);if(q.LengthSquared()<0.000001f)throw new InvalidDataException("Invalid root attachment rotation");
-            return System.Numerics.Matrix4x4.CreateScale(scale)*System.Numerics.Matrix4x4.CreateFromQuaternion(System.Numerics.Quaternion.Normalize(q))*System.Numerics.Matrix4x4.CreateTranslation(pos[0],pos[1],pos[2]);
+
+    static readonly HashSet<string> BlockFields =
+    [
+        "m_nDataBlock",
+        "m_nMorphBlock",
+        "m_nVBIBBlock",
+        "m_nToolsVBBlock",
+        "m_nBlockIndex",
+        "tools_vb_block",
+        "data_block",
+        "vbib_block",
+        "morph_block",
+    ];
+
+    static void BlockReferences(KVObject value, Action<KVObject, string, int> action)
+    {
+        if (value.ValueType is not (KVValueType.Collection or KVValueType.Array))
+            return;
+        foreach (var (key, child) in value)
+        {
+            if (BlockFields.Contains(key))
+            {
+                var index = Number(child);
+                if (index >= 0)
+                    action(value, key, index);
+            }
+            else
+                BlockReferences(child, action);
         }
-        System.Numerics.Matrix4x4 WorldPose(KVObject sk,int i){
-            var matrix=System.Numerics.Matrix4x4.Identity;var visited=new HashSet<int>();var parents=Values(sk,"m_nParent");
-            while(i>=0){if(i>=parents.Length||!visited.Add(i))throw new InvalidDataException("Invalid attachment bind hierarchy");matrix*=Pose(sk,i);i=Number(parents[i]);}return matrix;
-        }
-        if(!System.Numerics.Matrix4x4.Invert(WorldPose(host,parent),out var inverse)||!System.Numerics.Matrix4x4.Decompose(WorldPose(donor,bone)*inverse,out var scale,out var rotation,out var translation))throw new InvalidDataException("Cannot preserve root attachment bind pose");
-        if(Math.Abs(scale.X-scale.Y)>0.00001f||Math.Abs(scale.X-scale.Z)>0.00001f)throw new InvalidDataException("Nonuniform root attachment scale");
-        return new(){["m_bonePosParent"]=Array(new[]{translation.X,translation.Y,translation.Z}.Select(v=>new KVObject(v))),["m_boneRotParent"]=Array(new[]{rotation.X,rotation.Y,rotation.Z,rotation.W}.Select(v=>new KVObject(v))),["m_boneScaleParent"]=new KVObject(scale.X)};
     }
-    internal static int[] MergeSkeleton(KVObject host,KVObject donor,bool attachRootZero=false,bool matchBoneCase=false,IReadOnlySet<string>? knownRootBones=null,bool attachMorphlingSharkRoots=false,IReadOnlyDictionary<string,string>? rootAttachments=null){
-        var hostNames=Values(host,"m_boneName").Select(Text).ToList();var donorNames=Values(donor,"m_boneName").Select(Text).ToArray();
-        if(hostNames.Distinct(StringComparer.Ordinal).Count()!=hostNames.Count||donorNames.Distinct(StringComparer.Ordinal).Count()!=donorNames.Length)throw new InvalidDataException("Duplicate skeleton bone name");
-        var map=new int[donorNames.Length];var added=new List<int>();var attachedRoots=new Dictionary<int,(int Parent,Dictionary<string,KVObject> Pose)>();
-        var donorParents=Values(donor,"m_nParent");if(donorParents.Length!=donorNames.Length)throw new InvalidDataException("Missing donor parents");
-        for(var i=0;i<map.Length;i++){var index=hostNames.IndexOf(donorNames[i]);if(index<0&&matchBoneCase){
-                var aliases=hostNames.Select((name,index)=>(name,index)).Where(v=>string.Equals(v.name,donorNames[i],StringComparison.OrdinalIgnoreCase)).ToArray();
-                if(aliases.Length==1&&donorNames.Count(name=>string.Equals(name,donorNames[i],StringComparison.OrdinalIgnoreCase))==1)index=aliases[0].index;
-            }if(index<0){if(Number(donorParents[i])<0&&!(knownRootBones?.Contains(donorNames[i])??false)){
-                var hostParents=Values(host,"m_nParent");var roots=hostParents.Select((p,index)=>(p,index)).Where(v=>Number(v.p)<0).Select(v=>v.index).ToArray();
-                // Valve wearables commonly spell the hero's Root_0 as root_0.
-                // Keep both bone names and rebase the new child bind pose;
-                // do not make every skeleton name case-insensitive.
-                var rootCaseAlias=roots.Length==1&&string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)&&string.Equals(hostNames[roots[0]],donorNames[i],StringComparison.OrdinalIgnoreCase);
-                // Fluid Frenzy has independent shark roots absent from Morphling's
-                // base skeleton. Attach only these named roots, preserving bind pose.
-                var sharkRoot=attachMorphlingSharkRoots&&roots.Length==1&&hostNames[roots[0]]=="root"&&(donorNames[i]=="shark_R_01_JNT"||donorNames[i]=="shark_L_01_JNT"||donorNames[i]=="shark_R_back_01_JNT"||donorNames[i]=="shark_L_back_01_JNT");
-                var profileParent=-1;
-                if(rootAttachments?.TryGetValue(donorNames[i],out var parentName)==true){
-                    profileParent=hostNames.IndexOf(parentName);
-                    if(profileParent<0)throw new InvalidDataException("Wearable root profile requires host bone: "+parentName);
+
+    static Dictionary<string, KVObject> RootLocalPose(KVObject host, int parent, KVObject donor, int bone)
+    {
+        System.Numerics.Matrix4x4 Pose(KVObject skeleton, int index)
+        {
+            var pos = Values(skeleton, "m_bonePosParent")[index]
+                .Values.Select(v => v.ToSingle(CultureInfo.InvariantCulture))
+                .ToArray();
+            var rot = Values(skeleton, "m_boneRotParent")[index]
+                .Values.Select(v => v.ToSingle(CultureInfo.InvariantCulture))
+                .ToArray();
+            var scales = Values(skeleton, "m_boneScaleParent");
+            var scale = scales.Length == 0 ? 1f : scales[index].ToSingle(CultureInfo.InvariantCulture);
+            if (pos.Length != 3 || rot.Length != 4 || !pos.Concat(rot).Append(scale).All(float.IsFinite) || scale <= 0)
+                throw new InvalidDataException("Invalid root attachment bind pose");
+            var q = new System.Numerics.Quaternion(rot[0], rot[1], rot[2], rot[3]);
+            if (q.LengthSquared() < 0.000001f)
+                throw new InvalidDataException("Invalid root attachment rotation");
+            return System.Numerics.Matrix4x4.CreateScale(scale)
+                * System.Numerics.Matrix4x4.CreateFromQuaternion(System.Numerics.Quaternion.Normalize(q))
+                * System.Numerics.Matrix4x4.CreateTranslation(pos[0], pos[1], pos[2]);
+        }
+        System.Numerics.Matrix4x4 WorldPose(KVObject sk, int i)
+        {
+            var matrix = System.Numerics.Matrix4x4.Identity;
+            var visited = new HashSet<int>();
+            var parents = Values(sk, "m_nParent");
+            while (i >= 0)
+            {
+                if (i >= parents.Length || !visited.Add(i))
+                    throw new InvalidDataException("Invalid attachment bind hierarchy");
+                matrix *= Pose(sk, i);
+                i = Number(parents[i]);
+            }
+            return matrix;
+        }
+        if (
+            !System.Numerics.Matrix4x4.Invert(WorldPose(host, parent), out var inverse)
+            || !System.Numerics.Matrix4x4.Decompose(
+                WorldPose(donor, bone) * inverse,
+                out var scale,
+                out var rotation,
+                out var translation
+            )
+        )
+            throw new InvalidDataException("Cannot preserve root attachment bind pose");
+        if (Math.Abs(scale.X - scale.Y) > 0.00001f || Math.Abs(scale.X - scale.Z) > 0.00001f)
+            throw new InvalidDataException("Nonuniform root attachment scale");
+        return new()
+        {
+            ["m_bonePosParent"] = Array(
+                new[] { translation.X, translation.Y, translation.Z }.Select(v => new KVObject(v))
+            ),
+            ["m_boneRotParent"] = Array(
+                new[] { rotation.X, rotation.Y, rotation.Z, rotation.W }.Select(v => new KVObject(v))
+            ),
+            ["m_boneScaleParent"] = new KVObject(scale.X),
+        };
+    }
+
+    internal static int[] MergeSkeleton(
+        KVObject host,
+        KVObject donor,
+        bool attachRootZero = false,
+        bool matchBoneCase = false,
+        IReadOnlySet<string>? knownRootBones = null,
+        bool attachMorphlingSharkRoots = false,
+        IReadOnlyDictionary<string, string>? rootAttachments = null
+    )
+    {
+        var hostNames = Values(host, "m_boneName").Select(Text).ToList();
+        var donorNames = Values(donor, "m_boneName").Select(Text).ToArray();
+        if (
+            hostNames.Distinct(StringComparer.Ordinal).Count() != hostNames.Count
+            || donorNames.Distinct(StringComparer.Ordinal).Count() != donorNames.Length
+        )
+            throw new InvalidDataException("Duplicate skeleton bone name");
+        var map = new int[donorNames.Length];
+        var added = new List<int>();
+        var attachedRoots = new Dictionary<int, (int Parent, Dictionary<string, KVObject> Pose)>();
+        var donorParents = Values(donor, "m_nParent");
+        if (donorParents.Length != donorNames.Length)
+            throw new InvalidDataException("Missing donor parents");
+        for (var i = 0; i < map.Length; i++)
+        {
+            var index = hostNames.IndexOf(donorNames[i]);
+            if (index < 0 && matchBoneCase)
+            {
+                var aliases = hostNames
+                    .Select((name, index) => (name, index))
+                    .Where(v => string.Equals(v.name, donorNames[i], StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+                if (
+                    aliases.Length == 1
+                    && donorNames.Count(name => string.Equals(name, donorNames[i], StringComparison.OrdinalIgnoreCase))
+                        == 1
+                )
+                    index = aliases[0].index;
+            }
+            if (index < 0)
+            {
+                if (Number(donorParents[i]) < 0 && !(knownRootBones?.Contains(donorNames[i]) ?? false))
+                {
+                    var hostParents = Values(host, "m_nParent");
+                    var roots = hostParents
+                        .Select((p, index) => (p, index))
+                        .Where(v => Number(v.p) < 0)
+                        .Select(v => v.index)
+                        .ToArray();
+                    // Valve wearables commonly spell the hero's Root_0 as root_0.
+                    // Keep both bone names and rebase the new child bind pose;
+                    // do not make every skeleton name case-insensitive.
+                    var rootCaseAlias =
+                        roots.Length == 1
+                        && string.Equals(donorNames[i], "root_0", StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(hostNames[roots[0]], donorNames[i], StringComparison.OrdinalIgnoreCase);
+                    // Fluid Frenzy has independent shark roots absent from Morphling's
+                    // base skeleton. Attach only these named roots, preserving bind pose.
+                    var sharkRoot =
+                        attachMorphlingSharkRoots
+                        && roots.Length == 1
+                        && hostNames[roots[0]] == "root"
+                        && (
+                            donorNames[i] == "shark_R_01_JNT"
+                            || donorNames[i] == "shark_L_01_JNT"
+                            || donorNames[i] == "shark_R_back_01_JNT"
+                            || donorNames[i] == "shark_L_back_01_JNT"
+                        );
+                    var profileParent = -1;
+                    if (rootAttachments?.TryGetValue(donorNames[i], out var parentName) == true)
+                    {
+                        profileParent = hostNames.IndexOf(parentName);
+                        if (profileParent < 0)
+                            throw new InvalidDataException("Wearable root profile requires host bone: " + parentName);
+                    }
+                    if (
+                        profileParent < 0
+                        && !sharkRoot
+                        && (
+                            (!attachRootZero && !rootCaseAlias)
+                            || !string.Equals(donorNames[i], "root_0", StringComparison.OrdinalIgnoreCase)
+                            || roots.Length != 1
+                        )
+                    )
+                    {
+                        var error = new InvalidDataException(
+                            "Donor root bone has no host attachment: "
+                                + donorNames[i]
+                                + " (host roots: "
+                                + string.Join(", ", roots.Select(r => hostNames[r]))
+                                + ")"
+                        );
+                        error.Data[UnattachedDonorRoot] = true;
+                        throw error;
+                    }
+                    var parentRoot = profileParent >= 0 ? profileParent : roots[0];
+                    attachedRoots[i] = (parentRoot, RootLocalPose(host, parentRoot, donor, i));
                 }
-                if(profileParent<0&&!sharkRoot&&((!attachRootZero&&!rootCaseAlias)||!string.Equals(donorNames[i],"root_0",StringComparison.OrdinalIgnoreCase)||roots.Length!=1)){
-                    var error=new InvalidDataException("Donor root bone has no host attachment: "+donorNames[i]+" (host roots: "+string.Join(", ",roots.Select(r=>hostNames[r]))+")");
-                    error.Data[UnattachedDonorRoot]=true;
-                    throw error;
-                }
-                var parentRoot=profileParent>=0?profileParent:roots[0];
-                attachedRoots[i]=(parentRoot,RootLocalPose(host,parentRoot,donor,i));
-            }index=hostNames.Count;hostNames.Add(donorNames[i]);added.Add(i);}map[i]=index;}
-        foreach(var key in new[]{"m_boneName","m_nParent","m_boneSphere","m_nFlag","m_bonePosParent","m_boneRotParent","m_boneScaleParent"}){
-            var source=Values(donor,key);var original=Values(host,key);
+                index = hostNames.Count;
+                hostNames.Add(donorNames[i]);
+                added.Add(i);
+            }
+            map[i] = index;
+        }
+        foreach (
+            var key in new[]
+            {
+                "m_boneName",
+                "m_nParent",
+                "m_boneSphere",
+                "m_nFlag",
+                "m_bonePosParent",
+                "m_boneRotParent",
+                "m_boneScaleParent",
+            }
+        )
+        {
+            var source = Values(donor, key);
+            var original = Values(host, key);
             // Scale is optional in compiled model skeletons; an omitted or
             // empty array means identity scale, not an incomplete skeleton.
             // Sphere radii are also optional (no authored radius => zero).
             // Never pad a non-empty partial array: that hides malformed data.
-            if(key=="m_boneScaleParent"||key=="m_boneSphere"){
-                var fallback=key=="m_boneScaleParent"?1.0f:0.0f;
-                if(original.Length==0)original=Enumerable.Range(0,hostNames.Count-added.Count).Select(_=>new KVObject(fallback)).ToArray();
-                if(source.Length==0)source=Enumerable.Range(0,donorNames.Length).Select(_=>new KVObject(fallback)).ToArray();
+            if (key == "m_boneScaleParent" || key == "m_boneSphere")
+            {
+                var fallback = key == "m_boneScaleParent" ? 1.0f : 0.0f;
+                if (original.Length == 0)
+                    original = Enumerable
+                        .Range(0, hostNames.Count - added.Count)
+                        .Select(_ => new KVObject(fallback))
+                        .ToArray();
+                if (source.Length == 0)
+                    source = Enumerable.Range(0, donorNames.Length).Select(_ => new KVObject(fallback)).ToArray();
             }
-            if(original.Length!=hostNames.Count-added.Count||source.Length!=donorNames.Length)throw new InvalidDataException("Incomplete skeleton field: "+key+" (host "+original.Length+"/"+(hostNames.Count-added.Count)+", donor "+source.Length+"/"+donorNames.Length+")");
-            var result=original.ToList();
-            if(key=="m_nFlag"||key=="m_boneSphere")for(var i=0;i<map.Length;i++)if(map[i]<original.Length){if(key=="m_nFlag")result[map[i]]=new KVObject(unchecked((uint)(result[map[i]].ToInt64(CultureInfo.InvariantCulture)|source[i].ToInt64(CultureInfo.InvariantCulture))));else result[map[i]]=new KVObject(Math.Max(result[map[i]].ToDouble(CultureInfo.InvariantCulture),source[i].ToDouble(CultureInfo.InvariantCulture)));}
-            foreach(var i in added){var value=source[i];if(attachedRoots.TryGetValue(i,out var attachment)&&attachment.Pose.TryGetValue(key,out var pose))value=pose;if(key=="m_nParent"){var parent=Number(value);if(parent>=map.Length||parent==i)throw new InvalidDataException("Invalid donor bone parent");value=new KVObject(attachedRoots.TryGetValue(i,out var rootAttachment)?rootAttachment.Parent:parent<0?-1:map[parent]);}result.Add(value);}host[key]=Array(result);
+            if (original.Length != hostNames.Count - added.Count || source.Length != donorNames.Length)
+                throw new InvalidDataException(
+                    "Incomplete skeleton field: "
+                        + key
+                        + " (host "
+                        + original.Length
+                        + "/"
+                        + (hostNames.Count - added.Count)
+                        + ", donor "
+                        + source.Length
+                        + "/"
+                        + donorNames.Length
+                        + ")"
+                );
+            var result = original.ToList();
+            if (key == "m_nFlag" || key == "m_boneSphere")
+                for (var i = 0; i < map.Length; i++)
+                    if (map[i] < original.Length)
+                    {
+                        if (key == "m_nFlag")
+                            result[map[i]] = new KVObject(
+                                unchecked(
+                                    (uint)(
+                                        result[map[i]].ToInt64(CultureInfo.InvariantCulture)
+                                        | source[i].ToInt64(CultureInfo.InvariantCulture)
+                                    )
+                                )
+                            );
+                        else
+                            result[map[i]] = new KVObject(
+                                Math.Max(
+                                    result[map[i]].ToDouble(CultureInfo.InvariantCulture),
+                                    source[i].ToDouble(CultureInfo.InvariantCulture)
+                                )
+                            );
+                    }
+            foreach (var i in added)
+            {
+                var value = source[i];
+                if (attachedRoots.TryGetValue(i, out var attachment) && attachment.Pose.TryGetValue(key, out var pose))
+                    value = pose;
+                if (key == "m_nParent")
+                {
+                    var parent = Number(value);
+                    if (parent >= map.Length || parent == i)
+                        throw new InvalidDataException("Invalid donor bone parent");
+                    value = new KVObject(
+                        attachedRoots.TryGetValue(i, out var rootAttachment) ? rootAttachment.Parent
+                        : parent < 0 ? -1
+                        : map[parent]
+                    );
+                }
+                result.Add(value);
+            }
+            host[key] = Array(result);
         }
-        if(hostNames.Count>1024)throw new InvalidDataException("Combined skeleton exceeds 1024 bones");
+        if (hostNames.Count > 1024)
+            throw new InvalidDataException("Combined skeleton exceeds 1024 bones");
         // Shared bones retain host poses. Newly appended bones retain donor local
         // poses under their mapped parent; vertex inverse bind matrices stay raw.
         return map;
     }
-    static System.Numerics.Matrix4x4 BindWorld(KVObject skeleton,int index){
-        var parents=Values(skeleton,"m_nParent");var positions=Values(skeleton,"m_bonePosParent");var rotations=Values(skeleton,"m_boneRotParent");var scales=Values(skeleton,"m_boneScaleParent");
-        var matrix=System.Numerics.Matrix4x4.Identity;var visited=new HashSet<int>();
-        while(index>=0){
-            if(index>=parents.Length||!visited.Add(index))throw new InvalidDataException("Invalid bind hierarchy");
-            var p=positions[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();var r=rotations[index].Values.Select(v=>v.ToSingle(CultureInfo.InvariantCulture)).ToArray();var s=scales.Length==0?1f:scales[index].ToSingle(CultureInfo.InvariantCulture);
-            matrix*=System.Numerics.Matrix4x4.CreateScale(s)*System.Numerics.Matrix4x4.CreateFromQuaternion(System.Numerics.Quaternion.Normalize(new System.Numerics.Quaternion(r[0],r[1],r[2],r[3])))*System.Numerics.Matrix4x4.CreateTranslation(p[0],p[1],p[2]);
-            index=Number(parents[index]);
+
+    static System.Numerics.Matrix4x4 BindWorld(KVObject skeleton, int index)
+    {
+        var parents = Values(skeleton, "m_nParent");
+        var positions = Values(skeleton, "m_bonePosParent");
+        var rotations = Values(skeleton, "m_boneRotParent");
+        var scales = Values(skeleton, "m_boneScaleParent");
+        var matrix = System.Numerics.Matrix4x4.Identity;
+        var visited = new HashSet<int>();
+        while (index >= 0)
+        {
+            if (index >= parents.Length || !visited.Add(index))
+                throw new InvalidDataException("Invalid bind hierarchy");
+            var p = positions[index].Values.Select(v => v.ToSingle(CultureInfo.InvariantCulture)).ToArray();
+            var r = rotations[index].Values.Select(v => v.ToSingle(CultureInfo.InvariantCulture)).ToArray();
+            var s = scales.Length == 0 ? 1f : scales[index].ToSingle(CultureInfo.InvariantCulture);
+            matrix *=
+                System.Numerics.Matrix4x4.CreateScale(s)
+                * System.Numerics.Matrix4x4.CreateFromQuaternion(
+                    System.Numerics.Quaternion.Normalize(new System.Numerics.Quaternion(r[0], r[1], r[2], r[3]))
+                )
+                * System.Numerics.Matrix4x4.CreateTranslation(p[0], p[1], p[2]);
+            index = Number(parents[index]);
         }
         return matrix;
     }
+
     // A shared bone keeps the host's bind pose. The donor's meshes do not care
     // (they carry their own inverse bind matrices), but skinned particle
     // snapshots are evaluated against the model skeleton's bind pose. Sullen
@@ -140,332 +431,1097 @@ internal static class ModelMerge
     // shared bone that is a leaf on the host, a socket like a weapon bone,
     // takes the donor's bind pose. Bones with host children are never moved,
     // animation tracks are untouched, and the first donor to claim one wins.
-    internal static int RebindSharedSocketBones(KVObject host,KVObject donor,int[] boneMap,int hostBoneCount,IReadOnlySet<int> hostParentBones,ISet<int> rebound){
-        var changed=0;var hostParents=Values(host,"m_nParent");
-        for(var i=0;i<boneMap.Length;i++){
-            var target=boneMap[i];if(target>=hostBoneCount||hostParentBones.Contains(target)||rebound.Contains(target))continue;
-            var parent=Number(hostParents[target]);if(parent<0)continue;
-            var difference=BindWorld(host,target)-BindWorld(donor,i);
-            if(new[]{difference.M11,difference.M12,difference.M13,difference.M21,difference.M22,difference.M23,difference.M31,difference.M32,difference.M33}.All(v=>Math.Abs(v)<0.001f)&&new[]{difference.M41,difference.M42,difference.M43}.All(v=>Math.Abs(v)<0.01f))continue;
-            var pose=RootLocalPose(host,parent,donor,i);
-            foreach(var (key,value) in pose){var values=Values(host,key).ToList();if(values.Count==0&&key=="m_boneScaleParent")continue;if(values.Count!=hostParents.Length)throw new InvalidDataException("Incomplete skeleton field: "+key);values[target]=value;host[key]=Array(values);}
-            rebound.Add(target);changed++;
+    internal static int RebindSharedSocketBones(
+        KVObject host,
+        KVObject donor,
+        int[] boneMap,
+        int hostBoneCount,
+        IReadOnlySet<int> hostParentBones,
+        ISet<int> rebound
+    )
+    {
+        var changed = 0;
+        var hostParents = Values(host, "m_nParent");
+        for (var i = 0; i < boneMap.Length; i++)
+        {
+            var target = boneMap[i];
+            if (target >= hostBoneCount || hostParentBones.Contains(target) || rebound.Contains(target))
+                continue;
+            var parent = Number(hostParents[target]);
+            if (parent < 0)
+                continue;
+            var difference = BindWorld(host, target) - BindWorld(donor, i);
+            if (
+                new[]
+                {
+                    difference.M11,
+                    difference.M12,
+                    difference.M13,
+                    difference.M21,
+                    difference.M22,
+                    difference.M23,
+                    difference.M31,
+                    difference.M32,
+                    difference.M33,
+                }.All(v => Math.Abs(v) < 0.001f)
+                && new[] { difference.M41, difference.M42, difference.M43 }.All(v => Math.Abs(v) < 0.01f)
+            )
+                continue;
+            var pose = RootLocalPose(host, parent, donor, i);
+            foreach (var (key, value) in pose)
+            {
+                var values = Values(host, key).ToList();
+                if (values.Count == 0 && key == "m_boneScaleParent")
+                    continue;
+                if (values.Count != hostParents.Length)
+                    throw new InvalidDataException("Incomplete skeleton field: " + key);
+                values[target] = value;
+                host[key] = Array(values);
+            }
+            rebound.Add(target);
+            changed++;
         }
         return changed;
     }
-    internal static void RenameMeshBones(KVObject mesh,IReadOnlyDictionary<string,string> names){
-        if(mesh.TryGetValue("m_skeleton",out var skeleton))foreach(var bone in Values(skeleton,"m_bones"))foreach(var key in new[]{"m_boneName","m_parentName"})if(bone.TryGetValue(key,out var value)&&names.TryGetValue(Text(value),out var renamed))bone[key]=new KVObject(renamed);
-        foreach(var set in Values(mesh,"m_hitboxsets"))if(set.TryGetValue("value",out var boxSet))foreach(var box in Values(boxSet,"m_HitBoxes"))if(box.TryGetValue("m_sBoneName",out var bone)&&names.TryGetValue(Text(bone),out var renamed)){box["m_sBoneName"]=new KVObject(renamed);box["m_nBoneNameHash"]=new KVObject(ValveResourceFormat.Utils.StringToken.Get(renamed));}
-        foreach(var row in Values(mesh,"m_attachments"))if(row.TryGetValue("value",out var attachment)&&attachment.TryGetValue("m_influenceNames",out var influences))attachment["m_influenceNames"]=Array(influences.Values.Select(value=>names.TryGetValue(Text(value),out var renamed)?new KVObject(renamed):value));
+
+    internal static void RenameMeshBones(KVObject mesh, IReadOnlyDictionary<string, string> names)
+    {
+        if (mesh.TryGetValue("m_skeleton", out var skeleton))
+            foreach (var bone in Values(skeleton, "m_bones"))
+            foreach (var key in new[] { "m_boneName", "m_parentName" })
+                if (bone.TryGetValue(key, out var value) && names.TryGetValue(Text(value), out var renamed))
+                    bone[key] = new KVObject(renamed);
+        foreach (var set in Values(mesh, "m_hitboxsets"))
+            if (set.TryGetValue("value", out var boxSet))
+                foreach (var box in Values(boxSet, "m_HitBoxes"))
+                    if (box.TryGetValue("m_sBoneName", out var bone) && names.TryGetValue(Text(bone), out var renamed))
+                    {
+                        box["m_sBoneName"] = new KVObject(renamed);
+                        box["m_nBoneNameHash"] = new KVObject(ValveResourceFormat.Utils.StringToken.Get(renamed));
+                    }
+        foreach (var row in Values(mesh, "m_attachments"))
+            if (
+                row.TryGetValue("value", out var attachment)
+                && attachment.TryGetValue("m_influenceNames", out var influences)
+            )
+                attachment["m_influenceNames"] = Array(
+                    influences.Values.Select(value =>
+                        names.TryGetValue(Text(value), out var renamed) ? new KVObject(renamed) : value
+                    )
+                );
     }
-    internal static int[] RemapMeshBones(KVObject[] table,int start,int end,int[] boneMap,int? meshBoneCount,string context){
-        if(start<0||end<start||end>table.Length)throw new InvalidDataException("Invalid donor remap range: "+context);
+
+    internal static int[] RemapMeshBones(
+        KVObject[] table,
+        int start,
+        int end,
+        int[] boneMap,
+        int? meshBoneCount,
+        string context
+    )
+    {
+        if (start < 0 || end < start || end > table.Length)
+            throw new InvalidDataException("Invalid donor remap range: " + context);
         // Some legacy models retain an obsolete palette tail between mesh
         // starts. Only the MDAT skeleton's bones address this mesh's palette.
-        var count=meshBoneCount??(end-start);
-        if(count<0||count>end-start)throw new InvalidDataException("Donor mesh palette is shorter than its skeleton: "+context);
-        var result=new int[count];
-        for(var i=0;i<count;i++){
-            var bone=Number(table[start+i]);
-            if(bone<0||bone>=boneMap.Length)throw new InvalidDataException("Donor vertex bone mapping is outside its skeleton: "+context+", palette["+i+"]="+bone+", skeleton bones="+boneMap.Length);
-            result[i]=boneMap[bone];
+        var count = meshBoneCount ?? (end - start);
+        if (count < 0 || count > end - start)
+            throw new InvalidDataException("Donor mesh palette is shorter than its skeleton: " + context);
+        var result = new int[count];
+        for (var i = 0; i < count; i++)
+        {
+            var bone = Number(table[start + i]);
+            if (bone < 0 || bone >= boneMap.Length)
+                throw new InvalidDataException(
+                    "Donor vertex bone mapping is outside its skeleton: "
+                        + context
+                        + ", palette["
+                        + i
+                        + "]="
+                        + bone
+                        + ", skeleton bones="
+                        + boneMap.Length
+                );
+            result[i] = boneMap[bone];
         }
         return result;
     }
-    static KVObject[] NamespacedAttachments(Resource donor,byte[] bytes,Block block,string? prefix){var mesh=Read(donor,bytes,block).Data.Root;TesterAttachmentProfiles.NamespaceMesh(mesh,prefix);return Values(mesh,"m_attachments");}
-    internal static int OverrideMeshAttachments(KVObject mesh,IReadOnlyDictionary<string,KVObject> replacements){
-        if(replacements.Count==0)return 0;
-        var count=0;var rows=Values(mesh,"m_attachments").ToList();var existing=new HashSet<string>(StringComparer.Ordinal);
-        foreach(var row in rows)if(row.TryGetValue("key",out var name)){
-            var key=Text(name);existing.Add(key);if(replacements.TryGetValue(key,out var attachment)){row["value"]=attachment;count++;}
-        }
-        foreach(var (name,value) in replacements)if(existing.Add(name)){var row=KVObject.Collection();row["key"]=new KVObject(name);row["value"]=value;rows.Add(row);count++;}
-        if(count>0)mesh["m_attachments"]=Array(rows);
+
+    static KVObject[] NamespacedAttachments(Resource donor, byte[] bytes, Block block, string? prefix)
+    {
+        var mesh = Read(donor, bytes, block).Data.Root;
+        TesterAttachmentProfiles.NamespaceMesh(mesh, prefix);
+        return Values(mesh, "m_attachments");
+    }
+
+    internal static int OverrideMeshAttachments(KVObject mesh, IReadOnlyDictionary<string, KVObject> replacements)
+    {
+        if (replacements.Count == 0)
+            return 0;
+        var count = 0;
+        var rows = Values(mesh, "m_attachments").ToList();
+        var existing = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in rows)
+            if (row.TryGetValue("key", out var name))
+            {
+                var key = Text(name);
+                existing.Add(key);
+                if (replacements.TryGetValue(key, out var attachment))
+                {
+                    row["value"] = attachment;
+                    count++;
+                }
+            }
+        foreach (var (name, value) in replacements)
+            if (existing.Add(name))
+            {
+                var row = KVObject.Collection();
+                row["key"] = new KVObject(name);
+                row["value"] = value;
+                rows.Add(row);
+                count++;
+            }
+        if (count > 0)
+            mesh["m_attachments"] = Array(rows);
         return count;
     }
-    static void EnsureArray(KVObject root,string key,int count,Func<KVObject> value){var rows=Values(root,key).ToList();while(rows.Count<count)rows.Add(value());root[key]=Array(rows);}
-    static void AddReferences(Resource host,Resource donor){
-        var target=host.ExternalReferences??throw new InvalidDataException("Host has no RERL");
-        foreach(var reference in donor.ExternalReferences?.ResourceRefInfoList??[]){if(target.ResourceRefInfoList.Any(r=>r.Name==reference.Name))continue;target.ResourceRefInfoList.Add(new ResourceExtRefList.ResourceReferenceInfo{Name=reference.Name,Id=reference.Id});}
+
+    static void EnsureArray(KVObject root, string key, int count, Func<KVObject> value)
+    {
+        var rows = Values(root, key).ToList();
+        while (rows.Count < count)
+            rows.Add(value());
+        root[key] = Array(rows);
     }
-    internal static string MergeParticleText(string host,string donor){
-        if(string.IsNullOrWhiteSpace(donor))return host;
-        var serializer=KVSerializer.Create(KVSerializationFormat.KeyValues3Text);
-        using var input=new MemoryStream(System.Text.Encoding.UTF8.GetBytes(donor));var source=serializer.Deserialize(input);
-        if(!source.Root.TryGetValue("particle_cfg_list",out var particles)||particles.Count==0)return host;
-        if(string.IsNullOrWhiteSpace(host))host=ModelKeyText.AddParticles("",System.Array.Empty<string>());
-        using var original=new MemoryStream(System.Text.Encoding.UTF8.GetBytes(host));var target=serializer.Deserialize(original);
-        var rows=Values(target.Root,"particle_cfg_list").ToList();var known=rows.Where(r=>r.ContainsKey("name")).Select(r=>Text(r["name"])).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach(var row in particles.Values)if(row.TryGetValue("name",out var name)&&known.Add(Text(name)))rows.Add(row);
-        target.Root["particle_cfg_list"]=Array(rows);using var output=new MemoryStream();serializer.Serialize(output,target);return System.Text.Encoding.UTF8.GetString(output.ToArray());
+
+    static void AddReferences(Resource host, Resource donor)
+    {
+        var target = host.ExternalReferences ?? throw new InvalidDataException("Host has no RERL");
+        foreach (var reference in donor.ExternalReferences?.ResourceRefInfoList ?? [])
+        {
+            if (target.ResourceRefInfoList.Any(r => r.Name == reference.Name))
+                continue;
+            target.ResourceRefInfoList.Add(
+                new ResourceExtRefList.ResourceReferenceInfo { Name = reference.Name, Id = reference.Id }
+            );
+        }
     }
-    internal static string EmbedExternalMeshes(string input,Dictionary<string,string>? meshes,List<string> temporary){
-        var original=File.ReadAllBytes(input);using var model=new Resource{FileName=input};model.Read(input);
-        if(model.DataBlock is not Model)throw new InvalidDataException("Expected model: "+input);
-        var data=Read(model,original,model.DataBlock);var refs=Values(data.Data.Root,"m_refMeshes");
-        if(!refs.Any(v=>MeshReference(v).Length>0))return input;
-        var ctrlBlock=model.Blocks.FirstOrDefault(b=>b.Type==BlockType.CTRL);
-        var ctrl=ctrlBlock is null?new BinaryKV3(KVObject.Collection(),new ValveKeyValue.KeyValues3.KV3ID("generic",new Guid("7412167c-06e9-4698-aff2-e63eb59037e7")),BlockType.CTRL){Resource=model}:Read(model,original,ctrlBlock);
-        var rows=Values(ctrl.Data.Root,"embedded_meshes").ToList();
-        var chunks=model.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();
-        for(var meshIndex=0;meshIndex<refs.Length;meshIndex++){
-            var reference=MeshReference(refs[meshIndex]);if(reference.Length==0)continue;
-            var key=reference.Replace('\\','/');if(!key.EndsWith("_c",StringComparison.Ordinal))key+="_c";
-            if(meshes is null||!meshes.TryGetValue(key,out var file))throw new InvalidDataException("Missing external mesh in merge manifest: "+key+" (model "+input+")");
-            if(rows.Any(row=>MeshIndex(row)==meshIndex))throw new InvalidDataException("Mesh is both referenced and embedded: "+key);
-            var bytes=File.ReadAllBytes(file);using var mesh=new Resource{FileName=file};mesh.Read(file);
-            if(mesh.DataBlock is not Mesh)throw new InvalidDataException("External geometry is not a mesh: "+key);
-            var meshData=Read(mesh,bytes,mesh.DataBlock);var map=new Dictionary<int,int>();
-            int Copy(int index){
-                if(map.TryGetValue(index,out var found))return found;
-                if(index<0||index>=mesh.Blocks.Count)throw new InvalidDataException("External mesh block index invalid: "+key);
-                var block=mesh.Blocks[index];var kind=block==mesh.DataBlock?BlockType.MDAT:block.Type;
-                if(kind.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unsupported external geometry block: "+kind+" / "+key);
-                var target=chunks.Count;map[index]=target;chunks.Add(new Chunk(kind,bytes.AsSpan((int)block.Offset,(int)block.Size).ToArray()));return target;
+
+    internal static string MergeParticleText(string host, string donor)
+    {
+        if (string.IsNullOrWhiteSpace(donor))
+            return host;
+        var serializer = KVSerializer.Create(KVSerializationFormat.KeyValues3Text);
+        using var input = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(donor));
+        var source = serializer.Deserialize(input);
+        if (!source.Root.TryGetValue("particle_cfg_list", out var particles) || particles.Count == 0)
+            return host;
+        if (string.IsNullOrWhiteSpace(host))
+            host = ModelKeyText.AddParticles("", System.Array.Empty<string>());
+        using var original = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(host));
+        var target = serializer.Deserialize(original);
+        var rows = Values(target.Root, "particle_cfg_list").ToList();
+        var known = rows.Where(r => r.ContainsKey("name"))
+            .Select(r => Text(r["name"]))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in particles.Values)
+            if (row.TryGetValue("name", out var name) && known.Add(Text(name)))
+                rows.Add(row);
+        target.Root["particle_cfg_list"] = Array(rows);
+        using var output = new MemoryStream();
+        serializer.Serialize(output, target);
+        return System.Text.Encoding.UTF8.GetString(output.ToArray());
+    }
+
+    internal static string EmbedExternalMeshes(string input, Dictionary<string, string>? meshes, List<string> temporary)
+    {
+        var original = File.ReadAllBytes(input);
+        using var model = new Resource { FileName = input };
+        model.Read(input);
+        if (model.DataBlock is not Model)
+            throw new InvalidDataException("Expected model: " + input);
+        var data = Read(model, original, model.DataBlock);
+        var refs = Values(data.Data.Root, "m_refMeshes");
+        if (!refs.Any(v => MeshReference(v).Length > 0))
+            return input;
+        var ctrlBlock = model.Blocks.FirstOrDefault(b => b.Type == BlockType.CTRL);
+        var ctrl = ctrlBlock is null
+            ? new BinaryKV3(
+                KVObject.Collection(),
+                new ValveKeyValue.KeyValues3.KV3ID("generic", new Guid("7412167c-06e9-4698-aff2-e63eb59037e7")),
+                BlockType.CTRL
+            )
+            {
+                Resource = model,
+            }
+            : Read(model, original, ctrlBlock);
+        var rows = Values(ctrl.Data.Root, "embedded_meshes").ToList();
+        var chunks = model
+            .Blocks.Select(b => new Chunk(b.Type, original.AsSpan((int)b.Offset, (int)b.Size).ToArray()))
+            .ToList();
+        for (var meshIndex = 0; meshIndex < refs.Length; meshIndex++)
+        {
+            var reference = MeshReference(refs[meshIndex]);
+            if (reference.Length == 0)
+                continue;
+            var key = reference.Replace('\\', '/');
+            if (!key.EndsWith("_c", StringComparison.Ordinal))
+                key += "_c";
+            if (meshes is null || !meshes.TryGetValue(key, out var file))
+                throw new InvalidDataException(
+                    "Missing external mesh in merge manifest: " + key + " (model " + input + ")"
+                );
+            if (rows.Any(row => MeshIndex(row) == meshIndex))
+                throw new InvalidDataException("Mesh is both referenced and embedded: " + key);
+            var bytes = File.ReadAllBytes(file);
+            using var mesh = new Resource { FileName = file };
+            mesh.Read(file);
+            if (mesh.DataBlock is not Mesh)
+                throw new InvalidDataException("External geometry is not a mesh: " + key);
+            var meshData = Read(mesh, bytes, mesh.DataBlock);
+            var map = new Dictionary<int, int>();
+            int Copy(int index)
+            {
+                if (map.TryGetValue(index, out var found))
+                    return found;
+                if (index < 0 || index >= mesh.Blocks.Count)
+                    throw new InvalidDataException("External mesh block index invalid: " + key);
+                var block = mesh.Blocks[index];
+                var kind = block == mesh.DataBlock ? BlockType.MDAT : block.Type;
+                if (
+                    kind.ToString()
+                    is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF")
+                )
+                    throw new InvalidDataException("Unsupported external geometry block: " + kind + " / " + key);
+                var target = chunks.Count;
+                map[index] = target;
+                chunks.Add(new Chunk(kind, bytes.AsSpan((int)block.Offset, (int)block.Size).ToArray()));
+                return target;
             }
             // Copy geometry payloads unchanged, then relocate only descriptors.
-            foreach(var block in mesh.Blocks)if(block==mesh.DataBlock||block.Type.ToString() is "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF")Copy(mesh.Blocks.IndexOf(block));
-            var row=KVObject.Collection();var name=Path.GetFileNameWithoutExtension(reference);
-            var vbib=mesh.Blocks.FirstOrDefault(b=>b.Type==BlockType.VBIB);var morph=mesh.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
-            if(vbib is not null){
-                row["name"]=new KVObject(name);row["mesh_index"]=new KVObject(meshIndex);row["data_block"]=new KVObject(Copy(mesh.Blocks.IndexOf(mesh.DataBlock)));row["vbib_block"]=new KVObject(Copy(mesh.Blocks.IndexOf(vbib)));row["morph_block"]=new KVObject(morph is null?-1:Copy(mesh.Blocks.IndexOf(morph)));
-                var tools=mesh.Blocks.FirstOrDefault(b=>b.Type.ToString()=="TBUF");if(tools is not null)row["tools_vb_block"]=new KVObject(Copy(mesh.Blocks.IndexOf(tools)));
-            }else{
-                foreach(var keyName in new[]{"m_vertexBuffers","m_indexBuffers","m_toolsBuffers"})if(meshData.Data.Root.TryGetValue(keyName,out var buffers))row[keyName]=buffers;
-                if(!row.ContainsKey("m_vertexBuffers")||!row.ContainsKey("m_indexBuffers"))throw new InvalidDataException("External mesh buffer descriptors missing: "+key);
-                BlockReferences(meshData.Data.Root,(parent,field,index)=>parent[field]=new KVObject(Copy(index)));
-                row["m_Name"]=new KVObject(name);row["m_nMeshIndex"]=new KVObject(meshIndex);row["m_nDataBlock"]=new KVObject(Copy(mesh.Blocks.IndexOf(mesh.DataBlock)));row["m_nMorphBlock"]=new KVObject(morph is null?-1:Copy(mesh.Blocks.IndexOf(morph)));
+            foreach (var block in mesh.Blocks)
+                if (
+                    block == mesh.DataBlock
+                    || block.Type.ToString()
+                        is "MBUF"
+                            or "VBIB"
+                            or "MVTX"
+                            or "MIDX"
+                            or "MRPH"
+                            or "MSLT"
+                            or "MADJ"
+                            or "TBUF"
+                )
+                    Copy(mesh.Blocks.IndexOf(block));
+            var row = KVObject.Collection();
+            var name = Path.GetFileNameWithoutExtension(reference);
+            var vbib = mesh.Blocks.FirstOrDefault(b => b.Type == BlockType.VBIB);
+            var morph = mesh.Blocks.FirstOrDefault(b => b.Type == BlockType.MRPH);
+            if (vbib is not null)
+            {
+                row["name"] = new KVObject(name);
+                row["mesh_index"] = new KVObject(meshIndex);
+                row["data_block"] = new KVObject(Copy(mesh.Blocks.IndexOf(mesh.DataBlock)));
+                row["vbib_block"] = new KVObject(Copy(mesh.Blocks.IndexOf(vbib)));
+                row["morph_block"] = new KVObject(morph is null ? -1 : Copy(mesh.Blocks.IndexOf(morph)));
+                var tools = mesh.Blocks.FirstOrDefault(b => b.Type.ToString() == "TBUF");
+                if (tools is not null)
+                    row["tools_vb_block"] = new KVObject(Copy(mesh.Blocks.IndexOf(tools)));
+            }
+            else
+            {
+                foreach (var keyName in new[] { "m_vertexBuffers", "m_indexBuffers", "m_toolsBuffers" })
+                    if (meshData.Data.Root.TryGetValue(keyName, out var buffers))
+                        row[keyName] = buffers;
+                if (!row.ContainsKey("m_vertexBuffers") || !row.ContainsKey("m_indexBuffers"))
+                    throw new InvalidDataException("External mesh buffer descriptors missing: " + key);
+                BlockReferences(meshData.Data.Root, (parent, field, index) =>
+                    parent[field] = new KVObject(Copy(index))
+                );
+                row["m_Name"] = new KVObject(name);
+                row["m_nMeshIndex"] = new KVObject(meshIndex);
+                row["m_nDataBlock"] = new KVObject(Copy(mesh.Blocks.IndexOf(mesh.DataBlock)));
+                row["m_nMorphBlock"] = new KVObject(morph is null ? -1 : Copy(mesh.Blocks.IndexOf(morph)));
                 // DATA can also contain buffer block descriptors; update a copy
                 // of the decoded mesh data, leaving vertex/index bytes intact.
-                chunks[Copy(mesh.Blocks.IndexOf(mesh.DataBlock))]=new Chunk(BlockType.MDAT,Serialize(meshData,bytes[(int)mesh.DataBlock.Offset]));
+                chunks[Copy(mesh.Blocks.IndexOf(mesh.DataBlock))] = new Chunk(
+                    BlockType.MDAT,
+                    Serialize(meshData, bytes[(int)mesh.DataBlock.Offset])
+                );
             }
-            rows.Add(row);refs[meshIndex]=new KVObject(""){Flag=KVFlag.Resource};AddReferences(model,mesh);
+            rows.Add(row);
+            refs[meshIndex] = new KVObject("") { Flag = KVFlag.Resource };
+            AddReferences(model, mesh);
         }
-        data.Data.Root["m_refMeshes"]=Array(refs);ctrl.Data.Root["embedded_meshes"]=Array(rows);
-        chunks[model.Blocks.IndexOf(model.DataBlock)]=new Chunk(BlockType.DATA,Serialize(data,original[(int)model.DataBlock.Offset]));
-        var ctrlBytes=Serialize(ctrl,ctrlBlock is null?original[(int)model.DataBlock.Offset]:original[(int)ctrlBlock.Offset]);
-        if(ctrlBlock is null)chunks.Add(new Chunk(BlockType.CTRL,ctrlBytes));else chunks[model.Blocks.IndexOf(ctrlBlock)]=new Chunk(BlockType.CTRL,ctrlBytes);
-        if(model.ExternalReferences is {} references){using var buffer=new MemoryStream();references.Serialize(buffer);chunks[model.Blocks.IndexOf(references)]=new Chunk(BlockType.RERL,buffer.ToArray());}
-        var output=input+".embedded-"+Guid.NewGuid().ToString("N")+".vmdl_c";temporary.Add(output);Write(original,chunks,output);
-        using var check=new Resource{FileName=output};check.Read(output);if(check.DataBlock is not Model combined||combined.GetEmbeddedMeshes().Count()!=rows.Count)throw new InvalidDataException("External mesh embedding validation failed: "+input);
+        data.Data.Root["m_refMeshes"] = Array(refs);
+        ctrl.Data.Root["embedded_meshes"] = Array(rows);
+        chunks[model.Blocks.IndexOf(model.DataBlock)] = new Chunk(
+            BlockType.DATA,
+            Serialize(data, original[(int)model.DataBlock.Offset])
+        );
+        var ctrlBytes = Serialize(
+            ctrl,
+            ctrlBlock is null ? original[(int)model.DataBlock.Offset] : original[(int)ctrlBlock.Offset]
+        );
+        if (ctrlBlock is null)
+            chunks.Add(new Chunk(BlockType.CTRL, ctrlBytes));
+        else
+            chunks[model.Blocks.IndexOf(ctrlBlock)] = new Chunk(BlockType.CTRL, ctrlBytes);
+        if (model.ExternalReferences is { } references)
+        {
+            using var buffer = new MemoryStream();
+            references.Serialize(buffer);
+            chunks[model.Blocks.IndexOf(references)] = new Chunk(BlockType.RERL, buffer.ToArray());
+        }
+        var output = input + ".embedded-" + Guid.NewGuid().ToString("N") + ".vmdl_c";
+        temporary.Add(output);
+        Write(original, chunks, output);
+        using var check = new Resource { FileName = output };
+        check.Read(output);
+        if (check.DataBlock is not Model combined || combined.GetEmbeddedMeshes().Count() != rows.Count)
+            throw new InvalidDataException("External mesh embedding validation failed: " + input);
         return output;
     }
-    public static void Run(string manifest){
-        var request=JsonSerializer.Deserialize<Request>(File.ReadAllText(manifest),new JsonSerializerOptions{PropertyNameCaseInsensitive=true})??throw new InvalidDataException("Empty mesh merge manifest");
-        if(request.Donors.Length==0)throw new InvalidDataException("Choose at least one merge donor");
-        var temporary=new List<string>();
-        try{
-            request=request with{Input=EmbedExternalMeshes(request.Input,request.Meshes,temporary),Donors=request.Donors.Select(d=>d.MetadataOnly?d:d with{Input=EmbedExternalMeshes(d.Input,request.Meshes,temporary)}).ToArray()};
-            RunEmbedded(request);
-        }finally{foreach(var file in temporary)File.Delete(file);}
-    }
-    static void RunEmbedded(Request request){
-        var original=File.ReadAllBytes(request.Input);using var host=new Resource{FileName=request.Input};host.Read(request.Input);if(host.DataBlock is not Model)throw new InvalidDataException("Merge host must be a model");
-        var dataBlock=host.DataBlock;var ctrlBlock=host.Blocks.Single(b=>b.Type==BlockType.CTRL);var data=Read(host,original,dataBlock);var ctrl=Read(host,original,ctrlBlock);var root=data.Data.Root;var control=ctrl.Data.Root;
-        HashSet<string>? knownRootBones=null;
-        if(request.SkeletonReference is not null){
-            using var reference=new Resource{FileName=request.SkeletonReference};reference.Read(request.SkeletonReference);
-            if(reference.DataBlock is not Model)throw new InvalidDataException("Skeleton reference must be a model");
-            var referenceData=Read(reference,File.ReadAllBytes(request.SkeletonReference),reference.DataBlock).Data.Root;
-            knownRootBones=Values(referenceData["m_modelSkeleton"],"m_boneName").Select(Text).ToHashSet(StringComparer.Ordinal);
-            if(Values(root["m_modelSkeleton"],"m_boneName").Where((_,i)=>Number(Values(root["m_modelSkeleton"],"m_nParent")[i])<0).Any(n=>!knownRootBones.Contains(Text(n))))throw new InvalidDataException("Host roots are absent from hero skeleton reference");
-        }
-        var meshRows=Values(control,"embedded_meshes").ToList();var attachmentOverrides=new Dictionary<string,KVObject>(StringComparer.Ordinal);var editedHostMeshes=new HashSet<int>();if(meshRows.Count==0)throw new InvalidDataException("Merge host has no embedded meshes");
-        if (request.HideHostMeshes is { Length: > 0 } hidden) HideHostMeshes(root, meshRows, hidden);
-        var chunks=host.Blocks.Select(b=>new Chunk(b.Type,original.AsSpan((int)b.Offset,(int)b.Size).ToArray())).ToList();var imported=new List<string>();var independentEffectSets=new List<KVObject>();
-        var meshGroups=Values(root,"m_meshGroups").ToList();if(meshGroups.Count>=63)throw new InvalidDataException("Host has no free mesh group bit");
-        var mergedMask=1UL<<meshGroups.Count;meshGroups.Add(new KVObject("harlord_merged"));root["m_meshGroups"]=Array(meshGroups);
-        root["m_nDefaultMeshGroupMask"]=new KVObject((root.TryGetValue("m_nDefaultMeshGroupMask",out var maskValue)?Mask(maskValue):ulong.MaxValue)|mergedMask);
-        var morphBlock=host.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
-        var mergedMorph=morphBlock is null?null:Read(host,original,morphBlock);var morphEdited=false;int? importedControllerBlock=null;byte importedControllerVersion=0;
-        var originalSkeleton=Values(root["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();
-        var hostParentBones=Values(root["m_modelSkeleton"],"m_nParent").Select(Number).Where(p=>p>=0).ToHashSet();var reboundBones=new HashSet<int>();
-        foreach(var requested in request.Donors){
-            var entry=requested;
-            var bytes=File.ReadAllBytes(entry.Input);using var donor=new Resource{FileName=entry.Input};donor.Read(entry.Input);if(donor.DataBlock is not Model)throw new InvalidDataException("Merge donor must be a model");
-            var source=Read(donor,bytes,donor.DataBlock).Data.Root;var sourceCtrl=Read(donor,bytes,donor.Blocks.Single(b=>b.Type==BlockType.CTRL)).Data.Root;
-            if(Values(source,"m_refMeshes").Any(v=>MeshReference(v).Length>0))throw new InvalidDataException("External donor meshes must be embedded before merging");
-            // Draconic Requiem's misc model supplies metadata but no geometry.
-            if(request.HostModel=="models/heroes/death_prophet/death_prophet.vmdl_c"&&
-               entry.SourceModel=="models/items/death_prophet/scalefiends_hatred_misc/scalefiends_hatred_misc.vmdl_c"&&
-               entry.MeshNames is null&&Values(sourceCtrl,"embedded_meshes").Length==0)
-                entry=entry with{MetadataOnly=true};
 
-            if(Values(source,"m_boneFlexDrivers").Length>0)throw new InvalidDataException("Donor bone flex drivers require a dedicated merge profile");
-            if(!entry.MetadataOnly&&donor.Blocks.Any(b=>b.Type==BlockType.PHYS&&(b.ToString()?.Contains("m_cloth",StringComparison.OrdinalIgnoreCase)??false)))throw new InvalidDataException("Donor contains cloth physics; use a dedicated merge profile");
-            if(!entry.MetadataOnly&&Values(source,"m_ExtParts").Length>0)throw new InvalidDataException("Donor external parts require a dedicated merge profile");
-            if(entry.MetadataOnly&&!entry.SkipParticleMetadata)foreach(var block in donor.Blocks.Where(b=>b.Type==BlockType.MDAT))
-                independentEffectSets.AddRange(ScopedHitboxTransfer.Collect(Read(donor,bytes,block).Data.Root,root["m_modelSkeleton"]));
-            var normalizedMorphs=new Dictionary<int,byte[]>();int? controllerSeed=null;
-            if(!entry.MetadataOnly){
-                var donorMorph=donor.Blocks.FirstOrDefault(b=>b.Type==BlockType.MRPH);
-                if(donorMorph is not null){var donorData=Read(donor,bytes,donorMorph);if(mergedMorph is null&&!entry.NeutralizeOriginalMorph){
-                    mergedMorph=Read(donor,bytes,donorMorph);
-                    controllerSeed=donor.Blocks.IndexOf(donorMorph);
-                    importedControllerVersion=bytes[(int)donorMorph.Offset];
+    public static void Run(string manifest)
+    {
+        var request = JsonSerializer.Deserialize<Request>(
+            File.ReadAllText(manifest),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        ) ?? throw new InvalidDataException("Empty mesh merge manifest");
+        if (request.Donors.Length == 0)
+            throw new InvalidDataException("Choose at least one merge donor");
+        var temporary = new List<string>();
+        try
+        {
+            request = request with
+            {
+                Input = EmbedExternalMeshes(request.Input, request.Meshes, temporary),
+                Donors = request
+                    .Donors.Select(d =>
+                        d.MetadataOnly ? d : d with { Input = EmbedExternalMeshes(d.Input, request.Meshes, temporary) }
+                    )
+                    .ToArray(),
+            };
+            RunEmbedded(request);
+        }
+        finally
+        {
+            foreach (var file in temporary)
+                File.Delete(file);
+        }
+    }
+
+    static void RunEmbedded(Request request)
+    {
+        var original = File.ReadAllBytes(request.Input);
+        using var host = new Resource { FileName = request.Input };
+        host.Read(request.Input);
+        if (host.DataBlock is not Model)
+            throw new InvalidDataException("Merge host must be a model");
+        var dataBlock = host.DataBlock;
+        var ctrlBlock = host.Blocks.Single(b => b.Type == BlockType.CTRL);
+        var data = Read(host, original, dataBlock);
+        var ctrl = Read(host, original, ctrlBlock);
+        var root = data.Data.Root;
+        var control = ctrl.Data.Root;
+        HashSet<string>? knownRootBones = null;
+        if (request.SkeletonReference is not null)
+        {
+            using var reference = new Resource { FileName = request.SkeletonReference };
+            reference.Read(request.SkeletonReference);
+            if (reference.DataBlock is not Model)
+                throw new InvalidDataException("Skeleton reference must be a model");
+            var referenceData = Read(
+                reference,
+                File.ReadAllBytes(request.SkeletonReference),
+                reference.DataBlock
+            ).Data.Root;
+            knownRootBones = Values(referenceData["m_modelSkeleton"], "m_boneName")
+                .Select(Text)
+                .ToHashSet(StringComparer.Ordinal);
+            if (
+                Values(root["m_modelSkeleton"], "m_boneName")
+                    .Where((_, i) => Number(Values(root["m_modelSkeleton"], "m_nParent")[i]) < 0)
+                    .Any(n => !knownRootBones.Contains(Text(n)))
+            )
+                throw new InvalidDataException("Host roots are absent from hero skeleton reference");
+        }
+        var meshRows = Values(control, "embedded_meshes").ToList();
+        var attachmentOverrides = new Dictionary<string, KVObject>(StringComparer.Ordinal);
+        var editedHostMeshes = new HashSet<int>();
+        if (meshRows.Count == 0)
+            throw new InvalidDataException("Merge host has no embedded meshes");
+        if (request.HideHostMeshes is { Length: > 0 } hidden)
+            HideHostMeshes(root, meshRows, hidden);
+        var chunks = host
+            .Blocks.Select(b => new Chunk(b.Type, original.AsSpan((int)b.Offset, (int)b.Size).ToArray()))
+            .ToList();
+        var imported = new List<string>();
+        var independentEffectSets = new List<KVObject>();
+        var meshGroups = Values(root, "m_meshGroups").ToList();
+        if (meshGroups.Count >= 63)
+            throw new InvalidDataException("Host has no free mesh group bit");
+        var mergedMask = 1UL << meshGroups.Count;
+        meshGroups.Add(new KVObject("harlord_merged"));
+        root["m_meshGroups"] = Array(meshGroups);
+        root["m_nDefaultMeshGroupMask"] = new KVObject(
+            (root.TryGetValue("m_nDefaultMeshGroupMask", out var maskValue) ? Mask(maskValue) : ulong.MaxValue)
+                | mergedMask
+        );
+        var morphBlock = host.Blocks.FirstOrDefault(b => b.Type == BlockType.MRPH);
+        var mergedMorph = morphBlock is null ? null : Read(host, original, morphBlock);
+        var morphEdited = false;
+        int? importedControllerBlock = null;
+        byte importedControllerVersion = 0;
+        var originalSkeleton = Values(root["m_modelSkeleton"], "m_boneName").Select(Text).ToArray();
+        var hostParentBones = Values(root["m_modelSkeleton"], "m_nParent")
+            .Select(Number)
+            .Where(p => p >= 0)
+            .ToHashSet();
+        var reboundBones = new HashSet<int>();
+        foreach (var requested in request.Donors)
+        {
+            var entry = requested;
+            var bytes = File.ReadAllBytes(entry.Input);
+            using var donor = new Resource { FileName = entry.Input };
+            donor.Read(entry.Input);
+            if (donor.DataBlock is not Model)
+                throw new InvalidDataException("Merge donor must be a model");
+            var source = Read(donor, bytes, donor.DataBlock).Data.Root;
+            var sourceCtrl = Read(donor, bytes, donor.Blocks.Single(b => b.Type == BlockType.CTRL)).Data.Root;
+            if (Values(source, "m_refMeshes").Any(v => MeshReference(v).Length > 0))
+                throw new InvalidDataException("External donor meshes must be embedded before merging");
+            // Draconic Requiem's misc model supplies metadata but no geometry.
+            if (
+                request.HostModel == "models/heroes/death_prophet/death_prophet.vmdl_c"
+                && entry.SourceModel
+                    == "models/items/death_prophet/scalefiends_hatred_misc/scalefiends_hatred_misc.vmdl_c"
+                && entry.MeshNames is null
+                && Values(sourceCtrl, "embedded_meshes").Length == 0
+            )
+                entry = entry with { MetadataOnly = true };
+
+            if (Values(source, "m_boneFlexDrivers").Length > 0)
+                throw new InvalidDataException("Donor bone flex drivers require a dedicated merge profile");
+            if (
+                !entry.MetadataOnly
+                && donor.Blocks.Any(b =>
+                    b.Type == BlockType.PHYS
+                    && (b.ToString()?.Contains("m_cloth", StringComparison.OrdinalIgnoreCase) ?? false)
+                )
+            )
+                throw new InvalidDataException("Donor contains cloth physics; use a dedicated merge profile");
+            if (!entry.MetadataOnly && Values(source, "m_ExtParts").Length > 0)
+                throw new InvalidDataException("Donor external parts require a dedicated merge profile");
+            if (entry.MetadataOnly && !entry.SkipParticleMetadata)
+                foreach (var block in donor.Blocks.Where(b => b.Type == BlockType.MDAT))
+                    independentEffectSets.AddRange(
+                        ScopedHitboxTransfer.Collect(Read(donor, bytes, block).Data.Root, root["m_modelSkeleton"])
+                    );
+            var normalizedMorphs = new Dictionary<int, byte[]>();
+            int? controllerSeed = null;
+            if (!entry.MetadataOnly)
+            {
+                var donorMorph = donor.Blocks.FirstOrDefault(b => b.Type == BlockType.MRPH);
+                if (donorMorph is not null)
+                {
+                    var donorData = Read(donor, bytes, donorMorph);
+                    if (mergedMorph is null && !entry.NeutralizeOriginalMorph)
+                    {
+                        mergedMorph = Read(donor, bytes, donorMorph);
+                        controllerSeed = donor.Blocks.IndexOf(donorMorph);
+                        importedControllerVersion = bytes[(int)donorMorph.Offset];
+                    }
+                    var hostData = mergedMorph;
+                    var controls = Values(donorData.Data.Root, "m_FlexControllers")
+                        .Select(v => Text(v["m_szName"]))
+                        .ToArray();
+                    var originalControls = hostData is null
+                        ? System.Array.Empty<string>()
+                        : Values(hostData.Data.Root, "m_FlexControllers").Select(v => Text(v["m_szName"])).ToArray();
+                    if (!controls.SequenceEqual(originalControls.Take(controls.Length)))
+                    {
+                        if (hostData is null)
+                            throw new InvalidDataException("Morph donor requires a host controller table");
+                        if (entry.NeutralizeOriginalMorph)
+                            NormalizeOriginalMorph(donorData.Data.Root, hostData.Data.Root);
+                        else
+                        {
+                            var count = Values(hostData.Data.Root, "m_FlexControllers").Length;
+                            RemapMorphControllers(donorData.Data.Root, hostData.Data.Root);
+                            morphEdited |= Values(hostData.Data.Root, "m_FlexControllers").Length != count;
+                        }
+                        normalizedMorphs[donor.Blocks.IndexOf(donorMorph)] = Serialize(
+                            donorData,
+                            bytes[(int)donorMorph.Offset]
+                        );
+                    }
                 }
-                var hostData=mergedMorph;var controls=Values(donorData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();var originalControls=hostData is null?System.Array.Empty<string>():Values(hostData.Data.Root,"m_FlexControllers").Select(v=>Text(v["m_szName"])).ToArray();if(!controls.SequenceEqual(originalControls.Take(controls.Length))){if(hostData is null)throw new InvalidDataException("Morph donor requires a host controller table");if(entry.NeutralizeOriginalMorph)NormalizeOriginalMorph(donorData.Data.Root,hostData.Data.Root);else {var count=Values(hostData.Data.Root,"m_FlexControllers").Length;RemapMorphControllers(donorData.Data.Root,hostData.Data.Root);morphEdited|=Values(hostData.Data.Root,"m_FlexControllers").Length!=count;}normalizedMorphs[donor.Blocks.IndexOf(donorMorph)]=Serialize(donorData,bytes[(int)donorMorph.Offset]);}}
             }
             int[] boneMap;
-            try{
-                var hostName=request.HostModel??Text(root["m_name"]);
-                var donorName=entry.SourceModel??Text(source["m_name"]);
-                var skeleton=root["m_modelSkeleton"];
-                var attachments=ModelRootProfiles.Attachments(hostName,donorName)
-                    ??ModelRootProfiles.SharedAttachments(hostName,donorName,skeleton)
-                    ??(request.TesterImporterRoots?ModelRootProfiles.TesterAttachments(hostName,donorName,skeleton):null);
-                if(!entry.MetadataOnly)attachments=WearableAuditRootProfiles.Resolve(hostName,donorName,skeleton,source["m_modelSkeleton"],attachments);
-                boneMap=entry.MetadataOnly?System.Array.Empty<int>():MergeSkeleton(skeleton,source["m_modelSkeleton"],
-                    entry.AttachRootZero,entry.MatchBoneCase,knownRootBones,entry.AttachMorphlingSharkRoots,attachments);
-                if(!entry.MetadataOnly)RebindSharedSocketBones(skeleton,source["m_modelSkeleton"],boneMap,originalSkeleton.Length,hostParentBones,reboundBones);
+            try
+            {
+                var hostName = request.HostModel ?? Text(root["m_name"]);
+                var donorName = entry.SourceModel ?? Text(source["m_name"]);
+                var skeleton = root["m_modelSkeleton"];
+                var attachments = ModelRootProfiles.Attachments(hostName, donorName)
+                    ?? ModelRootProfiles.SharedAttachments(hostName, donorName, skeleton)
+                    ?? (
+                        request.TesterImporterRoots
+                            ? ModelRootProfiles.TesterAttachments(hostName, donorName, skeleton)
+                            : null
+                    );
+                if (!entry.MetadataOnly)
+                    attachments = WearableAuditRootProfiles.Resolve(
+                        hostName,
+                        donorName,
+                        skeleton,
+                        source["m_modelSkeleton"],
+                        attachments
+                    );
+                boneMap = entry.MetadataOnly
+                    ? System.Array.Empty<int>()
+                    : MergeSkeleton(
+                        skeleton,
+                        source["m_modelSkeleton"],
+                        entry.AttachRootZero,
+                        entry.MatchBoneCase,
+                        knownRootBones,
+                        entry.AttachMorphlingSharkRoots,
+                        attachments
+                    );
+                if (!entry.MetadataOnly)
+                    RebindSharedSocketBones(
+                        skeleton,
+                        source["m_modelSkeleton"],
+                        boneMap,
+                        originalSkeleton.Length,
+                        hostParentBones,
+                        reboundBones
+                    );
             }
-            catch(InvalidDataException error){
-                var failure=new InvalidDataException("Model merge failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donor: "+(entry.SourceModel??Text(source["m_name"]))+"; "+error.Message,error);
-                if(error.Data.Contains(UnattachedDonorRoot))failure.Data[IncompatibleDonorInput]=entry.OriginalInput;
+            catch (InvalidDataException error)
+            {
+                var failure = new InvalidDataException(
+                    "Model merge failed; host: "
+                        + (request.HostModel ?? Text(root["m_name"]))
+                        + "; donor: "
+                        + (entry.SourceModel ?? Text(source["m_name"]))
+                        + "; "
+                        + error.Message,
+                    error
+                );
+                if (error.Data.Contains(UnattachedDonorRoot))
+                    failure.Data[IncompatibleDonorInput] = entry.OriginalInput;
                 throw failure;
             }
 
-            var mergedBoneNames=Values(root["m_modelSkeleton"],"m_boneName");
-            var attachmentPrefix=request.TesterImporterRoots?TesterAttachmentProfiles.Prefix(entry.SourceModel??Text(source["m_name"])):null;
-            var renamedBones=entry.MetadataOnly?new Dictionary<string,string>():Values(source["m_modelSkeleton"],"m_boneName").Select((name,index)=>(name:Text(name),mapped:Text(mergedBoneNames[boneMap[index]]))).Where(v=>v.name!=v.mapped).ToDictionary(v=>v.name,v=>v.mapped,StringComparer.Ordinal);
-            var boneTable=Values(root,"m_remappingTable").ToList();var starts=Values(root,"m_remappingTableStarts").ToList();var sourceTable=Values(source,"m_remappingTable");var sourceStarts=Values(source,"m_remappingTableStarts");
-            var sourceGroups=Values(source,"m_refMeshGroupMasks");var sourceDefault=source.TryGetValue("m_nDefaultMeshGroupMask",out var sourceMask)?Mask(sourceMask):ulong.MaxValue;
-            var sourceRows=Values(sourceCtrl,"embedded_meshes").Where(r=>!entry.MetadataOnly).Where(r=>MeshIndex(r)>=sourceGroups.Length||(Mask(sourceGroups[MeshIndex(r)])&sourceDefault)!=0).Where(r=>entry.MeshNames is null||entry.MeshNames.Contains(MeshName(r),StringComparer.Ordinal)).ToArray();
-            if(!entry.MetadataOnly&&sourceRows.Length==0||entry.MeshNames?.Any(name=>!sourceRows.Any(r=>MeshName(r)==name))==true){
-                var error=new InvalidDataException("Requested donor mesh not found: "+(entry.SourceModel??Text(source["m_name"]))+" (default mask: "+sourceDefault+"; available: "+string.Join(", ",Values(sourceCtrl,"embedded_meshes").Select(MeshName))+")");
-                if(entry.MeshNames is null&&Values(sourceCtrl,"embedded_meshes").Length>0)error.Data[IncompatibleDonorInput]=entry.OriginalInput;
+            var mergedBoneNames = Values(root["m_modelSkeleton"], "m_boneName");
+            var attachmentPrefix = request.TesterImporterRoots
+                ? TesterAttachmentProfiles.Prefix(entry.SourceModel ?? Text(source["m_name"]))
+                : null;
+            var renamedBones = entry.MetadataOnly
+                ? new Dictionary<string, string>()
+                : Values(source["m_modelSkeleton"], "m_boneName")
+                    .Select((name, index) => (name: Text(name), mapped: Text(mergedBoneNames[boneMap[index]])))
+                    .Where(v => v.name != v.mapped)
+                    .ToDictionary(v => v.name, v => v.mapped, StringComparer.Ordinal);
+            var boneTable = Values(root, "m_remappingTable").ToList();
+            var starts = Values(root, "m_remappingTableStarts").ToList();
+            var sourceTable = Values(source, "m_remappingTable");
+            var sourceStarts = Values(source, "m_remappingTableStarts");
+            var sourceGroups = Values(source, "m_refMeshGroupMasks");
+            var sourceDefault = source.TryGetValue("m_nDefaultMeshGroupMask", out var sourceMask)
+                ? Mask(sourceMask)
+                : ulong.MaxValue;
+            var sourceRows = Values(sourceCtrl, "embedded_meshes")
+                .Where(r => !entry.MetadataOnly)
+                .Where(r =>
+                    MeshIndex(r) >= sourceGroups.Length || (Mask(sourceGroups[MeshIndex(r)]) & sourceDefault) != 0
+                )
+                .Where(r => entry.MeshNames is null || entry.MeshNames.Contains(MeshName(r), StringComparer.Ordinal))
+                .ToArray();
+            if (
+                !entry.MetadataOnly && sourceRows.Length == 0
+                || entry.MeshNames?.Any(name => !sourceRows.Any(r => MeshName(r) == name)) == true
+            )
+            {
+                var error = new InvalidDataException(
+                    "Requested donor mesh not found: "
+                        + (entry.SourceModel ?? Text(source["m_name"]))
+                        + " (default mask: "
+                        + sourceDefault
+                        + "; available: "
+                        + string.Join(", ", Values(sourceCtrl, "embedded_meshes").Select(MeshName))
+                        + ")"
+                );
+                if (entry.MeshNames is null && Values(sourceCtrl, "embedded_meshes").Length > 0)
+                    error.Data[IncompatibleDonorInput] = entry.OriginalInput;
                 throw error;
             }
-            var blocks=new Dictionary<int,int>();
-            int CopyBlock(int index){if(index<0||index>=donor.Blocks.Count)throw new InvalidDataException("Invalid donor mesh block index");if(blocks.TryGetValue(index,out var mapped))return mapped;var b=donor.Blocks[index];if(b.Type.ToString() is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF"))throw new InvalidDataException("Unexpected donor geometry block: "+b.Type);mapped=chunks.Count;var payload=normalizedMorphs.TryGetValue(index,out var normalized)?normalized:bytes.AsSpan((int)b.Offset,(int)b.Size).ToArray();if(b.Type==BlockType.MDAT&&(renamedBones.Count>0||attachmentPrefix is not null)){var mesh=Read(donor,bytes,b);RenameMeshBones(mesh.Data.Root,renamedBones);TesterAttachmentProfiles.NamespaceMesh(mesh.Data.Root,attachmentPrefix);payload=Serialize(mesh,bytes[(int)b.Offset]);}chunks.Add(new Chunk(b.Type,payload));blocks[index]=mapped;if(index==controllerSeed)importedControllerBlock=mapped;return mapped;}
-            var nextIndex=new[]{meshRows.Max(MeshIndex)+1,starts.Count,Values(root,"m_refMeshes").Length,Values(root,"m_refMeshGroupMasks").Length}.Max();
-            foreach(var row in sourceRows){
-                var oldIndex=MeshIndex(row);var newIndex=nextIndex++;var name=MeshName(row);imported.Add(name);
-                if(oldIndex>=sourceStarts.Length)throw new InvalidDataException("Donor remap start missing: "+name);
-                var start=Number(sourceStarts[oldIndex]);var end=oldIndex+1<sourceStarts.Length?Number(sourceStarts[oldIndex+1]):sourceTable.Length;
-                if(start<0||end<start||end>sourceTable.Length)throw new InvalidDataException("Invalid donor remap range");
-                while(starts.Count<newIndex)starts.Add(new KVObject(boneTable.Count));starts.Add(new KVObject(boneTable.Count));
-                var meshBlock=Number(row[Field(row,"m_nDataBlock","data_block")]);
-                if(meshBlock<0||meshBlock>=donor.Blocks.Count||donor.Blocks[meshBlock].Type!=BlockType.MDAT)throw new InvalidDataException("Invalid donor MDAT: "+name);
-                var meshData=Read(donor,bytes,donor.Blocks[meshBlock]).Data.Root;
-                int? meshBoneCount=meshData.TryGetValue("m_skeleton",out var meshSkeleton)&&meshSkeleton.ContainsKey("m_bones")?Values(meshSkeleton,"m_bones").Length:null;
-                foreach(var bone in RemapMeshBones(sourceTable,start,end,boneMap,meshBoneCount,entry.Input+" / "+name))boneTable.Add(new KVObject(bone));
-                BlockReferences(row,(parent,key,index)=>parent[key]=new KVObject(CopyBlock(index)));
-                row[Field(row,"m_nMeshIndex","mesh_index")]=new KVObject(newIndex);meshRows.Add(row);
-                EnsureArray(root,"m_refMeshes",newIndex+1,()=>new KVObject(""){Flag=KVFlag.Resource});
-                EnsureArray(root,"m_refMeshGroupMasks",newIndex+1,()=>new KVObject(ulong.MaxValue));var groupMasks=Values(root,"m_refMeshGroupMasks");groupMasks[newIndex]=new KVObject(mergedMask);root["m_refMeshGroupMasks"]=Array(groupMasks);
-                var lod=Values(source,"m_refLODGroupMasks");var mask=oldIndex<lod.Length?lod[oldIndex]:new KVObject(ulong.MaxValue);
-                EnsureArray(root,"m_refLODGroupMasks",newIndex+1,()=>new KVObject(ulong.MaxValue));var masks=Values(root,"m_refLODGroupMasks");masks[newIndex]=mask;root["m_refLODGroupMasks"]=Array(masks);
+            var blocks = new Dictionary<int, int>();
+            int CopyBlock(int index)
+            {
+                if (index < 0 || index >= donor.Blocks.Count)
+                    throw new InvalidDataException("Invalid donor mesh block index");
+                if (blocks.TryGetValue(index, out var mapped))
+                    return mapped;
+                var b = donor.Blocks[index];
+                if (
+                    b.Type.ToString()
+                    is not ("MDAT" or "MBUF" or "VBIB" or "MVTX" or "MIDX" or "MRPH" or "MSLT" or "MADJ" or "TBUF")
+                )
+                    throw new InvalidDataException("Unexpected donor geometry block: " + b.Type);
+                mapped = chunks.Count;
+                var payload = normalizedMorphs.TryGetValue(index, out var normalized)
+                    ? normalized
+                    : bytes.AsSpan((int)b.Offset, (int)b.Size).ToArray();
+                if (b.Type == BlockType.MDAT && (renamedBones.Count > 0 || attachmentPrefix is not null))
+                {
+                    var mesh = Read(donor, bytes, b);
+                    RenameMeshBones(mesh.Data.Root, renamedBones);
+                    TesterAttachmentProfiles.NamespaceMesh(mesh.Data.Root, attachmentPrefix);
+                    payload = Serialize(mesh, bytes[(int)b.Offset]);
+                }
+                chunks.Add(new Chunk(b.Type, payload));
+                blocks[index] = mapped;
+                if (index == controllerSeed)
+                    importedControllerBlock = mapped;
+                return mapped;
             }
-            root["m_remappingTable"]=Array(boneTable);root["m_remappingTableStarts"]=Array(starts);
+            var nextIndex = new[]
+            {
+                meshRows.Max(MeshIndex) + 1,
+                starts.Count,
+                Values(root, "m_refMeshes").Length,
+                Values(root, "m_refMeshGroupMasks").Length,
+            }.Max();
+            foreach (var row in sourceRows)
+            {
+                var oldIndex = MeshIndex(row);
+                var newIndex = nextIndex++;
+                var name = MeshName(row);
+                imported.Add(name);
+                if (oldIndex >= sourceStarts.Length)
+                    throw new InvalidDataException("Donor remap start missing: " + name);
+                var start = Number(sourceStarts[oldIndex]);
+                var end = oldIndex + 1 < sourceStarts.Length ? Number(sourceStarts[oldIndex + 1]) : sourceTable.Length;
+                if (start < 0 || end < start || end > sourceTable.Length)
+                    throw new InvalidDataException("Invalid donor remap range");
+                while (starts.Count < newIndex)
+                    starts.Add(new KVObject(boneTable.Count));
+                starts.Add(new KVObject(boneTable.Count));
+                var meshBlock = Number(row[Field(row, "m_nDataBlock", "data_block")]);
+                if (meshBlock < 0 || meshBlock >= donor.Blocks.Count || donor.Blocks[meshBlock].Type != BlockType.MDAT)
+                    throw new InvalidDataException("Invalid donor MDAT: " + name);
+                var meshData = Read(donor, bytes, donor.Blocks[meshBlock]).Data.Root;
+                int? meshBoneCount =
+                    meshData.TryGetValue("m_skeleton", out var meshSkeleton) && meshSkeleton.ContainsKey("m_bones")
+                        ? Values(meshSkeleton, "m_bones").Length
+                        : null;
+                foreach (
+                    var bone in RemapMeshBones(
+                        sourceTable,
+                        start,
+                        end,
+                        boneMap,
+                        meshBoneCount,
+                        entry.Input + " / " + name
+                    )
+                )
+                    boneTable.Add(new KVObject(bone));
+                BlockReferences(row, (parent, key, index) => parent[key] = new KVObject(CopyBlock(index)));
+                row[Field(row, "m_nMeshIndex", "mesh_index")] = new KVObject(newIndex);
+                meshRows.Add(row);
+                EnsureArray(root, "m_refMeshes", newIndex + 1, () => new KVObject("") { Flag = KVFlag.Resource });
+                EnsureArray(root, "m_refMeshGroupMasks", newIndex + 1, () => new KVObject(ulong.MaxValue));
+                var groupMasks = Values(root, "m_refMeshGroupMasks");
+                groupMasks[newIndex] = new KVObject(mergedMask);
+                root["m_refMeshGroupMasks"] = Array(groupMasks);
+                var lod = Values(source, "m_refLODGroupMasks");
+                var mask = oldIndex < lod.Length ? lod[oldIndex] : new KVObject(ulong.MaxValue);
+                EnsureArray(root, "m_refLODGroupMasks", newIndex + 1, () => new KVObject(ulong.MaxValue));
+                var masks = Values(root, "m_refLODGroupMasks");
+                masks[newIndex] = mask;
+                root["m_refLODGroupMasks"] = Array(masks);
+            }
+            root["m_remappingTable"] = Array(boneTable);
+            root["m_remappingTableStarts"] = Array(starts);
             // Keep material choices on draw calls; material groups append the
             // selected donor materials to each host skin instead of changing it.
-            if(entry.OverrideAttachments){
-                var selected=new HashSet<string>(StringComparer.Ordinal);
-                foreach(var block in donor.Blocks.Where(b=>b.Type==BlockType.MDAT&&blocks.ContainsKey(donor.Blocks.IndexOf(b))))
-                    foreach(var attachment in NamespacedAttachments(donor,bytes,block,attachmentPrefix))
-                        if(attachment.TryGetValue("key",out var name)&&attachment.TryGetValue("value",out var value)&&selected.Add(Text(name)))attachmentOverrides[Text(name)]=value;
+            if (entry.OverrideAttachments)
+            {
+                var selected = new HashSet<string>(StringComparer.Ordinal);
+                foreach (
+                    var block in donor.Blocks.Where(b =>
+                        b.Type == BlockType.MDAT && blocks.ContainsKey(donor.Blocks.IndexOf(b))
+                    )
+                )
+                foreach (var attachment in NamespacedAttachments(donor, bytes, block, attachmentPrefix))
+                    if (
+                        attachment.TryGetValue("key", out var name)
+                        && attachment.TryGetValue("value", out var value)
+                        && selected.Add(Text(name))
+                    )
+                        attachmentOverrides[Text(name)] = value;
             }
-            var donorGroups=Values(source,"m_materialGroups");var donorMaterials=entry.MetadataOnly?System.Array.Empty<KVObject>():donorGroups.Length>0?Values(donorGroups[0],"m_materials"):donor.Blocks.Where(b=>blocks.ContainsKey(donor.Blocks.IndexOf(b))&&b.Type==BlockType.MDAT).SelectMany(b=>Values(Read(donor,bytes,b).Data.Root,"m_sceneObjects")).SelectMany(scene=>Values(scene,"m_drawCalls")).Where(draw=>draw.ContainsKey("m_material")).Select(draw=>draw["m_material"]).DistinctBy(Text).ToArray();
-            foreach(var group in Values(root,"m_materialGroups"))group["m_materials"]=Array(Values(group,"m_materials").Concat(donorMaterials));
-            var info=root["m_modelInfo"];var sourceInfo=source["m_modelInfo"];if(!entry.SkipParticleMetadata&&sourceInfo.TryGetValue("m_keyValueText",out var text)&&Text(text).Length>0)info["m_keyValueText"]=new KVObject(MergeParticleText(info.TryGetValue("m_keyValueText",out var old)?Text(old):"",Text(text)));
-            AddReferences(host,donor);
-            foreach(var key in new[]{"pool_size_hint","pool_size_hint_mesh"})if(control.TryGetValue(key,out var hint))control[key]=new KVObject(checked(hint.ToInt64(CultureInfo.InvariantCulture)+(sourceCtrl.TryGetValue(key,out var sourceHint)?sourceHint.ToInt64(CultureInfo.InvariantCulture):bytes.Length*4L)));
+            var donorGroups = Values(source, "m_materialGroups");
+            var donorMaterials =
+                entry.MetadataOnly ? System.Array.Empty<KVObject>()
+                : donorGroups.Length > 0 ? Values(donorGroups[0], "m_materials")
+                : donor
+                    .Blocks.Where(b => blocks.ContainsKey(donor.Blocks.IndexOf(b)) && b.Type == BlockType.MDAT)
+                    .SelectMany(b => Values(Read(donor, bytes, b).Data.Root, "m_sceneObjects"))
+                    .SelectMany(scene => Values(scene, "m_drawCalls"))
+                    .Where(draw => draw.ContainsKey("m_material"))
+                    .Select(draw => draw["m_material"])
+                    .DistinctBy(Text)
+                    .ToArray();
+            foreach (var group in Values(root, "m_materialGroups"))
+                group["m_materials"] = Array(Values(group, "m_materials").Concat(donorMaterials));
+            var info = root["m_modelInfo"];
+            var sourceInfo = source["m_modelInfo"];
+            if (
+                !entry.SkipParticleMetadata
+                && sourceInfo.TryGetValue("m_keyValueText", out var text)
+                && Text(text).Length > 0
+            )
+                info["m_keyValueText"] = new KVObject(
+                    MergeParticleText(info.TryGetValue("m_keyValueText", out var old) ? Text(old) : "", Text(text))
+                );
+            AddReferences(host, donor);
+            foreach (var key in new[] { "pool_size_hint", "pool_size_hint_mesh" })
+                if (control.TryGetValue(key, out var hint))
+                    control[key] = new KVObject(
+                        checked(
+                            hint.ToInt64(CultureInfo.InvariantCulture)
+                            + (
+                                sourceCtrl.TryGetValue(key, out var sourceHint)
+                                    ? sourceHint.ToInt64(CultureInfo.InvariantCulture)
+                                    : bytes.Length * 4L
+                            )
+                        )
+                    );
         }
         // A merged weapon is no longer a separate wearable entity. Its authored
         // attack attachments must replace colliding base-hand attachments.
-        if(attachmentOverrides.Count>0)foreach(var block in host.Blocks.Where(b=>b.Type==BlockType.MDAT)){
-            var mesh=Read(host,original,block);if(OverrideMeshAttachments(mesh.Data.Root,attachmentOverrides)==0)continue;
-            var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
+        if (attachmentOverrides.Count > 0)
+            foreach (var block in host.Blocks.Where(b => b.Type == BlockType.MDAT))
+            {
+                var mesh = Read(host, original, block);
+                if (OverrideMeshAttachments(mesh.Data.Root, attachmentOverrides) == 0)
+                    continue;
+                var index = host.Blocks.IndexOf(block);
+                chunks[index] = new Chunk(BlockType.MDAT, Serialize(mesh, original[(int)block.Offset]));
+                editedHostMeshes.Add(index);
+            }
+        if (independentEffectSets.Count > 0)
+        {
+            var block = host.Blocks.First(b => b.Type == BlockType.MDAT);
+            var mesh = Read(host, original, block);
+            if (attachmentOverrides.Count > 0)
+                OverrideMeshAttachments(mesh.Data.Root, attachmentOverrides);
+            ScopedHitboxTransfer.Append(mesh.Data.Root, independentEffectSets);
+            var index = host.Blocks.IndexOf(block);
+            chunks[index] = new Chunk(BlockType.MDAT, Serialize(mesh, original[(int)block.Offset]));
+            editedHostMeshes.Add(index);
         }
-        if(independentEffectSets.Count>0){
-            var block=host.Blocks.First(b=>b.Type==BlockType.MDAT);var mesh=Read(host,original,block);
-            if(attachmentOverrides.Count>0)OverrideMeshAttachments(mesh.Data.Root,attachmentOverrides);
-            ScopedHitboxTransfer.Append(mesh.Data.Root,independentEffectSets);
-            var index=host.Blocks.IndexOf(block);chunks[index]=new Chunk(BlockType.MDAT,Serialize(mesh,original[(int)block.Offset]));editedHostMeshes.Add(index);
+        if (morphEdited && mergedMorph is not null && importedControllerBlock is int controllerIndex)
+            chunks[controllerIndex] = new Chunk(BlockType.MRPH, Serialize(mergedMorph, importedControllerVersion));
+        if (morphEdited && mergedMorph is not null && morphBlock is not null)
+            chunks[host.Blocks.IndexOf(morphBlock)] = new Chunk(
+                BlockType.MRPH,
+                Serialize(mergedMorph, original[(int)morphBlock.Offset])
+            );
+        if (request.TesterImporterRoots && request.HostModel == "models/heroes/ursa/ursa.vmdl_c")
+            ModelSelectionBounds.Apply(
+                root,
+                host.Blocks.Where(b => b.Type == BlockType.MDAT).Select(b => Read(host, original, b).Data.Root)
+            );
+        control["embedded_meshes"] = Array(meshRows);
+        chunks[host.Blocks.IndexOf(dataBlock)] = new Chunk(
+            dataBlock.Type,
+            Serialize(data, original[(int)dataBlock.Offset])
+        );
+        chunks[host.Blocks.IndexOf(ctrlBlock)] = new Chunk(
+            ctrlBlock.Type,
+            Serialize(ctrl, original[(int)ctrlBlock.Offset])
+        );
+        if (host.ExternalReferences is { } references)
+        {
+            using var buffer = new MemoryStream();
+            references.Serialize(buffer);
+            chunks[host.Blocks.IndexOf(references)] = new Chunk(references.Type, buffer.ToArray());
         }
-        if(morphEdited&&mergedMorph is not null&&importedControllerBlock is int controllerIndex)
-            chunks[controllerIndex]=new Chunk(BlockType.MRPH,Serialize(mergedMorph,importedControllerVersion));
-        if(morphEdited&&mergedMorph is not null&&morphBlock is not null)chunks[host.Blocks.IndexOf(morphBlock)]=new Chunk(BlockType.MRPH,Serialize(mergedMorph,original[(int)morphBlock.Offset]));
-        if(request.TesterImporterRoots&&request.HostModel=="models/heroes/ursa/ursa.vmdl_c")ModelSelectionBounds.Apply(root,host.Blocks.Where(b=>b.Type==BlockType.MDAT).Select(b=>Read(host,original,b).Data.Root));
-        control["embedded_meshes"]=Array(meshRows);
-        chunks[host.Blocks.IndexOf(dataBlock)]=new Chunk(dataBlock.Type,Serialize(data,original[(int)dataBlock.Offset]));chunks[host.Blocks.IndexOf(ctrlBlock)]=new Chunk(ctrlBlock.Type,Serialize(ctrl,original[(int)ctrlBlock.Offset]));
-        if(host.ExternalReferences is { } references){using var buffer=new MemoryStream();references.Serialize(buffer);chunks[host.Blocks.IndexOf(references)]=new Chunk(references.Type,buffer.ToArray());}
-        Write(original,chunks,request.Output);
-        using var check=new Resource{FileName=request.Output};check.Read(request.Output);var combined=check.DataBlock as Model??throw new InvalidDataException("Merged resource is not a model");var names=Values(combined.Data["m_modelSkeleton"],"m_boneName").Select(Text).ToArray();if(!names.Take(originalSkeleton.Length).SequenceEqual(originalSkeleton))throw new InvalidDataException("Host bone indices changed");
-        try{
-            var decodedMeshes=combined.GetEmbeddedMeshes().ToArray();if(decodedMeshes.Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
-        }catch(ArgumentException error){
+        Write(original, chunks, request.Output);
+        using var check = new Resource { FileName = request.Output };
+        check.Read(request.Output);
+        var combined = check.DataBlock as Model ?? throw new InvalidDataException("Merged resource is not a model");
+        var names = Values(combined.Data["m_modelSkeleton"], "m_boneName").Select(Text).ToArray();
+        if (!names.Take(originalSkeleton.Length).SequenceEqual(originalSkeleton))
+            throw new InvalidDataException("Host bone indices changed");
+        try
+        {
+            var decodedMeshes = combined.GetEmbeddedMeshes().ToArray();
+            if (decodedMeshes.Length != meshRows.Count)
+                throw new InvalidDataException("Merged mesh count mismatch");
+        }
+        catch (ArgumentException error)
+        {
             // VRF cannot decode every buffer the game can: the Spectre Arcana
             // template's head meshes carry m_nMeshoptMeshletEncodeVersion and
             // fail with "Tail size incorrect" before anything is merged. Host
             // meshes keep their bytes (checked below), so a host that already
             // failed on its own is not evidence against the merge. Then every
             // donor must still decode by itself, and the row count must hold.
-            if(!DecodesAlone(host))
+            if (!DecodesAlone(host))
             {
-                foreach(var donor in request.Donors.Where(d=>!d.MetadataOnly))
+                foreach (var donor in request.Donors.Where(d => !d.MetadataOnly))
                 {
-                    using var alone=new Resource{FileName=donor.Input};alone.Read(donor.Input);
-                    if(!DecodesAlone(alone))throw new InvalidDataException("Donor mesh decoding failed: "+(donor.SourceModel??donor.Input)+"; "+error.Message,error);
+                    using var alone = new Resource { FileName = donor.Input };
+                    alone.Read(donor.Input);
+                    if (!DecodesAlone(alone))
+                        throw new InvalidDataException(
+                            "Donor mesh decoding failed: " + (donor.SourceModel ?? donor.Input) + "; " + error.Message,
+                            error
+                        );
                 }
-                if(Values(Read(check,File.ReadAllBytes(request.Output),check.Blocks.Single(b=>b.Type==BlockType.CTRL)).Data.Root,"embedded_meshes").Length!=meshRows.Count)throw new InvalidDataException("Merged mesh count mismatch");
+                if (
+                    Values(
+                        Read(
+                            check,
+                            File.ReadAllBytes(request.Output),
+                            check.Blocks.Single(b => b.Type == BlockType.CTRL)
+                        ).Data.Root,
+                        "embedded_meshes"
+                    ).Length != meshRows.Count
+                )
+                    throw new InvalidDataException("Merged mesh count mismatch");
             }
-            else throw new InvalidDataException("Merged mesh decoding failed; host: "+(request.HostModel??Text(root["m_name"]))+"; donors: "+string.Join(", ",request.Donors.Where(d=>!d.MetadataOnly).Select(d=>d.SourceModel??d.Input))+"; "+error.Message,error);
+            else
+                throw new InvalidDataException(
+                    "Merged mesh decoding failed; host: "
+                        + (request.HostModel ?? Text(root["m_name"]))
+                        + "; donors: "
+                        + string.Join(
+                            ", ",
+                            request.Donors.Where(d => !d.MetadataOnly).Select(d => d.SourceModel ?? d.Input)
+                        )
+                        + "; "
+                        + error.Message,
+                    error
+                );
         }
-        var written=File.ReadAllBytes(request.Output);for(var i=0;i<host.Blocks.Count;i++){var b=host.Blocks[i];if(b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL||(morphEdited&&b==morphBlock)||editedHostMeshes.Contains(i))continue;var after=check.Blocks[i];if(!original.AsSpan((int)b.Offset,(int)b.Size).SequenceEqual(written.AsSpan((int)after.Offset,(int)after.Size)))throw new InvalidDataException("Host animation/physics payload changed: "+b.Type);}
-        File.WriteAllText(request.Output+".merge.json",JsonSerializer.Serialize(new{meshes=imported,bones=names.Length,preservedHostBlocks=host.Blocks.Count}));Console.WriteLine("[OK] Embedded model merge: "+imported.Count+" meshes, "+names.Length+" bones; host animations and physics preserved");
+        var written = File.ReadAllBytes(request.Output);
+        for (var i = 0; i < host.Blocks.Count; i++)
+        {
+            var b = host.Blocks[i];
+            if (
+                b.Type is BlockType.DATA or BlockType.CTRL or BlockType.RERL
+                || (morphEdited && b == morphBlock)
+                || editedHostMeshes.Contains(i)
+            )
+                continue;
+            var after = check.Blocks[i];
+            if (
+                !original
+                    .AsSpan((int)b.Offset, (int)b.Size)
+                    .SequenceEqual(written.AsSpan((int)after.Offset, (int)after.Size))
+            )
+                throw new InvalidDataException("Host animation/physics payload changed: " + b.Type);
+        }
+        File.WriteAllText(
+            request.Output + ".merge.json",
+            JsonSerializer.Serialize(
+                new
+                {
+                    meshes = imported,
+                    bones = names.Length,
+                    preservedHostBlocks = host.Blocks.Count,
+                }
+            )
+        );
+        Console.WriteLine(
+            "[OK] Embedded model merge: "
+                + imported.Count
+                + " meshes, "
+                + names.Length
+                + " bones; host animations and physics preserved"
+        );
     }
-    static bool DecodesAlone(Resource resource){
-        if(resource.DataBlock is not Model model)return false;
-        try{model.GetEmbeddedMeshes().ToArray();return true;}catch(ArgumentException){return false;}
+
+    static bool DecodesAlone(Resource resource)
+    {
+        if (resource.DataBlock is not Model model)
+            return false;
+        try
+        {
+            model.GetEmbeddedMeshes().ToArray();
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
+
     // The Wilding Tiger appends a zero-default "orig" shape controller which
     // the base hero never drives. Keep its atlas/shape indices, but evaluate
     // that one shape at neutral instead of shifting all facial controllers.
     // Controller indices are local to the donor's table. Keep the host prefix
     // intact (animation tracks use it), then append genuinely new named inputs.
     // Shape indices, atlas rectangles and FETCH2 rule references stay untouched.
-    internal static void RemapMorphControllers(KVObject donor,KVObject host){
-        var source=Values(donor,"m_FlexControllers");var target=Values(host,"m_FlexControllers").ToList();
-        string Name(KVObject c)=>Text(c["m_szName"]);
-        if(source.Select(Name).Distinct(StringComparer.Ordinal).Count()!=source.Length||target.Select(Name).Distinct(StringComparer.Ordinal).Count()!=target.Count)throw new InvalidDataException("Duplicate morph controller name");
-        var mapping=new int[source.Length];var transforms=new (float Scale,float Bias)[source.Length];
-        for(var i=0;i<source.Length;i++){
-            var index=target.FindIndex(c=>Name(c)==Name(source[i]));
-            if(index<0){index=target.Count;target.Add(source[i]);}
-            else if(Text(source[i]["m_szType"])!=Text(target[index]["m_szType"]))throw new InvalidDataException("Incompatible morph controller type: "+Name(source[i]));
-            float F(KVObject row,string key)=>row[key].ToSingle(CultureInfo.InvariantCulture);
-            var sourceMin=F(source[i],"min");var sourceMax=F(source[i],"max");var targetMin=F(target[index],"min");var targetMax=F(target[index],"max");
-            if(!float.IsFinite(sourceMin)||!float.IsFinite(sourceMax)||!float.IsFinite(targetMin)||!float.IsFinite(targetMax)||sourceMax<=sourceMin||targetMax<=targetMin)throw new InvalidDataException("Invalid morph controller range");
-            var scale=(sourceMax-sourceMin)/(targetMax-targetMin);transforms[i]=(scale,sourceMin-targetMin*scale);mapping[i]=index;
+    internal static void RemapMorphControllers(KVObject donor, KVObject host)
+    {
+        var source = Values(donor, "m_FlexControllers");
+        var target = Values(host, "m_FlexControllers").ToList();
+        string Name(KVObject c) => Text(c["m_szName"]);
+        if (
+            source.Select(Name).Distinct(StringComparer.Ordinal).Count() != source.Length
+            || target.Select(Name).Distinct(StringComparer.Ordinal).Count() != target.Count
+        )
+            throw new InvalidDataException("Duplicate morph controller name");
+        var mapping = new int[source.Length];
+        var transforms = new (float Scale, float Bias)[source.Length];
+        for (var i = 0; i < source.Length; i++)
+        {
+            var index = target.FindIndex(c => Name(c) == Name(source[i]));
+            if (index < 0)
+            {
+                index = target.Count;
+                target.Add(source[i]);
+            }
+            else if (Text(source[i]["m_szType"]) != Text(target[index]["m_szType"]))
+                throw new InvalidDataException("Incompatible morph controller type: " + Name(source[i]));
+            float F(KVObject row, string key) => row[key].ToSingle(CultureInfo.InvariantCulture);
+            var sourceMin = F(source[i], "min");
+            var sourceMax = F(source[i], "max");
+            var targetMin = F(target[index], "min");
+            var targetMax = F(target[index], "max");
+            if (
+                !float.IsFinite(sourceMin)
+                || !float.IsFinite(sourceMax)
+                || !float.IsFinite(targetMin)
+                || !float.IsFinite(targetMax)
+                || sourceMax <= sourceMin
+                || targetMax <= targetMin
+            )
+                throw new InvalidDataException("Invalid morph controller range");
+            var scale = (sourceMax - sourceMin) / (targetMax - targetMin);
+            transforms[i] = (scale, sourceMin - targetMin * scale);
+            mapping[i] = index;
         }
-        var ops=Values(donor,"m_FlexRules").SelectMany(r=>Values(r,"m_FlexOps")).ToArray();
-        var allowed=new HashSet<string>{"FLEX_OP_CONST","FLEX_OP_FETCH1","FLEX_OP_FETCH2","FLEX_OP_ADD","FLEX_OP_SUB","FLEX_OP_MUL","FLEX_OP_DIV","FLEX_OP_NEG","FLEX_OP_MAX","FLEX_OP_MIN"};
-        foreach(var op in ops){var code=Text(op["m_OpCode"]);if(!allowed.Contains(code))throw new InvalidDataException("Morph remapping requires unsupported operator: "+code);if(code=="FLEX_OP_FETCH1"&&(Number(op["m_Data"])<0||Number(op["m_Data"])>=mapping.Length))throw new InvalidDataException("Invalid morph controller reference");}
-        KVObject Operation(string code,float value){var op=KVObject.Collection();op["m_OpCode"]=new KVObject(code);op["m_Data"]=new KVObject(value);return op;}
-        foreach(var rule in Values(donor,"m_FlexRules")){
-            var remapped=new List<KVObject>();foreach(var op in Values(rule,"m_FlexOps")){
-                remapped.Add(op);if(Text(op["m_OpCode"])!="FLEX_OP_FETCH1")continue;
-                var index=Number(op["m_Data"]);op["m_Data"]=new KVObject(mapping[index]);var (scale,bias)=transforms[index];
-                if(scale!=1){remapped.Add(Operation("FLEX_OP_CONST",scale));remapped.Add(Operation("FLEX_OP_MUL",0));}
-                if(bias!=0){remapped.Add(Operation("FLEX_OP_CONST",bias));remapped.Add(Operation("FLEX_OP_ADD",0));}
-            }rule["m_FlexOps"]=Array(remapped);
+        var ops = Values(donor, "m_FlexRules").SelectMany(r => Values(r, "m_FlexOps")).ToArray();
+        var allowed = new HashSet<string>
+        {
+            "FLEX_OP_CONST",
+            "FLEX_OP_FETCH1",
+            "FLEX_OP_FETCH2",
+            "FLEX_OP_ADD",
+            "FLEX_OP_SUB",
+            "FLEX_OP_MUL",
+            "FLEX_OP_DIV",
+            "FLEX_OP_NEG",
+            "FLEX_OP_MAX",
+            "FLEX_OP_MIN",
+        };
+        foreach (var op in ops)
+        {
+            var code = Text(op["m_OpCode"]);
+            if (!allowed.Contains(code))
+                throw new InvalidDataException("Morph remapping requires unsupported operator: " + code);
+            if (code == "FLEX_OP_FETCH1" && (Number(op["m_Data"]) < 0 || Number(op["m_Data"]) >= mapping.Length))
+                throw new InvalidDataException("Invalid morph controller reference");
         }
-        host["m_FlexControllers"]=Array(target);donor["m_FlexControllers"]=Array(target);
+        KVObject Operation(string code, float value)
+        {
+            var op = KVObject.Collection();
+            op["m_OpCode"] = new KVObject(code);
+            op["m_Data"] = new KVObject(value);
+            return op;
+        }
+        foreach (var rule in Values(donor, "m_FlexRules"))
+        {
+            var remapped = new List<KVObject>();
+            foreach (var op in Values(rule, "m_FlexOps"))
+            {
+                remapped.Add(op);
+                if (Text(op["m_OpCode"]) != "FLEX_OP_FETCH1")
+                    continue;
+                var index = Number(op["m_Data"]);
+                op["m_Data"] = new KVObject(mapping[index]);
+                var (scale, bias) = transforms[index];
+                if (scale != 1)
+                {
+                    remapped.Add(Operation("FLEX_OP_CONST", scale));
+                    remapped.Add(Operation("FLEX_OP_MUL", 0));
+                }
+                if (bias != 0)
+                {
+                    remapped.Add(Operation("FLEX_OP_CONST", bias));
+                    remapped.Add(Operation("FLEX_OP_ADD", 0));
+                }
+            }
+            rule["m_FlexOps"] = Array(remapped);
+        }
+        host["m_FlexControllers"] = Array(target);
+        donor["m_FlexControllers"] = Array(target);
     }
-    internal static void NormalizeOriginalMorph(KVObject donor,KVObject host){
-        var source=Values(donor,"m_FlexControllers");var target=Values(host,"m_FlexControllers");
-        if(source.Length!=target.Length+1||Text(source[^1]["m_szName"])!="orig"||source[^1]["min"].ToSingle(CultureInfo.InvariantCulture)!=0)throw new InvalidDataException("Unsupported original morph profile");
-        for(int i=0;i<target.Length;i++)foreach(var key in new[]{"m_szName","m_szType","min","max"})if(Text(source[i][key])!=Text(target[i][key]))throw new InvalidDataException("Facial controller mismatch: "+i);
-        var operations=Values(donor,"m_FlexRules").SelectMany(rule=>Values(rule,"m_FlexOps")).Where(op=>Text(op["m_OpCode"])=="FLEX_OP_FETCH1").ToArray();
-        foreach(var op in operations)if(Number(op["m_Data"])<0||Number(op["m_Data"])>=source.Length)throw new InvalidDataException("Invalid facial controller index");
-        foreach(var op in operations.Where(op=>Number(op["m_Data"])==target.Length)){op["m_OpCode"]=new KVObject("FLEX_OP_CONST");op["m_Data"]=new KVObject(0);}
-        donor["m_FlexControllers"]=Array(source.Take(target.Length));
+
+    internal static void NormalizeOriginalMorph(KVObject donor, KVObject host)
+    {
+        var source = Values(donor, "m_FlexControllers");
+        var target = Values(host, "m_FlexControllers");
+        if (
+            source.Length != target.Length + 1
+            || Text(source[^1]["m_szName"]) != "orig"
+            || source[^1]["min"].ToSingle(CultureInfo.InvariantCulture) != 0
+        )
+            throw new InvalidDataException("Unsupported original morph profile");
+        for (int i = 0; i < target.Length; i++)
+            foreach (var key in new[] { "m_szName", "m_szType", "min", "max" })
+                if (Text(source[i][key]) != Text(target[i][key]))
+                    throw new InvalidDataException("Facial controller mismatch: " + i);
+        var operations = Values(donor, "m_FlexRules")
+            .SelectMany(rule => Values(rule, "m_FlexOps"))
+            .Where(op => Text(op["m_OpCode"]) == "FLEX_OP_FETCH1")
+            .ToArray();
+        foreach (var op in operations)
+            if (Number(op["m_Data"]) < 0 || Number(op["m_Data"]) >= source.Length)
+                throw new InvalidDataException("Invalid facial controller index");
+        foreach (var op in operations.Where(op => Number(op["m_Data"]) == target.Length))
+        {
+            op["m_OpCode"] = new KVObject("FLEX_OP_CONST");
+            op["m_Data"] = new KVObject(0);
+        }
+        donor["m_FlexControllers"] = Array(source.Take(target.Length));
     }
-    static void Write(byte[] original,List<Chunk> chunks,string output){
-        using var stream=File.Create(output);using var writer=new BinaryWriter(stream);writer.Write(0u);writer.Write(original.AsSpan(4,4));writer.Write(8u);writer.Write((uint)chunks.Count);writer.Write(new byte[chunks.Count*12]);
-        for(var i=0;i<chunks.Count;i++){var pad=(int)((16-stream.Position%16)%16);writer.Write(new byte[pad]);var start=stream.Position;writer.Write(chunks[i].Bytes);var end=stream.Position;var field=16L+i*12;stream.Position=field;writer.Write((uint)chunks[i].Type);writer.Write(checked((uint)(start-field-4)));writer.Write((uint)chunks[i].Bytes.Length);stream.Position=end;}
-        stream.Position=0;writer.Write(checked((uint)stream.Length));
+
+    static void Write(byte[] original, List<Chunk> chunks, string output)
+    {
+        using var stream = File.Create(output);
+        using var writer = new BinaryWriter(stream);
+        writer.Write(0u);
+        writer.Write(original.AsSpan(4, 4));
+        writer.Write(8u);
+        writer.Write((uint)chunks.Count);
+        writer.Write(new byte[chunks.Count * 12]);
+        for (var i = 0; i < chunks.Count; i++)
+        {
+            var pad = (int)((16 - stream.Position % 16) % 16);
+            writer.Write(new byte[pad]);
+            var start = stream.Position;
+            writer.Write(chunks[i].Bytes);
+            var end = stream.Position;
+            var field = 16L + i * 12;
+            stream.Position = field;
+            writer.Write((uint)chunks[i].Type);
+            writer.Write(checked((uint)(start - field - 4)));
+            writer.Write((uint)chunks[i].Bytes.Length);
+            stream.Position = end;
+        }
+        stream.Position = 0;
+        writer.Write(checked((uint)stream.Length));
     }
 }

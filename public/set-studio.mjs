@@ -1,216 +1,1801 @@
-import {createSetNavigation} from './set-navigation.mjs';
-import {canPrismaticColor,prismaticControl} from './prismatic-colors.mjs';
-import {etherealInfoButton} from './ethereal-info.mjs';
-import {showBuildError} from './build-error.mjs';
-import {newArcanaDefinitions} from './new-arcana-definitions.mjs';
-import {arcanaOccupiedSlots,arcanaStyleName} from './expanded-arcana-definitions.mjs';
-import {fillPreviewAnimations} from './preview-animation-controls.mjs';
-import {arcanaIconConfig,arcanaAbilities} from './arcana-icon-config.mjs';
-import {drawPublicArcanaControls,publicArcanaDefinitions} from './public-arcana-controls.mjs';
-import {drawDrowArcanaControls} from './drow-arcana-controls.mjs';
-import {registerSetBasket,notifyBasket} from './cosmetics-store.mjs';
-import {drawTechiesArcanaControls} from './techies-arcana-controls.mjs';
-import {additionSummary} from './selection-labels.mjs';
-import {drawImmortalControls} from './immortal-controls.mjs';
-import {drawSetPicker} from './set-picker.mjs';
-import {kineticWikiPreview,kineticPreviewLabel} from './kinetic-media.mjs';
-import {kineticGroups,kineticChoiceGroups,kineticPriorityLabel,resolveKinetics,resolveKineticOverrides,kineticActionLabel} from './kinetic-gems.mjs';
-import {markItemRarity} from './item-rarity.mjs';
-import {applyHeroSet,heroSetMatches} from './hero-sets.mjs';
-import {groupStyleItems,styleChoices} from './item-styles.mjs';
-import {initHeroPicker} from './hero-picker.mjs';
-import {isPreviewCancelled} from './renderer/cancel.mjs';
-import {ModelPreview} from './preview.mjs';
-const slotNames={arcana:'Аркана',demon:'Форма демона',weapon:'Оружие',offhand_weapon:'Второе оружие',head:'Голова',shoulder:'Плечи',shoulders:'Плечи',arms:'Руки',back:'Спина',belt:'Пояс',armor:'Броня',neck:'Шея',tail:'Хвост',mount:'Ездовое животное',misc:'Дополнительно',legs:'Ноги',stance:'Стойка'};
-export function itemImage(item,heroId=null,token=null){if(item.arcanaCart){const q=new URLSearchParams();if(token)q.set('token',token);return '/api/techies-cart-icon?'+q;}if(!heroId||!(item.arcanaImageId??item.id)||!item.imageInventory)return null;const query=new URLSearchParams({heroId,itemId:item.arcanaImageId??item.id});if(token)query.set('token',token);return '/api/item-icon?'+query;}
-
-export function setDefaultItem(hero,slot,arcana=null){
- const base=hero.items.find(i=>i.slot===slot&&i.isDefault)??{};
- if(hero.id==='monkey_king'&&arcana&&slot==='head'){const crown=hero.items.find(i=>String(i.gameItemId)==='34183'||i.id==='game-34183');return{...(crown??base),id:null,arcanaImageId:crown?.id,name:"Great Sage's Reckoning - Head",isDefault:true};}
- if(arcana&&newArcanaDefinitions[hero.id]){const definition=newArcanaDefinitions[hero.id],partId=definition.companions[slot];if(partId){const candidates=hero.items.filter(i=>String(i.gameItemId)===partId||i.id==='game-'+partId),part=candidates.find(i=>String(i.styleId??0)===String(arcana.style))??candidates.find(i=>String(i.styleId??0)==='0');if(part)return {...part,arcanaImageId:part.id,id:null,isDefault:true};return {...base,id:null,name:definition.name+' · '+slot,isDefault:true};}}
- if(hero.id==='drow_ranger'&&arcana){const ids={arms:'19088',back:'19089',legs:'19091',misc:'19092',shoulder:'19093',head:'19094',weapon:String(arcana.weaponId)};const part=hero.items.find(i=>String(i.gameItemId)===ids[slot]&&(!i.styleId||i.styleId==='0'));if(part)return {...part,arcanaImageId:part.id,id:null,isDefault:true};}
- return hero.id==='techies'&&arcana&&hero.defaultSlotModels?.[slot]==='models/heroes/techies/techies_cart.vmdl_c'?{...base,id:null,name:'Swine of the Sunken Galley',isDefault:true,arcanaCart:true}:{...base,id:null,name:'Базовый предмет',isDefault:true};
-}
-export function initialSetSelection(){return new Map();}
-export function defaultPersonaSelection(hero){const selected=new Map();if(hero?.isPersona)for(const item of hero.items??[])if(item.isDefault&&!item.styleUnsupported&&hero.defaultSlotModels?.[item.slot]&&!selected.has(item.slot))selected.set(item.slot,item.id);return selected;}
-export function setSlots(hero){return [...new Set([...(hero.catalogSlots??Object.keys(hero.defaultSlotModels??{})),...hero.items.filter(i=>i.isDefault||i.mergeTarget||i.arcWardenHead||i.arcanaPart).map(i=>i.slot),...(hero.id==='jakiro'?hero.items.filter(i=>/head/i.test(i.slot)).map(i=>i.slot):[])])].filter(s=>!['hero_base','persona_selector','taunt','ability'].includes(s)&&!(hero.id==='tiny'&&['head','armor','arms','offhand_weapon'].includes(s)));}
-export function setPayload(hero,selected,{preview=false,effects=new Map(),arcana=null,stanceId=null,previewForm='normal'}={}){const slots=new Set([...selected.keys(),...effects.keys()]);if(hero.id==='drow_ranger'&&arcana)slots.delete('weapon');if(publicArcanaDefinitions[hero.id]&&arcana)arcanaOccupiedSlots(publicArcanaDefinitions[hero.id]).forEach(slot=>slots.delete(slot));const rows=[...slots].filter(slot=>selected.get(slot)||(effects.get(slot)?.length)).map(slot=>({heroId:hero.id,itemId:selected.get(slot)??null,slot,effectIds:effects.get(slot)??[]}));if(stanceId)rows.push({heroId:hero.id,slot:'stance',stanceId});if(arcana)rows.push({heroId:hero.id,slot:'arcana',arcana});if(!rows.length&&preview){const slot=setSlots(hero)[0];if(!slot)throw new Error('No supported slots');rows.push({heroId:hero.id,itemId:null,slot});}return {mode:'set',partsOnly:true,selections:rows,...(preview&&(previewForm==='demon'||previewForm.startsWith('entity:'))?{previewForm}:{})};}
-
-export function combinedSetPayload(heroes,states){return {mode:'set',selections:heroes.flatMap(hero=>{const state=states.get(hero.id);return state?setPayload(hero,state.selected,{effects:state.effects,arcana:state.arcana,stanceId:state.stanceId}).selections:[];})};}
-
-export function initSetStudio(catalog,{api,token,onEnter,onExit,standalone=false,Preview=ModelPreview,fetcher=fetch,metadataProvider=null,resourceUrl=url=>url,onSelectionChange=null,onPreviewReady=null,onPreviewError=null,onEditItem=null,onRecolorItem=null,editorMode=false}){
- const root=document.getElementById('set-studio'),$=id=>root.querySelector('#'+id);const heroStates=new Map();let selected=new Map(),slotEffects=new Map(),preview,revision=0,working=false,activeSlot=null,previewStance=null;
- root.innerHTML=`<div class="workspace set-workspace"><aside id="set-arcana-icons" class="panel set-icon-sidebar" hidden></aside><aside class="panel controls"><label for="set-hero">Герой</label><select id="set-hero"></select><div id="set-stance" hidden></div><div id="set-immortals" hidden></div><div id="set-kinetic-priorities" hidden></div><div id="set-preset" hidden></div><div id="set-arcana" hidden></div><div id="set-entity-view" hidden></div><label id="set-invoker-voice-label" hidden>Voice<select id="set-invoker-voice"><option value="">Default</option><option value="good-old-days">The Good Old Days</option></select></label><label id="set-persona-owned-label" class="persona-owned-control" hidden><input id="set-persona-owned" type="checkbox"> Личность уже есть</label><button id="set-add-persona" type="button" class="primary" hidden>Добавить скин</button><div id="set-slots" class="set-slots"></div><div id="set-collection" class="set-collection"></div><label for="set-vpk">Имя VPK</label><select id="set-vpk"></select><button id="set-build" class="primary">Скачать VPK с сетом</button><a id="set-download" class="download" hidden>Скачать VPK</a><p id="set-message" class="muted" role="status"></p></aside><section class="panel preview"><div class="preview-top"><div><span class="eyebrow">LOADOUT PREVIEW</span><h2 id="set-title"></h2></div><span class="badge">СЕТ</span></div><div id="set-stage"><canvas id="set-canvas"></canvas></div><div class="preview-bottom"><select id="set-animation" aria-label="Animation" hidden></select><a class="harlord-credit" data-harlord-credit href="https://t.me/harlord_mods" target="_blank" rel="noopener noreferrer">Powered by Harlord</a><span>Мышь — вращение · WASD — камера · Q/E — высота · Shift — быстрее</span></div></section></div><dialog id="set-picker"><div class="set-picker-top"><h2 id="set-picker-title"></h2><button id="set-close" class="secondary" aria-label="Закрыть">×</button></div><input id="set-search" type="search" placeholder="Поиск предмета" aria-label="Поиск предмета"><div id="set-cards" class="set-cards"></div></dialog>`;
- const workspace=root.querySelector('.set-workspace');if(editorMode)root.classList.add('set-modding-catalog');
- root.addEventListener('pointerdown',event=>{for(const picker of root.querySelectorAll('.set-preset-picker[open]'))if(!picker.contains(event.target))picker.open=false;});
- const basket=document.createElement('aside');basket.className='panel set-basket';basket.innerHTML='<h2>Корзина</h2><p id="set-basket-empty" class="muted">Выбери предметы или добавь эффекты — они появятся здесь.</p><p id="set-basket-message" class="muted" role="status"></p>';workspace.append(basket);
- const basketStatus=$('set-basket-message');
- for(const node of [$('set-collection'),root.querySelector('label[for="set-vpk"]'),$('set-vpk'),$('set-build'),$('set-download')])basket.insertBefore(node,basketStatus);
- $('set-build').textContent='Собрать VPK';
-const back=document.createElement('button');back.type='button';back.className='secondary set-back';back.textContent='← Все герои';root.querySelector('.controls').prepend(back);let choosingHero=true;
- function chooseView(choosing,record=true){if(choosing&&record)navigation?.catalog();choosingHero=choosing;workspace.classList.toggle('choosing-hero',choosing);if(choosing){revision++;pending=false;onSelectionChange?.(null);}else if(!root.hidden)schedulePreview();}
- const navigation=editorMode?null:createSetNavigation({isActive:()=>!root.hidden,onNavigate:state=>{heroLoadRevision++;if(state.view==='catalog'){chooseView(true,false);preview?.clear();for(const dialog of root.querySelectorAll('dialog[open]'))dialog.close();}else if(catalog.heroes.some(h=>h.id===state.heroId)){$('set-hero').value=state.heroId;$('set-hero').dispatchEvent(new Event('change'));}}});
- back.addEventListener('click',()=>chooseView(true));workspace.classList.add('choosing-hero');
- const hero=()=>catalog.heroes.find(h=>h.id===$('set-hero').value),say=(text,error=false)=>{$('set-message').hidden=!error;$('set-message').textContent=text;$('set-message').classList.toggle('error',error);basketStatus.textContent=text;basketStatus.classList.toggle('error',error);},query=token?'?token='+encodeURIComponent(token):'';
- const available=catalog.heroes.filter(h=>setSlots(h).length);for(const h of available){const o=document.createElement('option');o.value=h.id;o.textContent=h.name;$('set-hero').append(o);}for(let n=1;n<=99;n++){const o=document.createElement('option');o.value=n;o.textContent='pak'+String(n).padStart(2,'0')+'_dir.vpk';$('set-vpk').append(o);}
- if(hero()?.isPersona)selected=initialSetSelection(hero());heroStates.set($('set-hero').value,{selected,effects:slotEffects});const heroPicker=initHeroPicker($('set-hero'),available,{inline:true});
- function withSavedOptions(payload,all=false){const heroes=all?[...heroStates.keys()]:[...new Set(payload.selections.map(r=>r.heroId))];for(const id of heroes)for(const [slot,row]of heroStates.get(id)?.savedRows??[]){if(row.recolor?.resources?.length&&!payload.selections.some(r=>r.heroId===id&&r.slot===slot)&&(heroStates.get(id).selected.get(slot)??null)===(row.itemId??null))payload.selections.push({...row,slot,heroId:id});}payload.selections=payload.selections.map(row=>{const saved=heroStates.get(row.heroId)?.savedRows?.get(row.slot);return {...saved,...row,...(saved?.itemId!==row.itemId?{recolor:undefined}:{}),...(saved?.effectColors?{effectColors:Object.fromEntries(Object.entries(saved.effectColors).filter(([id])=>row.effectIds?.includes(id)))}:{}),personaOwned:heroStates.get(row.heroId)?.personaOwned===true,personaVoiceStyle:heroStates.get(row.heroId)?.personaVoiceStyle};});return payload;}
- function editorSnapshot(){const h=hero();if(!h||choosingHero)return null;return{heroId:h.id,heroName:h.name,payload:withSavedOptions(setPayload(h,selected,{preview:true,effects:slotEffects,arcana:heroStates.get(h.id)?.arcana,stanceId:heroStates.get(h.id)?.stanceId,previewForm:heroStates.get(h.id)?.previewForm??'normal'}))};}
- function collectionPayload(){return withSavedOptions(combinedSetPayload(catalog.heroes,heroStates),true);}
- if(!editorMode)registerSetBasket(()=>({...collectionPayload(),ready:!pendingPriorities()}),row=>{const state=heroStates.get(row.heroId);if(row.arcana)state.arcana=null;if(row.stanceId)state.stanceId=null;state.selected.delete(row.slot);state.effects.delete(row.slot);draw();if(hero().id===row.heroId&&!choosingHero)schedulePreview();},restoreRows);
- function restoreRows(rows){
- revision++;pending=false;heroStates.clear();
- for(const row of rows){let state=heroStates.get(row.heroId);if(!state){state={selected:new Map(),effects:new Map(),savedRows:new Map()};heroStates.set(row.heroId,state);}state.savedRows.set(row.slot,row);state.personaOwned=row.personaOwned===true;state.personaVoiceStyle=row.personaVoiceStyle;if(row.arcana)state.arcana=row.arcana;else if(row.stanceId)state.stanceId=row.stanceId;else{if(row.itemId)state.selected.set(row.slot,row.itemId);state.effects.set(row.slot,row.effectIds??[]);}}
- const id=rows[0]?.heroId??available[0]?.id;if(id){$('set-hero').value=id;if(!standalone)document.getElementById('mode-set').click();$('set-hero').dispatchEvent(new Event('change'));}else{chooseView(true);draw();}
- }
- function drawCollection(){
- const rows=collectionPayload().selections;heroPicker?.setPresetHeroes(rows.filter(row=>heroStates.get(row.heroId)?.presetId).map(row=>row.heroId));$('set-collection').replaceChildren();$('set-basket-empty').hidden=!!rows.length;
- for(const row of rows){
-  const h=catalog.heroes.find(h=>h.id===row.heroId),item=h.items.find(i=>i.id===row.itemId)??h.items.find(i=>i.isDefault&&i.slot===row.slot),line=document.createElement('div'),open=document.createElement('button'),remove=document.createElement('button');
-  line.className='basket-item';open.className='basket-open';open.disabled=working;
-  const additions=row.stanceId?additionSummary(row.stanceId,heroStates.get(h.id)?.stanceOptions??[]):null;
-  open.append(thumbnail(h.items.find(i=>i.id===additions?.itemId)??item??{},h.id));const text=document.createElement('span'),title=document.createElement('b'),name=document.createElement('span'),fx=document.createElement('small');title.textContent=h.name+' · '+(additions?.label??h.entitySlots?.[row.slot]?.name??slotNames[row.slot]??row.slot);name.textContent=row.stanceId?additions.text:row.arcana?(publicArcanaDefinitions[h.id]?publicArcanaDefinitions[h.id].name:h.id==='drow_ranger'?'Dread Retribution':h.id==='techies'?'Swine of the Sunken Galley':'Fractal Horns of Inner Abysm'):item?.name??'Базовый предмет';fx.textContent=row.arcana?(publicArcanaDefinitions[h.id]?arcanaStyleName(publicArcanaDefinitions[h.id],row.arcana.style):h.id==='drow_ranger'?'Dread Retribution · '+(row.arcana.style===1?'Master of Madness':'Style 1'):(h.id==='techies'&&!row.arcana.customColor?'Исходные цвета Dota':'RGB '+row.arcana.color.join(', '))+' · '+(row.arcana.mode==='owned'?'Перекрасить свою аркану':'Аркана вместо базового героя')):(row.effectIds??[]).map(id=>catalog.effects.find(e=>e.id===id)?.name??id).join(', ');if(additions)name.style.whiteSpace='pre-line';text.append(title,name,fx);open.append(text);markItemRarity(open,item);
-  open.addEventListener('click',()=>{$('set-hero').value=h.id;$('set-hero').dispatchEvent(new Event('change'));});
-  remove.className='text-button';remove.textContent='×';remove.setAttribute('aria-label','Убрать предмет из VPK');remove.disabled=working;
-  remove.addEventListener('click',()=>{const state=heroStates.get(h.id);if(row.arcana)state.arcana=null;if(row.stanceId)state.stanceId=null;state.selected.delete(row.slot);state.effects.delete(row.slot);$('set-download').hidden=true;draw();if(hero().id===h.id&&!choosingHero)schedulePreview();});line.append(open,remove);$('set-collection').append(line);
- }
- back.textContent='← Все герои';
- $('set-build').disabled=working||!rows.length||pendingPriorities();if(!editorMode)notifyBasket();
- }
- function thumbnail(item,heroId=hero().id){const box=document.createElement('div');box.className='set-thumb';const src=itemImage(item,heroId,token);if(src){const image=document.createElement('img');image.src=src;image.loading='lazy';image.alt='';image.addEventListener('error',()=>{image.remove();box.textContent='◇';},{once:true});box.append(image);}else box.textContent='◇';if(item.sharedInventoryImage){const badge=document.createElement('span');badge.className='shared-icon-slot';badge.textContent=slotNames[item.slot]??item.slot;box.append(badge);}return box;}
- function selectedEquipment(h,state){return [...state.selected.values()].map(id=>h.items.find(i=>i.id===id)).filter(Boolean);}
- function validatePriorities(h,state){
- if(!state?.stanceId||!state.stanceOptions)return;const selection=typeof state.stanceId==='string'?{ids:[state.stanceId],priorities:{}}:state.stanceId,options=state.stanceOptions.filter(o=>selection.ids.includes(o.id));
- resolveKinetics(options,selection.priorities??{},selectedEquipment(h,state));resolveKineticOverrides(options,selection.priorities??{},selectedEquipment(h,state));
- }
- function pendingPriorities(){for(const h of catalog.heroes){try{validatePriorities(h,heroStates.get(h.id));}catch{return true;}}return false;}
- function drawPriorities(){
- const h=hero(),state=heroStates.get(h?.id),box=$('set-kinetic-priorities');box.replaceChildren();box.hidden=true;if(!state)return;const equipmentConflicts=[...kineticChoiceGroups([],selectedEquipment(h,state))].some(([,list])=>list.length>1);if(!state.stanceId&&equipmentConflicts)state.stanceId={ids:[],priorities:{}};if(state.stanceId?.ids?.length===0&&!equipmentConflicts){state.stanceId=null;return;}if(!state.stanceId||!state.stanceOptions)return;
- const selection=typeof state.stanceId==='string'?{ids:[state.stanceId],priorities:{}}:state.stanceId,options=state.stanceOptions.filter(o=>selection.ids.includes(o.id));
- for(const [action,candidates] of kineticChoiceGroups(options,selectedEquipment(h,state))){if(candidates.length<2)continue;box.hidden=false;const label=document.createElement('label');label.textContent='Приоритет · '+kineticPriorityLabel(action);const select=document.createElement('select'),empty=document.createElement('option');empty.value='';empty.textContent='Выберите источник';select.append(empty);for(const candidate of candidates){const option=document.createElement('option');option.value=candidate.id;option.textContent=candidate.name;select.append(option);}select.value=selection.priorities?.[action]??'';select.disabled=working;select.onchange=()=>{state.stanceId={ids:selection.ids,priorities:{...selection.priorities,[action]:select.value}};$('set-download').hidden=true;draw();schedulePreview();};label.append(select);box.append(label);}
- }
- function promptAnimationPriorities(h,state){
- if(!h||!state)return;
- const selection=typeof state.stanceId==='string'?{ids:[state.stanceId],priorities:{}}:state.stanceId;
- if(!selection||!state.stanceOptions)return;
- const groups=[...kineticChoiceGroups(state.stanceOptions.filter(o=>selection.ids.includes(o.id)),selectedEquipment(h,state))].filter(([action,list])=>list.length>1&&list.some(o=>o.id.startsWith('item:')));
- const missing=groups.filter(([action,list])=>!list.some(o=>o.id===selection.priorities?.[action]));
- const key=JSON.stringify(missing.map(([action,list])=>[action,list.map(o=>o.id)]));
- if(!missing.length){state.priorityPromptKey=null;return;}if(state.priorityPromptKey===key||working)return;
- queueMicrotask(()=>{
-  if(hero()?.id!==h.id||document.querySelector('dialog[open]')||root.hidden)return;
-  state.priorityPromptKey=key;const dialog=document.createElement('dialog');dialog.className='kinetic-picker';const title=document.createElement('h3');title.textContent='Приоритет эффектов и анимаций';
-  const note=document.createElement('p');note.textContent='Выбранные предметы или самоцветы меняют один и тот же эффект, иконку или анимацию. Выберите источник для каждого изменения.';
-  const close=document.createElement('button');close.className='secondary kinetic-close';close.textContent='×';close.setAttribute('aria-label','Закрыть');close.onclick=()=>dialog.close();
-  const body=document.createElement('div');body.className='kinetic-controls';const draft={...selection.priorities},apply=document.createElement('button');apply.className='primary kinetic-apply';apply.textContent='Применить';apply.disabled=true;
-  const refresh=()=>{apply.disabled=missing.some(([action,list])=>!list.some(o=>o.id===draft[action]));};
-  for(const [action,list] of missing){const label=document.createElement('label');label.textContent='Приоритет · '+kineticPriorityLabel(action);const select=document.createElement('select'),blank=document.createElement('option');blank.value='';blank.textContent='Выберите источник';select.append(blank);for(const option of list){const node=document.createElement('option');node.value=option.id;node.textContent=option.name;select.append(node);}select.onchange=()=>{draft[action]=select.value;refresh();};label.append(select);body.append(label);}
-  apply.onclick=()=>{state.stanceId={ids:selection.ids,priorities:draft};dialog.close();$('set-download').hidden=true;draw();schedulePreview();};dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.append(close,title,note,body,apply);document.body.append(dialog);dialog.showModal();
- });
- }
- function tbPreviewUrl(state,group,style,ability){const query=new URLSearchParams({group,style:hero().id==='techies'&&!state.arcana.customColor&&style==='colored'?'arcana':style,ability:ability==='hero'?(hero().id==='techies'?'sticky_bomb':'sunder'):ability,mode:state.arcana.mode,color:state.arcana.color.join(',')});if(token)query.set('token',token);return (hero().id==='techies'?'/api/techies-icon?':'/api/terrorblade-icon?')+query;}
- function drawImmortals(){
- const h=hero(),state=heroStates.get(h?.id);if(!state)return;const sidebar=$('set-arcana-icons');$('set-immortals').hidden=true;
- const icons=arcanaIconConfig(h.id,state.arcana,token);
- const hasSet=[...selected.values()].some(id=>h.items.find(i=>i.id===id)?.model?.startsWith('models/items/terrorblade/dreadhunt_'));
- drawImmortalControls(sidebar,{hero:h,options:state.stanceOptions??[],abilities:arcanaAbilities(state.abilities??[],icons),arcanaIcons:icons,selection:state.stanceId,items:selectedEquipment(h,state),token,disabled:working,arcana:h.id==='drow_ranger'||publicArcanaDefinitions[h.id]?null:state.arcana,hasSet,previewUrl:(group,style,ability)=>tbPreviewUrl(state,group,style,ability),onApply:selection=>{state.stanceId=selection;$('set-download').hidden=true;draw();schedulePreview();}});
- workspace.classList.toggle('has-arcana-icons',!sidebar.hidden);
- }
- function drawStance(){
- const h=hero(),state=heroStates.get(h?.id),box=$('set-stance');if(!state)return;box.replaceChildren();box.hidden=Array.isArray(state.stanceOptions)&&!state.stanceOptions.length;if(box.hidden)return;
- const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='Кинетический самоцвет'+((state.stanceId?.ids??[]).filter(id=>state.stanceOptions?.find(o=>o.id===id)?.category!=='immortal').length?' · '+state.stanceId.ids.filter(id=>state.stanceOptions?.find(o=>o.id===id)?.category!=='immortal').length:'');button.disabled=working||!state.stanceOptions;button.hidden=!!state.stanceOptions&&!state.stanceOptions.some(o=>o.category!=='immortal');box.append(button);
- button.addEventListener('click',()=>{
- const dialog=document.createElement('dialog');dialog.className='kinetic-picker';const title=document.createElement('h3');title.textContent='Кинетические самоцветы';const close=document.createElement('button');close.textContent='×';close.className='secondary kinetic-close';close.type='button';close.setAttribute('aria-label','Закрыть');close.onclick=()=>dialog.close();dialog.append(close,title);
- let downloadedMedia={items:{}};const manifestRequest=api('/kinetic-media/manifest.json').then(result=>{downloadedMedia=result;}).catch(()=>{});
- const mediaPanel=document.createElement('aside');mediaPanel.className='kinetic-wiki-preview';const hint=document.createElement('p');hint.textContent='Нажми «Что меняет» рядом с самоцветом';mediaPanel.append(hint);
- let hoverTimer,hoverRevision=0;const stopHover=()=>{clearTimeout(hoverTimer);for(const video of mediaPanel.querySelectorAll('video')){video.pause();video.removeAttribute('src');video.load();}};dialog.addEventListener('close',()=>{hoverRevision++;stopHover();},{once:true});
- const hover=option=>{const generation=++hoverRevision;clearTimeout(hoverTimer);hoverTimer=setTimeout(async()=>{await manifestRequest;if(generation!==hoverRevision||!dialog.open)return;stopHover();mediaPanel.replaceChildren();const heading=document.createElement('b');heading.textContent=option.name;mediaPanel.append(heading);const changes=document.createElement('p');changes.className='muted';changes.textContent=[...new Set([...kineticGroups([option]).keys()].map(kineticActionLabel))].join(' · ');mediaPanel.append(changes);for(const text of [...(option.notes??[]),...(option.unavailableReason?[option.unavailableReason]:[])]){const note=document.createElement('p');note.className='kinetic-note';note.textContent=text;mediaPanel.append(note);}const {clips,page}=kineticWikiPreview(option,downloadedMedia);const status=document.createElement('p');status.className='muted';
- const credit=document.createElement('a');credit.href='https://t.me/harlord_mods';credit.target='_blank';credit.rel='noopener';credit.textContent='Powered by Harlord';credit.className='kinetic-credit';
- if(!clips.length){status.textContent=['partial','no-media-on-page'].includes(downloadedMedia.items?.[option.id]?.mediaStatus)?'На вики нет доступного файла превью':'Превью пока не загружено на сервер';mediaPanel.append(status);}else{const stage=document.createElement('div');stage.className='kinetic-animation';const tabs=document.createElement('div');tabs.className='kinetic-media-tabs';
- const show=clip=>{for(const v of stage.querySelectorAll('video')){v.pause();v.removeAttribute('src');v.load();}stage.replaceChildren();const media=document.createElement(clip.type==='video'?'video':'img');media.referrerPolicy='no-referrer';if(clip.type==='video'){media.muted=true;media.loop=true;media.autoplay=true;media.playsInline=true;media.preload='metadata';}else media.alt=kineticPreviewLabel(clip,clips.indexOf(clip));media.addEventListener('error',()=>{media.remove();status.textContent='Превью недоступно. Открой страницу на вики.';},{once:true});status.textContent=kineticPreviewLabel(clip,clips.indexOf(clip));stage.append(media,credit);media.src=clip.url;if(clip.type==='video')media.play().catch(()=>{media.controls=true;});};
- for(const clip of clips){const tab=document.createElement('button');tab.className='secondary';tab.type='button';tab.textContent=kineticPreviewLabel(clip,clips.indexOf(clip));tab.onclick=()=>show(clip);tabs.append(tab);}mediaPanel.append(stage,tabs,status);show(clips[0]);}
- if(page){const link=document.createElement('a');link.href=page;link.textContent='Источник: Dota 2 Wiki';link.target='_blank';link.rel='noopener noreferrer';link.className='kinetic-wiki-source';mediaPanel.append(link);}
- },180);};
- const ids=new Set(state.stanceId?.ids??(typeof state.stanceId==='string'&&state.stanceId!=='default'?[state.stanceId]:[])),priorities={...(state.stanceId?.priorities??{})},list=document.createElement('div'),conflicts=document.createElement('div'),apply=document.createElement('button');apply.textContent='Применить';apply.className='primary kinetic-apply';apply.type='button';
- const refresh=()=>{conflicts.replaceChildren();for(const [action,options] of kineticChoiceGroups((state.stanceOptions??[]).filter(o=>ids.has(o.id)),selectedEquipment(h,state))){if(options.length<2)continue;const label=document.createElement('label');label.textContent='Приоритет · '+kineticPriorityLabel(action);const select=document.createElement('select');const blank=document.createElement('option');blank.value='';blank.textContent='Выберите источник';select.append(blank);for(const o of options){const option=document.createElement('option');option.value=o.id;option.textContent=o.name;select.append(option);}select.value=priorities[action]??'';select.onchange=()=>{priorities[action]=select.value;refresh();};label.append(select);conflicts.append(label);}try{resolveKinetics((state.stanceOptions??[]).filter(o=>ids.has(o.id)),priorities,selectedEquipment(h,state));resolveKineticOverrides((state.stanceOptions??[]).filter(o=>ids.has(o.id)),priorities,selectedEquipment(h,state));apply.disabled=false;}catch{apply.disabled=true;}};
- for(const option of (state.stanceOptions??[]).filter(o=>o.category!=='immortal')){const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.checked=ids.has(option.id);input.disabled=option.available===false;input.onchange=()=>{input.checked?ids.add(option.id):ids.delete(option.id);refresh();};label.append(input,document.createTextNode(option.name));const info=document.createElement('button');info.type='button';info.className='secondary kinetic-info';info.textContent='Что меняет';info.setAttribute('aria-label','Что меняет · '+option.name);info.onclick=event=>{event.preventDefault();hover(option);};const row=document.createElement('div');row.className='kinetic-option';row.append(label,info);list.append(row);}
- apply.onclick=()=>{state.stanceId=ids.size?{ids:[...ids],priorities}:null;$('set-download').hidden=true;dialog.close();draw();schedulePreview();};dialog.addEventListener('close',()=>dialog.remove(),{once:true});const body=document.createElement('div'),controls=document.createElement('div');body.className='kinetic-body';controls.className='kinetic-controls';controls.append(list,conflicts);body.append(controls,mediaPanel);dialog.append(body,apply);document.body.append(dialog);refresh();dialog.showModal();
- });
- if(!state.stanceOptions&&!state.stanceLoading){state.stanceLoading=true;api('/api/stances?heroId='+encodeURIComponent(h.id)).then(result=>{state.stanceOptions=result.options??[];state.abilities=result.abilities??[];if(hero()?.id===h.id){drawStance();drawImmortals();drawPriorities();drawCollection();}}).catch(error=>{state.stanceLoading=false;if(hero()?.id===h.id)say(error.message,true);});}
- }
- function drawArcana(){
- const box=$('set-arcana'),h=hero();if(publicArcanaDefinitions[h?.id]){box.hidden=false;drawPublicArcanaControls(box,h,heroStates.get(h.id),{disabled:working,onChange:()=>{$('set-download').hidden=true;draw();schedulePreview();}});return;}if(h?.id==='drow_ranger'){box.hidden=false;drawDrowArcanaControls(box,heroStates.get(h.id),{hero:h,disabled:working,onChange:()=>{$('set-download').hidden=true;draw();schedulePreview();}});return;}if(h?.id==='techies'){box.hidden=!catalog.techiesArcana;if(!box.hidden)drawTechiesArcanaControls(box,heroStates.get(h.id),{disabled:working,color:catalog.techiesArcanaColor,onChange:()=>{$('set-download').hidden=true;draw();schedulePreview();}});return;}box.hidden=h?.id!=='terrorblade'||!catalog.terrorbladeArcana;if(box.hidden)return;const state=heroStates.get(h.id),enabled=!!state.arcana,options=state.arcana??{mode:'base',color:[255,60,40]};box.replaceChildren();
- const label=document.createElement('label'),toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=enabled;toggle.disabled=working;label.append(toggle,document.createTextNode('Fractal Horns of Inner Abysm'));box.append(label);
- const form=document.createElement('select');form.setAttribute('aria-label','Вид персонажа');for(const [value,text]of [['normal','Обычный вид'],['demon','Форма демона']]){const option=document.createElement('option');option.value=value;option.textContent=text;form.append(option);}form.value=state.previewForm??'normal';form.disabled=working;form.addEventListener('change',()=>{state.previewForm=form.value;schedulePreview();});box.append(form);
- toggle.addEventListener('change',()=>{state.arcana=toggle.checked?{...options,color:[...options.color]}:null;$('set-download').hidden=true;draw();schedulePreview();});
- if(!enabled)return;
- const icons=arcanaIconConfig(h.id,state.arcana,token);
- const hasSet=[...selected.values()].some(id=>h.items.find(i=>i.id===id)?.model?.startsWith('models/items/terrorblade/dreadhunt_'));
- if(hasSet)state.arcana.icons??='set';
-
- const mode=document.createElement('select');mode.setAttribute('aria-label','Режим арканы');for(const [value,text]of [['base','Аркана вместо базового героя'],['owned','Перекрасить свою аркану']]){const option=document.createElement('option');option.value=value;option.textContent=text;mode.append(option);}mode.value=options.mode;mode.disabled=working;mode.addEventListener('change',()=>{state.arcana.mode=mode.value;$('set-download').hidden=true;drawArcana();drawImmortals();drawCollection();schedulePreview();});box.append(mode);
- if(hasSet){const label=document.createElement('label'),icons=document.createElement('select');label.textContent='Иконки Manta / Skadi';icons.setAttribute('aria-label','Иконки Manta / Skadi');for(const [value,text]of [['arcana','Классические'],['set','Иконки Rictus Ripper · Manta / Skadi']]){const option=document.createElement('option');option.value=value;option.textContent=text;icons.append(option);}state.arcana.icons??='set';icons.value=state.arcana.icons;icons.disabled=working;icons.addEventListener('change',()=>{state.arcana.icons=icons.value;$('set-download').hidden=true;drawCollection();});box.append(label,icons);}
- const color=document.createElement('input');color.type='color';color.value='#'+options.color.map(c=>c.toString(16).padStart(2,'0')).join('');color.disabled=working;color.setAttribute('aria-label','Цвет арканы');const rgb=document.createElement('span');rgb.textContent='RGB '+options.color.join(', ');color.addEventListener('input',()=>{state.arcana.color=[1,3,5].map(i=>parseInt(color.value.slice(i,i+2),16));rgb.textContent='RGB '+state.arcana.color.join(', ');});color.addEventListener('change',()=>{$('set-download').hidden=true;drawArcana();drawImmortals();drawCollection();schedulePreview();});box.append(color,rgb);
- }
- function drawEntityView(){
- const h=hero(),box=$('set-entity-view');box.replaceChildren();box.hidden=!Object.keys(h?.entitySlots??{}).length;if(box.hidden)return;
- const label=document.createElement('label'),select=document.createElement('select');label.textContent='Вид персонажа';select.setAttribute('aria-label','Вид персонажа');
- for(const [value,text]of [['normal','Обычный вид'],...Object.entries(h.entitySlots).map(([slot,entry])=>['entity:'+slot,entry.name])]){const option=document.createElement('option');option.value=value;option.textContent=text;select.append(option);}
- select.value=heroStates.get(h.id)?.previewForm??'normal';select.disabled=working;select.addEventListener('change',()=>{heroStates.get(h.id).previewForm=select.value;schedulePreview();});box.append(label,select);
- }
- function drawPreset(){
- const h=hero(),box=$('set-preset');box.replaceChildren();box.hidden=!h?.sets?.length;if(box.hidden)return;
- const state=heroStates.get(h.id),label=document.createElement('label');label.textContent='Комплект';box.append(label);
- const apply=id=>{if(!id){state.presetId=null;draw();return;}const next=applyHeroSet(h,id,slotEffects);selected=next.selected;slotEffects=next.effects;Object.assign(state,next);$('set-download').hidden=true;draw();schedulePreview();};
- drawSetPicker(box,h,state,{disabled:working,token,imageForItem:item=>itemImage(item,h.id,token),onSelect:apply});
- if(state.presetId&&!heroSetMatches(h,state.presetId,selected)){const note=document.createElement('small'),restore=document.createElement('button');note.textContent='Комплект изменён';restore.type='button';restore.className='secondary';restore.textContent='Восстановить комплект';restore.disabled=working;restore.addEventListener('click',()=>apply(state.presetId));box.append(note,restore);}
- }
- $('set-invoker-voice').onchange=()=>{
-  const style=$('set-invoker-voice').value||undefined;
-  heroStates.get(hero().id).personaVoiceStyle=style;
-  if(style&&!collectionPayload().selections.some(row=>row.heroId===hero().id)){
-   $('set-add-persona').onclick();
-   return;
+import { createSetNavigation } from './set-navigation.mjs';
+import { canPrismaticColor, prismaticControl } from './prismatic-colors.mjs';
+import { etherealInfoButton } from './ethereal-info.mjs';
+import { showBuildError } from './build-error.mjs';
+import { newArcanaDefinitions } from './new-arcana-definitions.mjs';
+import { arcanaOccupiedSlots, arcanaStyleName } from './expanded-arcana-definitions.mjs';
+import { fillPreviewAnimations } from './preview-animation-controls.mjs';
+import { arcanaIconConfig, arcanaAbilities } from './arcana-icon-config.mjs';
+import { drawPublicArcanaControls, publicArcanaDefinitions } from './public-arcana-controls.mjs';
+import { drawDrowArcanaControls } from './drow-arcana-controls.mjs';
+import { registerSetBasket, notifyBasket } from './cosmetics-store.mjs';
+import { drawTechiesArcanaControls } from './techies-arcana-controls.mjs';
+import { additionSummary } from './selection-labels.mjs';
+import { drawImmortalControls } from './immortal-controls.mjs';
+import { drawSetPicker } from './set-picker.mjs';
+import { kineticWikiPreview, kineticPreviewLabel } from './kinetic-media.mjs';
+import {
+  kineticGroups,
+  kineticChoiceGroups,
+  kineticPriorityLabel,
+  resolveKinetics,
+  resolveKineticOverrides,
+  kineticActionLabel
+} from './kinetic-gems.mjs';
+import { markItemRarity } from './item-rarity.mjs';
+import { applyHeroSet, heroSetMatches } from './hero-sets.mjs';
+import { groupStyleItems, styleChoices } from './item-styles.mjs';
+import { initHeroPicker } from './hero-picker.mjs';
+import { isPreviewCancelled } from './renderer/cancel.mjs';
+import { ModelPreview } from './preview.mjs';
+const slotNames = {
+  arcana: 'Аркана',
+  demon: 'Форма демона',
+  weapon: 'Оружие',
+  offhand_weapon: 'Второе оружие',
+  head: 'Голова',
+  shoulder: 'Плечи',
+  shoulders: 'Плечи',
+  arms: 'Руки',
+  back: 'Спина',
+  belt: 'Пояс',
+  armor: 'Броня',
+  neck: 'Шея',
+  tail: 'Хвост',
+  mount: 'Ездовое животное',
+  misc: 'Дополнительно',
+  legs: 'Ноги',
+  stance: 'Стойка'
+};
+export function itemImage(item, heroId = null, token = null) {
+  if (item.arcanaCart) {
+    const q = new URLSearchParams();
+    if (token) q.set('token', token);
+    return '/api/techies-cart-icon?' + q;
   }
-  $('set-download').hidden=true;
-  drawCollection();
-  onSelectionChange?.(editorSnapshot());
- };
- $('set-persona-owned').onchange=()=>{heroStates.get(hero().id).personaOwned=$('set-persona-owned').checked;$('set-download').hidden=true;drawCollection();onSelectionChange?.(editorSnapshot());};
- $('set-add-persona').onclick=()=>{const h=hero();for(const [slot,id]of defaultPersonaSelection(h))if(!selected.has(slot))selected.set(slot,id);draw();schedulePreview();};
- function draw(){const currentHero=hero();if(currentHero?.lazy){$('set-slots').replaceChildren();$('set-title').textContent=currentHero.name;drawCollection();return;}$('set-invoker-voice-label').hidden=!(currentHero?.isPersona&&currentHero.baseHeroId==='invoker');$('set-invoker-voice').value=heroStates.get(currentHero?.id)?.personaVoiceStyle??'';$('set-invoker-voice').disabled=working;$('set-persona-owned-label').hidden=!(currentHero?.isPersona&&currentHero.items?.some(i=>!i.isDefault&&!i.specialKind));$('set-persona-owned').checked=heroStates.get(currentHero?.id)?.personaOwned===true;$('set-persona-owned').disabled=working;$('set-add-persona').hidden=!currentHero?.isPersona;$('set-add-persona').disabled=working||!!collectionPayload().selections.find(r=>r.heroId===currentHero?.id);drawStance();drawPriorities();promptAnimationPriorities(hero(),heroStates.get(hero()?.id));drawPreset();drawArcana();drawImmortals();drawEntityView();$('set-hero').disabled=working;$('set-vpk').disabled=working;const h=hero();if(!h)return;$('set-title').textContent=h.name;$('set-slots').replaceChildren(...[...new Set([...setSlots(h),...(onRecolorItem?['hero_base']:[])])].filter(slot=>!(publicArcanaDefinitions[h.id]&&heroStates.get(h.id)?.arcana&&arcanaOccupiedSlots(publicArcanaDefinitions[h.id]).includes(slot))).map(slot=>{const item=h.items.find(i=>i.id===selected.get(slot))??setDefaultItem(h,slot,heroStates.get(h.id)?.arcana),button=document.createElement('button');button.className='set-slot secondary';button.disabled=working;button.append(thumbnail(item??{}));const text=document.createElement('span'),label=document.createElement('b'),name=document.createElement('small');label.textContent=slot==='hero_base'?'База героя':h.entitySlots?.[slot]?.name??slotNames[slot]??slot.replaceAll('_',' ');name.textContent=item?.name??(slot==='hero_base'?h.name:'Базовый предмет');text.append(label,name);button.append(text);markItemRarity(button,item);if(onRecolorItem){const paint=heroStates.get(h.id)?.savedRows?.get(slot);if(paint?.recolor?.resources?.length&&paint.itemId===(selected.get(slot)??null)){button.dataset.recolored='true';if(paint.recolor.iconPreview&&button.querySelector('img'))button.querySelector('img').src=paint.recolor.iconPreview;}}button.addEventListener('click',()=>slot==='hero_base'&&onRecolorItem?onRecolorItem({heroId:h.id,slot,itemId:selected.get(slot)??null,name:'База героя · '+h.name}):editorMode&&onEditItem?onEditItem({slot,itemId:selected.get(slot)??null,name:item?.name??'Базовый предмет'}):openSlot(slot));const wrap=document.createElement('div');wrap.className='set-slot-wrap';wrap.append(button);if(onRecolorItem){const recolor=document.createElement('button');recolor.type='button';recolor.className='secondary tester-recolor-button';recolor.textContent='Перекрасить';recolor.disabled=working;recolor.onclick=()=>onRecolorItem({heroId:h.id,slot,itemId:selected.get(slot)??null,name:item?.name??'Базовый предмет'});wrap.append(recolor);}if(editorMode&&onEditItem){const change=document.createElement('button');change.className='secondary me-change-item';change.type='button';change.textContent='Заменить';change.addEventListener('click',()=>openSlot(slot));wrap.append(change);}const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Добавить эффект'+(slotEffects.get(slot)?.length?' · '+slotEffects.get(slot).length:'');details.append(summary);const list=document.createElement('div');list.className='set-slot-effects';const search=document.createElement('input');search.type='search';search.className='ethereal-search';search.placeholder=document.documentElement.lang==='ru'?'Найти эффект':'Search effects';search.setAttribute('aria-label',search.placeholder);search.oninput=()=>{const q=search.value.trim().toLowerCase();for(const row of list.querySelectorAll('.effect-choice'))row.hidden=!row.querySelector('label').textContent.toLowerCase().includes(q);};list.append(search);for(const effect of catalog.effects.filter(e=>(e.particle||e.ethereal)&&(!item||item.isDefault||item.setEntity||item.effects?.includes(e.id)))){const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.checked=(slotEffects.get(slot)??[]).includes(effect.id);input.disabled=working||!effect.particle||effect.selectable===false;input.addEventListener('change',()=>{const ids=new Set(slotEffects.get(slot)??[]);input.checked?ids.add(effect.id):ids.delete(effect.id);slotEffects.set(slot,[...ids]);summary.textContent='Добавить эффект'+(ids.size?' · '+ids.size:'');$('set-download').hidden=true;drawCollection();schedulePreview();});const effectName=document.createElement('span');effectName.textContent=effect.name;effectName.className='effect-choice-name';label.append(input,effectName);const row=document.createElement('div');row.className='effect-choice';row.append(label);const info=etherealInfoButton(effect,{resourceUrl});if(info)row.append(info);if(canPrismaticColor(effect)){const state=heroStates.get(h.id),control=prismaticControl(effect,{color:state?.savedRows?.get(slot)?.effectColors?.[effect.id],onChange:color=>{state.savedRows??=new Map();const saved=state.savedRows.get(slot)??{},effectColors={...saved.effectColors};if(color)effectColors[effect.id]=color;else delete effectColors[effect.id];state.savedRows.set(slot,{...saved,effectColors});$('set-download').hidden=true;drawCollection();schedulePreview();}});control.hidden=!input.checked;input.addEventListener('change',()=>control.hidden=!input.checked);row.append(control);}list.append(row);}details.append(list);wrap.append(details);return wrap;}));drawCollection();}
- function openSlot(slot){activeSlot=slot;$('set-picker-title').textContent=hero().entitySlots?.[slot]?.name??slotNames[slot]??slot;$('set-search').value='';drawCards();$('set-picker').showModal();$('set-search').focus();}
- function drawCards(){
- const h=hero(),q=$('set-search').value.toLowerCase(),items=[setDefaultItem(h,activeSlot,heroStates.get(h.id)?.arcana),...h.items.filter(i=>!(h.id==='drow_ranger'&&heroStates.get(h.id)?.arcana&&activeSlot==='weapon'&&!['37144','34594'].includes(String(i.gameItemId)))&&i.slot===activeSlot&&(!i.isDefault||i.styleId&&i.styleId!=='0')&&!i.specialKind&&!i.previewUnsupported)];
- const candidates=items.filter(i=>!q||(i.name+' '+(i.baseName??'')).toLowerCase().includes(q)).sort((a,b)=>(b.catalogPriority??0)-(a.catalogPriority??0));
- $('set-cards').replaceChildren(...groupStyleItems(candidates,selected.get(activeSlot)).map(initial=>{
-  let item=initial;const wrap=document.createElement('div'),card=document.createElement('button');wrap.className='set-style-card';card.type='button';card.className='set-card';
-  const refresh=()=>{const isSelected=(selected.get(activeSlot)??null)===item.id;card.classList.toggle('selected',isSelected);card.setAttribute('aria-pressed',String(isSelected));card.disabled=!!item.styleUnsupported;const name=document.createElement('strong'),state=document.createElement('small');name.textContent=item.name;state.textContent=item.styleUnsupported??(isSelected?'Выбрано':'Выбрать');card.replaceChildren(thumbnail(item),name,state);markItemRarity(card,item);if(onRecolorItem){const paint=heroStates.get(h.id)?.savedRows?.get(activeSlot);if(paint?.itemId===item.id&&paint.recolor?.resources?.length){card.dataset.recolored='true';if(paint.recolor.iconPreview&&card.querySelector('img'))card.querySelector('img').src=paint.recolor.iconPreview;}else delete card.dataset.recolored;}};
-  const choose=()=>{if(item.styleUnsupported)return;selected.set(activeSlot,item.id);if(h.id==='drow_ranger'&&item.requiresDrowArcana){const state=heroStates.get(h.id);state.arcana??={style:0,weaponId:'37144'};if(activeSlot==='weapon'){state.arcana.weaponId=String(item.gameItemId);selected.delete('weapon');}}if(h.entitySlots?.[activeSlot])heroStates.get(h.id).previewForm='entity:'+activeSlot;else if(h.id!=='terrorblade'&&!(h.id==='tiny'&&activeSlot==='weapon'&&heroStates.get(h.id).previewForm?.startsWith('entity:')))heroStates.get(h.id).previewForm='normal';if(h.id==='terrorblade')heroStates.get(h.id).previewForm=activeSlot==='demon'?'demon':'normal';if(item.id)slotEffects.set(activeSlot,(slotEffects.get(activeSlot)??[]).filter(id=>item.setEntity||item.effects?.includes(id)));$('set-picker').close();$('set-download').hidden=true;draw();schedulePreview();if(editorMode&&onEditItem)onEditItem({slot:activeSlot,itemId:item.id??null,name:item.name??'Базовый предмет'});};
-  refresh();card.addEventListener('click',choose);wrap.append(card);if(onRecolorItem){const recolor=document.createElement('button');recolor.type='button';recolor.className='secondary tester-recolor-button';recolor.textContent='Перекрасить';recolor.onclick=()=>{choose();onRecolorItem({heroId:h.id,slot:activeSlot,itemId:item.id??null,name:item.name??'Базовый предмет'});};wrap.append(recolor);}
-  const styles=styleChoices(item,h.items.filter(i=>i.slot===activeSlot&&!i.specialKind&&!i.previewUnsupported));
-  if(styles.length>1){const label=document.createElement('label'),select=document.createElement('select');label.className='item-style-select';label.append(document.createTextNode('Стиль'),select);for(const style of styles){const option=document.createElement('option'),variant=h.items.find(i=>i.id===style.id);option.value=style.id;option.textContent=style.name;option.disabled=!!variant?.styleUnsupported;select.append(option);}select.value=item.id??styles[0].id;select.addEventListener('change',()=>{item=h.items.find(i=>i.id===select.value);refresh();});wrap.append(label);}
-  return wrap;
- }));}
- $('set-close').addEventListener('click',()=>$('set-picker').close());$('set-search').addEventListener('input',drawCards);
- let heroLoadRevision=0;
- $('set-hero').addEventListener('change',async()=>{const request=++heroLoadRevision,id=$('set-hero').value;navigation?.hero(id);try{say('Loading hero…');await catalog.ensureHero?.(id);if(request!==heroLoadRevision||$('set-hero').value!==id)return;}catch(error){if(request===heroLoadRevision)say(error.message,true);return;}choosingHero=false;workspace.classList.remove('choosing-hero');let state=heroStates.get(id);if(!state){state={selected:initialSetSelection(catalog.heroes.find(h=>h.id===id)),effects:new Map()};heroStates.set(id,state);}selected=state.selected;slotEffects=state.effects;preview?.clear();$('set-download').hidden=true;draw();schedulePreview();});
- let previewing=false,pending=false,loadedAnimations=[];
- $('set-animation').addEventListener('change',()=>{const index=Number($('set-animation').value);if(!loadedAnimations[index]||!preview)return;heroStates.get(hero().id).previewAnimation=loadedAnimations[index].name;preview.setAnimation(index);});
- async function schedulePreview(){onSelectionChange?.(editorSnapshot());revision++;if(standalone)preview?.cancelLoad?.();pending=true;if(previewing)return;previewing=true;try{while(pending&&!root.hidden&&!choosingHero){pending=false;const generation=revision;try{const h=hero();if(!h)throw new Error('No heroes available');validatePriorities(h,heroStates.get(h.id));say('Подготавливаем сет…');$('set-animation').disabled=true;let job;for(let attempt=0;;attempt++){if(generation!==revision)break;try{job=await api('/api/preview',withSavedOptions(setPayload(h,selected,{preview:true,effects:slotEffects,arcana:heroStates.get(h.id)?.arcana,stanceId:heroStates.get(h.id)?.stanceId,previewForm:heroStates.get(h.id)?.previewForm})));break;}catch(error){if(!error.message.includes('Предпросмотр ещё загружается')||attempt>=480)throw error;await new Promise(r=>setTimeout(r,500));}}if(!job)continue;
- for(;;){if(generation!==revision)break;job=await api('/api/previews/'+job.id);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')break;await new Promise(r=>setTimeout(r,350));}if(generation!==revision)continue;
- preview??=new Preview($('set-canvas'),$('set-stage'),{fetcher,metadataProvider});const animations=await preview.loadScene(job,'/api/previews/'+job.id,query);if(generation!==revision)continue;const stanceStamp=h.id+':'+JSON.stringify(heroStates.get(h.id)?.stanceId??'auto')+':'+JSON.stringify(job.preferredAnimations??[]);if(job.preferredAnimations?.length&&(!preview.preservedScene||previewStance!==stanceStamp)){const index=job.preferredAnimations.map(name=>animations.findIndex(a=>a.name===name&&(!standalone||!/effigy|statue|debut|spawn/i.test(a.name+' '+(a.activity??''))))).find(i=>i>=0);if(index!==undefined)preview.setAnimation(index);}else if(!preview.preservedScene||previewStance!==stanceStamp){let idle=animations.findIndex(a=>a.isDefault);if(standalone&&idle<0)idle=animations.findIndex(a=>a.activity==='ACT_DOTA_LOADOUT'&&!/effigy|statue|debut|spawn/i.test(a.name));if(idle<0)idle=animations.findIndex(a=>h.id==='hoodwink'?(a.name??'').toLowerCase()==='mouse_idle':/(^|[\/_])idle($|[_\/])/i.test(a.name??''));if(idle>=0)preview.setAnimation(idle);}previewStance=stanceStamp;loadedAnimations=animations;const chosenAnimation=fillPreviewAnimations($('set-animation'),animations,heroStates.get(h.id)?.previewAnimation,preview.animation);if(chosenAnimation>=0&&chosenAnimation!==preview.animation)preview.setAnimation(chosenAnimation);if(standalone&&!animations.length){const option=document.createElement('option');option.textContent=preview.source?.modelMetadata.get('hero')?.hasSkeleton===false?'GLB без скелета — нужен переэкспорт героя':'Анимации недоступны в GLB и исходной модели';$('set-animation').replaceChildren(option);$('set-animation').hidden=false;$('set-animation').disabled=true;}const packet=await api('/api/previews/'+job.id+'/effect');if(generation!==revision)continue;const info=await preview.setEffects(packet.effects??[]);if(info.warnings.length)console.warn('[Dota Effect Studio particles]',...info.warnings);say('Сет готов к просмотру.');onPreviewReady?.({preview,job,animations});
- }catch(error){if(generation===revision&&!isPreviewCancelled(error)){preview?.clear();$('set-animation').hidden=true;say(error.message,true);onPreviewError?.(error);}}}}finally{previewing=false;}}
- $('set-build').addEventListener('click',async()=>{if(working)return;const payload=collectionPayload();if(!payload.selections.length)return;working=true;draw();$('set-download').hidden=true;try{let job=await api('/api/build',{...payload,vpkNumber:Number($('set-vpk').value)});for(;;){job=await api('/api/jobs/'+job.id);if(job.status==='error')throw new Error(job.error);if(job.status==='ready')break;say('Собираем VPK…');await new Promise(r=>setTimeout(r,500));}const link=$('set-download');link.href=resourceUrl('/api/jobs/'+job.id+'/download'+query);link.hidden=false;say('VPK готов.');link.click();}catch(error){say(error.message,true);showBuildError($('set-message'),error);}finally{working=false;draw();}});
- {
-  const progress=document.createElement('span');progress.className='set-preview-progress';progress.setAttribute('role','status');root.querySelector('.preview-bottom').append(progress);
-  $('set-canvas').addEventListener('preview-progress',({detail})=>{progress.textContent=detail.phase==='download'?'Загрузка частей: '+detail.loaded+'/'+detail.total:detail.phase==='prepare'?'Подготовка модели…':'';});
-  $('set-canvas').addEventListener('preview-error',e=>say(e.detail,true));draw();
-  if(standalone){const hide=()=>{revision++;pending=false;root.hidden=true;preview?.dispose();preview=null;for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();};
-  return createController(hide);}
- }
- function createController(hide){return {getBuildPayload:collectionPayload,getViewer:()=>preview,getStage:()=>$('set-stage'),setRecolor(row,recolor){const state=heroStates.get(row.heroId);if(!state)return;state.savedRows??=new Map();const previous=state.savedRows.get(row.slot),old=previous?.itemId===row.itemId?previous:{};state.savedRows.set(row.slot,{...old,...row,recolor});if(row.itemId)state.selected.set(row.slot,row.itemId);draw();globalThis.dispatchEvent?.(new Event('basket-change'));},getSelection:editorSnapshot,refresh:schedulePreview,removeSelection(row){const state=heroStates.get(row.heroId);if(!state)return;if(row.arcana)state.arcana=null;else if(row.stanceId)state.stanceId=null;else if((state.selected.get(row.slot)??null)===(row.itemId??null)){state.selected.delete(row.slot);state.effects.delete(row.slot);state.savedRows?.delete(row.slot);}state.presetId=null;draw();if(hero()?.id===row.heroId&&!choosingHero)void schedulePreview();},clearSelection(){for(const state of heroStates.values()){state.selected.clear();state.effects.clear();state.savedRows?.clear();state.arcana=null;state.stanceId=null;state.presetId=null;}draw();if(!choosingHero)void schedulePreview();},applySelection(payload){restoreRows(payload.selections??[]);const state=heroStates.get(payload.selections?.[0]?.heroId);if(state&&payload.previewForm)state.previewForm=payload.previewForm;},show(){root.hidden=false;draw();if(!choosingHero)void schedulePreview();},hide,dispose(){navigation?.dispose();hide();root.replaceChildren();}};}
- const effects=document.getElementById('mode-effects'),sets=document.getElementById('mode-set');function mode(set){if(set&&root.hidden){onEnter?.();root.hidden=false;draw();if(!choosingHero)schedulePreview();}else if(!set&&!root.hidden){revision++;pending=false;root.hidden=true;preview?.clear();onExit?.();}document.querySelector('main > .workspace').hidden=set;document.querySelector('.intro').hidden=false;document.getElementById('mode-title').textContent=set?'Твой сет.':'Твой эффект.';effects?.setAttribute('aria-pressed',String(!set));sets.setAttribute('aria-pressed',String(set));}
- effects?.addEventListener('click',()=>mode(false));sets.addEventListener('click',()=>mode(true));$('set-canvas').addEventListener('preview-error',e=>say(e.detail,true));draw();
- return createController(()=>{revision++;pending=false;root.hidden=true;preview?.clear();});
+  if (!heroId || !(item.arcanaImageId ?? item.id) || !item.imageInventory) return null;
+  const query = new URLSearchParams({ heroId, itemId: item.arcanaImageId ?? item.id });
+  if (token) query.set('token', token);
+  return '/api/item-icon?' + query;
+}
+
+export function setDefaultItem(hero, slot, arcana = null) {
+  const base = hero.items.find(i => i.slot === slot && i.isDefault) ?? {};
+  if (hero.id === 'monkey_king' && arcana && slot === 'head') {
+    const crown = hero.items.find(i => String(i.gameItemId) === '34183' || i.id === 'game-34183');
+    return {
+      ...(crown ?? base),
+      id: null,
+      arcanaImageId: crown?.id,
+      name: "Great Sage's Reckoning - Head",
+      isDefault: true
+    };
+  }
+  if (arcana && newArcanaDefinitions[hero.id]) {
+    const definition = newArcanaDefinitions[hero.id],
+      partId = definition.companions[slot];
+    if (partId) {
+      const candidates = hero.items.filter(i => String(i.gameItemId) === partId || i.id === 'game-' + partId),
+        part =
+          candidates.find(i => String(i.styleId ?? 0) === String(arcana.style)) ??
+          candidates.find(i => String(i.styleId ?? 0) === '0');
+      if (part) return { ...part, arcanaImageId: part.id, id: null, isDefault: true };
+      return { ...base, id: null, name: definition.name + ' · ' + slot, isDefault: true };
+    }
+  }
+  if (hero.id === 'drow_ranger' && arcana) {
+    const ids = {
+      arms: '19088',
+      back: '19089',
+      legs: '19091',
+      misc: '19092',
+      shoulder: '19093',
+      head: '19094',
+      weapon: String(arcana.weaponId)
+    };
+    const part = hero.items.find(i => String(i.gameItemId) === ids[slot] && (!i.styleId || i.styleId === '0'));
+    if (part) return { ...part, arcanaImageId: part.id, id: null, isDefault: true };
+  }
+  return hero.id === 'techies' &&
+    arcana &&
+    hero.defaultSlotModels?.[slot] === 'models/heroes/techies/techies_cart.vmdl_c'
+    ? { ...base, id: null, name: 'Swine of the Sunken Galley', isDefault: true, arcanaCart: true }
+    : { ...base, id: null, name: 'Базовый предмет', isDefault: true };
+}
+export function initialSetSelection() {
+  return new Map();
+}
+export function defaultPersonaSelection(hero) {
+  const selected = new Map();
+  if (hero?.isPersona)
+    for (const item of hero.items ?? [])
+      if (item.isDefault && !item.styleUnsupported && hero.defaultSlotModels?.[item.slot] && !selected.has(item.slot))
+        selected.set(item.slot, item.id);
+  return selected;
+}
+export function setSlots(hero) {
+  return [
+    ...new Set([
+      ...(hero.catalogSlots ?? Object.keys(hero.defaultSlotModels ?? {})),
+      ...hero.items.filter(i => i.isDefault || i.mergeTarget || i.arcWardenHead || i.arcanaPart).map(i => i.slot),
+      ...(hero.id === 'jakiro' ? hero.items.filter(i => /head/i.test(i.slot)).map(i => i.slot) : [])
+    ])
+  ].filter(
+    s =>
+      !['hero_base', 'persona_selector', 'taunt', 'ability'].includes(s) &&
+      !(hero.id === 'tiny' && ['head', 'armor', 'arms', 'offhand_weapon'].includes(s))
+  );
+}
+export function setPayload(
+  hero,
+  selected,
+  { preview = false, effects = new Map(), arcana = null, stanceId = null, previewForm = 'normal' } = {}
+) {
+  const slots = new Set([...selected.keys(), ...effects.keys()]);
+  if (hero.id === 'drow_ranger' && arcana) slots.delete('weapon');
+  if (publicArcanaDefinitions[hero.id] && arcana)
+    arcanaOccupiedSlots(publicArcanaDefinitions[hero.id]).forEach(slot => slots.delete(slot));
+  const rows = [...slots]
+    .filter(slot => selected.get(slot) || effects.get(slot)?.length)
+    .map(slot => ({ heroId: hero.id, itemId: selected.get(slot) ?? null, slot, effectIds: effects.get(slot) ?? [] }));
+  if (stanceId) rows.push({ heroId: hero.id, slot: 'stance', stanceId });
+  if (arcana) rows.push({ heroId: hero.id, slot: 'arcana', arcana });
+  if (!rows.length && preview) {
+    const slot = setSlots(hero)[0];
+    if (!slot) throw new Error('No supported slots');
+    rows.push({ heroId: hero.id, itemId: null, slot });
+  }
+  return {
+    mode: 'set',
+    partsOnly: true,
+    selections: rows,
+    ...(preview && (previewForm === 'demon' || previewForm.startsWith('entity:')) ? { previewForm } : {})
+  };
+}
+
+export function combinedSetPayload(heroes, states) {
+  return {
+    mode: 'set',
+    selections: heroes.flatMap(hero => {
+      const state = states.get(hero.id);
+      return state
+        ? setPayload(hero, state.selected, { effects: state.effects, arcana: state.arcana, stanceId: state.stanceId })
+            .selections
+        : [];
+    })
+  };
+}
+
+export function initSetStudio(
+  catalog,
+  {
+    api,
+    token,
+    onEnter,
+    onExit,
+    standalone = false,
+    Preview = ModelPreview,
+    fetcher = fetch,
+    metadataProvider = null,
+    resourceUrl = url => url,
+    onSelectionChange = null,
+    onPreviewReady = null,
+    onPreviewError = null,
+    onEditItem = null,
+    onRecolorItem = null,
+    editorMode = false
+  }
+) {
+  const root = document.getElementById('set-studio'),
+    $ = id => root.querySelector('#' + id);
+  const heroStates = new Map();
+  let selected = new Map(),
+    slotEffects = new Map(),
+    preview,
+    revision = 0,
+    working = false,
+    activeSlot = null,
+    previewStance = null;
+  root.innerHTML = `<div class="workspace set-workspace"><aside id="set-arcana-icons" class="panel set-icon-sidebar" hidden></aside><aside class="panel controls"><label for="set-hero">Герой</label><select id="set-hero"></select><div id="set-stance" hidden></div><div id="set-immortals" hidden></div><div id="set-kinetic-priorities" hidden></div><div id="set-preset" hidden></div><div id="set-arcana" hidden></div><div id="set-entity-view" hidden></div><label id="set-invoker-voice-label" hidden>Voice<select id="set-invoker-voice"><option value="">Default</option><option value="good-old-days">The Good Old Days</option></select></label><label id="set-persona-owned-label" class="persona-owned-control" hidden><input id="set-persona-owned" type="checkbox"> Личность уже есть</label><button id="set-add-persona" type="button" class="primary" hidden>Добавить скин</button><div id="set-slots" class="set-slots"></div><div id="set-collection" class="set-collection"></div><label for="set-vpk">Имя VPK</label><select id="set-vpk"></select><button id="set-build" class="primary">Скачать VPK с сетом</button><a id="set-download" class="download" hidden>Скачать VPK</a><p id="set-message" class="muted" role="status"></p></aside><section class="panel preview"><div class="preview-top"><div><span class="eyebrow">LOADOUT PREVIEW</span><h2 id="set-title"></h2></div><span class="badge">СЕТ</span></div><div id="set-stage"><canvas id="set-canvas"></canvas></div><div class="preview-bottom"><select id="set-animation" aria-label="Animation" hidden></select><a class="harlord-credit" data-harlord-credit href="https://t.me/harlord_mods" target="_blank" rel="noopener noreferrer">Powered by Harlord</a><span>Мышь — вращение · WASD — камера · Q/E — высота · Shift — быстрее</span></div></section></div><dialog id="set-picker"><div class="set-picker-top"><h2 id="set-picker-title"></h2><button id="set-close" class="secondary" aria-label="Закрыть">×</button></div><input id="set-search" type="search" placeholder="Поиск предмета" aria-label="Поиск предмета"><div id="set-cards" class="set-cards"></div></dialog>`;
+  const workspace = root.querySelector('.set-workspace');
+  if (editorMode) root.classList.add('set-modding-catalog');
+  root.addEventListener('pointerdown', event => {
+    for (const picker of root.querySelectorAll('.set-preset-picker[open]'))
+      if (!picker.contains(event.target)) picker.open = false;
+  });
+  const basket = document.createElement('aside');
+  basket.className = 'panel set-basket';
+  basket.innerHTML =
+    '<h2>Корзина</h2><p id="set-basket-empty" class="muted">Выбери предметы или добавь эффекты — они появятся здесь.</p><p id="set-basket-message" class="muted" role="status"></p>';
+  workspace.append(basket);
+  const basketStatus = $('set-basket-message');
+  for (const node of [
+    $('set-collection'),
+    root.querySelector('label[for="set-vpk"]'),
+    $('set-vpk'),
+    $('set-build'),
+    $('set-download')
+  ])
+    basket.insertBefore(node, basketStatus);
+  $('set-build').textContent = 'Собрать VPK';
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'secondary set-back';
+  back.textContent = '← Все герои';
+  root.querySelector('.controls').prepend(back);
+  let choosingHero = true;
+  function chooseView(choosing, record = true) {
+    if (choosing && record) navigation?.catalog();
+    choosingHero = choosing;
+    workspace.classList.toggle('choosing-hero', choosing);
+    if (choosing) {
+      revision++;
+      pending = false;
+      onSelectionChange?.(null);
+    } else if (!root.hidden) schedulePreview();
+  }
+  const navigation = editorMode
+    ? null
+    : createSetNavigation({
+        isActive: () => !root.hidden,
+        onNavigate: state => {
+          heroLoadRevision++;
+          if (state.view === 'catalog') {
+            chooseView(true, false);
+            preview?.clear();
+            for (const dialog of root.querySelectorAll('dialog[open]')) dialog.close();
+          } else if (catalog.heroes.some(h => h.id === state.heroId)) {
+            $('set-hero').value = state.heroId;
+            $('set-hero').dispatchEvent(new Event('change'));
+          }
+        }
+      });
+  back.addEventListener('click', () => chooseView(true));
+  workspace.classList.add('choosing-hero');
+  const hero = () => catalog.heroes.find(h => h.id === $('set-hero').value),
+    say = (text, error = false) => {
+      $('set-message').hidden = !error;
+      $('set-message').textContent = text;
+      $('set-message').classList.toggle('error', error);
+      basketStatus.textContent = text;
+      basketStatus.classList.toggle('error', error);
+    },
+    query = token ? '?token=' + encodeURIComponent(token) : '';
+  const available = catalog.heroes.filter(h => setSlots(h).length);
+  for (const h of available) {
+    const o = document.createElement('option');
+    o.value = h.id;
+    o.textContent = h.name;
+    $('set-hero').append(o);
+  }
+  for (let n = 1; n <= 99; n++) {
+    const o = document.createElement('option');
+    o.value = n;
+    o.textContent = 'pak' + String(n).padStart(2, '0') + '_dir.vpk';
+    $('set-vpk').append(o);
+  }
+  if (hero()?.isPersona) selected = initialSetSelection(hero());
+  heroStates.set($('set-hero').value, { selected, effects: slotEffects });
+  const heroPicker = initHeroPicker($('set-hero'), available, { inline: true });
+  function withSavedOptions(payload, all = false) {
+    const heroes = all ? [...heroStates.keys()] : [...new Set(payload.selections.map(r => r.heroId))];
+    for (const id of heroes)
+      for (const [slot, row] of heroStates.get(id)?.savedRows ?? []) {
+        if (
+          row.recolor?.resources?.length &&
+          !payload.selections.some(r => r.heroId === id && r.slot === slot) &&
+          (heroStates.get(id).selected.get(slot) ?? null) === (row.itemId ?? null)
+        )
+          payload.selections.push({ ...row, slot, heroId: id });
+      }
+    payload.selections = payload.selections.map(row => {
+      const saved = heroStates.get(row.heroId)?.savedRows?.get(row.slot);
+      return {
+        ...saved,
+        ...row,
+        ...(saved?.itemId !== row.itemId ? { recolor: undefined } : {}),
+        ...(saved?.effectColors
+          ? {
+              effectColors: Object.fromEntries(
+                Object.entries(saved.effectColors).filter(([id]) => row.effectIds?.includes(id))
+              )
+            }
+          : {}),
+        personaOwned: heroStates.get(row.heroId)?.personaOwned === true,
+        personaVoiceStyle: heroStates.get(row.heroId)?.personaVoiceStyle
+      };
+    });
+    return payload;
+  }
+  function editorSnapshot() {
+    const h = hero();
+    if (!h || choosingHero) return null;
+    return {
+      heroId: h.id,
+      heroName: h.name,
+      payload: withSavedOptions(
+        setPayload(h, selected, {
+          preview: true,
+          effects: slotEffects,
+          arcana: heroStates.get(h.id)?.arcana,
+          stanceId: heroStates.get(h.id)?.stanceId,
+          previewForm: heroStates.get(h.id)?.previewForm ?? 'normal'
+        })
+      )
+    };
+  }
+  function collectionPayload() {
+    return withSavedOptions(combinedSetPayload(catalog.heroes, heroStates), true);
+  }
+  if (!editorMode)
+    registerSetBasket(
+      () => ({ ...collectionPayload(), ready: !pendingPriorities() }),
+      row => {
+        const state = heroStates.get(row.heroId);
+        if (row.arcana) state.arcana = null;
+        if (row.stanceId) state.stanceId = null;
+        state.selected.delete(row.slot);
+        state.effects.delete(row.slot);
+        draw();
+        if (hero().id === row.heroId && !choosingHero) schedulePreview();
+      },
+      restoreRows
+    );
+  function restoreRows(rows) {
+    revision++;
+    pending = false;
+    heroStates.clear();
+    for (const row of rows) {
+      let state = heroStates.get(row.heroId);
+      if (!state) {
+        state = { selected: new Map(), effects: new Map(), savedRows: new Map() };
+        heroStates.set(row.heroId, state);
+      }
+      state.savedRows.set(row.slot, row);
+      state.personaOwned = row.personaOwned === true;
+      state.personaVoiceStyle = row.personaVoiceStyle;
+      if (row.arcana) state.arcana = row.arcana;
+      else if (row.stanceId) state.stanceId = row.stanceId;
+      else {
+        if (row.itemId) state.selected.set(row.slot, row.itemId);
+        state.effects.set(row.slot, row.effectIds ?? []);
+      }
+    }
+    const id = rows[0]?.heroId ?? available[0]?.id;
+    if (id) {
+      $('set-hero').value = id;
+      if (!standalone) document.getElementById('mode-set').click();
+      $('set-hero').dispatchEvent(new Event('change'));
+    } else {
+      chooseView(true);
+      draw();
+    }
+  }
+  function drawCollection() {
+    const rows = collectionPayload().selections;
+    heroPicker?.setPresetHeroes(rows.filter(row => heroStates.get(row.heroId)?.presetId).map(row => row.heroId));
+    $('set-collection').replaceChildren();
+    $('set-basket-empty').hidden = !!rows.length;
+    for (const row of rows) {
+      const h = catalog.heroes.find(h => h.id === row.heroId),
+        item = h.items.find(i => i.id === row.itemId) ?? h.items.find(i => i.isDefault && i.slot === row.slot),
+        line = document.createElement('div'),
+        open = document.createElement('button'),
+        remove = document.createElement('button');
+      line.className = 'basket-item';
+      open.className = 'basket-open';
+      open.disabled = working;
+      const additions = row.stanceId ? additionSummary(row.stanceId, heroStates.get(h.id)?.stanceOptions ?? []) : null;
+      open.append(thumbnail(h.items.find(i => i.id === additions?.itemId) ?? item ?? {}, h.id));
+      const text = document.createElement('span'),
+        title = document.createElement('b'),
+        name = document.createElement('span'),
+        fx = document.createElement('small');
+      title.textContent =
+        h.name + ' · ' + (additions?.label ?? h.entitySlots?.[row.slot]?.name ?? slotNames[row.slot] ?? row.slot);
+      name.textContent = row.stanceId
+        ? additions.text
+        : row.arcana
+          ? publicArcanaDefinitions[h.id]
+            ? publicArcanaDefinitions[h.id].name
+            : h.id === 'drow_ranger'
+              ? 'Dread Retribution'
+              : h.id === 'techies'
+                ? 'Swine of the Sunken Galley'
+                : 'Fractal Horns of Inner Abysm'
+          : (item?.name ?? 'Базовый предмет');
+      fx.textContent = row.arcana
+        ? publicArcanaDefinitions[h.id]
+          ? arcanaStyleName(publicArcanaDefinitions[h.id], row.arcana.style)
+          : h.id === 'drow_ranger'
+            ? 'Dread Retribution · ' + (row.arcana.style === 1 ? 'Master of Madness' : 'Style 1')
+            : (h.id === 'techies' && !row.arcana.customColor
+                ? 'Исходные цвета Dota'
+                : 'RGB ' + row.arcana.color.join(', ')) +
+              ' · ' +
+              (row.arcana.mode === 'owned' ? 'Перекрасить свою аркану' : 'Аркана вместо базового героя')
+        : (row.effectIds ?? []).map(id => catalog.effects.find(e => e.id === id)?.name ?? id).join(', ');
+      if (additions) name.style.whiteSpace = 'pre-line';
+      text.append(title, name, fx);
+      open.append(text);
+      markItemRarity(open, item);
+      open.addEventListener('click', () => {
+        $('set-hero').value = h.id;
+        $('set-hero').dispatchEvent(new Event('change'));
+      });
+      remove.className = 'text-button';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', 'Убрать предмет из VPK');
+      remove.disabled = working;
+      remove.addEventListener('click', () => {
+        const state = heroStates.get(h.id);
+        if (row.arcana) state.arcana = null;
+        if (row.stanceId) state.stanceId = null;
+        state.selected.delete(row.slot);
+        state.effects.delete(row.slot);
+        $('set-download').hidden = true;
+        draw();
+        if (hero().id === h.id && !choosingHero) schedulePreview();
+      });
+      line.append(open, remove);
+      $('set-collection').append(line);
+    }
+    back.textContent = '← Все герои';
+    $('set-build').disabled = working || !rows.length || pendingPriorities();
+    if (!editorMode) notifyBasket();
+  }
+  function thumbnail(item, heroId = hero().id) {
+    const box = document.createElement('div');
+    box.className = 'set-thumb';
+    const src = itemImage(item, heroId, token);
+    if (src) {
+      const image = document.createElement('img');
+      image.src = src;
+      image.loading = 'lazy';
+      image.alt = '';
+      image.addEventListener(
+        'error',
+        () => {
+          image.remove();
+          box.textContent = '◇';
+        },
+        { once: true }
+      );
+      box.append(image);
+    } else box.textContent = '◇';
+    if (item.sharedInventoryImage) {
+      const badge = document.createElement('span');
+      badge.className = 'shared-icon-slot';
+      badge.textContent = slotNames[item.slot] ?? item.slot;
+      box.append(badge);
+    }
+    return box;
+  }
+  function selectedEquipment(h, state) {
+    return [...state.selected.values()].map(id => h.items.find(i => i.id === id)).filter(Boolean);
+  }
+  function validatePriorities(h, state) {
+    if (!state?.stanceId || !state.stanceOptions) return;
+    const selection = typeof state.stanceId === 'string' ? { ids: [state.stanceId], priorities: {} } : state.stanceId,
+      options = state.stanceOptions.filter(o => selection.ids.includes(o.id));
+    resolveKinetics(options, selection.priorities ?? {}, selectedEquipment(h, state));
+    resolveKineticOverrides(options, selection.priorities ?? {}, selectedEquipment(h, state));
+  }
+  function pendingPriorities() {
+    for (const h of catalog.heroes) {
+      try {
+        validatePriorities(h, heroStates.get(h.id));
+      } catch {
+        return true;
+      }
+    }
+    return false;
+  }
+  function drawPriorities() {
+    const h = hero(),
+      state = heroStates.get(h?.id),
+      box = $('set-kinetic-priorities');
+    box.replaceChildren();
+    box.hidden = true;
+    if (!state) return;
+    const equipmentConflicts = [...kineticChoiceGroups([], selectedEquipment(h, state))].some(
+      ([, list]) => list.length > 1
+    );
+    if (!state.stanceId && equipmentConflicts) state.stanceId = { ids: [], priorities: {} };
+    if (state.stanceId?.ids?.length === 0 && !equipmentConflicts) {
+      state.stanceId = null;
+      return;
+    }
+    if (!state.stanceId || !state.stanceOptions) return;
+    const selection = typeof state.stanceId === 'string' ? { ids: [state.stanceId], priorities: {} } : state.stanceId,
+      options = state.stanceOptions.filter(o => selection.ids.includes(o.id));
+    for (const [action, candidates] of kineticChoiceGroups(options, selectedEquipment(h, state))) {
+      if (candidates.length < 2) continue;
+      box.hidden = false;
+      const label = document.createElement('label');
+      label.textContent = 'Приоритет · ' + kineticPriorityLabel(action);
+      const select = document.createElement('select'),
+        empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'Выберите источник';
+      select.append(empty);
+      for (const candidate of candidates) {
+        const option = document.createElement('option');
+        option.value = candidate.id;
+        option.textContent = candidate.name;
+        select.append(option);
+      }
+      select.value = selection.priorities?.[action] ?? '';
+      select.disabled = working;
+      select.onchange = () => {
+        state.stanceId = { ids: selection.ids, priorities: { ...selection.priorities, [action]: select.value } };
+        $('set-download').hidden = true;
+        draw();
+        schedulePreview();
+      };
+      label.append(select);
+      box.append(label);
+    }
+  }
+  function promptAnimationPriorities(h, state) {
+    if (!h || !state) return;
+    const selection = typeof state.stanceId === 'string' ? { ids: [state.stanceId], priorities: {} } : state.stanceId;
+    if (!selection || !state.stanceOptions) return;
+    const groups = [
+      ...kineticChoiceGroups(
+        state.stanceOptions.filter(o => selection.ids.includes(o.id)),
+        selectedEquipment(h, state)
+      )
+    ].filter(([action, list]) => list.length > 1 && list.some(o => o.id.startsWith('item:')));
+    const missing = groups.filter(([action, list]) => !list.some(o => o.id === selection.priorities?.[action]));
+    const key = JSON.stringify(missing.map(([action, list]) => [action, list.map(o => o.id)]));
+    if (!missing.length) {
+      state.priorityPromptKey = null;
+      return;
+    }
+    if (state.priorityPromptKey === key || working) return;
+    queueMicrotask(() => {
+      if (hero()?.id !== h.id || document.querySelector('dialog[open]') || root.hidden) return;
+      state.priorityPromptKey = key;
+      const dialog = document.createElement('dialog');
+      dialog.className = 'kinetic-picker';
+      const title = document.createElement('h3');
+      title.textContent = 'Приоритет эффектов и анимаций';
+      const note = document.createElement('p');
+      note.textContent =
+        'Выбранные предметы или самоцветы меняют один и тот же эффект, иконку или анимацию. Выберите источник для каждого изменения.';
+      const close = document.createElement('button');
+      close.className = 'secondary kinetic-close';
+      close.textContent = '×';
+      close.setAttribute('aria-label', 'Закрыть');
+      close.onclick = () => dialog.close();
+      const body = document.createElement('div');
+      body.className = 'kinetic-controls';
+      const draft = { ...selection.priorities },
+        apply = document.createElement('button');
+      apply.className = 'primary kinetic-apply';
+      apply.textContent = 'Применить';
+      apply.disabled = true;
+      const refresh = () => {
+        apply.disabled = missing.some(([action, list]) => !list.some(o => o.id === draft[action]));
+      };
+      for (const [action, list] of missing) {
+        const label = document.createElement('label');
+        label.textContent = 'Приоритет · ' + kineticPriorityLabel(action);
+        const select = document.createElement('select'),
+          blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = 'Выберите источник';
+        select.append(blank);
+        for (const option of list) {
+          const node = document.createElement('option');
+          node.value = option.id;
+          node.textContent = option.name;
+          select.append(node);
+        }
+        select.onchange = () => {
+          draft[action] = select.value;
+          refresh();
+        };
+        label.append(select);
+        body.append(label);
+      }
+      apply.onclick = () => {
+        state.stanceId = { ids: selection.ids, priorities: draft };
+        dialog.close();
+        $('set-download').hidden = true;
+        draw();
+        schedulePreview();
+      };
+      dialog.addEventListener('close', () => dialog.remove(), { once: true });
+      dialog.append(close, title, note, body, apply);
+      document.body.append(dialog);
+      dialog.showModal();
+    });
+  }
+  function tbPreviewUrl(state, group, style, ability) {
+    const query = new URLSearchParams({
+      group,
+      style: hero().id === 'techies' && !state.arcana.customColor && style === 'colored' ? 'arcana' : style,
+      ability: ability === 'hero' ? (hero().id === 'techies' ? 'sticky_bomb' : 'sunder') : ability,
+      mode: state.arcana.mode,
+      color: state.arcana.color.join(',')
+    });
+    if (token) query.set('token', token);
+    return (hero().id === 'techies' ? '/api/techies-icon?' : '/api/terrorblade-icon?') + query;
+  }
+  function drawImmortals() {
+    const h = hero(),
+      state = heroStates.get(h?.id);
+    if (!state) return;
+    const sidebar = $('set-arcana-icons');
+    $('set-immortals').hidden = true;
+    const icons = arcanaIconConfig(h.id, state.arcana, token);
+    const hasSet = [...selected.values()].some(id =>
+      h.items.find(i => i.id === id)?.model?.startsWith('models/items/terrorblade/dreadhunt_')
+    );
+    drawImmortalControls(sidebar, {
+      hero: h,
+      options: state.stanceOptions ?? [],
+      abilities: arcanaAbilities(state.abilities ?? [], icons),
+      arcanaIcons: icons,
+      selection: state.stanceId,
+      items: selectedEquipment(h, state),
+      token,
+      disabled: working,
+      arcana: h.id === 'drow_ranger' || publicArcanaDefinitions[h.id] ? null : state.arcana,
+      hasSet,
+      previewUrl: (group, style, ability) => tbPreviewUrl(state, group, style, ability),
+      onApply: selection => {
+        state.stanceId = selection;
+        $('set-download').hidden = true;
+        draw();
+        schedulePreview();
+      }
+    });
+    workspace.classList.toggle('has-arcana-icons', !sidebar.hidden);
+  }
+  function drawStance() {
+    const h = hero(),
+      state = heroStates.get(h?.id),
+      box = $('set-stance');
+    if (!state) return;
+    box.replaceChildren();
+    box.hidden = Array.isArray(state.stanceOptions) && !state.stanceOptions.length;
+    if (box.hidden) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary';
+    button.textContent =
+      'Кинетический самоцвет' +
+      ((state.stanceId?.ids ?? []).filter(id => state.stanceOptions?.find(o => o.id === id)?.category !== 'immortal')
+        .length
+        ? ' · ' +
+          state.stanceId.ids.filter(id => state.stanceOptions?.find(o => o.id === id)?.category !== 'immortal').length
+        : '');
+    button.disabled = working || !state.stanceOptions;
+    button.hidden = !!state.stanceOptions && !state.stanceOptions.some(o => o.category !== 'immortal');
+    box.append(button);
+    button.addEventListener('click', () => {
+      const dialog = document.createElement('dialog');
+      dialog.className = 'kinetic-picker';
+      const title = document.createElement('h3');
+      title.textContent = 'Кинетические самоцветы';
+      const close = document.createElement('button');
+      close.textContent = '×';
+      close.className = 'secondary kinetic-close';
+      close.type = 'button';
+      close.setAttribute('aria-label', 'Закрыть');
+      close.onclick = () => dialog.close();
+      dialog.append(close, title);
+      let downloadedMedia = { items: {} };
+      const manifestRequest = api('/kinetic-media/manifest.json')
+        .then(result => {
+          downloadedMedia = result;
+        })
+        .catch(() => {});
+      const mediaPanel = document.createElement('aside');
+      mediaPanel.className = 'kinetic-wiki-preview';
+      const hint = document.createElement('p');
+      hint.textContent = 'Нажми «Что меняет» рядом с самоцветом';
+      mediaPanel.append(hint);
+      let hoverTimer,
+        hoverRevision = 0;
+      const stopHover = () => {
+        clearTimeout(hoverTimer);
+        for (const video of mediaPanel.querySelectorAll('video')) {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        }
+      };
+      dialog.addEventListener(
+        'close',
+        () => {
+          hoverRevision++;
+          stopHover();
+        },
+        { once: true }
+      );
+      const hover = option => {
+        const generation = ++hoverRevision;
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(async () => {
+          await manifestRequest;
+          if (generation !== hoverRevision || !dialog.open) return;
+          stopHover();
+          mediaPanel.replaceChildren();
+          const heading = document.createElement('b');
+          heading.textContent = option.name;
+          mediaPanel.append(heading);
+          const changes = document.createElement('p');
+          changes.className = 'muted';
+          changes.textContent = [...new Set([...kineticGroups([option]).keys()].map(kineticActionLabel))].join(' · ');
+          mediaPanel.append(changes);
+          for (const text of [
+            ...(option.notes ?? []),
+            ...(option.unavailableReason ? [option.unavailableReason] : [])
+          ]) {
+            const note = document.createElement('p');
+            note.className = 'kinetic-note';
+            note.textContent = text;
+            mediaPanel.append(note);
+          }
+          const { clips, page } = kineticWikiPreview(option, downloadedMedia);
+          const status = document.createElement('p');
+          status.className = 'muted';
+          const credit = document.createElement('a');
+          credit.href = 'https://t.me/harlord_mods';
+          credit.target = '_blank';
+          credit.rel = 'noopener';
+          credit.textContent = 'Powered by Harlord';
+          credit.className = 'kinetic-credit';
+          if (!clips.length) {
+            status.textContent = ['partial', 'no-media-on-page'].includes(
+              downloadedMedia.items?.[option.id]?.mediaStatus
+            )
+              ? 'На вики нет доступного файла превью'
+              : 'Превью пока не загружено на сервер';
+            mediaPanel.append(status);
+          } else {
+            const stage = document.createElement('div');
+            stage.className = 'kinetic-animation';
+            const tabs = document.createElement('div');
+            tabs.className = 'kinetic-media-tabs';
+            const show = clip => {
+              for (const v of stage.querySelectorAll('video')) {
+                v.pause();
+                v.removeAttribute('src');
+                v.load();
+              }
+              stage.replaceChildren();
+              const media = document.createElement(clip.type === 'video' ? 'video' : 'img');
+              media.referrerPolicy = 'no-referrer';
+              if (clip.type === 'video') {
+                media.muted = true;
+                media.loop = true;
+                media.autoplay = true;
+                media.playsInline = true;
+                media.preload = 'metadata';
+              } else media.alt = kineticPreviewLabel(clip, clips.indexOf(clip));
+              media.addEventListener(
+                'error',
+                () => {
+                  media.remove();
+                  status.textContent = 'Превью недоступно. Открой страницу на вики.';
+                },
+                { once: true }
+              );
+              status.textContent = kineticPreviewLabel(clip, clips.indexOf(clip));
+              stage.append(media, credit);
+              media.src = clip.url;
+              if (clip.type === 'video')
+                media.play().catch(() => {
+                  media.controls = true;
+                });
+            };
+            for (const clip of clips) {
+              const tab = document.createElement('button');
+              tab.className = 'secondary';
+              tab.type = 'button';
+              tab.textContent = kineticPreviewLabel(clip, clips.indexOf(clip));
+              tab.onclick = () => show(clip);
+              tabs.append(tab);
+            }
+            mediaPanel.append(stage, tabs, status);
+            show(clips[0]);
+          }
+          if (page) {
+            const link = document.createElement('a');
+            link.href = page;
+            link.textContent = 'Источник: Dota 2 Wiki';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.className = 'kinetic-wiki-source';
+            mediaPanel.append(link);
+          }
+        }, 180);
+      };
+      const ids = new Set(
+          state.stanceId?.ids ??
+            (typeof state.stanceId === 'string' && state.stanceId !== 'default' ? [state.stanceId] : [])
+        ),
+        priorities = { ...(state.stanceId?.priorities ?? {}) },
+        list = document.createElement('div'),
+        conflicts = document.createElement('div'),
+        apply = document.createElement('button');
+      apply.textContent = 'Применить';
+      apply.className = 'primary kinetic-apply';
+      apply.type = 'button';
+      const refresh = () => {
+        conflicts.replaceChildren();
+        for (const [action, options] of kineticChoiceGroups(
+          (state.stanceOptions ?? []).filter(o => ids.has(o.id)),
+          selectedEquipment(h, state)
+        )) {
+          if (options.length < 2) continue;
+          const label = document.createElement('label');
+          label.textContent = 'Приоритет · ' + kineticPriorityLabel(action);
+          const select = document.createElement('select');
+          const blank = document.createElement('option');
+          blank.value = '';
+          blank.textContent = 'Выберите источник';
+          select.append(blank);
+          for (const o of options) {
+            const option = document.createElement('option');
+            option.value = o.id;
+            option.textContent = o.name;
+            select.append(option);
+          }
+          select.value = priorities[action] ?? '';
+          select.onchange = () => {
+            priorities[action] = select.value;
+            refresh();
+          };
+          label.append(select);
+          conflicts.append(label);
+        }
+        try {
+          resolveKinetics(
+            (state.stanceOptions ?? []).filter(o => ids.has(o.id)),
+            priorities,
+            selectedEquipment(h, state)
+          );
+          resolveKineticOverrides(
+            (state.stanceOptions ?? []).filter(o => ids.has(o.id)),
+            priorities,
+            selectedEquipment(h, state)
+          );
+          apply.disabled = false;
+        } catch {
+          apply.disabled = true;
+        }
+      };
+      for (const option of (state.stanceOptions ?? []).filter(o => o.category !== 'immortal')) {
+        const label = document.createElement('label'),
+          input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = ids.has(option.id);
+        input.disabled = option.available === false;
+        input.onchange = () => {
+          input.checked ? ids.add(option.id) : ids.delete(option.id);
+          refresh();
+        };
+        label.append(input, document.createTextNode(option.name));
+        const info = document.createElement('button');
+        info.type = 'button';
+        info.className = 'secondary kinetic-info';
+        info.textContent = 'Что меняет';
+        info.setAttribute('aria-label', 'Что меняет · ' + option.name);
+        info.onclick = event => {
+          event.preventDefault();
+          hover(option);
+        };
+        const row = document.createElement('div');
+        row.className = 'kinetic-option';
+        row.append(label, info);
+        list.append(row);
+      }
+      apply.onclick = () => {
+        state.stanceId = ids.size ? { ids: [...ids], priorities } : null;
+        $('set-download').hidden = true;
+        dialog.close();
+        draw();
+        schedulePreview();
+      };
+      dialog.addEventListener('close', () => dialog.remove(), { once: true });
+      const body = document.createElement('div'),
+        controls = document.createElement('div');
+      body.className = 'kinetic-body';
+      controls.className = 'kinetic-controls';
+      controls.append(list, conflicts);
+      body.append(controls, mediaPanel);
+      dialog.append(body, apply);
+      document.body.append(dialog);
+      refresh();
+      dialog.showModal();
+    });
+    if (!state.stanceOptions && !state.stanceLoading) {
+      state.stanceLoading = true;
+      api('/api/stances?heroId=' + encodeURIComponent(h.id))
+        .then(result => {
+          state.stanceOptions = result.options ?? [];
+          state.abilities = result.abilities ?? [];
+          if (hero()?.id === h.id) {
+            drawStance();
+            drawImmortals();
+            drawPriorities();
+            drawCollection();
+          }
+        })
+        .catch(error => {
+          state.stanceLoading = false;
+          if (hero()?.id === h.id) say(error.message, true);
+        });
+    }
+  }
+  function drawArcana() {
+    const box = $('set-arcana'),
+      h = hero();
+    if (publicArcanaDefinitions[h?.id]) {
+      box.hidden = false;
+      drawPublicArcanaControls(box, h, heroStates.get(h.id), {
+        disabled: working,
+        onChange: () => {
+          $('set-download').hidden = true;
+          draw();
+          schedulePreview();
+        }
+      });
+      return;
+    }
+    if (h?.id === 'drow_ranger') {
+      box.hidden = false;
+      drawDrowArcanaControls(box, heroStates.get(h.id), {
+        hero: h,
+        disabled: working,
+        onChange: () => {
+          $('set-download').hidden = true;
+          draw();
+          schedulePreview();
+        }
+      });
+      return;
+    }
+    if (h?.id === 'techies') {
+      box.hidden = !catalog.techiesArcana;
+      if (!box.hidden)
+        drawTechiesArcanaControls(box, heroStates.get(h.id), {
+          disabled: working,
+          color: catalog.techiesArcanaColor,
+          onChange: () => {
+            $('set-download').hidden = true;
+            draw();
+            schedulePreview();
+          }
+        });
+      return;
+    }
+    box.hidden = h?.id !== 'terrorblade' || !catalog.terrorbladeArcana;
+    if (box.hidden) return;
+    const state = heroStates.get(h.id),
+      enabled = !!state.arcana,
+      options = state.arcana ?? { mode: 'base', color: [255, 60, 40] };
+    box.replaceChildren();
+    const label = document.createElement('label'),
+      toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.checked = enabled;
+    toggle.disabled = working;
+    label.append(toggle, document.createTextNode('Fractal Horns of Inner Abysm'));
+    box.append(label);
+    const form = document.createElement('select');
+    form.setAttribute('aria-label', 'Вид персонажа');
+    for (const [value, text] of [
+      ['normal', 'Обычный вид'],
+      ['demon', 'Форма демона']
+    ]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      form.append(option);
+    }
+    form.value = state.previewForm ?? 'normal';
+    form.disabled = working;
+    form.addEventListener('change', () => {
+      state.previewForm = form.value;
+      schedulePreview();
+    });
+    box.append(form);
+    toggle.addEventListener('change', () => {
+      state.arcana = toggle.checked ? { ...options, color: [...options.color] } : null;
+      $('set-download').hidden = true;
+      draw();
+      schedulePreview();
+    });
+    if (!enabled) return;
+    const icons = arcanaIconConfig(h.id, state.arcana, token);
+    const hasSet = [...selected.values()].some(id =>
+      h.items.find(i => i.id === id)?.model?.startsWith('models/items/terrorblade/dreadhunt_')
+    );
+    if (hasSet) state.arcana.icons ??= 'set';
+
+    const mode = document.createElement('select');
+    mode.setAttribute('aria-label', 'Режим арканы');
+    for (const [value, text] of [
+      ['base', 'Аркана вместо базового героя'],
+      ['owned', 'Перекрасить свою аркану']
+    ]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      mode.append(option);
+    }
+    mode.value = options.mode;
+    mode.disabled = working;
+    mode.addEventListener('change', () => {
+      state.arcana.mode = mode.value;
+      $('set-download').hidden = true;
+      drawArcana();
+      drawImmortals();
+      drawCollection();
+      schedulePreview();
+    });
+    box.append(mode);
+    if (hasSet) {
+      const label = document.createElement('label'),
+        icons = document.createElement('select');
+      label.textContent = 'Иконки Manta / Skadi';
+      icons.setAttribute('aria-label', 'Иконки Manta / Skadi');
+      for (const [value, text] of [
+        ['arcana', 'Классические'],
+        ['set', 'Иконки Rictus Ripper · Manta / Skadi']
+      ]) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = text;
+        icons.append(option);
+      }
+      state.arcana.icons ??= 'set';
+      icons.value = state.arcana.icons;
+      icons.disabled = working;
+      icons.addEventListener('change', () => {
+        state.arcana.icons = icons.value;
+        $('set-download').hidden = true;
+        drawCollection();
+      });
+      box.append(label, icons);
+    }
+    const color = document.createElement('input');
+    color.type = 'color';
+    color.value = '#' + options.color.map(c => c.toString(16).padStart(2, '0')).join('');
+    color.disabled = working;
+    color.setAttribute('aria-label', 'Цвет арканы');
+    const rgb = document.createElement('span');
+    rgb.textContent = 'RGB ' + options.color.join(', ');
+    color.addEventListener('input', () => {
+      state.arcana.color = [1, 3, 5].map(i => parseInt(color.value.slice(i, i + 2), 16));
+      rgb.textContent = 'RGB ' + state.arcana.color.join(', ');
+    });
+    color.addEventListener('change', () => {
+      $('set-download').hidden = true;
+      drawArcana();
+      drawImmortals();
+      drawCollection();
+      schedulePreview();
+    });
+    box.append(color, rgb);
+  }
+  function drawEntityView() {
+    const h = hero(),
+      box = $('set-entity-view');
+    box.replaceChildren();
+    box.hidden = !Object.keys(h?.entitySlots ?? {}).length;
+    if (box.hidden) return;
+    const label = document.createElement('label'),
+      select = document.createElement('select');
+    label.textContent = 'Вид персонажа';
+    select.setAttribute('aria-label', 'Вид персонажа');
+    for (const [value, text] of [
+      ['normal', 'Обычный вид'],
+      ...Object.entries(h.entitySlots).map(([slot, entry]) => ['entity:' + slot, entry.name])
+    ]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      select.append(option);
+    }
+    select.value = heroStates.get(h.id)?.previewForm ?? 'normal';
+    select.disabled = working;
+    select.addEventListener('change', () => {
+      heroStates.get(h.id).previewForm = select.value;
+      schedulePreview();
+    });
+    box.append(label, select);
+  }
+  function drawPreset() {
+    const h = hero(),
+      box = $('set-preset');
+    box.replaceChildren();
+    box.hidden = !h?.sets?.length;
+    if (box.hidden) return;
+    const state = heroStates.get(h.id),
+      label = document.createElement('label');
+    label.textContent = 'Комплект';
+    box.append(label);
+    const apply = id => {
+      if (!id) {
+        state.presetId = null;
+        draw();
+        return;
+      }
+      const next = applyHeroSet(h, id, slotEffects);
+      selected = next.selected;
+      slotEffects = next.effects;
+      Object.assign(state, next);
+      $('set-download').hidden = true;
+      draw();
+      schedulePreview();
+    };
+    drawSetPicker(box, h, state, {
+      disabled: working,
+      token,
+      imageForItem: item => itemImage(item, h.id, token),
+      onSelect: apply
+    });
+    if (state.presetId && !heroSetMatches(h, state.presetId, selected)) {
+      const note = document.createElement('small'),
+        restore = document.createElement('button');
+      note.textContent = 'Комплект изменён';
+      restore.type = 'button';
+      restore.className = 'secondary';
+      restore.textContent = 'Восстановить комплект';
+      restore.disabled = working;
+      restore.addEventListener('click', () => apply(state.presetId));
+      box.append(note, restore);
+    }
+  }
+  $('set-invoker-voice').onchange = () => {
+    const style = $('set-invoker-voice').value || undefined;
+    heroStates.get(hero().id).personaVoiceStyle = style;
+    if (style && !collectionPayload().selections.some(row => row.heroId === hero().id)) {
+      $('set-add-persona').onclick();
+      return;
+    }
+    $('set-download').hidden = true;
+    drawCollection();
+    onSelectionChange?.(editorSnapshot());
+  };
+  $('set-persona-owned').onchange = () => {
+    heroStates.get(hero().id).personaOwned = $('set-persona-owned').checked;
+    $('set-download').hidden = true;
+    drawCollection();
+    onSelectionChange?.(editorSnapshot());
+  };
+  $('set-add-persona').onclick = () => {
+    const h = hero();
+    for (const [slot, id] of defaultPersonaSelection(h)) if (!selected.has(slot)) selected.set(slot, id);
+    draw();
+    schedulePreview();
+  };
+  function draw() {
+    const currentHero = hero();
+    if (currentHero?.lazy) {
+      $('set-slots').replaceChildren();
+      $('set-title').textContent = currentHero.name;
+      drawCollection();
+      return;
+    }
+    $('set-invoker-voice-label').hidden = !(currentHero?.isPersona && currentHero.baseHeroId === 'invoker');
+    $('set-invoker-voice').value = heroStates.get(currentHero?.id)?.personaVoiceStyle ?? '';
+    $('set-invoker-voice').disabled = working;
+    $('set-persona-owned-label').hidden = !(
+      currentHero?.isPersona && currentHero.items?.some(i => !i.isDefault && !i.specialKind)
+    );
+    $('set-persona-owned').checked = heroStates.get(currentHero?.id)?.personaOwned === true;
+    $('set-persona-owned').disabled = working;
+    $('set-add-persona').hidden = !currentHero?.isPersona;
+    $('set-add-persona').disabled = working || !!collectionPayload().selections.find(r => r.heroId === currentHero?.id);
+    drawStance();
+    drawPriorities();
+    promptAnimationPriorities(hero(), heroStates.get(hero()?.id));
+    drawPreset();
+    drawArcana();
+    drawImmortals();
+    drawEntityView();
+    $('set-hero').disabled = working;
+    $('set-vpk').disabled = working;
+    const h = hero();
+    if (!h) return;
+    $('set-title').textContent = h.name;
+    $('set-slots').replaceChildren(
+      ...[...new Set([...setSlots(h), ...(onRecolorItem ? ['hero_base'] : [])])]
+        .filter(
+          slot =>
+            !(
+              publicArcanaDefinitions[h.id] &&
+              heroStates.get(h.id)?.arcana &&
+              arcanaOccupiedSlots(publicArcanaDefinitions[h.id]).includes(slot)
+            )
+        )
+        .map(slot => {
+          const item =
+              h.items.find(i => i.id === selected.get(slot)) ?? setDefaultItem(h, slot, heroStates.get(h.id)?.arcana),
+            button = document.createElement('button');
+          button.className = 'set-slot secondary';
+          button.disabled = working;
+          button.append(thumbnail(item ?? {}));
+          const text = document.createElement('span'),
+            label = document.createElement('b'),
+            name = document.createElement('small');
+          label.textContent =
+            slot === 'hero_base'
+              ? 'База героя'
+              : (h.entitySlots?.[slot]?.name ?? slotNames[slot] ?? slot.replaceAll('_', ' '));
+          name.textContent = item?.name ?? (slot === 'hero_base' ? h.name : 'Базовый предмет');
+          text.append(label, name);
+          button.append(text);
+          markItemRarity(button, item);
+          if (onRecolorItem) {
+            const paint = heroStates.get(h.id)?.savedRows?.get(slot);
+            if (paint?.recolor?.resources?.length && paint.itemId === (selected.get(slot) ?? null)) {
+              button.dataset.recolored = 'true';
+              if (paint.recolor.iconPreview && button.querySelector('img'))
+                button.querySelector('img').src = paint.recolor.iconPreview;
+            }
+          }
+          button.addEventListener('click', () =>
+            slot === 'hero_base' && onRecolorItem
+              ? onRecolorItem({
+                  heroId: h.id,
+                  slot,
+                  itemId: selected.get(slot) ?? null,
+                  name: 'База героя · ' + h.name
+                })
+              : editorMode && onEditItem
+                ? onEditItem({ slot, itemId: selected.get(slot) ?? null, name: item?.name ?? 'Базовый предмет' })
+                : openSlot(slot)
+          );
+          const wrap = document.createElement('div');
+          wrap.className = 'set-slot-wrap';
+          wrap.append(button);
+          if (onRecolorItem) {
+            const recolor = document.createElement('button');
+            recolor.type = 'button';
+            recolor.className = 'secondary tester-recolor-button';
+            recolor.textContent = 'Перекрасить';
+            recolor.disabled = working;
+            recolor.onclick = () =>
+              onRecolorItem({
+                heroId: h.id,
+                slot,
+                itemId: selected.get(slot) ?? null,
+                name: item?.name ?? 'Базовый предмет'
+              });
+            wrap.append(recolor);
+          }
+          if (editorMode && onEditItem) {
+            const change = document.createElement('button');
+            change.className = 'secondary me-change-item';
+            change.type = 'button';
+            change.textContent = 'Заменить';
+            change.addEventListener('click', () => openSlot(slot));
+            wrap.append(change);
+          }
+          const details = document.createElement('details'),
+            summary = document.createElement('summary');
+          summary.textContent =
+            'Добавить эффект' + (slotEffects.get(slot)?.length ? ' · ' + slotEffects.get(slot).length : '');
+          details.append(summary);
+          const list = document.createElement('div');
+          list.className = 'set-slot-effects';
+          const search = document.createElement('input');
+          search.type = 'search';
+          search.className = 'ethereal-search';
+          search.placeholder = document.documentElement.lang === 'ru' ? 'Найти эффект' : 'Search effects';
+          search.setAttribute('aria-label', search.placeholder);
+          search.oninput = () => {
+            const q = search.value.trim().toLowerCase();
+            for (const row of list.querySelectorAll('.effect-choice'))
+              row.hidden = !row.querySelector('label').textContent.toLowerCase().includes(q);
+          };
+          list.append(search);
+          for (const effect of catalog.effects.filter(
+            e =>
+              (e.particle || e.ethereal) && (!item || item.isDefault || item.setEntity || item.effects?.includes(e.id))
+          )) {
+            const label = document.createElement('label'),
+              input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = (slotEffects.get(slot) ?? []).includes(effect.id);
+            input.disabled = working || !effect.particle || effect.selectable === false;
+            input.addEventListener('change', () => {
+              const ids = new Set(slotEffects.get(slot) ?? []);
+              input.checked ? ids.add(effect.id) : ids.delete(effect.id);
+              slotEffects.set(slot, [...ids]);
+              summary.textContent = 'Добавить эффект' + (ids.size ? ' · ' + ids.size : '');
+              $('set-download').hidden = true;
+              drawCollection();
+              schedulePreview();
+            });
+            const effectName = document.createElement('span');
+            effectName.textContent = effect.name;
+            effectName.className = 'effect-choice-name';
+            label.append(input, effectName);
+            const row = document.createElement('div');
+            row.className = 'effect-choice';
+            row.append(label);
+            const info = etherealInfoButton(effect, { resourceUrl });
+            if (info) row.append(info);
+            if (canPrismaticColor(effect)) {
+              const state = heroStates.get(h.id),
+                control = prismaticControl(effect, {
+                  color: state?.savedRows?.get(slot)?.effectColors?.[effect.id],
+                  onChange: color => {
+                    state.savedRows ??= new Map();
+                    const saved = state.savedRows.get(slot) ?? {},
+                      effectColors = { ...saved.effectColors };
+                    if (color) effectColors[effect.id] = color;
+                    else delete effectColors[effect.id];
+                    state.savedRows.set(slot, { ...saved, effectColors });
+                    $('set-download').hidden = true;
+                    drawCollection();
+                    schedulePreview();
+                  }
+                });
+              control.hidden = !input.checked;
+              input.addEventListener('change', () => (control.hidden = !input.checked));
+              row.append(control);
+            }
+            list.append(row);
+          }
+          details.append(list);
+          wrap.append(details);
+          return wrap;
+        })
+    );
+    drawCollection();
+  }
+  function openSlot(slot) {
+    activeSlot = slot;
+    $('set-picker-title').textContent = hero().entitySlots?.[slot]?.name ?? slotNames[slot] ?? slot;
+    $('set-search').value = '';
+    drawCards();
+    $('set-picker').showModal();
+    $('set-search').focus();
+  }
+  function drawCards() {
+    const h = hero(),
+      q = $('set-search').value.toLowerCase(),
+      items = [
+        setDefaultItem(h, activeSlot, heroStates.get(h.id)?.arcana),
+        ...h.items.filter(
+          i =>
+            !(
+              h.id === 'drow_ranger' &&
+              heroStates.get(h.id)?.arcana &&
+              activeSlot === 'weapon' &&
+              !['37144', '34594'].includes(String(i.gameItemId))
+            ) &&
+            i.slot === activeSlot &&
+            (!i.isDefault || (i.styleId && i.styleId !== '0')) &&
+            !i.specialKind &&
+            !i.previewUnsupported
+        )
+      ];
+    const candidates = items
+      .filter(i => !q || (i.name + ' ' + (i.baseName ?? '')).toLowerCase().includes(q))
+      .sort((a, b) => (b.catalogPriority ?? 0) - (a.catalogPriority ?? 0));
+    $('set-cards').replaceChildren(
+      ...groupStyleItems(candidates, selected.get(activeSlot)).map(initial => {
+        let item = initial;
+        const wrap = document.createElement('div'),
+          card = document.createElement('button');
+        wrap.className = 'set-style-card';
+        card.type = 'button';
+        card.className = 'set-card';
+        const refresh = () => {
+          const isSelected = (selected.get(activeSlot) ?? null) === item.id;
+          card.classList.toggle('selected', isSelected);
+          card.setAttribute('aria-pressed', String(isSelected));
+          card.disabled = !!item.styleUnsupported;
+          const name = document.createElement('strong'),
+            state = document.createElement('small');
+          name.textContent = item.name;
+          state.textContent = item.styleUnsupported ?? (isSelected ? 'Выбрано' : 'Выбрать');
+          card.replaceChildren(thumbnail(item), name, state);
+          markItemRarity(card, item);
+          if (onRecolorItem) {
+            const paint = heroStates.get(h.id)?.savedRows?.get(activeSlot);
+            if (paint?.itemId === item.id && paint.recolor?.resources?.length) {
+              card.dataset.recolored = 'true';
+              if (paint.recolor.iconPreview && card.querySelector('img'))
+                card.querySelector('img').src = paint.recolor.iconPreview;
+            } else delete card.dataset.recolored;
+          }
+        };
+        const choose = () => {
+          if (item.styleUnsupported) return;
+          selected.set(activeSlot, item.id);
+          if (h.id === 'drow_ranger' && item.requiresDrowArcana) {
+            const state = heroStates.get(h.id);
+            state.arcana ??= { style: 0, weaponId: '37144' };
+            if (activeSlot === 'weapon') {
+              state.arcana.weaponId = String(item.gameItemId);
+              selected.delete('weapon');
+            }
+          }
+          if (h.entitySlots?.[activeSlot]) heroStates.get(h.id).previewForm = 'entity:' + activeSlot;
+          else if (
+            h.id !== 'terrorblade' &&
+            !(h.id === 'tiny' && activeSlot === 'weapon' && heroStates.get(h.id).previewForm?.startsWith('entity:'))
+          )
+            heroStates.get(h.id).previewForm = 'normal';
+          if (h.id === 'terrorblade') heroStates.get(h.id).previewForm = activeSlot === 'demon' ? 'demon' : 'normal';
+          if (item.id)
+            slotEffects.set(
+              activeSlot,
+              (slotEffects.get(activeSlot) ?? []).filter(id => item.setEntity || item.effects?.includes(id))
+            );
+          $('set-picker').close();
+          $('set-download').hidden = true;
+          draw();
+          schedulePreview();
+          if (editorMode && onEditItem)
+            onEditItem({ slot: activeSlot, itemId: item.id ?? null, name: item.name ?? 'Базовый предмет' });
+        };
+        refresh();
+        card.addEventListener('click', choose);
+        wrap.append(card);
+        if (onRecolorItem) {
+          const recolor = document.createElement('button');
+          recolor.type = 'button';
+          recolor.className = 'secondary tester-recolor-button';
+          recolor.textContent = 'Перекрасить';
+          recolor.onclick = () => {
+            choose();
+            onRecolorItem({
+              heroId: h.id,
+              slot: activeSlot,
+              itemId: item.id ?? null,
+              name: item.name ?? 'Базовый предмет'
+            });
+          };
+          wrap.append(recolor);
+        }
+        const styles = styleChoices(
+          item,
+          h.items.filter(i => i.slot === activeSlot && !i.specialKind && !i.previewUnsupported)
+        );
+        if (styles.length > 1) {
+          const label = document.createElement('label'),
+            select = document.createElement('select');
+          label.className = 'item-style-select';
+          label.append(document.createTextNode('Стиль'), select);
+          for (const style of styles) {
+            const option = document.createElement('option'),
+              variant = h.items.find(i => i.id === style.id);
+            option.value = style.id;
+            option.textContent = style.name;
+            option.disabled = !!variant?.styleUnsupported;
+            select.append(option);
+          }
+          select.value = item.id ?? styles[0].id;
+          select.addEventListener('change', () => {
+            item = h.items.find(i => i.id === select.value);
+            refresh();
+          });
+          wrap.append(label);
+        }
+        return wrap;
+      })
+    );
+  }
+  $('set-close').addEventListener('click', () => $('set-picker').close());
+  $('set-search').addEventListener('input', drawCards);
+  let heroLoadRevision = 0;
+  $('set-hero').addEventListener('change', async () => {
+    const request = ++heroLoadRevision,
+      id = $('set-hero').value;
+    navigation?.hero(id);
+    try {
+      say('Loading hero…');
+      await catalog.ensureHero?.(id);
+      if (request !== heroLoadRevision || $('set-hero').value !== id) return;
+    } catch (error) {
+      if (request === heroLoadRevision) say(error.message, true);
+      return;
+    }
+    choosingHero = false;
+    workspace.classList.remove('choosing-hero');
+    let state = heroStates.get(id);
+    if (!state) {
+      state = { selected: initialSetSelection(catalog.heroes.find(h => h.id === id)), effects: new Map() };
+      heroStates.set(id, state);
+    }
+    selected = state.selected;
+    slotEffects = state.effects;
+    preview?.clear();
+    $('set-download').hidden = true;
+    draw();
+    schedulePreview();
+  });
+  let previewing = false,
+    pending = false,
+    loadedAnimations = [];
+  $('set-animation').addEventListener('change', () => {
+    const index = Number($('set-animation').value);
+    if (!loadedAnimations[index] || !preview) return;
+    heroStates.get(hero().id).previewAnimation = loadedAnimations[index].name;
+    preview.setAnimation(index);
+  });
+  async function schedulePreview() {
+    onSelectionChange?.(editorSnapshot());
+    revision++;
+    if (standalone) preview?.cancelLoad?.();
+    pending = true;
+    if (previewing) return;
+    previewing = true;
+    try {
+      while (pending && !root.hidden && !choosingHero) {
+        pending = false;
+        const generation = revision;
+        try {
+          const h = hero();
+          if (!h) throw new Error('No heroes available');
+          validatePriorities(h, heroStates.get(h.id));
+          say('Подготавливаем сет…');
+          $('set-animation').disabled = true;
+          let job;
+          for (let attempt = 0; ; attempt++) {
+            if (generation !== revision) break;
+            try {
+              job = await api(
+                '/api/preview',
+                withSavedOptions(
+                  setPayload(h, selected, {
+                    preview: true,
+                    effects: slotEffects,
+                    arcana: heroStates.get(h.id)?.arcana,
+                    stanceId: heroStates.get(h.id)?.stanceId,
+                    previewForm: heroStates.get(h.id)?.previewForm
+                  })
+                )
+              );
+              break;
+            } catch (error) {
+              if (!error.message.includes('Предпросмотр ещё загружается') || attempt >= 480) throw error;
+              await new Promise(r => setTimeout(r, 500));
+            }
+          }
+          if (!job) continue;
+          for (;;) {
+            if (generation !== revision) break;
+            job = await api('/api/previews/' + job.id);
+            if (job.status === 'error') throw new Error(job.error);
+            if (job.status === 'ready') break;
+            await new Promise(r => setTimeout(r, 350));
+          }
+          if (generation !== revision) continue;
+          preview ??= new Preview($('set-canvas'), $('set-stage'), { fetcher, metadataProvider });
+          const animations = await preview.loadScene(job, '/api/previews/' + job.id, query);
+          if (generation !== revision) continue;
+          const stanceStamp =
+            h.id +
+            ':' +
+            JSON.stringify(heroStates.get(h.id)?.stanceId ?? 'auto') +
+            ':' +
+            JSON.stringify(job.preferredAnimations ?? []);
+          if (job.preferredAnimations?.length && (!preview.preservedScene || previewStance !== stanceStamp)) {
+            const index = job.preferredAnimations
+              .map(name =>
+                animations.findIndex(
+                  a =>
+                    a.name === name &&
+                    (!standalone || !/effigy|statue|debut|spawn/i.test(a.name + ' ' + (a.activity ?? '')))
+                )
+              )
+              .find(i => i >= 0);
+            if (index !== undefined) preview.setAnimation(index);
+          } else if (!preview.preservedScene || previewStance !== stanceStamp) {
+            let idle = animations.findIndex(a => a.isDefault);
+            if (standalone && idle < 0)
+              idle = animations.findIndex(
+                a => a.activity === 'ACT_DOTA_LOADOUT' && !/effigy|statue|debut|spawn/i.test(a.name)
+              );
+            if (idle < 0)
+              idle = animations.findIndex(a =>
+                h.id === 'hoodwink'
+                  ? (a.name ?? '').toLowerCase() === 'mouse_idle'
+                  : /(^|[\/_])idle($|[_\/])/i.test(a.name ?? '')
+              );
+            if (idle >= 0) preview.setAnimation(idle);
+          }
+          previewStance = stanceStamp;
+          loadedAnimations = animations;
+          const chosenAnimation = fillPreviewAnimations(
+            $('set-animation'),
+            animations,
+            heroStates.get(h.id)?.previewAnimation,
+            preview.animation
+          );
+          if (chosenAnimation >= 0 && chosenAnimation !== preview.animation) preview.setAnimation(chosenAnimation);
+          if (standalone && !animations.length) {
+            const option = document.createElement('option');
+            option.textContent =
+              preview.source?.modelMetadata.get('hero')?.hasSkeleton === false
+                ? 'GLB без скелета — нужен переэкспорт героя'
+                : 'Анимации недоступны в GLB и исходной модели';
+            $('set-animation').replaceChildren(option);
+            $('set-animation').hidden = false;
+            $('set-animation').disabled = true;
+          }
+          const packet = await api('/api/previews/' + job.id + '/effect');
+          if (generation !== revision) continue;
+          const info = await preview.setEffects(packet.effects ?? []);
+          if (info.warnings.length) console.warn('[Dota Effect Studio particles]', ...info.warnings);
+          say('Сет готов к просмотру.');
+          onPreviewReady?.({ preview, job, animations });
+        } catch (error) {
+          if (generation === revision && !isPreviewCancelled(error)) {
+            preview?.clear();
+            $('set-animation').hidden = true;
+            say(error.message, true);
+            onPreviewError?.(error);
+          }
+        }
+      }
+    } finally {
+      previewing = false;
+    }
+  }
+  $('set-build').addEventListener('click', async () => {
+    if (working) return;
+    const payload = collectionPayload();
+    if (!payload.selections.length) return;
+    working = true;
+    draw();
+    $('set-download').hidden = true;
+    try {
+      let job = await api('/api/build', { ...payload, vpkNumber: Number($('set-vpk').value) });
+      for (;;) {
+        job = await api('/api/jobs/' + job.id);
+        if (job.status === 'error') throw new Error(job.error);
+        if (job.status === 'ready') break;
+        say('Собираем VPK…');
+        await new Promise(r => setTimeout(r, 500));
+      }
+      const link = $('set-download');
+      link.href = resourceUrl('/api/jobs/' + job.id + '/download' + query);
+      link.hidden = false;
+      say('VPK готов.');
+      link.click();
+    } catch (error) {
+      say(error.message, true);
+      showBuildError($('set-message'), error);
+    } finally {
+      working = false;
+      draw();
+    }
+  });
+  {
+    const progress = document.createElement('span');
+    progress.className = 'set-preview-progress';
+    progress.setAttribute('role', 'status');
+    root.querySelector('.preview-bottom').append(progress);
+    $('set-canvas').addEventListener('preview-progress', ({ detail }) => {
+      progress.textContent =
+        detail.phase === 'download'
+          ? 'Загрузка частей: ' + detail.loaded + '/' + detail.total
+          : detail.phase === 'prepare'
+            ? 'Подготовка модели…'
+            : '';
+    });
+    $('set-canvas').addEventListener('preview-error', e => say(e.detail, true));
+    draw();
+    if (standalone) {
+      const hide = () => {
+        revision++;
+        pending = false;
+        root.hidden = true;
+        preview?.dispose();
+        preview = null;
+        for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
+      };
+      return createController(hide);
+    }
+  }
+  function createController(hide) {
+    return {
+      getBuildPayload: collectionPayload,
+      getViewer: () => preview,
+      getStage: () => $('set-stage'),
+      setRecolor(row, recolor) {
+        const state = heroStates.get(row.heroId);
+        if (!state) return;
+        state.savedRows ??= new Map();
+        const previous = state.savedRows.get(row.slot),
+          old = previous?.itemId === row.itemId ? previous : {};
+        state.savedRows.set(row.slot, { ...old, ...row, recolor });
+        if (row.itemId) state.selected.set(row.slot, row.itemId);
+        draw();
+        globalThis.dispatchEvent?.(new Event('basket-change'));
+      },
+      getSelection: editorSnapshot,
+      refresh: schedulePreview,
+      removeSelection(row) {
+        const state = heroStates.get(row.heroId);
+        if (!state) return;
+        if (row.arcana) state.arcana = null;
+        else if (row.stanceId) state.stanceId = null;
+        else if ((state.selected.get(row.slot) ?? null) === (row.itemId ?? null)) {
+          state.selected.delete(row.slot);
+          state.effects.delete(row.slot);
+          state.savedRows?.delete(row.slot);
+        }
+        state.presetId = null;
+        draw();
+        if (hero()?.id === row.heroId && !choosingHero) void schedulePreview();
+      },
+      clearSelection() {
+        for (const state of heroStates.values()) {
+          state.selected.clear();
+          state.effects.clear();
+          state.savedRows?.clear();
+          state.arcana = null;
+          state.stanceId = null;
+          state.presetId = null;
+        }
+        draw();
+        if (!choosingHero) void schedulePreview();
+      },
+      applySelection(payload) {
+        restoreRows(payload.selections ?? []);
+        const state = heroStates.get(payload.selections?.[0]?.heroId);
+        if (state && payload.previewForm) state.previewForm = payload.previewForm;
+      },
+      show() {
+        root.hidden = false;
+        draw();
+        if (!choosingHero) void schedulePreview();
+      },
+      hide,
+      dispose() {
+        navigation?.dispose();
+        hide();
+        root.replaceChildren();
+      }
+    };
+  }
+  const effects = document.getElementById('mode-effects'),
+    sets = document.getElementById('mode-set');
+  function mode(set) {
+    if (set && root.hidden) {
+      onEnter?.();
+      root.hidden = false;
+      draw();
+      if (!choosingHero) schedulePreview();
+    } else if (!set && !root.hidden) {
+      revision++;
+      pending = false;
+      root.hidden = true;
+      preview?.clear();
+      onExit?.();
+    }
+    document.querySelector('main > .workspace').hidden = set;
+    document.querySelector('.intro').hidden = false;
+    document.getElementById('mode-title').textContent = set ? 'Твой сет.' : 'Твой эффект.';
+    effects?.setAttribute('aria-pressed', String(!set));
+    sets.setAttribute('aria-pressed', String(set));
+  }
+  effects?.addEventListener('click', () => mode(false));
+  sets.addEventListener('click', () => mode(true));
+  $('set-canvas').addEventListener('preview-error', e => say(e.detail, true));
+  draw();
+  return createController(() => {
+    revision++;
+    pending = false;
+    root.hidden = true;
+    preview?.clear();
+  });
 }

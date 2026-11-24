@@ -1,19 +1,138 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {cosmeticCatalog,browserCosmeticCatalog,cosmeticChoices,applyCosmetics,buildCosmeticsOnly} from '../lib/global-cosmetics.mjs';
-import {packVpk,Vpk,AssetStore} from '../lib/vpk.mjs';
-function fixture(){const root=fs.mkdtempSync(path.join(os.tmpdir(),'des-cosmetic-')),model=tag=>{const b=Buffer.alloc(16);b.writeUInt32LE(16);b.writeUInt32LE(8,8);b[6]=tag;return b;};const resources=new Map([
- ['models/base.vmdl_c',model(1)],['models/ward.vmdl_c',model(2)],['models/donkey.vmdl_c',model(3)],['models/donkey_fly.vmdl_c',model(4)],['models/custom.vmdl_c',model(5)],['models/custom_fly.vmdl_c',model(6)],['particles/emblem.vpcf_c',model(7)],['particles/attack.vpcf_c',model(8)]
- ]);
- const schema='"items_game" { "items" { '+
- '"1" { "name" "Default ward" "item_slot" "ward" "baseitem" "1" "visuals" { "a" { "type" "entity_model" "asset" "observer" "modifier" "models/base.vmdl" } "b" { "type" "entity_model" "asset" "sentry" "modifier" "models/base.vmdl" } } } '+
- '"2" { "name" "Ward pair" "item_slot" "ward" "visuals" { "a" { "type" "entity_model" "asset" "observer" "modifier" "models/ward.vmdl" } "b" { "type" "entity_model" "asset" "sentry" "modifier" "models/ward.vmdl" } } } '+
- '"3" { "name" "Default courier" "item_slot" "courier" "baseitem" "1" "visuals" { "a" { "type" "courier" "asset" "radiant" "modifier" "models/donkey.vmdl" } "b" { "type" "courier_flying" "asset" "radiant" "modifier" "models/donkey_fly.vmdl" } } } '+
- '"4" { "name" "Courier" "item_slot" "courier" "visuals" { "a" { "type" "courier" "asset" "radiant" "modifier" "models/custom.vmdl" } "b" { "type" "courier_flying" "asset" "radiant" "modifier" "models/custom_fly.vmdl" } } } '+
- '"5" { "name" "Emblem" "item_slot" "emblem" "visuals" { "a" { "type" "particle_create" "modifier" "particles/emblem.vpcf" } "b" { "type" "diretide_effect" "asset" "emblem_attack_effect" "modifier" "particles/attack.vpcf" } } } '+
- '"6" { "name" "Missing ward" "item_slot" "ward" "visuals" { "a" { "type" "entity_model" "asset" "observer" "modifier" "models/missing.vmdl" } } } '+
- '"7" { "name" "HUD" "item_slot" "hud_skin" "visuals" { "a" { "type" "hud_skin" "asset" "style" "modifier" "style" } } } } }';
- resources.set('scripts/items/items_game.txt',Buffer.from(schema));fs.writeFileSync(path.join(root,'game.vpk'),packVpk(resources));const builder={root,config:{patcher:'patcher'},store:new AssetStore([path.join(root,'game.vpk')]),catalog:{heroes:[{id:'axe',model:'models/base.vmdl_c'}]},run:async()=>{throw new Error('unexpected native call');}};return {root,builder,resources};}
-test('global catalog resolves both courier forms, ward pairs, missing assets, and independent emblem entries',()=>{const f=fixture();try{const c=cosmeticCatalog(f.builder);assert.equal(c.categories.length,13);assert.equal(c.items.find(i=>i.id==='2').available,true);assert.equal(c.items.find(i=>i.id==='2').entries.length,1);assert.equal(c.items.find(i=>i.id==='4').entries.length,2);assert.equal(c.items.find(i=>i.id==='6').available,false);assert.equal(c.items.find(i=>i.id==='7').available,false);assert.equal(c.items.find(i=>i.id==='5').category,'emblem');assert.equal(c.items.find(i=>i.id==='5:attack').category,'emblem_attack');}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('global choices reject unsafe selections and keep emblem application global',()=>{const f=fixture();try{assert.throws(()=>cosmeticChoices(f.builder,[{id:'../x'}]));assert.throws(()=>cosmeticChoices(f.builder,[{id:'2'},{id:'2'}]));assert.throws(()=>cosmeticChoices(f.builder,[{id:'6'}]));assert.deepEqual(cosmeticChoices(f.builder,[{id:'5'}])[0].heroIds,[]);assert.deepEqual(cosmeticChoices(f.builder,[{id:'5',heroIds:['axe']}])[0].heroIds,[]);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('standalone cosmetic VPK contains actual base replacements without items_game',async()=>{const f=fixture();try{const choices=cosmeticChoices(f.builder,[{id:'2'},{id:'4'}]),job={id:'test',filename:'pak99_dir.vpk'};await buildCosmeticsOnly(f.builder,choices,job);assert.equal(job.status,'ready');const v=new Vpk(job.file);assert.deepEqual(v.read('models/base.vmdl_c'),f.resources.get('models/ward.vmdl_c'));assert.deepEqual(v.read('models/donkey_fly.vmdl_c'),f.resources.get('models/custom_fly.vmdl_c'));assert.ok(!v.entries.has('scripts/items/items_game.txt'));const packed=new Map([['models/base.vmdl_c',Buffer.from('conflict')]]);await assert.rejects(applyCosmetics(f.builder,[choices[0]],packed,f.root,'patcher',{}),/Конфликт/);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
-test('ward and courier gems use the hero list, resolve installed paths and reject missing resources',()=>{const f=fixture();try{f.builder.catalog.effects=[{id:'burning-animus',name:'Burning Animus',ethereal:true,particle:'particles/emblem.vpcf'},{id:'self_made',courier:true,particle:'particles/emblem.vpcf'}];const effects=cosmeticCatalog(f.builder).courierEffects;assert.equal(effects.filter(e=>e.ethereal).length,34);assert.equal(effects.some(e=>e.id==='self_made'),false);const browser=browserCosmeticCatalog(f.builder).courierEffects;assert.equal(browser.find(e=>e.id==='burning-animus').available,true);assert.equal(browser.find(e=>e.id==='affliction-of-vermin').available,false);assert.equal(browser.some(e=>'particle' in e),false);for(const id of ['2','4']){const choice=cosmeticChoices(f.builder,[{id,effectIds:['burning-animus'],courierColor:[20,100,255]}])[0];assert.equal(choice.effects[0].particle,'particles/emblem.vpcf');assert.deepEqual(choice.courierColor,[20,100,255]);assert.throws(()=>cosmeticChoices(f.builder,[{id,effectIds:['affliction-of-vermin']}]),/Unavailable cosmetic effect/);}assert.throws(()=>cosmeticChoices(f.builder,[{id:'5',effectIds:['burning-animus']}]),/Unavailable cosmetic effect/);}finally{fs.rmSync(f.root,{recursive:true,force:true});}});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  cosmeticCatalog,
+  browserCosmeticCatalog,
+  cosmeticChoices,
+  applyCosmetics,
+  buildCosmeticsOnly
+} from '../lib/global-cosmetics.mjs';
+import { packVpk, Vpk, AssetStore } from '../lib/vpk.mjs';
+function fixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'des-cosmetic-')),
+    model = tag => {
+      const b = Buffer.alloc(16);
+      b.writeUInt32LE(16);
+      b.writeUInt32LE(8, 8);
+      b[6] = tag;
+      return b;
+    };
+  const resources = new Map([
+    ['models/base.vmdl_c', model(1)],
+    ['models/ward.vmdl_c', model(2)],
+    ['models/donkey.vmdl_c', model(3)],
+    ['models/donkey_fly.vmdl_c', model(4)],
+    ['models/custom.vmdl_c', model(5)],
+    ['models/custom_fly.vmdl_c', model(6)],
+    ['particles/emblem.vpcf_c', model(7)],
+    ['particles/attack.vpcf_c', model(8)]
+  ]);
+  const schema =
+    '"items_game" { "items" { ' +
+    '"1" { "name" "Default ward" "item_slot" "ward" "baseitem" "1" "visuals" { "a" { "type" "entity_model" "asset" "observer" "modifier" "models/base.vmdl" } "b" { "type" "entity_model" "asset" "sentry" "modifier" "models/base.vmdl" } } } ' +
+    '"2" { "name" "Ward pair" "item_slot" "ward" "visuals" { "a" { "type" "entity_model" "asset" "observer" "modifier" "models/ward.vmdl" } "b" { "type" "entity_model" "asset" "sentry" "modifier" "models/ward.vmdl" } } } ' +
+    '"3" { "name" "Default courier" "item_slot" "courier" "baseitem" "1" "visuals" { "a" { "type" "courier" "asset" "radiant" "modifier" "models/donkey.vmdl" } "b" { "type" "courier_flying" "asset" "radiant" "modifier" "models/donkey_fly.vmdl" } } } ' +
+    '"4" { "name" "Courier" "item_slot" "courier" "visuals" { "a" { "type" "courier" "asset" "radiant" "modifier" "models/custom.vmdl" } "b" { "type" "courier_flying" "asset" "radiant" "modifier" "models/custom_fly.vmdl" } } } ' +
+    '"5" { "name" "Emblem" "item_slot" "emblem" "visuals" { "a" { "type" "particle_create" "modifier" "particles/emblem.vpcf" } "b" { "type" "diretide_effect" "asset" "emblem_attack_effect" "modifier" "particles/attack.vpcf" } } } ' +
+    '"6" { "name" "Missing ward" "item_slot" "ward" "visuals" { "a" { "type" "entity_model" "asset" "observer" "modifier" "models/missing.vmdl" } } } ' +
+    '"7" { "name" "HUD" "item_slot" "hud_skin" "visuals" { "a" { "type" "hud_skin" "asset" "style" "modifier" "style" } } } } }';
+  resources.set('scripts/items/items_game.txt', Buffer.from(schema));
+  fs.writeFileSync(path.join(root, 'game.vpk'), packVpk(resources));
+  const builder = {
+    root,
+    config: { patcher: 'patcher' },
+    store: new AssetStore([path.join(root, 'game.vpk')]),
+    catalog: { heroes: [{ id: 'axe', model: 'models/base.vmdl_c' }] },
+    run: async () => {
+      throw new Error('unexpected native call');
+    }
+  };
+  return { root, builder, resources };
+}
+test('global catalog resolves both courier forms, ward pairs, missing assets, and independent emblem entries', () => {
+  const f = fixture();
+  try {
+    const c = cosmeticCatalog(f.builder);
+    assert.equal(c.categories.length, 13);
+    assert.equal(c.items.find(i => i.id === '2').available, true);
+    assert.equal(c.items.find(i => i.id === '2').entries.length, 1);
+    assert.equal(c.items.find(i => i.id === '4').entries.length, 2);
+    assert.equal(c.items.find(i => i.id === '6').available, false);
+    assert.equal(c.items.find(i => i.id === '7').available, false);
+    assert.equal(c.items.find(i => i.id === '5').category, 'emblem');
+    assert.equal(c.items.find(i => i.id === '5:attack').category, 'emblem_attack');
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('global choices reject unsafe selections and keep emblem application global', () => {
+  const f = fixture();
+  try {
+    assert.throws(() => cosmeticChoices(f.builder, [{ id: '../x' }]));
+    assert.throws(() => cosmeticChoices(f.builder, [{ id: '2' }, { id: '2' }]));
+    assert.throws(() => cosmeticChoices(f.builder, [{ id: '6' }]));
+    assert.deepEqual(cosmeticChoices(f.builder, [{ id: '5' }])[0].heroIds, []);
+    assert.deepEqual(cosmeticChoices(f.builder, [{ id: '5', heroIds: ['axe'] }])[0].heroIds, []);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('standalone cosmetic VPK contains actual base replacements without items_game', async () => {
+  const f = fixture();
+  try {
+    const choices = cosmeticChoices(f.builder, [{ id: '2' }, { id: '4' }]),
+      job = { id: 'test', filename: 'pak99_dir.vpk' };
+    await buildCosmeticsOnly(f.builder, choices, job);
+    assert.equal(job.status, 'ready');
+    const v = new Vpk(job.file);
+    assert.deepEqual(v.read('models/base.vmdl_c'), f.resources.get('models/ward.vmdl_c'));
+    assert.deepEqual(v.read('models/donkey_fly.vmdl_c'), f.resources.get('models/custom_fly.vmdl_c'));
+    assert.ok(!v.entries.has('scripts/items/items_game.txt'));
+    const packed = new Map([['models/base.vmdl_c', Buffer.from('conflict')]]);
+    await assert.rejects(applyCosmetics(f.builder, [choices[0]], packed, f.root, 'patcher', {}), /Конфликт/);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
+test('ward and courier gems use the hero list, resolve installed paths and reject missing resources', () => {
+  const f = fixture();
+  try {
+    f.builder.catalog.effects = [
+      { id: 'burning-animus', name: 'Burning Animus', ethereal: true, particle: 'particles/emblem.vpcf' },
+      { id: 'self_made', courier: true, particle: 'particles/emblem.vpcf' }
+    ];
+    const effects = cosmeticCatalog(f.builder).courierEffects;
+    assert.equal(effects.filter(e => e.ethereal).length, 34);
+    assert.equal(
+      effects.some(e => e.id === 'self_made'),
+      false
+    );
+    const browser = browserCosmeticCatalog(f.builder).courierEffects;
+    assert.equal(browser.find(e => e.id === 'burning-animus').available, true);
+    assert.equal(browser.find(e => e.id === 'affliction-of-vermin').available, false);
+    assert.equal(
+      browser.some(e => 'particle' in e),
+      false
+    );
+    for (const id of ['2', '4']) {
+      const choice = cosmeticChoices(f.builder, [
+        { id, effectIds: ['burning-animus'], courierColor: [20, 100, 255] }
+      ])[0];
+      assert.equal(choice.effects[0].particle, 'particles/emblem.vpcf');
+      assert.deepEqual(choice.courierColor, [20, 100, 255]);
+      assert.throws(
+        () => cosmeticChoices(f.builder, [{ id, effectIds: ['affliction-of-vermin'] }]),
+        /Unavailable cosmetic effect/
+      );
+    }
+    assert.throws(
+      () => cosmeticChoices(f.builder, [{ id: '5', effectIds: ['burning-animus'] }]),
+      /Unavailable cosmetic effect/
+    );
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+  }
+});
