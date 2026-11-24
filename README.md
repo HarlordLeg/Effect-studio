@@ -1,149 +1,196 @@
+<div align="center">
+
 # Dota Effect Studio
 
-**Собери образ героя, настрой эффекты и цвет, скачай VPK.**
+**Build a hero look, tune effects and colours, download a VPK.**
 
-[Сайт](https://dota-studio.lol/) · [Сообщить об ошибке](https://t.me/harlord_mods) · [GitHub Issues](https://github.com/HarlordLeg/Effect-studio/issues)
+**English** · [Русский](README.ru.md)
 
-Dota Effect Studio — веб-интерфейс и локальное приложение для подготовки косметических замен Dota 2. Каталог, 3D-просмотр и сборщик помогают объединить выбранные вещи и эффекты в один пакет. Для сборки используются ресурсы установленной игры; браузерный просмотр может использовать заранее подготовленные модели и эффекты.
+[![Windows build](https://github.com/HarlordLeg/Effect-studio/actions/workflows/windows-build.yml/badge.svg)](https://github.com/HarlordLeg/Effect-studio/actions/workflows/windows-build.yml)
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D6)
+![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)
 
-Проект находится в разработке. Предпросмотр помогает настроить образ, но не гарантирует полного совпадения с игровым клиентом.
+[**Open the site**](https://dota-studio.lol/) · [Report a bug](https://t.me/harlord_mods) · [Issues](https://github.com/HarlordLeg/Effect-studio/issues) · [Architecture](ARCHITECTURE.md)
 
-## Что можно сделать
+</div>
 
-- Выбрать предметы из разных комплектов и собрать корзину для нескольких героев.
-- Рассмотреть выбранного героя с вещами, эффектами и доступными анимациями.
-- Добавить поддерживаемые эффекты на предметы и задать им отдельные цвета.
-- Перекрасить предмет, базу героя и доступные иконки. Изменения цвета показываются в 3D без отдельного подтверждения.
-- Настроить доступные эффекты способностей и просмотреть поддерживаемую анимацию каста.
-- Использовать поддерживаемые арканы, стили, персоны, кинетические модификаторы и глобальную косметику. Доступность зависит от каталога и совместимости ресурсов.
-- Собрать VPK с выбранным именем от `pak01_dir.vpk` до `pak99_dir.vpk`.
+---
 
-Возможности тестовой студии могут отличаться от основного сайта. Экспериментальные функции публикуются отдельно от общих исправлений сборщика.
+Dota Effect Studio is a web studio and a local Windows application for making Dota 2 cosmetic mods. Pick items and effects from the catalogue, look at the hero in 3D, recolour what you want and get one ready-to-use VPK. Builds use the resources of the installed game, so everything in the package comes from Dota itself.
 
-## Как пользоваться
+> [!NOTE]
+> The project is in active development. The 3D preview helps you set up a look, but it is not guaranteed to match the game client exactly. Always check the finished mod in Dota.
 
-1. Открой сайт или локальное приложение и выбери героя.
-2. Выбери вещи в нужных слотах. Новая вещь заменяет предыдущую в том же слоте.
-3. При необходимости добавь эффекты и нажми **«Перекрасить»** под предметом. Для тела используй слот **«База героя»**.
-4. Выбери, что менять: предмет, эффекты, способность или иконку. Каждый доступный эффект можно настроить отдельно.
-5. Дождись сообщения о сохранении перекраса в корзине.
-6. Выбери номер VPK, запусти сборку и скачай готовый файл.
-7. Проверь результат в Dota 2. Сохраняй исходные моды отдельно, чтобы можно было вернуться к предыдущей сборке.
+## Contents
 
-Изменение номера VPK меняет имя пакета, а не его внутренние пути. Если несколько модов заменяют один ресурс, результат зависит от порядка загрузки пакетов.
+- [Studio modes](#studio-modes)
+- [What you can do](#what-you-can-do)
+- [Quick start](#quick-start)
+- [Recolouring](#recolouring)
+- [Saved builds](#saved-builds)
+- [Camera controls](#camera-controls)
+- [Local application](#local-application)
+- [Development](#development)
+- [Project layout](#project-layout)
+- [Limitations and bug reports](#limitations-and-bug-reports)
+- [Rights to the code and resources](#rights-to-the-code-and-resources)
 
-### Режимы перекраски
+## Studio modes
 
-| Режим | Результат |
+The site opens in English; add `?lang=ru` to the address for Russian. The main page is the effects studio; **Set**, **Cosmetics** and **Weather** are switched with the buttons at the top of the page.
+
+| Mode | What it is for |
 |---|---|
-| Сохранить детали | Меняет цвет с сохранением светлых граней и тёмных деталей исходной цветовой карты |
-| Тонировать | Умножает исходный цвет на выбранный; тёмные области могут оставаться тёмными |
-| Покрасить всю поверхность | Придаёт цвет в том числе очень тёмным участкам; внешний вид может заметно отличаться от оригинала |
+| **Your effect** (main page) | One hero, one item, your effect: attach supported effects to items and colour them |
+| **Set** | A full look: items from different sets, styles, arcanas, personas and kinetic gems for one or several heroes |
+| **Cosmetics** | Global cosmetics: wards, couriers, HUD skins, announcers, emblems, music, terrains |
+| **Weather** | Weather effects on top of the chosen terrain |
 
-Карты нормалей и технические маски не следует использовать как обычную цветовую текстуру. Часть свечения и внешнего вида задаётся материалами или частицами и настраивается отдельно.
+## What you can do
 
-### Управление камерой
+**Look**
+- Pick items from different sets and fill one cart for several heroes.
+- Use supported arcanas, styles, personas and kinetic gems. Availability depends on the catalogue and on resource compatibility.
+- Inspect the hero in 3D with items, effects and the available animations.
 
-| Управление | Действие |
+**Colour**
+- Recolour an item, the hero base, effects, abilities and icons. Each effect can have its own colour.
+- Changes show up in 3D right away, with no confirmation step; **Compare with original** shows the difference.
+
+**Build**
+- Build a VPK with any name from `pak01_dir.vpk` to `pak99_dir.vpk`.
+- A build with a terrain or emblem attacks comes as a ZIP with `INSTALL.txt` and a separate map file.
+
+Features of the tester studio may differ from the main site. Experimental features are published separately from general builder fixes.
+
+## Quick start
+
+1. Open [dota-studio.lol](https://dota-studio.lol/) or the local application and choose a hero.
+2. Pick items for the slots you want. A new item replaces the previous one in the same slot.
+3. Add effects if needed. To change colours, press **Recolor** under the item; for the body, use the **Hero base** slot.
+4. In the **Cart**, choose the **VPK filename** and press **Build VPK**.
+5. When the build is ready, press **Download VPK**.
+6. Check the result in Dota 2. Keep your original mods elsewhere so you can return to a previous build.
+
+> [!TIP]
+> Changing the VPK number changes only the package name, not the paths inside it. If several mods replace the same resource, the result depends on the order in which the packages load.
+
+## Recolouring
+
+In the recolour window choose what to change — **Item**, **Effects**, **Ability** or **Icon** — and then the colour mode:
+
+| Mode | Result |
 |---|---|
-| Мышь | Вращение камеры |
-| Колесо | Приближение и отдаление |
-| `W`, `A`, `S`, `D` | Перемещение камеры |
-| `Q`, `E` | Изменение высоты |
-| `Shift` | Ускоренное перемещение |
+| **Preserve details** | Changes the colour while keeping the light edges and dark details of the original colour map |
+| **Tint** | Multiplies the original colour by the chosen one; dark areas may stay dark |
+| **Recolor entire surface** | Colours even very dark areas; the look may differ noticeably from the original |
 
-## Локальное приложение
+Effects can be coloured all at once or one by one. **Include child effects** applies the colour to the dependent parts of an effect as well. Some glow comes from materials or particles and is tuned separately; normal maps and technical masks are not ordinary colour textures.
 
-Официальные сборки публикуются через [GitHub Actions](https://github.com/HarlordLeg/Effect-studio/actions). Сборка Windows распространяется как `DotaEffectStudio-Windows-x64`.
+## Saved builds
 
-Для работы сборщика нужна установленная Dota 2 и доступ к её игровым архивам. Настрой путь через `configure-dota.bat`, затем используй `start-local.bat`. Адрес локального сервера по умолчанию — `http://127.0.0.1:8787`.
+The **Saved builds** panel above the cart keeps your work in the browser: **Save**, **Save a copy**, **Load** and **Delete**. A loaded build can be changed and built again. Builds are stored locally in this browser, so they do not move to another browser or computer on their own.
 
-Не добавляй игровые архивы, готовые пользовательские VPK, секреты сервера или приватные конфигурации в репозиторий.
+## Camera controls
 
-## Разработка и сборка
+| Control | Action |
+|---|---|
+| Mouse | Rotate the camera |
+| Wheel | Zoom in and out |
+| `W` `A` `S` `D` | Move the camera |
+| `Q` `E` | Change height |
+| `Shift` | Move faster |
 
-Этот раздел предназначен для владельца проекта и разработчиков с разрешением на работу с соответствующим кодом. Условия использования исходников описаны в [LICENSE](LICENSE).
+## Local application
 
-Среда: **Windows x64, Node.js 24, .NET SDK 10**, установленная Dota 2.
+Official builds are published through [GitHub Actions](https://github.com/HarlordLeg/Effect-studio/actions). The Windows build is distributed as `DotaEffectStudio-Windows-x64`.
+
+The builder needs an installed Dota 2 and access to its game archives:
+
+1. Set the game path with `configure-dota.bat`.
+2. Start `start-local.bat` (or `start-desktop.bat` for the desktop window).
+3. Open `http://127.0.0.1:8787`.
+
+> [!WARNING]
+> Do not add game archives, finished user VPKs, server secrets or private configuration to the repository.
+
+## Development
+
+This section is for the project owner and for developers with permission to work on the code. The terms for using the source are in [LICENSE](LICENSE).
+
+**Requirements:** Windows x64, Node.js 24, .NET SDK 10, an installed Dota 2.
 
 ```powershell
 npm install
 npm run build:viewer
-npm test
 .\build-patcher.bat
 .\build-assets.bat
 .\configure-dota.bat
 npm start
 ```
 
-После запуска сервер по умолчанию доступен на порту `8787`. Для оболочки Electron:
+The server listens on port `8787` by default. Other useful commands:
 
-```powershell
-npm run desktop
-```
-
-После сборки нативных утилит можно подготовить портативную папку:
-
-```powershell
-node tools/package-windows.mjs
-```
-
-Результат: `dist/DotaEffectStudio`.
-
-### Проверки
-
-```powershell
-npm test
-node tools/build-native.mjs patcher
-```
-
-Вторая команда выполняет предусмотренные скриптом нативные регрессии и собирает патчер. Успешные JS-тесты не заменяют нативные проверки или проверку готового мода в игре. Фиксированное количество тестов здесь не указано: актуальный результат смотри в CI.
-
-## Как устроен проект
-
-Подробно — сервер, каталог, конвейер сборки VPK, команды патчера, данные сервера, тесты и деплой — в [ARCHITECTURE.md](ARCHITECTURE.md).
-
-| Путь | Назначение |
+| Command | What it does |
 |---|---|
-| `public/` | Каталог, корзина, перекраска и интерфейс 3D-просмотра |
-| `public/viewer/` | Адаптация сцены, метаданные моделей и браузерная сборка просмотрщика |
-| `vendor/dota-loadout/` | Сторонний код просмотрщика и локальные адаптации; исходные MIT-уведомления сохранены |
-| `lib/` | Каталог, выбор ресурсов, сборка VPK, перенос зависимостей и API |
-| `patcher/` | Нативное изменение ресурсов Source 2 |
-| `asset-bridge/` | Экспорт моделей и ресурсов для предпросмотра |
-| `tools/` | Подготовка, публикация, сборка и упаковка |
-| `tests/` | Проверки JavaScript и C# |
-| `licenses/` | Уведомления о стороннем коде, игровых ресурсах и прежней MIT-лицензии |
-| `server.mjs` | HTTP-сервер |
-| `desktop.cjs` | Оболочка Electron |
+| `npm run desktop` | Starts the Electron shell |
+| `npm run doctor` | Checks the patcher and inspects the catalogue on the current config |
+| `npm test` | JavaScript tests (`node --test tests/*.test.mjs`) |
+| `node tools/build-native.mjs patcher` | Runs the native C# regressions and builds the patcher |
+| `node tools/package-windows.mjs` | Packs a portable folder into `dist/DotaEffectStudio` |
 
-Проект использует **dota-loadout, Three.js и ValveResourceFormat**. Полный перечень уведомлений и границы лицензирования приведены в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Passing tests do not replace testing the finished mod in the game. No fixed test count is given here: see CI for the current result.
 
-## Ограничения и сообщения об ошибках
+## Project layout
 
-- Браузерная симуляция поддерживает не все операторы частиц, материалы и игровые сценарии.
-- Сложные скелеты, физика ткани, превращения и зависимые модели могут требовать отдельного профиля совместимости.
-- Некоторые эффекты или модели могут отображаться неправильно даже при успешной сборке VPK.
-- После обновления Dota 2 может потребоваться обновление экспортированных данных, кеша или патчера.
+How the server, catalogue, VPK pipeline, patcher, server data, tests and deployment fit together is described in **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
-Если модель или эффект отображаются неправильно, пришли имя героя, точные названия вещей и стилей, скриншот или видео. При ошибке сборки приложи полный лог; если проблема проявляется только в игре — также собранный VPK. Не отправляй токены, пароли и приватные конфигурации.
-
-| Проблема | Что проверить |
+| Path | Purpose |
 |---|---|
-| Локальная страница не открывается | Запуск сервера и сообщения консоли |
-| Порт занят | Нет ли второго экземпляра приложения |
-| Не найдена модель | Путь к игре, наличие ресурса и актуальность данных каталога |
-| Ошибка CRC | Обновление игры; при необходимости проверь целостность игровых файлов |
-| В браузере и игре разный результат | Ограничения симуляции, анимации, привязки частиц и материалы |
+| `server.mjs` | HTTP server |
+| `desktop.cjs` | Electron shell |
+| `lib/` | Catalogue, resource selection, VPK building, dependency relocation and the API |
+| `public/` | Site: catalogue, cart, recolouring and the 3D viewer |
+| `patcher/` | Native editing of Source 2 resources (C#) |
+| `asset-bridge/`, `icon-bridge/` | Exporting models, effects and icons for the preview |
+| `vendor/dota-loadout/` | Third-party viewer code and local adaptations; the original MIT notices are kept |
+| `tools/` | Preparation, publishing, building and packaging |
+| `tests/` | JavaScript and C# checks |
+| `licenses/` | Notices for third-party code, game resources and the former MIT licence |
 
-## Права на код и ресурсы
+Embedding the viewer on another site: [SDK.md](SDK.md) and [SDK_GUIDE.md](SDK_GUIDE.md). The project uses **dota-loadout, Three.js and ValveResourceFormat**; the full list of notices is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Собственные новые части кода, опубликованные на условиях текущего [LICENSE](LICENSE), имеют ограниченные условия использования: **все права защищены**, повторное использование в другом проекте требует письменного разрешения HarlordLeg. Пользование официальным сайтом и официальным приложением для личных некоммерческих сборок разрешено в пределах LICENSE.
+## Limitations and bug reports
 
-**Ранее опубликованные MIT-версии не становятся закрытыми задним числом.** Права на ранее лицензированные части сохраняются; прежний текст находится в [licenses/Effect-Studio-legacy-MIT.txt](licenses/Effect-Studio-legacy-MIT.txt). У стороннего кода остаются его собственные лицензии. Происхождение конкретной части определяется историей и уведомлениями, а не только текущим корневым LICENSE.
+- The browser simulation does not support every particle operator, material or game scenario.
+- Complex skeletons, cloth physics, transformations and dependent models may need a dedicated compatibility profile.
+- Some effects or models may display incorrectly even when the VPK builds successfully.
+- After a Dota 2 update, the exported data, the cache or the patcher may need updating.
 
-Эти условия относятся к конкретному охраняемому коду. Они не заявляют исключительные права на идею сборки VPK, формат файлов или независимую реализацию похожего инструмента.
+If a build fails, the error appears under the **Build VPK** button together with a **Bug report** button. When reporting, send the hero, the exact names of items and styles, and a screenshot or video; for a build error, the full error text; if the problem only shows in the game, the built VPK as well. Do not send tokens, passwords or private configuration.
 
-Игровые модели, текстуры, звуки и частицы принадлежат Valve и другим правообладателям. Экспорт в GLB или упаковка в VPK не меняют владельца этих ресурсов. Лицензия исходников приложения не присваивается автоматически содержимому созданного пакета.
+| Problem | What to check |
+|---|---|
+| The local page does not open | That the server started, and the console messages |
+| Port already in use | Whether a second copy of the application is running |
+| Model not found | The game path, that the resource exists, and that the catalogue data is current |
+| CRC error | A game update; verify the integrity of the game files if needed |
+| The browser and the game look different | Simulation limits, animations, particle bindings and materials |
 
-Effect Studio — независимый проект, не официальный продукт Valve. По вопросам разрешения на использование собственного кода: [Harlord Mods](https://t.me/harlord_mods).
+## Rights to the code and resources
+
+New code of the project's own, published under the current [LICENSE](LICENSE), has restricted terms of use: **all rights reserved**, and reuse in another project requires written permission from HarlordLeg. Using the official site and the official application for personal non-commercial builds is allowed within the LICENSE.
+
+**Versions previously published under MIT do not become closed retroactively.** Rights to previously licensed parts are kept; the former text is in [licenses/Effect-Studio-legacy-MIT.txt](licenses/Effect-Studio-legacy-MIT.txt). Third-party code keeps its own licences. Where a given part comes from is determined by the history and the notices, not only by the current root LICENSE.
+
+These terms apply to the specific protected code. They claim no exclusive rights to the idea of building VPKs, to the file format, or to an independent implementation of a similar tool.
+
+Game models, textures, sounds and particles belong to Valve and other rights holders. Exporting to GLB or packing into a VPK does not change who owns these resources. The application's source licence does not automatically apply to the contents of a generated package.
+
+<div align="center">
+
+Effect Studio is an independent project, not an official Valve product.<br>
+For permission to use the project's own code: [Harlord Mods](https://t.me/harlord_mods)
+
+</div>
