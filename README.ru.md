@@ -136,6 +136,7 @@ npm start
 |---|---|
 | `npm run desktop` | Запускает оболочку Electron |
 | `npm run doctor` | Проверяет патчер и каталог на текущем конфиге |
+| `npm run db:import` | Переносит JSON каталога и статистики в SQLite (`data/integration.sqlite`); `-- --every 60` — раз в час |
 | `npm test` | JavaScript-тесты (`node --test tests/*.test.mjs`) |
 | `node tools/build-native.mjs patcher` | Прогоняет нативные C#-регрессии и собирает патчер |
 | `node tools/package-windows.mjs` | Собирает портативную папку `dist/DotaEffectStudio` |

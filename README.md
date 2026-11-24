@@ -136,6 +136,7 @@ The server listens on port `8787` by default. Other useful commands:
 |---|---|
 | `npm run desktop` | Starts the Electron shell |
 | `npm run doctor` | Checks the patcher and inspects the catalogue on the current config |
+| `npm run db:import` | Imports the catalogue and statistics JSON into SQLite (`data/integration.sqlite`); `-- --every 60` repeats hourly |
 | `npm test` | JavaScript tests (`node --test tests/*.test.mjs`) |
 | `node tools/build-native.mjs patcher` | Runs the native C# regressions and builds the patcher |
 | `node tools/package-windows.mjs` | Packs a portable folder into `dist/DotaEffectStudio` |

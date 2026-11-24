@@ -191,6 +191,18 @@ The production installation is `D:\DotaEffectStudio`. Of `data/`, git holds only
 | `cache/` | Preview, icon, animation and map caches — safe to delete, they are rebuilt |
 | `output/` | Temporary build folders; cleaned after delivery |
 
+## SQLite import (temporary)
+
+`lib/sqlite-import.mjs` and `tools/sqlite-import.mjs` (`npm run db:import`) import the server's JSON data into a relational SQLite database `data/integration.sqlite` (built into Node 24 as `node:sqlite`, no extra dependency). It is a one-way transfer, run manually or on a schedule with `--every <minutes>`.
+
+| Source | Tables |
+|---|---|
+| `data/catalog.json` | `heroes`, `items`, `item_effects` (foreign keys) |
+| `data/statistics.json` | `daily_stats`, `rankings` |
+| every run | `import_runs` — start, end, status, row count, error |
+
+Each run is one transaction: an unreadable file, invalid JSON or a bad count rolls back and the previous data stays; the failure is recorded in `import_runs`. A repeated run replaces the data instead of duplicating it. The database is server data and is not committed. Tests: `tests/sqlite-import.test.mjs`.
+
 ## Tests
 
 - `npm test` — `node --test tests/*.test.mjs` (about 200 files). Builds are tested with a stub instead of the patcher: the test replaces `run` on `Builder` and checks the manifests and the resulting VPK. Examples: `tests/set-entities.test.mjs`, `tests/game-update-regressions.test.mjs`.
